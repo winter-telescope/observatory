@@ -18,23 +18,24 @@ import numpy as np
 from telescope import telescope
 
 # Now try to connect to the telescope using the module
+try:
+    
+    pwi4 = telescope.PWI4(host = "thor", port = 8220)
 
-pwi4 = telescope.PWI4(host = "thor", port = 8220)
-
-
-
-while True:
-    s = pwi4.status()
-    time.sleep(2)
-    if s.mount.is_connected:
-        print("Mount is connected")
-        break
-    else:
-        print("Mount is not connected")
-        print("Connecting to Mount...")
-        s = pwi4.mount_connect()
+    while True:
+        s = pwi4.status()
         time.sleep(2)
-        
+        if s.mount.is_connected:
+            print("Mount is connected")
+            break
+        else:
+            print("Mount is not connected")
+            print("Connecting to Mount...")
+            s = pwi4.mount_connect()
+            time.sleep(2)
+ 
+except:
+    print("The telescope is not online")       
         
 #######################################################################
 # Captions and menu options for terminal interface
@@ -76,7 +77,7 @@ while True:
     elif opt == "1":
         print("You chose option 1, good for you!")
     elif opt == "2":
-        print("You chose option 1, good for you!")
+        print("You chose option 2, good for you!")
     elif opt == "3":
         break
     else:
