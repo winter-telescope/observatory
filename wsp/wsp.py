@@ -55,7 +55,7 @@ def menu(captions, options):
        outputs:
            int opt: Integer corresponding to menu option chosen by user"""
     print(linebreak)
-    print ('\t' + captions[0] + '\n')
+    print ('\t' + captions[0])
     print(linebreak)
     for i in range(len(options)):
         if (i < 9):
