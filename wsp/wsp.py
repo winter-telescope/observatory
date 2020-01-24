@@ -38,6 +38,7 @@ while True:
         
 #######################################################################
 # Captions and menu options for terminal interface
+linebreak = '\n \033[34m#######################################################################'
 caption1 = '\n\t\033[32mWSP - The WINTER Supervisor Program'
 caption2 = '\n\t\033[32mPlease Select an Operating Mode:'
 captions = [caption1, caption2]
@@ -53,7 +54,9 @@ def menu(captions, options):
            list options: List of menu options
        outputs:
            int opt: Integer corresponding to menu option chosen by user"""
+    print(linebreak)
     print ('\t' + captions[0] + '\n')
+    print(linebreak)
     for i in range(len(options)):
         if (i < 9):
             print( '\t' +  '\033[32m' + str(i) + ' ..... ' '\033[0m' +  options[i] + '\n')
