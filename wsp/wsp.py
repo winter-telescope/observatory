@@ -36,8 +36,48 @@ while True:
         time.sleep(2)
         
         
-    
-    
+#######################################################################
+# Captions and menu options for terminal interface
+caption1 = '\n\t\033[32mWSP - The WINTER Supervisor Program'
+caption2 = '\n\t\033[32mPlease Select an Operating Mode:'
+captions = [caption1, caption2]
+main_opts= ['Schedule File Mode',\
+            'Get Ready and Wait',\
+            'Manual Mode',\
+            'Exit']
+#########################################################################
+def menu(captions, options):
+    """Creates menu for terminal interface
+       inputs:
+           list captions: List of menu captions
+           list options: List of menu options
+       outputs:
+           int opt: Integer corresponding to menu option chosen by user"""
+    print ('\t' + captions[0] + '\n')
+    for i in range(len(options)):
+        if (i < 9):
+            print( '\t' +  '\033[32m' + str(i) + ' ..... ' '\033[0m' +  options[i] + '\n')
+    print ('\t' + captions[1] + '\n')
+    for i in range(len(options)):
+        if (i >= 9):
+            print ('\t' +  '\033[32m' + str(i) + ' ..... ' '\033[0m' +  options[i] + '\n')
+    opt = input().strip()
+    return opt
+
+
+#########################################################################
+while True:
+    opt = menu(captions,main_opts)
+    if opt == "0":
+        print("You chose option 0, good for you!")
+    elif opt == "1":
+        print("You chose option 1, good for you!")
+    elif opt == "2":
+        print("You chose option 1, good for you!")
+    elif opt == "3":
+        break
+    else:
+        print("Please choose a valid option:") 
 
 
  
