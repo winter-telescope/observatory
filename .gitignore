@@ -1,4 +1,8 @@
 *.ignore
 ._*
+*.py[cod]
+*.log
+*.error
+__pycache__/
 
 
