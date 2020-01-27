@@ -12,10 +12,22 @@ WINTER instrument.
 
 
 """
-import time
-import matplotlib.pyplot as plt
+# system packages
+import sys
+import os
 import numpy as np
+import time
+
+# add the wsp directory to the PATH
+wsp_path = os.getcwd()
+sys.path.insert(1, wsp_path)
+
+# winter modules
+from power import power
 from telescope import telescope
+from telescope import initialize
+from control import systemControl
+
 
 
 # Now try to connect to the telescope using the module
@@ -77,13 +89,12 @@ def menu(captions, options):
 #########################################################################
 while True:
     opt = menu(captions,main_opts)
-    if opt == "0":
-        print("You chose option 0, good for you!")
-    elif opt == "1":
-        print("You chose option 1, good for you!")
-    elif opt == "2":
-        print("You chose option 2, good for you!")
+    if opt in ["0","1","2"]:
+        print("You chose option ",opt, " good for you!")
+        winter = systemControl.control(mode = int(opt), config_file = '',base_directory = wsp_path)
+        break
     elif opt == "3":
+        print("Killing WSP...")
         break
     else:
         print("Please choose a valid option:") 
