@@ -4,5 +4,6 @@
 *.log
 *.error
 __pycache__/
-
+~*
+./wsp/credentials/
 

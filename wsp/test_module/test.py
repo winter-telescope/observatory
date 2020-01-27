@@ -16,6 +16,7 @@ class dumb:
         
     def printname(self):
         print("my dumb name is: ",np.str(self.name))
+        print("the name of the program running is: ",__name__)
 	
-	
+
 

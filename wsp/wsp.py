@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from telescope import telescope
 
+
 # Now try to connect to the telescope using the module
 try:
     
@@ -35,8 +36,12 @@ try:
             time.sleep(2)
  
 except:
-    print("The telescope is not online")       
-        
+    print("The telescope is not online")    
+    #TODO add a message to the log
+ 
+
+
+       
 #######################################################################
 # Captions and menu options for terminal interface
 linebreak = '\n \033[34m#######################################################################'
