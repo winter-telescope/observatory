@@ -146,8 +146,8 @@ class PDU(object):
         time.sleep(5)
         self.getStatus(verbose = verbose)
         
-"""       
-  
+       
+""" 
 # Usage Example
 # Import the PDU properties
 
