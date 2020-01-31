@@ -45,17 +45,12 @@ print("Current ALT/AZ: %0.4f, %0.4f" %(s.mount.altitude_degs,s.mount.azimuth_deg
 
 #pwi4.mount_goto_ra_dec_j2000(10, 70)
 
-
-
-
-random_alt = np.random.randint(16,89)
-random_az = np.random.randint(1,359)
-
 # Point towards the door and look pretty!
-#random_alt = 16
-#random_az = 290
+random_alt = 16
+random_az = 290
 
 print ("Slewing to ALT/AZ = %0.4f, %0.4f" %(random_alt,random_az))
+
 pwi4.mount_goto_alt_az(random_alt, random_az )
 
 
@@ -78,8 +73,41 @@ while True:
 print ("Slew complete. Stopping...")
 pwi4.mount_stop()
 
+# loop through random places and point to them indefinitely?
+print('want to swing wildly?? y/n')
+cmd = input()
+print('you input: ',cmd)
+if cmd.lower() == 'y':
+    print('telescope swinging wildly!!!')
+    while True:
+        random_alt = np.random.randint(16,89)
+        random_az = np.random.randint(1,359)
+        print ("Slewing to ALT/AZ = %0.4f, %0.4f" %(random_alt,random_az))
 
-print('shutting down nicely...')
+        pwi4.mount_goto_alt_az(random_alt, random_az )
+        
+        
+        time.sleep(5)
+        while True:
+            s = pwi4.status()
+        
+            print ("ALT: %.4f deg;  Az: %.4f degs, Axis0 dist: %.1f arcsec, Axis1 dist: %.1f arcsec" % (
+                s.mount.altitude_degs, 
+                s.mount.azimuth_degs,
+                s.mount.axis0.dist_to_target_arcsec,
+                s.mount.axis1.dist_to_target_arcsec
+            ))
+        
+        
+            if not s.mount.is_slewing:
+                break
+            time.sleep(0.5)
+
+            print ("Slew complete. Stopping...")
+            pwi4.mount_stop()
+
+else:
+    print('shutting down nicely...')
 
 #pwi4.virtualcamera_take_image_and_save("Test_Image.FITS")
 
