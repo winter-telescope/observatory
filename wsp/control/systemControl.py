@@ -29,8 +29,8 @@ sys.path.insert(1, wsp_path)
 
 # winter modules
 from power import power
+from telescope import pwi4
 from telescope import telescope
-from telescope import initialize
 
 
 
@@ -45,7 +45,7 @@ class control(object):
         if mode not in [0,1,2]:
             raise IOError("'" + str(mode) + "' is note a valid operation mode")
     
-        initialize.telescope_initialize()    
+        telescope.telescope_initialize()    
         
         # SET UP POWER SYSTEMS #
         pdu1 = power.PDU('pdu1.ini',base_directory)

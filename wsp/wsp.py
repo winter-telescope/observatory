@@ -24,32 +24,9 @@ sys.path.insert(1, wsp_path)
 
 # winter modules
 from power import power
+from telescope import pwi4
 from telescope import telescope
-from telescope import initialize
 from control import systemControl
-
-
-
-# Now try to connect to the telescope using the module
-try:
-    
-    pwi4 = telescope.PWI4(host = "thor", port = 8220)
-
-    while True:
-        s = pwi4.status()
-        time.sleep(2)
-        if s.mount.is_connected:
-            print("Mount is connected")
-            break
-        else:
-            print("Mount is not connected")
-            print("Connecting to Mount...")
-            s = pwi4.mount_connect()
-            time.sleep(2)
- 
-except:
-    print("The telescope is not online")    
-    #TODO add a message to the log
  
 
 

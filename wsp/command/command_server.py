@@ -17,6 +17,7 @@ A program to make an echo server/client command interface
 import socket
 import sys
 
+# This is a test function to make sure commands are being parsed 
 def printphrase(phrase = 'default phrase'):
     printed_phrase = f"I'm Printing the Phrase: {phrase}"
     print(printed_phrase)
@@ -27,7 +28,7 @@ def printphrase(phrase = 'default phrase'):
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # associate the socket with a server address: Bind to an address
-server_address = ('localhost', 7070)
+server_address = ('localhost', 7075)
 
 print(f'starting up on {server_address[0]} port {server_address[1]}')
 sock.bind(server_address)

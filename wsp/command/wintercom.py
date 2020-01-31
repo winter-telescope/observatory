@@ -57,7 +57,7 @@ if __name__ == "__main__":
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # connect the socket ot the port where the server is listening
-server_address = ('localhost',7070)
+server_address = ('localhost',7075)
 print(f'connecting to {server_address[0]} port {server_address[1]}')
 sock.connect(server_address)
 
