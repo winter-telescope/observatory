@@ -25,7 +25,7 @@ def printphrase(phrase = 'default phrase'):
     
 
 
-def start_commandServer(port = 7075):
+def start_commandServer(addr = 'localhost', port = 7075):
     # Create a TCP/IP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     

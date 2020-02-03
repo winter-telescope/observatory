@@ -48,7 +48,7 @@ class control(object):
     
         if mode == 2:
             #Start up the command server
-            commandServer.start_commandServer(port = 7075)
+            commandServer.start_commandServer(addr = '192.168.1.11',port = 7075)
         
         if mode in [0,1]:
             hammer = pwi4.PWI4(host = "thor", port = 8220)
