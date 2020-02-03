@@ -48,7 +48,7 @@ def main():
             assert False, "unhandled option"
     try:
         IP = args[0]
-        port = args[1]
+        port = int(args[1])
     except:
         IP = 'localhost'
         port = 7075
