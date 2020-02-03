@@ -26,8 +26,9 @@ import getopt
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "sh", ["single_cmd","help""])
-        print('opts = ',opts)
+        opts, args = getopt.getopt(sys.argv[1:], "sh", ["single_cmd","help"])
+        #print('opts = ',opts)
+        #print('args = ',args)
     except getopt.GetoptError as err:
         # print help information and exit:
         print(err) # will print something like "option -a not recognized"
@@ -45,7 +46,52 @@ def main():
             output = a
         else:
             assert False, "unhandled option"
-    # ...
+    try:
+        IP = args[0]
+        port = args[1]
+    except:
+        IP = 'localhost'
+        port = 7075
+    
+    ## Now connecto to the server ##
+    # create a TCP/IP socket
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        # connect the socket ot the port where the server is listening
+        server_address = (IP,port)
+        print(f'connecting to {server_address[0]} port {server_address[1]}')
+        sock.connect(server_address)
+        
+        # now that the connection is established, data can be sent with sendall() and received with recv()
+        
+        while True:
+            try:
+                # send some data
+                print("Enter a command:")
+                cmd = input()
+                
+                    
+            except:
+                print('problem with input command')
+                print("enter 'quit' to stop client session")
+                print("enter 'killserver' to stop command server")
+        
+            if cmd.lower() == 'quit':
+                sock.close()
+                print('stopping the client session')
+                sys.exit()
+            elif cmd.lower() == 'killserver':
+                print('killing the command server')
+                sock.sendall(bytes(cmd,"utf-8"))
+                print('enter "quit" to end client session')
+            else:
+                print(f"sending command:'{cmd}'")
+                sock.sendall(bytes(cmd,"utf-8"))
+                reply = sock.recv(1024).decode("utf-8")
+                print(f"received message back from server: '{reply}'\n")
+    except:
+        print(f"Could not connect to server at {IP} port {port}")
 
 if __name__ == "__main__":
     main()
