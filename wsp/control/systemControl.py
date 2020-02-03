@@ -31,6 +31,7 @@ sys.path.insert(1, wsp_path)
 from power import power
 from telescope import pwi4
 from telescope import telescope
+from command import commandServer
 
 
 
@@ -45,10 +46,18 @@ class control(object):
         if mode not in [0,1,2]:
             raise IOError("'" + str(mode) + "' is note a valid operation mode")
     
-        telescope.telescope_initialize()    
+        if mode == 2:
+            #Start up the command server
+            commandServer.start_command_server(port = 7075)
         
-        # SET UP POWER SYSTEMS #
-        pdu1 = power.PDU('pdu1.ini',base_directory)
+        if mode in [0,1]:
+            hammer = pwi4.PWI4(host = "thor", port = 8220)
+            telescope.telescope_initialize(hammer)  
+            
+        
+            # SET UP POWER SYSTEMS #
+            pdu1 = power.PDU('pdu1.ini',base_directory)
+            pdu1.getStatus()
         
 #pdu1 = power.PDU('pdu1.ini',wsp_path)        
 

@@ -27,7 +27,7 @@ from power import power
 from telescope import pwi4
 from telescope import telescope
 from control import systemControl
- 
+from command import commandServer 
 
 
        

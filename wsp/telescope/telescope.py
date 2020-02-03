@@ -17,16 +17,15 @@ observing.
 import time
 import numpy as np
 from telescope import telescope
+from telescope import pwi4
 
-def telescope_initialize():
+def telescope_initialize(mount):
     print("Initializing Telescope...")
     # Now try to connect to the telescope using the module
     try:
-        
-        pwi4 = telescope.PWI4(host = "thor", port = 8220)
     
         while True:
-            s = pwi4.status()
+            s = mount.status()
             time.sleep(2)
             if s.mount.is_connected:
                 print("Mount is connected")
@@ -34,7 +33,7 @@ def telescope_initialize():
             else:
                 print("Mount is not connected")
                 print("Connecting to Mount...")
-                s = pwi4.mount_connect()
+                s = mount.mount_connect()
                 time.sleep(2)
      
     except:
