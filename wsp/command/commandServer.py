@@ -30,7 +30,7 @@ def start_commandServer(addr = 'localhost', port = 7075):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     # associate the socket with a server address: Bind to an address
-    server_address = ('localhost', port)
+    server_address = (addr, port)
     
     print(f'starting up on {server_address[0]} port {server_address[1]}')
     sock.bind(server_address)
@@ -78,5 +78,5 @@ def start_commandServer(addr = 'localhost', port = 7075):
 
 if __name__ == '__main__':
     
-    start_commandServer(7075)
+    start_commandServer(addr = 'localhost',port = 7075)
     
