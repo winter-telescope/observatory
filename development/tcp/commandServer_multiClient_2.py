@@ -18,16 +18,15 @@ import socket
 import sys
 import threading
 from queue import Queue
+from psutil import process_iter
+from signal import SIGTERM,SIGKILL
 
 # We have to do some threading contrl to get the command server to accept connections from 
 # multiple clients
 # Did this by following a tutorial from here: https://www.youtube.com/watch?v=Iu8_IpztiOU
     # 
-NUMBER_OF_THREADS = 2 #one for waiting for connections, one for taking client commmands
-JOB_NUMBER = [1,2]
-queue = Queue()
-all_connections = []
-all_adddress = []
+
+
 
 # This is a test function to make sure commands are being parsed 
 def printphrase(phrase = 'default phrase'):
@@ -76,12 +75,10 @@ def receive_commands(server_socket, client_socket):
                 #reply = f'received command: {cmd}\n'
                 #client_socket.send(bytes(reply,"utf-8"))
                 if cmd_txt.lower() == 'killserver':
-
                     client_socket.close()
                     server_socket.close()
-                    #sys.exit(0)
-                    raise Exception('command is killserver') 
                     break
+                    #sys.exit()
                 else:
                     try:
                         # try to evaluate the command
@@ -94,19 +91,21 @@ def receive_commands(server_socket, client_socket):
             else:
                 print(f'no more data from {client_address}')
                 break
-    except Exception as e:
-        server_socket.close()
-        print(e)
+    
+
+    
+    except KeyboardInterrupt:
+        # This makes it exit gracefully if you do cntl + c by leaving the loop and proceeding down to close the server socket
+        pass
     except:
-        print('Error receiving commands')
-        #break
+        print("Error receiving commands")
     
     finally:
         # clean up and close the connection. the try:finally thing makes it close even if there's an error
         print('closing socket.')
         client_socket.close()  
     
-
+    
 def start_commandServer(addr = 'localhost', port = 7075):
     server_socket = socket_create()
     socket_bind(server_socket,addr,port)
@@ -115,27 +114,28 @@ def start_commandServer(addr = 'localhost', port = 7075):
     #print(f'connection from IP {client_address[0]} | port  {client_address[1]}')
     
     try:
-
+        
         while True:
-            # This keeps looping so that it will keep accepting new connections
-            # after one is closed
             client_socket, client_address = socket_accept(server_socket)
-            #receive_commands(server_socket,client_socket)
+            receive_commands(server_socket,client_socket)
             
             
     except KeyboardInterrupt:
         # This makes it exit gracefully if you do cntl + c by leaving the loop and proceeding down to close the server socket
         pass
-    except:
-        pass
+    
     # now that you've keyboardinterrupted, close the server socket
-    server_socket.close()
+    client_socket.close()
+    server_socket.close()     
 
-      
 
+
+
+       
+            
 
 if __name__ == '__main__':
     addr = ''
-    port = 7790
+    port = 7780
+    
     start_commandServer(addr = addr,port = port)
-    sys.exit(0)

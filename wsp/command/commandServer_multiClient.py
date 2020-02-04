@@ -23,11 +23,8 @@ from queue import Queue
 # multiple clients
 # Did this by following a tutorial from here: https://www.youtube.com/watch?v=Iu8_IpztiOU
     # 
-NUMBER_OF_THREADS = 2 #one for waiting for connections, one for taking client commmands
-JOB_NUMBER = [1,2]
-queue = Queue()
-all_connections = []
-all_adddress = []
+
+
 
 # This is a test function to make sure commands are being parsed 
 def printphrase(phrase = 'default phrase'):
@@ -76,12 +73,9 @@ def receive_commands(server_socket, client_socket):
                 #reply = f'received command: {cmd}\n'
                 #client_socket.send(bytes(reply,"utf-8"))
                 if cmd_txt.lower() == 'killserver':
-
                     client_socket.close()
                     server_socket.close()
-                    #sys.exit(0)
-                    raise Exception('command is killserver') 
-                    break
+                    sys.exit()
                 else:
                     try:
                         # try to evaluate the command
@@ -94,19 +88,20 @@ def receive_commands(server_socket, client_socket):
             else:
                 print(f'no more data from {client_address}')
                 break
-    except Exception as e:
-        server_socket.close()
-        print(e)
+    
+
+    
+    except KeyboardInterrupt:
+        # This makes it exit gracefully if you do cntl + c by leaving the loop and proceeding down to close the server socket
+        pass
     except:
-        print('Error receiving commands')
-        #break
+        print("Error receiving commands")
     
     finally:
         # clean up and close the connection. the try:finally thing makes it close even if there's an error
         print('closing socket.')
         client_socket.close()  
     
-
 def start_commandServer(addr = 'localhost', port = 7075):
     server_socket = socket_create()
     socket_bind(server_socket,addr,port)
@@ -115,10 +110,8 @@ def start_commandServer(addr = 'localhost', port = 7075):
     #print(f'connection from IP {client_address[0]} | port  {client_address[1]}')
     
     try:
-
+        
         while True:
-            # This keeps looping so that it will keep accepting new connections
-            # after one is closed
             client_socket, client_address = socket_accept(server_socket)
             #receive_commands(server_socket,client_socket)
             
@@ -126,16 +119,114 @@ def start_commandServer(addr = 'localhost', port = 7075):
     except KeyboardInterrupt:
         # This makes it exit gracefully if you do cntl + c by leaving the loop and proceeding down to close the server socket
         pass
-    except:
-        pass
+    
     # now that you've keyboardinterrupted, close the server socket
-    server_socket.close()
+    server_socket.close()     
 
-      
 
+
+
+
+
+# MULTI CONNECTION
+client_sockets = []
+client_addresses = []
+
+
+def socket_accept_multiple(server_socket):
+    # Handling connections from multiple clients and saving to a list
+    
+    # Close all previous connections when the server is restarted
+    for client_socket in client_sockets:
+        client_socket.close()
+    # Delete anything in the connections and address list on restart
+    del client_sockets[:]
+    del client_addresses[:]
+    
+
+    
+    while True:
+        try:
+            client_socket, client_address = server_socket.accept()
+            # prevent timeout by setting "setblocking" to true, so it doesn't timeout if waiting for connection
+            server_socket.setblocking(1)
+            client_sockets.append(client_socket)
+            client_addresses.append(client_address)
+            
+            print(f'connection from IP {client_address[0]} | port  {client_address[1]}')
+        except:
+            print(f'error accepting connections')
+
+
+# MULTI THREADING:
+    # based on: https://www.youtube.com/watch?v=O_Y1NLLP0d8
+# Thread 1 makes connections
+# thread 2 receives commands
+
+NUMBER_OF_THREADS = 2 #one for waiting for connections, one for taking client commmands
+JOB_NUMBER = [1,2]
+queue = Queue()
+
+def create_workers(num_threads = 2):
+    # create worker threads
+    for i in range(num_threads):
+        t = threading.Thread(target = work)
+        t.daemon = True # true means it shuts down the thread with the program ends.Why??
+        t.start()
+        
+def create_jobs(job_list = []):
+    # create a queue
+    #queue = Queue()
+    
+    # add all the job numbers to the queue
+    for i in range(len(job_list)):
+        queue.put(job_list[i])
+    
+    # join the queue
+    # this blocks until all items in the queue have been gotten and processed
+    queue.join()
+    
+def work():
+    addr = ''
+    port = 7799
+    while True:
+        job = queue.get()
+        if job == 1: # first thread
+            print('thread 1')
+            # If job is one, then get connections
+            server_socket = socket_create()
+            socket_bind(server_socket,addr,port)
+            socket_accept_multiple(server_socket)
+         
+        if job == 2: #second thread
+            print('thread 2')
+            for i in range(len(client_sockets)):
+                client_socket = client_sockets[i]
+                
+                print('client socket = ',client_socket.getsockname()[0])
+                try:
+                    while True:
+                        #client_socket, client_address = socket_accept(server_socket)
+                        receive_commands(server_socket,client_socket)
+                        
+                        
+                except KeyboardInterrupt:
+                    # This makes it exit gracefully if you do cntl + c by leaving the loop and proceeding down to close the server socket
+                    pass
+    
+                # now that you've keyboardinterrupted, close the server socket
+                server_socket.close()   
+
+        queue.task_done()
+            
+            
+            
+       
+            
 
 if __name__ == '__main__':
     addr = ''
-    port = 7790
-    start_commandServer(addr = addr,port = port)
-    sys.exit(0)
+    port = 7799
+    #start_commandServer(addr = addr,port = port)
+    create_workers(num_threads = 2)
+    create_jobs(job_list = [1,2])

@@ -81,11 +81,14 @@ def main():
             if cmd.lower() == 'quit':
                 sock.close()
                 print('stopping the client session')
-                sys.exit()
+                break
+                #sys.exit() # This didn't work as nicely. it went down into the except statement
             elif cmd.lower() == 'killserver':
                 print('killing the command server')
                 sock.sendall(bytes(cmd,"utf-8"))
-                print('enter "quit" to end client session')
+                print('closing down this client session')
+                sock.close()
+                break
             else:
                 print(f"sending command:'{cmd}'")
                 sock.sendall(bytes(cmd,"utf-8"))
