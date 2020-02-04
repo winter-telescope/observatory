@@ -29,7 +29,7 @@ def start_commandServer(addr = 'localhost', port = 7075):
     
     try:# Create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
+        sock.settimeout(3)
         # associate the socket with a server address: Bind to an address
         server_address = (addr, port)
         

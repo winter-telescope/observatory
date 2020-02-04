@@ -61,6 +61,7 @@ def main():
         # connect the socket ot the port where the server is listening
         server_address = (IP,port)
         print(f'connecting to {server_address[0]} port {server_address[1]}')
+        sock.settimeout(3)
         sock.connect(server_address)
         
         # now that the connection is established, data can be sent with sendall() and received with recv()
