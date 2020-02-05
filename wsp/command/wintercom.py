@@ -71,7 +71,9 @@ def main():
                 # send some data
                 print("Enter a command:")
                 cmd = input()
-                
+            except KeyboardInterrupt:
+                sock.close()
+                pass
                     
             except:
                 print('problem with input command')
@@ -94,6 +96,12 @@ def main():
                 sock.sendall(bytes(cmd,"utf-8"))
                 reply = sock.recv(1024).decode("utf-8")
                 print(f"received message back from server: '{reply}'\n")
+    except KeyboardInterrupt:
+        sock.close()
+        print('stopping the client session')
+        
+
+    
     except:
         print(f"Could not connect to server at {IP} port {port}")
 
