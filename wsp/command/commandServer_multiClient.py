@@ -35,7 +35,7 @@ def printphrase(phrase = 'default phrase'):
 
 
 
-def startServer(addr = '', port = 7075):
+def start_commandServer(addr = '', port = 7075):
     # Multithreaded Python server : TCP Server Socket Thread Pool
     class ClientThread(Thread): 
      
@@ -112,4 +112,4 @@ if __name__ == '__main__':
     addr = ''
     port = 7075
     
-    startServer(addr = addr, port = port)
+    start_commandServer(addr = addr, port = port)

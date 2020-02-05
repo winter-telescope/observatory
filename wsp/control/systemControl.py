@@ -31,7 +31,7 @@ sys.path.insert(1, wsp_path)
 from power import power
 from telescope import pwi4
 from telescope import telescope
-from command import commandServer
+from command import commandServer_multiClient
 
 
 
@@ -48,7 +48,7 @@ class control(object):
     
         if mode == 2:
             #Start up the command server
-            commandServer.start_commandServer(addr = '192.168.1.11',port = 7075)
+            commandServer_multiClient.start_commandServer(addr = '192.168.1.11',port = 7075)
         
         if mode in [0,1]:
             hammer = pwi4.PWI4(host = "thor", port = 8220)
