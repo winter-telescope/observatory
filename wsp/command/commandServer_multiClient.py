@@ -27,11 +27,6 @@ from threading import Thread
 #from SocketServer import ThreadingMixIn 
 
 
-# This is a test function to make sure commands are being parsed 
-def printphrase(phrase = 'default phrase'):
-    printed_phrase = f"I'm Printing the Phrase: {phrase}"
-    print(printed_phrase)
-    return printed_phrase
 
 
 
@@ -50,7 +45,7 @@ def start_commandServer(addr = '', port = 7075):
                 while True : 
                     cmd = conn.recv(2048) 
                     cmd_txt = cmd.decode('utf-8')
-                    print ("Server received data:", cmd_txt)
+                    print(f'received from client at {self.ip}: {cmd.decode("utf-8")}')
                     #MESSAGE = input("Multithreaded Python server : Enter Response from Server/Enter exit:")
                     #if MESSAGE == 'exit':
                     #    break
@@ -66,6 +61,7 @@ def start_commandServer(addr = '', port = 7075):
                         try:
                             # try to evaluate the command
                             result = eval(cmd_txt)
+                            print(result)
                             reply = f'\n\tcommand [{cmd_txt}] executed\n\tresult = [{result}]'
                             conn.send(bytes(reply,"utf-8"))
                         except:

@@ -29,6 +29,14 @@ from telescope import telescope
 from control import systemControl
 from command import commandServer_multiClient
 
+# This is a test function to make sure commands are being parsed 
+def printphrase(phrase = 'default phrase'):
+    printed_phrase = f"I'm Printing the Phrase: {phrase}"
+    print(printed_phrase)
+    return printed_phrase
+
+def home_the_thing():
+    winter.telescope_home()
 
        
 #######################################################################
@@ -77,6 +85,13 @@ while True:
         print("Please choose a valid option:") 
 
 
- 
+while True:
+    try:
+        eval(input('Please Enter a Command: '))
+        
+    except KeyboardInterrupt:
+        break
+    except:
+        print('Command did not work.')
 
 

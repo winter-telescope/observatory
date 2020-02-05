@@ -43,22 +43,47 @@ class control(object):
         self.config_file = config_file
         self.base_directory = base_directory
         
+        
         if mode not in [0,1,2]:
             raise IOError("'" + str(mode) + "' is note a valid operation mode")
     
         if mode == 2:
             #Start up the command server
-            commandServer_multiClient.start_commandServer(addr = '192.168.1.11',port = 7075)
-        
-        if mode in [0,1]:
-            hammer = pwi4.PWI4(host = "thor", port = 8220)
-            telescope.telescope_initialize(hammer)  
+            #commandServer_multiClient.start_commandServer(addr = '192.168.1.11',port = 7075)
+            pass
+        if mode in [0,1,2]:
+            self.telescope_mount = pwi4.PWI4(host = "thor", port = 8220)
             
+        if mode in [0,1]:
+            self.telescope_connect()
+              
+        
         
             # SET UP POWER SYSTEMS #
             pdu1 = power.PDU('pdu1.ini',base_directory)
             pdu1.getStatus()
+
+    # commands that are useful
+    def telescope_initialize(self):
+        telescope.telescope_initialize(self.telescope_mount)
+    def telescope_home(self):
+        telescope.home(self.telescope_mount)
+    def telescope_axes_enable(self):
+        telescope.axes_enable(self.telescope_mount)
+    def telescope_connect(self):
+        telescope.connect(self.telescope_mount)
+    def telescope_disconnect(self):
+        telescope.disconnect(self.telescope_mount)
+    def telescope_axes_disable(self):
+        telescope.axes_disable(self.telescope_mount)
         
-#pdu1 = power.PDU('pdu1.ini',wsp_path)        
+if __name__ == '__main__':
+    opt = 1
+    base_directory = wsp_path
+    config_file = ''
+    
+    winter = control(mode = int(opt), config_file = '',base_directory = wsp_path)
+     
+    
 
 
