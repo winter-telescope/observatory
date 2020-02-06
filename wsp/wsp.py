@@ -72,12 +72,28 @@ def menu(captions, options):
 
 
 #########################################################################
+global winter
 while True:
     opt = menu(captions,main_opts)
     if opt in ["0","1","2"]:
         print("You chose option ",opt, " good for you!")
         winter = systemControl.control(mode = int(opt), config_file = '',base_directory = wsp_path)
-        break
+        
+        while True:
+            try:
+                cmd = input('Please Enter a Command: ')
+                if cmd.lower() == 'menu':
+                    opt = menu(captions,main_opts)
+                    if opt in ["0","1","2"]:
+                        print("You chose option ",opt, " good for you!")
+                        winter = systemControl.control(mode = int(opt), config_file = '',base_directory = wsp_path)
+                    break
+                eval(cmd)
+                
+            except KeyboardInterrupt:
+                break
+            except:
+                print('Command did not work.')
     elif opt == "3":
         print("Killing WSP...")
         break
@@ -85,13 +101,6 @@ while True:
         print("Please choose a valid option:") 
 
 
-while True:
-    try:
-        eval(input('Please Enter a Command: '))
-        
-    except KeyboardInterrupt:
-        break
-    except:
-        print('Command did not work.')
+
 
 
