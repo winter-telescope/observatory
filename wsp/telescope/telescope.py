@@ -126,4 +126,31 @@ def home(mount):
     except:
         print("could not home the telescope")
         #TODO add a message to the log
-    
+
+def initialize(mount):
+    try:
+        connect(mount)
+        axes_enable(mount)
+        home(mount)
+    except:
+        #TODO add a message to the log
+        print("could not initialize telescope mount")
+
+
+def shutdown(mount):
+    try:
+        home(mount)
+        axes_disable(mount)
+        disconnect(mount)
+    except:
+        #TODO add a message to the log
+        print("could not shut down telescope mount")
+        
+
+
+
+
+
+
+
+

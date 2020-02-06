@@ -32,6 +32,8 @@ from power import power
 from telescope import pwi4
 from telescope import telescope
 from command import commandServer_multiClient
+from housekeeping import weather
+from dome import dome
 
 
 
@@ -53,15 +55,30 @@ class control(object):
             pass
         if mode in [0,1,2]:
             self.telescope_mount = pwi4.PWI4(host = "thor", port = 8220)
-            
+        
         if mode in [0,1]:
+            # Startup the Power Systems
+            self.pdu1 = power.PDU('pdu1.ini', base_directory)
+            self.pdu1.getStatus()
+            
+            
+            # Define the Dome Class
+            self.dome = dome.dome()
+            
+            # Startup the Telescope
             self.telescope_connect()
-              
-        
-        
-            # SET UP POWER SYSTEMS #
-            pdu1 = power.PDU('pdu1.ini',base_directory)
-            pdu1.getStatus()
+            self.telescope_axes_enable()
+            self.telescope_home()
+            
+            # Get the Site Weather Conditions
+            self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini')
+
+        if mode in [0]:
+            # Robotic Observing Mode
+            
+            # Check if it is okay to open the dome
+            self.weather.okaytoopen
+
 
     # commands that are useful
     def telescope_initialize(self):

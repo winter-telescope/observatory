@@ -49,6 +49,15 @@ main_opts= ['Schedule File Mode',\
             'Get Ready and Wait',\
             'Manual Mode',\
             'Exit']
+logo = []
+logo.append('__      _____ _ __            _  _')
+logo.append("\ \ /\ / / __| '_ \          | )/ )")
+logo.append(" \ V  V /\__ \ |_) |       \\ |//,' __")
+logo.append('  \_/\_/ |___/ .__/        (")(_)-"()))=-')
+logo.append("             | |              (\\")
+logo.append("             |_|    ")
+
+# Logo Credit: https://ascii.co.uk/art/wasp
 #########################################################################
 def menu(captions, options):
     """Creates menu for terminal interface
@@ -57,7 +66,10 @@ def menu(captions, options):
            list options: List of menu options
        outputs:
            int opt: Integer corresponding to menu option chosen by user"""
+
     print(linebreak)
+    for logo_line in logo:
+        print('     ',logo_line)
     print ('\t' + captions[0])
     print(linebreak)
     for i in range(len(options)):
@@ -73,33 +85,37 @@ def menu(captions, options):
 
 #########################################################################
 global winter
-while True:
-    opt = menu(captions,main_opts)
-    if opt in ["0","1","2"]:
-        print("You chose option ",opt, " good for you!")
-        winter = systemControl.control(mode = int(opt), config_file = '',base_directory = wsp_path)
-        
-        while True:
-            try:
-                cmd = input('Please Enter a Command: ')
-                if cmd.lower() == 'menu':
-                    opt = menu(captions,main_opts)
-                    if opt in ["0","1","2"]:
-                        print("You chose option ",opt, " good for you!")
-                        winter = systemControl.control(mode = int(opt), config_file = '',base_directory = wsp_path)
+try:
+    while True:
+        opt = menu(captions,main_opts)
+        if opt in ["0","1","2"]:
+            print("You chose option ",opt, " good for you!")
+            winter = systemControl.control(mode = int(opt), config_file = '',base_directory = wsp_path)
+            cmd = ''
+            while True:
+                try:
+                    cmd = input('Please Enter a Command: ')
+                    if cmd.lower() == 'menu':
+                        break #exits the inner while loop
+                    elif cmd.lower() == 'quit':
+                        break #exits the inner while loop
+                    eval(cmd)
+                    
+                except KeyboardInterrupt:
                     break
-                eval(cmd)
-                
-            except KeyboardInterrupt:
-                break
-            except:
-                print('Command did not work.')
-    elif opt == "3":
-        print("Killing WSP...")
-        break
-    else:
-        print("Please choose a valid option:") 
-
+                except:
+                    print('Command did not work. Enter "quit" to exit, "menu" to return.')
+                    
+            if cmd == 'quit':
+                print("Killing WSP...")
+                break # get out of the outer while loop
+        elif opt == "3":
+            print("Killing WSP...")
+            break
+        else:
+            print("Please choose a valid option:") 
+except KeyboardInterrupt:
+    pass
 
 
 
