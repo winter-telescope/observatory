@@ -16,8 +16,17 @@ with the telescope dome
 
 @author: nlourie
 """
+# system modules
 import numpy as np
 import time
+import sys
+import os
+
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.getcwd())
+sys.path.insert(1, wsp_path)
+
+# winter modules
 
 class dome(object):
     

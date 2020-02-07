@@ -22,6 +22,10 @@ import numpy as np
 from datetime import datetime,timedelta
 import pytz
 
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.getcwd())
+sys.path.insert(1, wsp_path)
+
 
 # PDU Properties
 class palomarWeather(object):

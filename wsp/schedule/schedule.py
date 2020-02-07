@@ -53,55 +53,63 @@ It loads in a csv file with the following columns:
 
 @author: nlourie
 """
+# system packages
 import os
 import sys
 import numpy as np
 import unicodecsv
 import datetime
+import shutil
 
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.getcwd())
+sys.path.insert(1, wsp_path)
+
+# winter Modules
+from utils import utils
+
+
+def makeSampleSchedule(date = 'today'):
+    # Takes in a date (string or int) or 'today'/'tonight' and makes a sample
+    # schedule file based on the example file, just resaves it with a name
+    # based on the date provided
+    try:
+        date = str(date)
+        if date.lower() in  ['today','tonight']:
+            filename = utils.tonight()
+        else:
+            date_obj = datetime.datetime.strptime(date,'%Y%m%d')
+            filename = 'n' + date_obj.strftime('%Y%m%d')
+    except:
+        print('Date format invalid, should be YYYYMMDD')
+    
+    filename = filename + '.sch'
+    # Copy the sample schedule file
+    schedulepath = os.getcwd() + '/scheduleFiles/'
+    samplefile =  'example_ztf_schedule.csv'
+    shutil.copyfile(schedulepath + samplefile, schedulepath + filename)
+    print(f'Wrote Sample Schedule File to: {schedulepath + filename}')
+    
+            
+    
 
 class schedule(object):
     # This is a class that holds the full schedule 
     def __init__(self,base_directory):
         self.base_directory = base_directory
         
-    
 
 #if __name__ == '__main__':
-wspdir = os.path.dirname(os.getcwd())
-#schedule = schedule(base_directory = wspdir)
-file = wspdir + '/schedule/example_ztf_schedule.csv'
 
-with open(file) as f:
-    ncols = len(f.readline().split(','))
-s = np.genfromtxt(file,delimiter = ',',names = True,usecols = range(1,ncols))
+#with open(file) as f:
+ #   ncols = len(f.readline().split(','))
+#s = np.genfromtxt(file,delimiter = ',',names = True,usecols = range(1,ncols))
 
 # reads a csv into a dictionary, the header line becomes the keys for lists
 # stolen graciously from MINERVA and adapted to py3
-def readcsv(filename):
-    # parse the csv file
-    with open(filename,'rb') as f:
-        reader = unicodecsv.reader(f)
-        headers = next(reader)
-        csv = {}
-        for h in headers:
-            csv[h.split('(')[0].strip()] = []
-        for row in reader:
-            for h,v in zip(headers,row):
-                csv[h.split('(')[0].strip()].append(v)
-        for key in csv.keys():
-            try:csv[key] = np.asarray(csv[key],dtype = np.float32)
-            except: csv[key] = np.asarray(csv[key])
-        return csv
-    
-def night():
-    # stolen graciously from MINERVA and adapted to py3
-    today = datetime.datetime.utcnow()
-    if datetime.datetime.now().hour >= 10 and datetime.datetime.now().hour <= 16:
-        today = today + datetime.timedelta(days=1)
-    return 'n' + today.strftime('%Y%m%d')    
 
-csv = readcsv(file)
+
+makeSampleSchedule(date = 'today')
     
     
 
