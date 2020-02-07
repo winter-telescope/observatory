@@ -20,16 +20,36 @@ are cited where functions are lifted from elsewhere (or are meant to be!).
 
 import unicodecsv
 import numpy as np
-import datetime
+from datetime import datetime,timedelta
 import time
 import os
 import sys
+import pytz
 try:
     import pyfits
 except:
     from astropy.io import fits as pyfits
 import re
 import subprocess, psutil, os, signal
+
+
+
+def getdatestr(date = 'today'):
+    try:
+        date = str(date)
+        if date.lower() in  ['today','tonight']:
+            datestr = tonight()
+            
+        else:
+            date_obj = datetime.strptime(date,'%Y%m%d')
+            datestr = date_obj.strftime('%Y%m%d')
+        return datestr
+    
+    except:
+        print('Date format invalid, should be YYYYMMDD')
+
+
+
 
 ## Functions gratefully lifted from MINERVA and converted to python3 ##
 def readcsv(filename):
@@ -47,13 +67,27 @@ def readcsv(filename):
             try:csv[key] = np.asarray(csv[key],dtype = np.float32)
             except: csv[key] = np.asarray(csv[key])
         return csv
-    
+
+
 def tonight():
+    # a similar version of the minerva function by NPL
+    today = datetime.utcnow()
+    calitz = pytz.timezone('America/Los_Angeles')
+    today_cali = datetime.now(calitz)
+    
+    # if the UTC time is between 10a and 4p, ie cali time between 2a and 8a
+    if datetime.now().hour >= 10 and datetime.now().hour <= 16:
+        today = today + timedelta(days=1)
+    return today.strftime('%Y%m%d')    
+
+    
+def night():
     # was called night in minerva, but tonight is a little more transparent
-    today = datetime.datetime.utcnow()
-    if datetime.datetime.now().hour >= 10 and datetime.datetime.now().hour <= 16:
-        today = today + datetime.timedelta(days=1)
-    return 'n' + today.strftime('%Y%m%d')    
+    today = datetime.utcnow()
+    # if the UTC time is between 10a and 4p, ie cali time between 2a and 8a
+    if datetime.now().hour >= 10 and datetime.now().hour <= 16:
+        today = today + timedelta(days=1)
+    return today.strftime('%Y%m%d')    
 
 # BELOW FUNCTIONS LOOK HELPFUL BUT HAVE NOT BEEN TESTED FOR COMPATIBILITY
 # converts a sexigesimal string to a float
