@@ -33,6 +33,9 @@ class palomarWeather(object):
         self.full_filename = base_directory + '/housekeeping/' + weather_file
         self.getWeatherLimits()
         self.getWeather(firsttime = True)
+        self.caniopen() # checks all the dome vetoes based on weather
+        # THIS IS A FLAG THAT CAN BE SET TO OVERRIDE THE WEATHER DOME OPEN VETO:
+        self.override = False 
         
     def getWeatherLimits(self):
         try: # Load in the weather limits from the config file
@@ -234,7 +237,7 @@ class palomarWeather(object):
             print("problem loading weather data from clear dark skies")
             
       
-    def oktoopen_p48(self):
+    def caniopen_p48(self):
         """
         It is okay to open the p48 if:
             1. all fields are within their individual limits
@@ -320,10 +323,10 @@ class palomarWeather(object):
             print(f'P48 says it may have snowed in the last {snow_time_limit/3600} hours')
         ok.append(no_snow)
         
-        
-        return all(ok)
+        self.oktoopen_p48 = all(ok)
+        return self.oktoopen_p48
     
-    def oktoopen_cds(self):
+    def caniopen_cds(self):
         # this checks the Clear Dark Skies (CDS) data against the allowed limits
         # this is just a very basic sky quality check, not a way to guess the
         # real weather on the mountain (ie wetnes, rain, etc)
@@ -362,16 +365,30 @@ class palomarWeather(object):
         ok.append(rh)
         
         
+        self.oktoopen_cds = all(ok)
+        return self.oktoopen_cds #returns True if all conditions are met, otherwise false
+      
         
-        return all(ok) #returns True if all conditions are met, otherwise false
-        
+    def caniopen(self):
+        # checks all the weather system checks
+        ok = []
+        ok.append(self.caniopen_cds())
+        ok.append(self.caniopen_p48())
+        self.oktoopen = all(ok)
+        if self.oktoopen:
+            print(f" All weather checks passed, ok to open the dome!")
+        else:
+            print(f" All weather checks not passed. NOT OK TO OPEN THE DOME.")
+        return self.oktoopen
             
 if __name__ == '__main__':
     weather = palomarWeather(os.path.dirname(os.getcwd()),'palomarWeather.ini','weather_limits.ini')
     
-    print('CDS Says OK to Open? ',weather.oktoopen_cds())
-    print('P48 Says OK to Open? ',weather.oktoopen_p48())
+    #print('CDS Says OK to Open? ',weather.oktoopen_cds())
+    #print('P48 Says OK to Open? ',weather.oktoopen_p48())
     #print(weather.cds)
+    #weather.caniopen()
+    weather.oktoopen
     
     
     
