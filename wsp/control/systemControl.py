@@ -93,6 +93,8 @@ class control(object):
         telescope.disconnect(self.telescope_mount)
     def telescope_axes_disable(self):
         telescope.axes_disable(self.telescope_mount)
+    def telescope_shutdown(self):
+        telescope.shutdown(self.telescope_mount)
         
 if __name__ == '__main__':
     opt = 1
