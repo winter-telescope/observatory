@@ -53,6 +53,7 @@ def disconnect(mount):
             s = mount.status()
             print ("Mount Connected?:", s.mount.is_connected)
             if not s.mount.is_connected:
+                s = mount.status()
                 print("Trying again to disconnect mount...")
                 s = mount.mount_disconnect()
                 time.sleep(2)
