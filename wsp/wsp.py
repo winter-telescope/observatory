@@ -50,12 +50,12 @@ main_opts= ['Schedule File Mode',\
             'Manual Mode',\
             'Exit']
 logo = []
-logo.append('__      _____ _ __            _  _')
-logo.append("\ \ /\ / / __| '_ \          | )/ )")
-logo.append(" \ V  V /\__ \ |_) |       \\ |//,' __")
-logo.append('  \_/\_/ |___/ .__/        (")(_)-"()))=-')
-logo.append("             | |              (\\")
-logo.append("             |_|    ")
+logo.append('__      _____ _ __             _  _')
+logo.append("\ \ /\ / / __| '_ \           | )/ )")
+logo.append(" \ V  V /\__ \ |_) |       \ /|//,' __")
+logo.append('  \_/\_/ |___/ .__/        (")(_)-=()))=-')
+logo.append("             | |              (\\\\")
+logo.append("             |_|  ")
 
 # Logo Credit: https://ascii.co.uk/art/wasp
 #########################################################################
