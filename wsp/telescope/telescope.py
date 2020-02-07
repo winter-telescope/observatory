@@ -54,6 +54,7 @@ def disconnect(mount):
             print ("Mount Connected?:", s.mount.is_connected)
             if not s.mount.is_connected:
                 print("Mount Disconnected")
+                break
             else:
                 print("Trying again to disconnect mount...")
                 s = mount.mount_disconnect()
