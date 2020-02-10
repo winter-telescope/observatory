@@ -89,8 +89,15 @@ try:
     while True:
         opt = menu(captions,main_opts)
         if opt in ["0","1","2"]:
-            print("You chose option ",opt, " good for you!")
+            if opt == "0":
+                print ("Entering robotic schedule file mode!")
+            elif opt == "1":
+                print("Initializing systems and waiting for further commands")
+            elif opt == "2":
+                print("Entering fully manual mode and waiting for commands")
+                
             winter = systemControl.control(mode = int(opt), config_file = '',base_directory = wsp_path)
+
             cmd = ''
             while True:
                 try:

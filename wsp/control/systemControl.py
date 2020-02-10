@@ -35,6 +35,7 @@ from command import commandServer_multiClient
 from housekeeping import weather
 from dome import dome
 from schedule import schedule
+from utils import utils
 
 
 
@@ -78,29 +79,37 @@ class control(object):
         if mode in [0]:
             # Robotic Observing Mode
             try:
+                
+                self.schedule = schedule.Schedule(base_directory = self.base_directory, date = 'today')
                 while True:
-                    # Check if it is okay to observe
-                    if self.caniobserve():
-                       self.schedule = schedule.schedule(base_directory = wsp_path, date = 'today')
-                       if self.schedule.currentScheduleLine == -1:
-                           print(f' Nothing left to observe tonight')
-                           break
-                       self.schedule.logCurrentObs()
-                       AZ = self.schedule.currentObs['azimuth']
-                       ALT = self.schedule.currentObs['altitude']
-                       waittime = self.schedule.currentObs['visitTime']
-                       
-                       if not self.dome.isopen:
-                           self.dome.openDome()
-                       self.dome.goto(az = AZ)
-                       telescope.goto(self.telescope_mount,az = AZ, alt = ALT)
-                       time.sleep(waittime)
-                       
-                       self.schedule.gotoNextObs()
-                        
-                    else:
-                        print(" WSP says it's not okay to observe right now")
-            
+                    try:
+                        # Check if it is okay to observe
+                        if self.caniobserve():
+                           
+                           if self.schedule.currentScheduleLine == -1:
+                               print(f' Nothing left to observe tonight')
+                               break
+                           self.schedule.logCurrentObs()
+                           AZ = self.schedule.currentObs['azimuth']
+                           ALT = self.schedule.currentObs['altitude']
+                           waittime = self.schedule.currentObs['visitTime']
+                           
+                           if not self.dome.isopen:
+                               self.dome.openDome()
+                           self.dome.goto(az = AZ)
+                           telescope.goto(self.telescope_mount,az = AZ, alt = ALT)
+                           print(f' Taking a {waittime} second exposure...')
+                           time.sleep(waittime)
+                           imagename = base_directory + '/data/' + str(self.schedule.observed_timestamp)+'.FITS'
+                           self.telescope_mount.virtualcamera_take_image_and_save(imagename)
+                           utils.plotFITS(imagename)
+                           
+                           self.schedule.gotoNextObs()
+                            
+                        else:
+                            print(" WSP says it's not okay to observe right now")
+                    except KeyboardInterrupt:
+                        break
             except KeyboardInterrupt:
                 pass
 
@@ -153,7 +162,7 @@ if __name__ == '__main__':
     config_file = ''
     
     winter = control(mode = int(opt), config_file = '',base_directory = wsp_path)
-     
+    #plt.show()
     
 
 

@@ -31,7 +31,37 @@ except:
     from astropy.io import fits as pyfits
 import re
 import subprocess, psutil, os, signal
+import matplotlib.pyplot as plt
+from astropy.visualization import astropy_mpl_style
+plt.style.use(astropy_mpl_style)
 
+from astropy.utils.data import get_pkg_data_filename
+from astropy.io import fits
+
+
+def plotFITS(filename):
+    image_file = filename
+    #plt.ion()
+    hdu_list = fits.open(image_file,ignore_missing_end = True)
+    hdu_list.info()
+    
+    image_data = hdu_list[0].data
+    
+    
+    imgplot = plt.imshow(image_data,cmap = 'gray')
+    plt.show(block = False)
+    plt.pause(0.1)
+    
+if __name__ == '__main__' :
+    plt.figure()
+    while True:
+        i = 0
+        print(f'taking image {i}')
+        time.sleep(2)    
+        #plt.plot([1,2,3])
+        plotFITS('/home/winter/WINTER_GIT/code/wsp/data/' + 'testimage.FITS')
+        i += 1
+    #plt.show()
 
 
 def getdatestr(date = 'today'):

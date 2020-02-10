@@ -335,6 +335,11 @@ class palomarWeather(object):
         
         if self.override == True:
             self.okaytoopen = True
+            print()
+            print('################### DANGER ###################')
+            print('WEATHER OVERRIDE IS VETOING P48 WEATHER CHECK')
+            print('################### DANGER ###################')
+            print()
             return True
         else:
             self.oktoopen_p48 = all(ok)
@@ -382,6 +387,11 @@ class palomarWeather(object):
         
         if self.override == True:
             self.oktoopen = True
+            print()
+            print('################### DANGER ###################')
+            print('WEATHER OVERRIDE IS VETOING CDS WEATHER CHECK')
+            print('################### DANGER ###################')
+            print()
             return True
         else:
             self.oktoopen_cds = all(ok)

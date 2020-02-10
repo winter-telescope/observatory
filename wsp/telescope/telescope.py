@@ -155,6 +155,9 @@ def goto(mount,az,alt):
         
         print ("Slew complete. Stopping...")
         mount.mount_stop()
+    except KeyboardInterrupt:
+        mount.mount_stop()
+        pass
     except:
         print("could not move the telescope")
         #TODO add a message to the log

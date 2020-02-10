@@ -90,7 +90,7 @@ def makeSampleSchedule(date = 'today'):
             
     
 
-class schedule(object):
+class Schedule(object):
     # This is a class that holds the full schedule 
     def __init__(self,base_directory,date = 'today'):
         """
@@ -127,6 +127,7 @@ class schedule(object):
     def loadSchedule(self):
         try:
             # Try to load the schedule for the specified date
+            print(f' Importing schedule file for {self.date}')
             self.schedule = utils.readcsv(self.schedulefile)
             
             # Some things should be converted to integers
@@ -137,7 +138,7 @@ class schedule(object):
 
         except:
             #TODO log this error
-            print(" error loading schedule file")
+            print(f" error loading schedule file: {self.schedulefile}")
     def loadObslog(self):
         try:
             # Try to load the observation log for tonight
@@ -222,8 +223,8 @@ class schedule(object):
             now_obj  = datetime.utcnow()
             file = open(self.obslogfile,'a')
             #file.write(f" new observation made at {now_obj.strftime('%Y-%m-%d %H:%M:%S')} UTC")
-            timestamp = int(datetime.timestamp(now_obj))
-            file.write(f'{timestamp},\t')
+            self.observed_timestamp = int(datetime.timestamp(now_obj))
+            file.write(f'{self.observed_timestamp},\t')
             #for val in self.currentObs.values():
             selected_keys = ['obsHistID','requestID','propID','fieldID','fieldRA','fieldDec','filter']
             for key in selected_keys:
@@ -263,21 +264,22 @@ class schedule(object):
 if __name__ == '__main__':
     date = 'today'
     makeSampleSchedule(date = date)
-    schedule = schedule(base_directory = wsp_path, date = date)
+    s = Schedule(base_directory = wsp_path, date = date)
     print()
-    print(f" the current line in the schedule file is {schedule.currentScheduleLine}")
-    print(f" the current RA/DEC = {schedule.currentObs['fieldRA']}/{schedule.currentObs['fieldDec']}"	)
+    print(f" the current line in the schedule file is {s.currentScheduleLine}")
+    print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
     print()
     print('Now go to the next line!')
     
     for j in range(2):
         for i in range(100):
-            schedule.logCurrentObs()
-            schedule.gotoNextObs()
+            s.logCurrentObs()
+            s.gotoNextObs()
             
             print()
-            print(f" the current line in the schedule file is {schedule.currentScheduleLine}")
-            print(f" the current RA/DEC = {schedule.currentObs['fieldRA']}/{schedule.currentObs['fieldDec']}"	)
+            print(f" the current line in the schedule file is {s.currentScheduleLine}")
+            print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
             print()
             print('Now go to the next line!')
+    
     

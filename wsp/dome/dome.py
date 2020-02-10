@@ -22,6 +22,7 @@ import time
 import sys
 import os
 
+
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
 sys.path.insert(1, wsp_path)
@@ -30,7 +31,7 @@ sys.path.insert(1, wsp_path)
 
 class dome(object):
     
-    def __init__(self):
+    def __init__(self,verbose = True):
         """
         # This will set up the dome class.
         
@@ -43,7 +44,7 @@ class dome(object):
         #TODO add a message to the log
         
         ## Characteristics ##
-        self.az_speed = 360/180 # speed in deg/sec
+        self.az_speed = 20#360/180 # speed in deg/sec
         self.open_time = 20 # time to open the shutter
         self.close_time = 20 # time to close the shutter
         self.allowed_error = 0.1
@@ -57,7 +58,8 @@ class dome(object):
         self.isopening = False
         self.isclosing = False
         self.isopen = False
-        self.az = 90
+        self.az = 290 # same as the nominal home position -- "point towards the door" in the MIT lab
+        
         
         
         self.az_goal = self.az
@@ -76,28 +78,35 @@ class dome(object):
         
     def openDome(self,sim = True,verbose = True):
         if sim:
+            print(' Opening the Dome...')
             self.isopening = True
             time.sleep(self.open_time)
+            self.isopen = True
             self.isopening = False
         else:
             print(" No code for commanding dome in non simulation mode")
 
     def closeDome(self,sim = True,verbose = True):
         if sim:
+            print(' Closing the dome...')
             self.isclosing = True
             time.wait(self.open_time)
+            self.isopen = False
             self.isclosing = False
         else:
             print(" No code for commanding dome in non simulation mode")
             
-    def goto(self,az,sim = True,verbose = True):
+    def goto(self,az,sim = True,verbose = True,numsteps = 50):
+        # put the requested azimuth on a 0-360 range
+        az = np.mod(az,360.0)
+        
         # tell the dome to move over the server
         self.az_goal = az
         # standin function to simulate movement
         print(f" Requested move from Az = {self.az} to {self.az_goal}")
         if sim:
             try:
-                if (self.az_goal - self.az)>=self.allowed_error:
+                if np.abs(self.az_goal - self.az)>=self.allowed_error:
                     # calculate the angular distance in the pos direction
                     # want to drive dome shortest distance
                     """
@@ -126,7 +135,7 @@ class dome(object):
                     # now start "moving the dome" it stays moving for an amount of time
                         # based on the dome speed and distance to move
                     print(' Estimated Drivetime = ',drivetime,' s')
-                    dt = 0.1 #increment time for updating position
+                    dt = drivetime/numsteps #0.1 #increment time for updating position
                     #N_steps = drivetime/dt
                     #daz = delta/N_steps
                     if verbose:
@@ -140,9 +149,10 @@ class dome(object):
                         self.ismoving = True
                         # keep "moving" the dome until it gets close enough
                         time.sleep(dt)
-                        self.az = self.az + self.movedir*self.az_speed*dt
+                        # MAKE SURE THAT AZ ALWAYS STAYS IN 0-360 RANGE
+                        self.az = np.mod(self.az + self.movedir*self.az_speed*dt,360.0)
                         if verbose:
-                            print("     Dome Az = %0.3f, Dist to Go = %0.3f deg" %(self.az, self.az_goal-self.az))
+                            print("     Dome Az = %0.3f, Dist to Go = %0.3f deg" %(self.az, np.abs(self.az_goal-self.az)))
                             #print(f" Still Moving? {self.ismoving}")
                     self.ismoving = False
                     if verbose:
@@ -160,9 +170,11 @@ class dome(object):
             print(" No code for commanding dome in non simulation mode")
 if __name__ == '__main__':
     dome = dome()
+    dome.az_speed = 200
+    dome.az = 102
+    dome.goto(-50, verbose = True,numsteps = 5)
     
-    dome.az = 0
-    dome.goto(50, verbose = True)
+    
     
     
     
