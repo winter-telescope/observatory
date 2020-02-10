@@ -83,7 +83,7 @@ def makeSampleSchedule(date = 'today'):
     filename = filename + '_sch.csv'#'.sch'
     # Copy the sample schedule file
     schedulepath = os.getcwd() + '/scheduleFiles/'
-    samplefile =  'example_ztf_schedule.csv'
+    samplefile =  'example_ztf_schedule_observable_altaz.csv'
     shutil.copyfile(schedulepath + samplefile, schedulepath + filename)
     print(f'Wrote Sample Schedule File to: {schedulepath + filename}')
     
