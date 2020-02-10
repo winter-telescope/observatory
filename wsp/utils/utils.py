@@ -52,10 +52,12 @@ def getdatestr(date = 'today'):
 
 
 ## Functions gratefully lifted from MINERVA and converted to python3 ##
-def readcsv(filename):
+def readcsv(filename,skiprows=0):
     # parse the csv file
     with open(filename,'rb') as f:
         reader = unicodecsv.reader(f)
+        for i in range(skiprows):
+            next(reader)
         headers = next(reader)
         csv = {}
         for h in headers:
