@@ -130,6 +130,36 @@ def home(mount):
         print("could not home the telescope")
         #TODO add a message to the log
 
+def goto(mount,az,alt):
+    try:
+        
+        print ("Slewing to: ALT/AZ = %0.4f, %0.4f" %(alt,az))
+        mount.mount_goto_alt_az(alt, az )
+        
+        
+        time.sleep(5)
+        while True:
+            s = mount.status()
+        
+            print ("ALT: %.4f deg;  Az: %.4f degs, Axis0 dist: %.1f arcsec, Axis1 dist: %.1f arcsec" % (
+                s.mount.altitude_degs, 
+                s.mount.azimuth_degs,
+                s.mount.axis0.dist_to_target_arcsec,
+                s.mount.axis1.dist_to_target_arcsec
+            ))
+        
+        
+            if not s.mount.is_slewing:
+                break
+            time.sleep(0.5)
+        
+        print ("Slew complete. Stopping...")
+        mount.mount_stop()
+    except:
+        print("could not move the telescope")
+        #TODO add a message to the log
+
+
 def initialize(mount):
     try:
         connect(mount)

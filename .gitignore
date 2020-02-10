@@ -9,7 +9,8 @@ __pycache__/
 *.FITS
 *.txt
 *.swp
-
+*_obs.csv
+*_sch.csv
 
 
 

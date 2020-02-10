@@ -21,6 +21,7 @@ import urllib.parse
 import numpy as np
 from datetime import datetime,timedelta
 import pytz
+import sys
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -35,11 +36,15 @@ class palomarWeather(object):
         self.weather_file = weather_file
         self.limits_file = limits_file
         self.full_filename = base_directory + '/housekeeping/' + weather_file
+        
+        # THIS IS A FLAG THAT CAN BE SET TO OVERRIDE THE WEATHER DOME OPEN VETO:
+        self.override = False 
+        
         self.getWeatherLimits()
         self.getWeather(firsttime = True)
         self.caniopen() # checks all the dome vetoes based on weather
-        # THIS IS A FLAG THAT CAN BE SET TO OVERRIDE THE WEATHER DOME OPEN VETO:
-        self.override = False 
+        
+        
         
     def getWeatherLimits(self):
         try: # Load in the weather limits from the config file
@@ -327,8 +332,13 @@ class palomarWeather(object):
             print(f'P48 says it may have snowed in the last {snow_time_limit/3600} hours')
         ok.append(no_snow)
         
-        self.oktoopen_p48 = all(ok)
-        return self.oktoopen_p48
+        
+        if self.override == True:
+            self.okaytoopen = True
+            return True
+        else:
+            self.oktoopen_p48 = all(ok)
+            return self.oktoopen_p48
     
     def caniopen_cds(self):
         # this checks the Clear Dark Skies (CDS) data against the allowed limits
@@ -369,9 +379,13 @@ class palomarWeather(object):
         ok.append(rh)
         
         
-        self.oktoopen_cds = all(ok)
-        return self.oktoopen_cds #returns True if all conditions are met, otherwise false
-      
+        
+        if self.override == True:
+            self.oktoopen = True
+            return True
+        else:
+            self.oktoopen_cds = all(ok)
+            return self.oktoopen_cds
         
     def caniopen(self):
         # checks all the weather system checks
@@ -392,7 +406,10 @@ if __name__ == '__main__':
     #print('P48 Says OK to Open? ',weather.oktoopen_p48())
     #print(weather.cds)
     #weather.caniopen()
-    weather.oktoopen
+    
+    print(weather.caniopen())
+    weather.override = True
+    print(weather.caniopen())
     
     
     
