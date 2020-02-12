@@ -79,11 +79,13 @@ class control(object):
         if mode in [0]:
             # Robotic Observing Mode
             try:
-                
+            
                 self.schedule = schedule.Schedule(base_directory = self.base_directory, date = 'today')
                 while True:
                     try:
+                        
                         # Check if it is okay to observe
+                        self.weather.getWeather()
                         if self.caniobserve():
                            
                            if self.schedule.currentScheduleLine == -1:
