@@ -74,7 +74,10 @@ class control(object):
             
             # Get the Site Weather Conditions
             self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini')
-            self.weather.override = False
+            if not self.weather.okaytoopen:
+                # if the weather is bad, ask if you want to force the dome open
+                self.dome_forceOpen()
+                
 
         if mode in [0]:
             # Robotic Observing Mode

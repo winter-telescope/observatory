@@ -89,6 +89,7 @@ class palomarWeather(object):
             print('Unable to Load the Weather Limits File: ',self.base_directory + '/config/' + self.limits_file)
         
     def getWeather(self,firsttime = False):
+        print(' Getting weather data...')
         try: # LOAD DATA FROM THE PALOMAR TELEMETRY SERVER
             configObj = ConfigObj(self.full_filename)
             
@@ -274,48 +275,48 @@ class palomarWeather(object):
         ### 1. check all fields are within their individual limits:
         temp_out = (self.P4OTAIRT >= self.TEMP_OUT_MIN) & (self.P4OTAIRT <= self.TEMP_OUT_MAX)
         if not temp_out:
-            print(f'P48 says the outside temp is bad')
+            print(f' P48 says the outside temp is bad')
         ok.append(temp_out)
         
         temp_in = (self.P4INAIRT >= self.TEMP_IN_MIN) & (self.P4INAIRT <= self.TEMP_IN_MAX)
         if not temp_in:
-            print(f'P48 says the inside temp is bad')
+            print(f' P48 says the inside temp is bad')
         ok.append(temp_in)
         
         rh_out = (self.P4OTRHUM >= self.RH_OUT_MIN) & (self.P4OTRHUM <= self.RH_OUT_MAX)
         if not rh_out:
-            print(f'P48 says the outside RH is bad')
+            print(f' P48 says the outside RH is bad')
         ok.append(rh_out)
         
         rh_in = (self.P4INRHUM >= self.RH_IN_MIN) & (self.P4INRHUM <= self.RH_IN_MAX)
         if not rh_in:
-            print(f'P48 says the inside RH is bad')
+            print(f' P48 says the inside RH is bad')
         ok.append(rh_in)
         
         wind_gust = (self.P4WINDSP >= self.WIND_GUST_MIN) & (self.P4WINDSP <= self.WIND_GUST_MAX)
         if not wind_gust:
-            print(f'P48 says the wind gust speed is bad')
+            print(f' P48 says the wind gust speed is bad')
         ok.append(wind_gust)
         
         wind_speed = (self.P4WINDAV >= self.WIND_SPEED_MIN) & (self.P4WINDAV <= self.WIND_SPEED_MAX)
         if not wind_speed:
-            print(f'P48 says the average wind speed is bad')
+            print(f' P48 says the average wind speed is bad')
         ok.append(wind_speed)
         
         dp_out = (self.P4OUTDEW >= self.DEWPOINT_OUT_MIN) & (self.P4OUTDEW <= self.DEWPOINT_OUT_MAX)
         if not dp_out:
-            print(f'P48 says the outside dewpoint is bad')
+            print(f' P48 says the outside dewpoint is bad')
         ok.append(dp_out)
         
         dp_in = (self.P4INDEW >= self.DEWPOINT_IN_MIN) & (self.P4INDEW <= self.DEWPOINT_IN_MAX)
         if not dp_in:
-            print(f'P48 says the inside dewpoint is bad')
+            print(f' P48 says the inside dewpoint is bad')
         ok.append(dp_in)       
         
         ### 2. check the inside temperature is higher than the outside dewpoint
         no_condensation = (self.P4INAIRT > self.P4OUTDEW)
         if not no_condensation:
-            print(f'P48 says the inside temp is too cold and may condense if opened')
+            print(f' P48 says the inside temp is too cold and may condense if opened')
         ok.append(no_condensation)
         
         """
@@ -358,32 +359,32 @@ class palomarWeather(object):
         ok = []
         temp = ((self.CDSTEMPMIN >= self.TEMP_OUT_MIN) & (self.CDSTEMPMAX <= self.TEMP_OUT_MAX))
         if not temp:
-            print(f'CDS says Temperature is not okay: T = [{self.CDSTEMPMIN} - {self.CDSTEMPMAX}] Allowed = [{self.TEMP_OUT_MIN},{self.TEMP_OUT_MAX}]')
+            print(f' CDS says Temperature is not okay: T = [{self.CDSTEMPMIN} - {self.CDSTEMPMAX}] Allowed = [{self.TEMP_OUT_MIN},{self.TEMP_OUT_MAX}]')
         ok.append(temp)
         
         cloud = ((self.CDSCLOUD >= self.CLOUD_MIN) & (self.CDSCLOUD <= self.CLOUD_MAX))
         if not cloud:
-            print(f'CDS says too cloudy: Cloud Cover = {self.CDSCLOUD}, Max Allowed = {self.CLOUD_MAX}')
+            print(f' CDS says too cloudy: Cloud Cover = {self.CDSCLOUD}, Max Allowed = {self.CLOUD_MAX}')
         ok.append(cloud)
         
         trans = ((self.CDSTRANS >= self.TRANS_MIN) & (self.CDSTRANS <= self.TRANS_MAX))
         if not trans:
-            print(f'CDS says not transparent enough: Transparency = {self.CDSTRANS}, Max Allowed = {self.TRANS_MAX}')
+            print(f' CDS says not transparent enough: Transparency = {self.CDSTRANS}, Max Allowed = {self.TRANS_MAX}')
         ok.append(trans)
         
         seeing = ((self.CDSSEEING >= self.SEEING_MIN) & (self.CDSSEEING <= self.SEEING_MAX))
         if not seeing:
-            print(f'CDS says seeing is bad: Seeing = {self.CDSSEEING}, Allowed = [{self.SEEING_MIN},{self.SEEING_MAX}]')
+            print(f' CDS says seeing is bad: Seeing = {self.CDSSEEING}, Allowed = [{self.SEEING_MIN},{self.SEEING_MAX}]')
         ok.append(seeing)
         
         wind = ((self.CDSWINDMIN >= self.WIND_SPEED_MIN) & (self.CDSWINDMAX <= self.WIND_SPEED_MAX))
         if not wind:
-            print(f'CDS says too windy: Wind = [{self.CDSWINDMIN}-{self.CDSWINDMAX}], Max Allowed = {self.WIND_SPEED_MAX}') 
+            print(f' CDS says too windy: Wind = [{self.CDSWINDMIN}-{self.CDSWINDMAX}], Max Allowed = {self.WIND_SPEED_MAX}') 
         ok.append(wind)
         
         rh = ((self.CDSRHMIN >= self.RH_OUT_MIN) & (self.CDSRHMAX <= self.RH_OUT_MAX))
         if not rh:
-            print(f'CDS says RH is not in range: RH = [{self.CDSRHMIN}-{self.CDSRHMAX}], Allowed Range = [{self.RH_OUT_MIN},{self.RH_OUT_MAX}]')
+            print(f' CDS says RH is not in range: RH = [{self.CDSRHMIN}-{self.CDSRHMAX}], Allowed Range = [{self.RH_OUT_MIN},{self.RH_OUT_MAX}]')
         ok.append(rh)
         
         
@@ -419,9 +420,13 @@ if __name__ == '__main__':
     #print('P48 Says OK to Open? ',weather.oktoopen_p48())
     #print(weather.cds)
     #weather.caniopen()
-    
+    print()
+    print('Checking Weather:')
     print(weather.caniopen())
+    print()
     weather.override = True
+    
+    print('Checking Weather:')
     print(weather.caniopen())
     
     
