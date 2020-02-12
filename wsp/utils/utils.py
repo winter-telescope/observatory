@@ -40,13 +40,14 @@ from astropy.io import fits
 
 
 def plotFITS(filename):
+    plt.close('all')
     image_file = filename
     #plt.ion()
     hdu_list = fits.open(image_file,ignore_missing_end = True)
     hdu_list.info()
     
     image_data = hdu_list[0].data
-    
+    plt.title('Last Image Taken:')
     
     imgplot = plt.imshow(image_data,cmap = 'gray')
     plt.show(block = False)

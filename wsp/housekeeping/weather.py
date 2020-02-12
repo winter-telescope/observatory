@@ -218,14 +218,14 @@ class palomarWeather(object):
             self.CDSSEEING = seeing[closest_index] # seeing goodness from 0-5
             self.CDSWINDI = wind[closest_index]
                 # Wind measure:
-                    # 0 = 0-5 mph
-                    # 1 = 6-11 mph
-                    # 2 = 12-16 mph
-                    # 3 = 17-28 mph
-                    # 4 = 29-45 mph
-                    # 5 = 45+ mph
-            wind_min = [0,6,12,17,29,45]
-            wind_max = [5,11,16,28,45,100]
+                    # 5 = 0-5 mph
+                    # 4 = 6-11 mph
+                    # 3 = 12-16 mph
+                    # 2 = 17-28 mph
+                    # 1 = 29-45 mph
+                    # 0 = 45+ mph
+            wind_min = [45,29,17,12,6,0]
+            wind_max = [100,45,28,16,11,5]
             self.CDSWINDMAX = wind_max[self.CDSWINDI]
             self.CDSWINDMIN = wind_min[self.CDSWINDI]
             self.CDSRHI = hum[closest_index] # RH index 0-15 
@@ -318,12 +318,14 @@ class palomarWeather(object):
             print(f'P48 says the inside temp is too cold and may condense if opened')
         ok.append(no_condensation)
         
+        """
         ### 3. it hasn't rained in 1 hour
         rain_time_limit = 3600.0 # 1 hour
         no_rain = (self.P4LASTREAD - self.P4LASTWET_TIME).total_seconds() > rain_time_limit
         if not no_rain:
             print(f'P48 says it has been wet in the last {rain_time_limit/3600} hours')
         ok.append(no_rain)
+        #TODO ADD THIS FEATURE ONCE WE GET THE TELEMETRY SERVER ONLINE
         
         ### 4. it hasn't been snowy (<freezing and wet) in 24 hours
         snow_time_limit = 24*3600.0 # 24 hours
@@ -331,7 +333,8 @@ class palomarWeather(object):
         if not no_snow:
             print(f'P48 says it may have snowed in the last {snow_time_limit/3600} hours')
         ok.append(no_snow)
-        
+        #TODO ADD THIS FEATURE ONCE WE GET THE TELEMETRY SERVER ONLINE
+        """
         
         if self.override == True:
             self.okaytoopen = True
