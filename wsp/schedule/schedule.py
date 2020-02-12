@@ -230,7 +230,7 @@ class Schedule(object):
             self.observed_timestamp = int(datetime.timestamp(now_obj))
             file.write(f'{self.observed_timestamp},\t')
             #for val in self.currentObs.values():
-            selected_keys = ['obsHistID','requestID','propID','fieldID','fieldRA','fieldDec','filter']
+            selected_keys = ['obsHistID','requestID','propID','fieldID','fieldRA','fieldDec','filter','altitude','azimuth']
             for key in selected_keys:
                 val = self.schedule[key][self.currentScheduleLine]
                 file.write(f"{val},\t")
