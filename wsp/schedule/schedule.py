@@ -132,7 +132,7 @@ class Schedule(object):
             
             # Convert the altitude and azimuth from radians to degrees, which is easier for the telescope to ingest
             for angle in ['altitude','azimuth']:
-                self.schedule[angle]= [(self.schedulde[angle]*180.0/np.pi) for val in self.schedule[angle]]
+                self.schedule[angle]= [(self.schedule[angle]*180.0/np.pi) for val in self.schedule[angle]]
             
             # Some things should be converted to integers
             #TODO there is a better way than this!
