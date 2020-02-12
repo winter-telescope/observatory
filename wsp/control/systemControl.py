@@ -87,6 +87,7 @@ class control(object):
                 while True:
                     try:
                         # Check if it is okay to observe
+                        self.weather.getWeather()
                         if self.caniobserve():
                            
                            if self.schedule.currentScheduleLine == -1:
