@@ -157,9 +157,9 @@ class control(object):
     def telescope_shutdown(self):
         telescope.shutdown(self.telescope_mount)
     def dome_forceOpen(self):
-        cmd = input(' OVERRIDE WEATHER AND FORCE DOME OPEN?? (y/n)')
+        cmd = input(' OVERRIDE WEATHER AND FORCE DOME OPEN?? (y/n): ')
         if cmd == 'y':
-            cmd2 = input(' Are you sure you should be doing this?? I will tell on you. (y/n)')
+            cmd2 = input(' Are you sure you should be doing this?? I will tell on you! (y/n): ')
             if cmd2 == 'y':
                 self.weather.override = True
                 self.dome.openDome()
