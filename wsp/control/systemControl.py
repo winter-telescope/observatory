@@ -107,9 +107,9 @@ class control(object):
                            telescope.goto(self.telescope_mount,az = AZ, alt = ALT)
                            print(f' Taking a {waittime} second exposure...')
                            time.sleep(waittime)
+                           self.schedule.logCurrentObs() # this also generates the observed time stamp needed in the next line
                            imagename = base_directory + '/data/' + str(self.schedule.observed_timestamp)+'.FITS'
                            self.telescope_mount.virtualcamera_take_image_and_save(imagename)
-                           self.schedule.logCurrentObs()
                            utils.plotFITS(imagename)
                            
                            self.schedule.gotoNextObs()
