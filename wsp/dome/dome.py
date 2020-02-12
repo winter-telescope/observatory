@@ -103,7 +103,7 @@ class dome(object):
         # tell the dome to move over the server
         self.az_goal = az
         # standin function to simulate movement
-        print(f" Requested move from Az = {self.az} to {self.az_goal}")
+        print(f" Requested dome move from Az = {self.az} to {self.az_goal}")
         if sim:
             try:
                 if np.abs(self.az_goal - self.az)>=self.allowed_error:
