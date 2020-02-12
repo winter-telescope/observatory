@@ -91,7 +91,7 @@ class control(object):
                                self.telescope_shutdown()
                                
                                break
-                           self.schedule.logCurrentObs()
+                           
                            AZ = self.schedule.currentObs['azimuth']
                            ALT = self.schedule.currentObs['altitude']
                            waittime = self.schedule.currentObs['visitTime']
@@ -104,6 +104,7 @@ class control(object):
                            time.sleep(waittime)
                            imagename = base_directory + '/data/' + str(self.schedule.observed_timestamp)+'.FITS'
                            self.telescope_mount.virtualcamera_take_image_and_save(imagename)
+                           self.schedule.logCurrentObs()
                            utils.plotFITS(imagename)
                            
                            self.schedule.gotoNextObs()
