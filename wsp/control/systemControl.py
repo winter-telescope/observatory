@@ -74,7 +74,7 @@ class control(object):
             
             # Get the Site Weather Conditions
             self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini')
-            if not self.weather.okaytoopen:
+            if not self.weather.oktoopen:
                 # if the weather is bad, ask if you want to force the dome open
                 self.dome_forceOpen()
                 
