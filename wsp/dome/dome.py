@@ -44,7 +44,7 @@ class dome(object):
         #TODO add a message to the log
         
         ## Characteristics ##
-        self.az_speed = 20#360/180 # speed in deg/sec
+        self.az_speed = 3#360/180 # speed in deg/sec
         self.open_time = 20 # time to open the shutter
         self.close_time = 20 # time to close the shutter
         self.allowed_error = 0.1
