@@ -210,7 +210,7 @@ class Schedule(object):
         file.write(f"# WINTER Observation Log for the night of {date_obj.strftime('%Y-%m-%d')}\n")
         file.write(f"# Created: {now_obj.strftime('%Y-%m-%d %H:%M:%S')} UTC / {cali_now.strftime('%Y-%m-%d %H:%M:%S')} Palomar Time\n")
         file.write(f"Time,\t")
-        selected_keys = ['obsHistID','requestID','propID','fieldID','fieldRA','fieldDec','filter']
+        selected_keys = ['obsHistID','requestID','propID','fieldID','fieldRA','fieldDec','filter','altitude','azimuth']
         #for key in  self.schedule.keys():
         for key in selected_keys:
             file.write(f"{key},\t")
