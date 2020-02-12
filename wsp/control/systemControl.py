@@ -74,7 +74,7 @@ class control(object):
             
             # Get the Site Weather Conditions
             self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini')
-            self.weather.override = True
+            self.weather.override = False
 
         if mode in [0]:
             # Robotic Observing Mode
@@ -87,7 +87,9 @@ class control(object):
                         if self.caniobserve():
                            
                            if self.schedule.currentScheduleLine == -1:
-                               print(f' Nothing left to observe tonight')
+                               print(f' Nothing left to observe tonight. Shutting down telescope...')
+                               self.telescope_shutdown()
+                               
                                break
                            self.schedule.logCurrentObs()
                            AZ = self.schedule.currentObs['azimuth']
@@ -108,6 +110,8 @@ class control(object):
                             
                         else:
                             print(" WSP says it's not okay to observe right now")
+                            # wait and try again in 15 minutes
+                            time.sleep(15*60)
                     except KeyboardInterrupt:
                         break
             except KeyboardInterrupt:
