@@ -110,9 +110,11 @@ class control(object):
                            self.schedule.gotoNextObs()
                             
                         else:
+                            waittime = 15
                             print(" WSP says it's not okay to observe right now")
+                            print(f" WSP will try again in {waittime} minutes")
                             # wait and try again in 15 minutes
-                            time.sleep(15*60)
+                            time.sleep(waittime*60)
                     except KeyboardInterrupt:
                         break
             except KeyboardInterrupt:
