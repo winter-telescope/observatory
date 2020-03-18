@@ -163,7 +163,7 @@ def goto(mount,az,alt):
         #TODO add a message to the log
 
 
-def initialize(mount):
+def startup(mount):
     try:
         connect(mount)
         axes_enable(mount)

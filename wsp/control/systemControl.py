@@ -152,8 +152,8 @@ class control(object):
         
     
     # commands that are useful
-    def telescope_initialize(self):
-        telescope.telescope_initialize(self.telescope_mount)
+    def telescope_startup(self):
+        telescope.telescope_startup(self.telescope_mount)
     def telescope_home(self):
         telescope.home(self.telescope_mount)
     def telescope_axes_enable(self):
