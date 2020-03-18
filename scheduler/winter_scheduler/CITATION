@@ -1,0 +1,16 @@
+@ARTICLE{2019PASP..131f8003B,
+   author = {{Bellm}, E.~C. and {Kulkarni}, S.~R. and {Barlow}, T. and {Feindt}, U. and 
+	{Graham}, M.~J. and {Goobar}, A. and {Kupfer}, T. and {Ngeow}, C.-C. and 
+	{Nugent}, P. and {Ofek}, E. and {Prince}, T.~A. and {Riddle}, R. and 
+	{Walters}, R. and {Ye}, Q.-Z.},
+    title = "{The Zwicky Transient Facility: Surveys and Scheduler}",
+  journal = {\pasp},
+     year = 2019,
+    month = jun,
+   volume = 131,
+   number = 6,
+    pages = {068003},
+      doi = {10.1088/1538-3873/ab0c2a},
+   adsurl = {http://adsabs.harvard.edu/abs/2019PASP..131f8003B},
+  adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
