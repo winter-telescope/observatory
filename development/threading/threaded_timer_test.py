@@ -28,8 +28,28 @@ Non-BLocking Timer:
 from threading import Timer
 from datetime import datetime
 import numpy as np
+import threading
+import numpy as np
+import time
+import sys
+import os
+from concurrent.futures import ThreadPoolExecutor
+
+
+
+
+
+
+
+
+
+#%% 
 
 class RepeatedTimer(object):
+    #Timer example from Stack Overflow
+
+    #Source: https://stackoverflow.com/questions/474528/what-is-the-best-way-to-repeatedly-execute-a-function-every-x-seconds?rq=1
+
     def __init__(self, interval, function, *args, **kwargs):
         self._timer     = None
         self.interval   = interval
@@ -53,7 +73,25 @@ class RepeatedTimer(object):
     def stop(self):
         self._timer.cancel()
         self.is_running = False
-
+        
+#%% Threadpool Repeated Timer
+def doHouseKeeping():
+    
+    print (datetime.now())        
+        
+        
+        
+if __name__ == "__main__":
+    
+    print("Main:   Before starting executor")
+    with ThreadPoolExecutor(max_workers = 3) as executor:
+        executor.submit(RepeatedTimer,1.0,)
+        
+        
+        
+#%%
+        
+"""
 from time import sleep
 
 def hello(name,start,log):
@@ -70,11 +108,11 @@ try:
     sleep(60*5) # your long-running job goes here...
 finally:
     rt.stop() # better in a try/finally block to make sure the program ends!
-    
+"""   
     
 #%%
 
-
+"""
 dt = []
 for i in range(len(log)-1):
     us = np.float((log[i+1]-log[i]).microseconds)*1e-6
@@ -83,3 +121,6 @@ for i in range(len(log)-1):
 plt.plot(dt)
 np.std(dt)
     
+"""
+
+

@@ -54,14 +54,20 @@ class control(object):
         if mode == 2:
             #Start up the command server
             #commandServer_multiClient.start_commandServer(addr = '192.168.1.11',port = 7075)
+            #Command server on localhost (good for testing/dev)
+            commandServer_multiClient.start_commandServer('',port = 7075)
             pass
         if mode in [0,1,2]:
             self.telescope_mount = pwi4.PWI4(host = "thor", port = 8220)
         
         if mode in [0,1]:
-            # Startup the Power Systems
-            self.pdu1 = power.PDU('pdu1.ini', base_directory)
-            self.pdu1.getStatus()
+            try:
+                # Startup the Power Systems
+                self.pdu1 = power.PDU('pdu1.ini', base_directory)
+                self.pdu1.getStatus()
+            except:
+                print("Error communicating with pdu1")
+            
             
             
             # Define the Dome Class
@@ -124,6 +130,10 @@ class control(object):
                         break
             except KeyboardInterrupt:
                 pass
+            
+            except:
+                print("Problem starting robotic observations")
+                
 
     
     def caniobserve(self):

@@ -117,12 +117,15 @@ class Schedule(object):
         self.date = utils.getdatestr(date)
         self.schedulefile = base_directory + '/schedule/scheduleFiles/n' + self.date  +'_sch.csv'#'.sch'
         self.obslogfile = base_directory + '/schedule/obslog/n' + self.date + '_obs.csv'#'.obs'
-        self.loadSchedule()
-        self.currentScheduleLine = 0 # by default the current line should be line zero
-                                     # if all observations are done, then currentScheduleLine is set to -1
-        self.forceRestart = False # a flag to force the scheduler to restart from the beginning of the schedule
-        self.loadObslog()
-        self.getCurrentObs()
+        try:
+            self.loadSchedule()
+            self.currentScheduleLine = 0 # by default the current line should be line zero
+                                         # if all observations are done, then currentScheduleLine is set to -1
+            self.forceRestart = False # a flag to force the scheduler to restart from the beginning of the schedule
+            self.loadObslog()
+            self.getCurrentObs()
+        except:
+            print("Unable to make an observing plan for tonight!")
         
     def loadSchedule(self):
         try:
@@ -142,7 +145,8 @@ class Schedule(object):
 
         except:
             #TODO log this error
-            print(f" error loading schedule file: {self.schedulefile}")
+            print(f" error loading schedule file: {self.schedulefile} (probably because it doesn't exist!)")
+    
     def loadObslog(self):
         try:
             # Try to load the observation log for tonight

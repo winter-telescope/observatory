@@ -16,7 +16,7 @@ import time
 import sys
 import os
 from concurrent.futures import ThreadPoolExecutor
-
+from datetime import datetime
 
 def thread_function(name,num):
     #num = 5
@@ -35,6 +35,8 @@ def printword():
         os._exit(1)
     else:
         print("Parrot says: ",word_to_print)
+
+
     
 if __name__ == "__main__":
     
@@ -45,10 +47,10 @@ if __name__ == "__main__":
         
         #executor.map(thread_function,['a','b','c'],[2,5,15])
         
-        executor.submit(thread_function, 'a',10)
-        executor.submit(thread_function, 'b',20)
-        executor.submit(printword)
-        
+        #executor.submit(thread_function, 'a',10)
+        #executor.submit(thread_function, 'b',20)
+        #executor.submit(printword)
+        executor.submit(t)
         
         
 

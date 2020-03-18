@@ -59,7 +59,11 @@ class PDU(object):
         username = credential_obj[self.logname]['USERNAME']
         password = credential_obj[self.logname]['PASSWORD']
         url = 'http://' + self.ip + '/' + command
-        response = requests.get(url, auth = (username,password))
+        try:
+            response = requests.get(url, auth = (username,password),timeout = 10)
+            # added timeout so that if there's nothing to connect to it moves on
+        except:
+            print("Error communicating with PDU via http")
         return response
     
     def getStatus(self,verbose = False):
@@ -147,18 +151,19 @@ class PDU(object):
         self.getStatus(verbose = verbose)
         
        
-""" 
-# Usage Example
-# Import the PDU properties
-
-pdu1 = PDU('pdu1.ini',os.path.dirname(os.getcwd()))
-
-print('initial status = ',pdu1.status)
-new_status = [1,1,1,1,1,1,1,1]
-pdu1.sendStatus(new_status)
-
-print('final status = ',pdu1.status)
-"""
-
+if __name__ == '__main__': 
+    # Usage Example
+    # Import the PDU properties
+    try:
+        pdu1 = PDU('pdu1.ini',os.path.dirname(os.getcwd()))
+        
+        print('initial status = ',pdu1.status)
+        new_status = [1,1,1,1,1,1,1,1]
+        pdu1.sendStatus(new_status)
+        
+        print('final status = ',pdu1.status)
+    
+    except:
+        pass
 
 
