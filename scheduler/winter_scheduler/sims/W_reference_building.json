@@ -1,7 +1,7 @@
 {
 	"queue_name": "default",
 	"queue_description": "W_reference_building",
-	"queue_manager": "greedy",
+	"queue_manager": "gurobi",
 	"observing_programs": [
 		{"program_name": "Palomar",
 		 "subprogram_name": "reference_building_y",
