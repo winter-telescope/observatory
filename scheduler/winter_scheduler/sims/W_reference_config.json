@@ -1,0 +1,7 @@
+{
+	"run_name": "example_winter_reference",
+	"queues": [
+		{"config_file": "W_reference_building.json",
+			"queue_name": "default"}
+	]
+}	
