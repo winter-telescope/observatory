@@ -95,7 +95,7 @@ EXPOSURE_TIME = 30. * u.second
 #READOUT_TIME = 8. * u.second ZTF
 READOUT_TIME = 0. * u.second # W
 #FILTER_CHANGE_TIME = 135. * u.second ZTF
-FILTER_CHANGE_TIME = 15. * u.second # W
+FILTER_CHANGE_TIME = 8. * u.second # W
 SETTLE_TIME = 1. * u.second
 
 MAX_AIRMASS = 3.0 # for W (2.5 for ZTF)
@@ -103,7 +103,7 @@ MAX_AIRMASS = 3.0 # for W (2.5 for ZTF)
 TIME_BLOCK_SIZE = 30. * u.min
 
 PROGRAM_NAME_TO_ID = {'engineering': 0, 
-                      'WINTER':1, 'collaboration': 2, 'Caltech': 3}
+                      'WINTER':1, 'collaboration': 2, 'Palomar': 3}
 PROGRAM_NAMES = list(PROGRAM_NAME_TO_ID.keys())
 PROGRAM_ID_TO_NAME = {v: k for k, v in list(PROGRAM_NAME_TO_ID.items())}
 PROGRAM_IDS = list(PROGRAM_ID_TO_NAME.keys())
