@@ -3,7 +3,7 @@
 	"queue_description": "reference_building_test",
 	"queue_manager": "greedy",
 	"observing_programs": [
-		{"program_name": "engineering",
+		{"program_name": "Palomar",
 		 "subprogram_name": "reference_building_g",
 		 "program_pi": "Kulkarni",
 		 "program_observing_fraction": 0.75,
@@ -15,7 +15,7 @@
 		 "n_visits_per_night": 1,
 		 "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":80},
 		 "active_months": "all"},
-		{"program_name": "engineering",
+		{"program_name": "Palomar",
 		 "subprogram_name": "reference_building_r_0",
 		 "program_pi": "Kulkarni",
 		 "program_observing_fraction": 0.75,
