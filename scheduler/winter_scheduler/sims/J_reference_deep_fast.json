@@ -1,0 +1,32 @@
+{
+	"queue_name": "default",
+	"queue_description": "J_reference_year",
+	"queue_manager": "greedy",
+	"observing_programs": [
+		{"program_name": "Palomar",
+		 "subprogram_name": "reference_building_j",
+		 "program_pi": "Kasliwal",
+         "program_observing_fraction": 0.7,
+         "subprogram_fraction": 1.0,
+		 "field_selections":{"dec_range":[-36,90]},
+		 "filter_choice": "sequence",
+		 "filter_ids": [2],
+		 "internight_gap_days": 30,
+		 "n_visits_per_night": 1,
+		 "nobs_range": {"filter_id":2,"min_obs":0,"max_obs":1},
+		 "active_months": "all"},
+        {"program_name": "Palomar",
+        "subprogram_name": "deep-fast",
+        "program_pi": "Kasliwal",
+        "program_observing_fraction": 0.3,
+        "subprogram_fraction": 1.0,
+        "field_selections":{"dec_range":[22,44],
+                            "ra_range":[80,100]},
+        "filter_choice": "sequence",
+        "filter_ids": [3],
+        "internight_gap_days": 3,
+        "n_visits_per_night": 1,
+        "nobs_range": {"filter_id":3,"min_obs":0,"max_obs":20},
+        "active_months": "January"}
+	]
+}
