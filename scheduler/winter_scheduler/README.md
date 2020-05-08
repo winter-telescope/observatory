@@ -1,3 +1,11 @@
+# Additional WINTER documentation available
+See "WINTER Scheduler Documentation"
+
+to run: python run_winter_sim.py './sims/W_reference_config.json' './config/2021_reference.cfg'
+
+contact frostig@mit.edu 
+
+
 # ztf_sim
 :telescope: Scheduling library for the Zwicky Transient Facility.
 
