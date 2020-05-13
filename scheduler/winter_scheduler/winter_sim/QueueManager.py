@@ -197,6 +197,9 @@ class QueueManager(object):
                             rs['exposure_time'],
                             rs['total_requests_tonight'])
 
+        if (len(self.rp.pool) <= 0): # W
+            raise QueueEmptyError("Started night with no valid observations")
+
         assert(len(self.rp.pool) > 0)
 
         # any specific tasks needed)
