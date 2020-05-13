@@ -93,30 +93,31 @@ def simulate(scheduler_config_file, sim_config_file,
             # use the state machine to allow us to skip weathered out nights
             #if tel.check_if_ready():
             scheduler.obs_log.prev_obs = None
+            current_night_mjd = np.floor(tel.current_time.mjd)
 
             block_use = scheduler.find_block_use_tonight(
                               tel.current_time)
             timed_obs_count = scheduler.count_timed_observations_tonight()
             
-            try: # W
+            try:
                 scheduler.queues['default'].assign_nightly_requests(
                         tel.current_state_dict(),
                         scheduler.obs_log, block_use = block_use,
                         timed_obs_count = timed_obs_count, time_limit = time_limit)
-                current_night_mjd = np.floor(tel.current_time.mjd)
+                
                 # log pool stats
                 logger.info(calc_pool_stats(
                     scheduler.queues['default'].rp.pool, intro="Nightly requests initialized"))
 
-            if tel.check_if_ready():
-                current_state = tel.current_state_dict()
+        if tel.check_if_ready():
+            current_state = tel.current_state_dict()
 
-                #scheduler.check_for_TOO_queue_and_switch(current_state['current_time'])
-                scheduler.check_for_timed_queue_and_switch(current_state['current_time'])
+            #scheduler.check_for_TOO_queue_and_switch(current_state['current_time'])
+            scheduler.check_for_timed_queue_and_switch(current_state['current_time'])
 
-                # get coords
-            #try:
-                next_obs = scheduler.Q.next_obs(current_state, 
+            # get coords
+            try:
+                next_obs = scheduler.Q.next_obs(current_state,
                         scheduler.obs_log)
                  # W, very hacked together re-index
                 if scheduler.Q.queue_type == 'gurobi':
