@@ -108,6 +108,8 @@ def simulate(scheduler_config_file, sim_config_file,
                 # log pool stats
                 logger.info(calc_pool_stats(
                     scheduler.queues['default'].rp.pool, intro="Nightly requests initialized"))
+            except QueueEmpty:
+                logger.info("No new observations tonight in deafult Queue")
 
         if tel.check_if_ready():
             current_state = tel.current_state_dict()
