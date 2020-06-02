@@ -175,14 +175,28 @@ class ObsLogger(object):
             u.hourangle).value/24.*360.)
         record['altitude'] = altaz.alt.to(u.radian).value
         record['azimuth'] = altaz.az.to(u.radian).value
-
-        sun = coord.get_sun(exposure_start)
+        
+        # W trying to get the simukations to run faster
+        # Spending about 5 min per night recording moon and sun position
+        # TODO: uncomment for production code
+        
+        record['dist2Moon'] = 0.
+        record['solarElong'] = 0.
+        record['moonRA'] = 0.
+        record['moonDec'] = 0.
+        record['moonAlt'] = 0.
+        record['moonAZ'] = 0.
+        record['moonPhase'] = 0.
+        record['sunAlt'] = 0.
+        record['sunAz'] = 0.
+        
+        ''' sun = coord.get_sun(exposure_start)
         sun_altaz = skycoord_to_altaz(sun, exposure_start)
         moon = coord.get_moon(exposure_start, P48_loc)
         moon_altaz = skycoord_to_altaz(moon, exposure_start)
 
         # WORKING AROUND a bug in sc.separation(moon)!
-        #moon_sc = coord.SkyCoord(moon.ra,moon.dec)
+        moon_sc = coord.SkyCoord(moon.ra,moon.dec)
         record['dist2Moon'] = moon.separation(sc).to(u.radian).value
         record['solarElong'] = sun.separation(sc).to(u.deg).value
         record['moonRA'] = moon.ra.to(u.radian).value
@@ -203,7 +217,8 @@ class ObsLogger(object):
         record['moonPhase'] = self.moon_illumination_tonight
 
         record['sunAlt'] = sun_altaz.alt.to(u.radian).value
-        record['sunAz'] = sun_altaz.az.to(u.radian).value
+        record['sunAz'] = sun_altaz.az.to(u.radian).value '''
+        
         if self.prev_obs is not None:
             sc_prev = coord.SkyCoord(self.prev_obs['fieldRA'] * u.radian,
                                      self.prev_obs['fieldDec'] * u.radian)
