@@ -101,22 +101,47 @@ def night_optimize(df_metric, df, requests_allowed, time_limit=30*u.second,
     yrtf_dict = m.addVars(dft.index,name='Yrtf',vtype=GRB.BINARY)
     yrtf_series = pd.Series(yrtf_dict,name='Yrtf')
     dft = dft.join(yrtf_series)
-
+    
+    # W debug
+    # dft.to_csv('~/Desktop/dft_debug_before.csv')
+    
+    # Trying to make this construction faster
+    # print('dft len before', len(dft))
+    cut = dft['metric'] > 0
+    dft = dft[cut]
+    # print('dft len after', len(dft))
+    
+    
     # create resultant variables: Yr = 1 if request r is observed in at least
     # one slot
     for r in request_sets:
         m.addGenConstrOr(yr_dict[r], dft.loc[dft['request_id'] == r, 'Yrtf'],
                 "orconstr_{}".format(r))
 
+    new_index = pd.MultiIndex.from_arrays([dft.request_id, dft.slot])
+    new_values = np.array([np.array(dft.metric_filter_id), np.array(dft.n_reqs_1), np.array(dft.n_reqs_2), np.array(dft.n_reqs_3), np.array(dft.Yrtf)]).T
+    dft_new = pd.DataFrame(new_values, columns=['metric_filter_id', 'n_reqs_1', 'n_reqs_1', 'n_reqs_3', 'Yrtf'], index=new_index)
+    
+    def sum_finder(f,r):
+        #temp_sum = np.sum(dft.loc[(dft['request_id'] == r) & (dft['metric_filter_id'] == f), 'Yrtf'])
+        temp_dft = dft_new.loc[r]
+        temp_sum = np.sum(temp_dft.loc[temp_dft['metric_filter_id'] == f, 'Yrtf'])
+        return temp_sum
+        
+    def nreqs_sum(f,r):
+        temp_nreqs = df.loc[r,'n_reqs_{}'.format(f)] * dfr.loc[r,'Yr']
+        return temp_nreqs
+    
     # nreqs_{fid} slots assigned per request set if it is observed
     # this constructor is pretty slow
-    constr_nreqs = m.addConstrs(
-        ((np.sum(dft.loc[(dft['request_id'] == r) & 
-                        (dft['metric_filter_id'] == f), 'Yrtf']) 
-                        == (df.loc[r,'n_reqs_{}'.format(f)] * dfr.loc[r,'Yr']))
-                        for f in filter_ids for r in request_sets), 
-                        "constr_nreqs")
-
+    constr_nreqs = m.addConstrs((sum_finder(f,r) == nreqs_sum(f,r) for f in filter_ids for r in request_sets), "constr_nreqs")
+    
+    # constr_nreqs = m.addConstrs(
+    # ((np.sum(dft.loc[(dft['request_id'] == r) &
+                    # (dft['metric_filter_id'] == f), 'Yrtf'])
+                    # == (df.loc[r,'n_reqs_{}'.format(f)] * dfr.loc[r,'Yr']))
+                    # for f in filter_ids for r in request_sets),
+                    # "constr_nreqs")
     
     # create resultant variables: Ytf = 1 if slot t has filter f used
     ytf = m.addVars(slots, filter_ids, vtype=GRB.BINARY)
