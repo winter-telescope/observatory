@@ -562,7 +562,7 @@ def slot_optimize(df_metric, df, requests_allowed, time_limit=30*u.second):
 
     return df_schedule
 
-def tsp_optimize(pairwise_distances):
+def tsp_optimize(pairwise_distances, time_limit=30*u.second):
     # core algorithmic code from
     # http://examples.gurobi.com/traveling-salesman-problem/
 
@@ -636,7 +636,11 @@ def tsp_optimize(pairwise_distances):
     for i in range(n): 
         m.addConstr(quicksum(vars[i,j] for j in range(n)) == 2) 
         vars[i,i].ub = 0 
-    m.update() 
+    
+    # W add time limit 
+    m.Params.TimeLimit = time_limit.to(u.second).value
+    
+    m.update()
     # Optimize model 
     m._vars = vars 
     m.params.LazyConstraints = 1 
