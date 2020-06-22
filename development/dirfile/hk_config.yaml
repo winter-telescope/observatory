@@ -1,0 +1,24 @@
+# config file for housekeeping
+
+
+
+# define update times (ms)
+daq_dt:
+    fast: 10.0
+    slow: 200.0
+    
+write_dt: 1000.0    
+
+# define fields. 
+# Note: each rate must have a corresponding "daq_rate" as given above
+fields:
+    fcount:
+        label: 'FastCount'
+        units: None
+        dtype: float64
+        rate: fast
+    scount:
+        label: 'SlowCount'
+        units: None
+        dtype: float64
+        rate: slow

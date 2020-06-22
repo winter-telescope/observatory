@@ -91,25 +91,27 @@ def simulate(scheduler_config_file, sim_config_file,
         # check if it is a new night and reload queue with new requests
         if np.floor(tel.current_time.mjd) > current_night_mjd:
             # use the state machine to allow us to skip weathered out nights
-            #if tel.check_if_ready():
-            scheduler.obs_log.prev_obs = None
-            current_night_mjd = np.floor(tel.current_time.mjd)
+            if tel.check_if_ready():
+                current_state = tel.current_state_dict()
+                scheduler.obs_log.prev_obs = None
+                current_night_mjd = np.floor(tel.current_time.mjd)
 
-            block_use = scheduler.find_block_use_tonight(
-                              tel.current_time)
-            timed_obs_count = scheduler.count_timed_observations_tonight()
-            
-            try:
-                scheduler.queues['default'].assign_nightly_requests(
-                        tel.current_state_dict(),
-                        scheduler.obs_log, block_use = block_use,
-                        timed_obs_count = timed_obs_count, time_limit = time_limit)
+                block_use = scheduler.find_block_use_tonight(
+                                  tel.current_time)
+                timed_obs_count = scheduler.count_timed_observations_tonight()
                 
-                # log pool stats
-                logger.info(calc_pool_stats(
-                    scheduler.queues['default'].rp.pool, intro="Nightly requests initialized"))
-            except QueueEmpty:
-                logger.info("No new observations tonight in deafult Queue")
+                try:
+                    scheduler.queues['default'].assign_nightly_requests(
+                            tel.current_state_dict(),
+                            scheduler.obs_log, block_use = block_use,
+                            timed_obs_count = timed_obs_count, time_limit = time_limit)
+                    
+                    # log pool stats
+                    logger.info(calc_pool_stats(
+                        scheduler.queues['default'].rp.pool, intro="Nightly requests initialized"))
+                except QueueEmptyError:
+                    print('in this loop')
+                    logger.info("No new observations tonight in deafult Queue")
 
         if tel.check_if_ready():
             current_state = tel.current_state_dict()
@@ -120,7 +122,7 @@ def simulate(scheduler_config_file, sim_config_file,
             # get coords
             try:
                 next_obs = scheduler.Q.next_obs(current_state,
-                        scheduler.obs_log)
+                        scheduler.obs_log, time_limit = time_limit)
                  # W, very hacked together re-index
                 if scheduler.Q.queue_type == 'gurobi':
                     assert(next_obs['request_id'] in scheduler.Q.req_queue_order)

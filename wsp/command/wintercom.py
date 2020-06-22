@@ -49,6 +49,7 @@ def main():
     try:
         IP = args[0]
         port = int(args[1])
+        cmd = args
     except:
         IP = 'localhost'
         port = 7075
