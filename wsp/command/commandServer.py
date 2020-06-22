@@ -14,20 +14,20 @@ A program to make an echo server/client command interface
 """
 
 
+
+# system packages
 import socket
 import sys
-import threading
-from queue import Queue
+import os
+import numpy as np
+import time
+from PyQt5 import uic, QtCore, QtGui, QtWidgets
 
-# We have to do some threading contrl to get the command server to accept connections from 
-# multiple clients
-# Did this by following a tutorial from here: https://www.youtube.com/watch?v=Iu8_IpztiOU
-    # 
-NUMBER_OF_THREADS = 2 #one for waiting for connections, one for taking client commmands
-JOB_NUMBER = [1,2]
-queue = Queue()
-all_connections = []
-all_adddress = []
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.getcwd())
+sys.path.insert(1, wsp_path)
+
+
 
 # This is a test function to make sure commands are being parsed 
 def printphrase(phrase = 'default phrase'):

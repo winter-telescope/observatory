@@ -1,0 +1,12 @@
+# This is a dirfile format file.
+# It was written using version 0.10.0 of the GetData Library.
+# Written on Fri Jun 19 15:48:34 2020 UTC by nlourie.
+
+/VERSION 10
+/ENDIAN little
+/PROTECT none
+/ENCODING none
+data RAW FLOAT64 20
+/REFERENCE data
+data/units STRING V
+data/quantity STRING Voltage
