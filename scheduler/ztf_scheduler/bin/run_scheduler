@@ -1,0 +1,8 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+sys.path.append('..')
+
+from ztf_scheduler.scheduler import main
+
+main()

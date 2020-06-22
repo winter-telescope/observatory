@@ -1,0 +1,27 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+import pandas as pd
+import json
+import astropy.coordinates as coord
+import astropy.units as u
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+if len(sys.argv) == 2:
+    queue_name = sys.argv[1]
+else:
+    sys.exit(1)
+
+try:
+    r = requests.put(f'{HOST}:{PORT}/current_queue', 
+            json = {'queue_name':queue_name})
+except:
+    sys.exit(1)
+
+if r.status_code == 200:
+    sys.exit(0)
+else:
+    sys.exit(1)

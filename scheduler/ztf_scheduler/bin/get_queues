@@ -1,0 +1,81 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+import pandas as pd
+import numpy as np
+import argparse
+import json
+from astropy.time import Time
+
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+parser = argparse.ArgumentParser(description='Print status of all queues')
+parser.add_argument("-q", "--queue", help="only display specified queue"),
+parser.add_argument("-s", "--short", help="only display queue summaries",
+                    action="store_true")
+parser.add_argument("-o", "--output", help="write queue as JSON to specified file"),
+args = parser.parse_args()
+
+try:
+    if args.queue is None:
+        r = requests.get(f'{HOST}:{PORT}/queues', json={})
+    else:
+        r = requests.get(f'{HOST}:{PORT}/queues', 
+                json = {'queue_name':args.queue})
+except:
+    #TODO: logging
+    print('Error getting response from scheduler')
+    sys.exit(1)
+
+if r.status_code == 200:
+    data_all = r.json()
+    if args.queue is not None:
+        data_all = [data_all]
+    for data in data_all:
+        print(f"***********************************************************")
+        print(f"   Queue name: {data['queue_name']}")
+        print(f"   Queue type: {data['queue_type']}")
+        print(f"   Is current: {data['is_current']}")
+        print(f"   Validity Window: {data['validity_window_mjd']}")
+        window = data['validity_window_mjd']
+        if window is not None:
+            window_date = Time(window[0],format='mjd').iso.split()[0]
+            window_utc = [Time(w,format='mjd').iso.split()[1][:-7] for w in window]
+            print(f"                    {window_date} {'-'.join(window_utc)}")
+        print(f"   Is now in validity window: {data['is_valid']}")
+        print(f"   Is TOO: {data['is_TOO']}")
+        queue = pd.read_json(data['queue'], orient='records')
+        print(f"   Number of queued requests: {len(queue)}")
+        if len(queue) > 0 and not args.short:
+            n_fields = len(queue['field_id'].unique())
+            print(f"   Number of unique field_ids: {n_fields}")
+            w = queue['ordered']
+            if np.sum(w) > 0:
+                print(f"   Ordered requests:")
+                print(queue.loc[w,['field_id', 'ra', 'dec', 'filter_id', 'program_id','subprogram_name', 'exposure_time']].to_string())
+            if np.sum(~w) > 0:
+                print(f"   Unordered requests:")
+                if 'slot_start_time' in queue.columns:
+                    grp = queue[~w].groupby('slot_start_time')
+                    for start_time, rows in grp:
+                        print(f"      {start_time}:")
+                        print(rows[['field_id', 'ra', 'dec', 'filter_id', 'program_id','subprogram_name']].to_string())
+                else:
+                    print(queue.loc[~w,['field_id', 'ra', 'dec', 'filter_id', 'program_id','subprogram_name']].to_string())
+
+    if args.output is not None:
+        assert(args.queue is not None)
+        with open(args.output,'w+') as f:
+            json.dump(data_all[0],f, indent=2, ensure_ascii=False)
+
+    sys.exit(0)
+elif r.status_code == 404:
+    # queue empty
+    print(f'Error!  Queue {args.queue} not found...')
+    sys.exit(2)
+else:
+    print('Unknown error...')
+    sys.exit(1)

@@ -1,0 +1,27 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+
+if len(sys.argv) > 2:
+    sys.exit(1)
+
+if len(sys.argv) == 2:
+    fixed_filter = sys.argv[1]
+else:   
+    fixed_filter = 'all_filters'
+
+try:
+    r = requests.put(f'{HOST}:{PORT}/filter_fixed', json = {'fixed_filter':fixed_filter})
+except:
+    #TODO: logging
+    sys.exit(1)
+
+if r.status_code == 200:
+    sys.exit(0)
+else:
+    sys.exit(1)

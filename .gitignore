@@ -11,8 +11,8 @@ __pycache__/
 *.swp
 *_obs.csv
 *_sch.csv
-
-
+*.dm
+*dm.lnk
 
 
 

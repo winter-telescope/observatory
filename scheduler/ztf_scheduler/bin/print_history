@@ -1,0 +1,34 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+import pandas as pd
+import numpy as np
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+if len(sys.argv) > 2:
+    sys.exit(1)
+
+json = {}
+
+if len(sys.argv) == 2:
+    json['date'] = sys.argv[1]
+
+try:
+    r = requests.get(f'{HOST}:{PORT}/obs_history', json = json)
+except:
+    #TODO: logging
+    print('Error getting response from scheduler')
+    sys.exit(1)
+
+if r.status_code == 200:
+    data = pd.read_json(r.json()['history'], orient='records')
+    print('History:')
+    print(data.to_string())
+
+    sys.exit(0)
+else:
+    print('Unknown error...')
+    sys.exit(1)

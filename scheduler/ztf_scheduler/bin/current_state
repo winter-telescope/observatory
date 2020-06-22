@@ -1,0 +1,24 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+
+if len(sys.argv) != 5:
+    sys.exit(1)
+
+try:
+    r = requests.put(f'{HOST}:{PORT}/current_state', 
+            json = {'ra':float(sys.argv[1]), 'dec':float(sys.argv[2]), 
+                   'epoch':float(sys.argv[3]), 'filter':sys.argv[4]})
+except:
+    #TODO: logging
+    sys.exit(1)
+
+if r.status_code == 200:
+    sys.exit(0)
+else:
+    sys.exit(1)
