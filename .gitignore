@@ -13,6 +13,6 @@ __pycache__/
 *_sch.csv
 *.dm
 *dm.lnk
-
+*.DS_Store
 
 
