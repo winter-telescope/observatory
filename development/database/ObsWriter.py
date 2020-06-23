@@ -15,25 +15,24 @@ class ObsWriter():
     Heavily inspired by obsLogger.py in winter_sim and by code in the schedule.py file in WSP
     """
 
-    def __init__(self, log_name, output_path, survey_start_time = Time('2018-01-01'),
-             clobber = False):
-             """
-             Initialize an observation logger by opening a database connection for the night.
-             Creates an empty table to write observations to.
-             """
+    def __init__(self, log_name, output_path, survey_start_time = Time('2018-01-01'), clobber = False):
+        """
+        Initialize an observation logger by opening a database connection for the night.
+        Creates an empty table to write observations to.
+        """
 
-            self.log_name = log_name
-            self.survey_start_time = survey_start_time
-            self.prev_obs = None
-            try:
-                self.engine = db.create_engine('sqlite:///' + f'./{self.log_name}.db')
-            except:
-                print(sys.exc_info()[0]) # used to print error messages from sqlalchemy, delete later
-            print('made new engine')
-            self.conn = self.engine.connect()
-            print('opened new connection')
+        self.log_name = log_name
+        self.survey_start_time = survey_start_time
+        self.prev_obs = None
+        try:
+            self.engine = db.create_engine('sqlite:///' + f'./{self.log_name}.db')
+        except:
+            print(sys.exc_info()[0]) # used to print error messages from sqlalchemy, delete later
+        print('made new engine')
+        self.conn = self.engine.connect()
+        print('opened new connection')
 
-            self.create_obs_log(clobber=clobber)
+        self.create_obs_log(clobber=clobber)
 
     def create_obs_log(self, clobber=True):
 

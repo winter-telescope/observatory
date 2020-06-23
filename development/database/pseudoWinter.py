@@ -11,7 +11,7 @@ class Controller():
     def __init__(self, mode, config_file, base_directory):
         """
         Basically a knockoff of the real controller, uses an infinite loop
-        to keep the program running. For future tests may enable other modes. 
+        to keep the program running. For future tests may enable other modes.
         """
         self.base_directory = base_directory
 
@@ -23,6 +23,7 @@ class Controller():
             try:
 
                 self.schedule = Schedule(base_directory = self.base_directory, date = 'today')
+                self.schedule.loadSchedule(currentTime=400)
                 self.writer = ObsWriter.ObsWriter('testData', self.base_directory) #the ObsWriter initialization
                 while True:
                     try:
@@ -57,23 +58,41 @@ class Schedule():
         self.conn = self.engine.connect()
         print("connected")
 
-        # This block queries the database for all rows
+
+    def loadSchedule(self, currentTime=0, startFresh=False):
+        """
+        Load the schedule starting at the currentTime.
+        ### Note: At the moment currentTime is a misnomer, we are selecting by the IDs of the observations
+        since the schedule database does not include any time information. Should change this to
+        actually refer to time before deployment.
+        """
+
         metadata = db.MetaData()
         summary = db.Table('Summary', metadata, autoload=True, autoload_with=self.engine)
-        self.result = self.conn.execute(db.select([summary]))
-        print("succesfully queried")
+
+        #Query the database starting at the correct time of night
+        try:
+            self.result = self.conn.execute(summary.select().where(summary.c.obsHistID >= currentTime))
+            print("succesfully queried")
+        except:
+            print('query failed')
 
         # The fetchone method grabs the first row in the result of the query and stores it as currentObs
         self.currentObs = self.result.fetchone()
         print("got one: ")
 
     def makeObsLog(self):
+        #Moving to ObsWriter Class, the functionality should be separate
         pass
 
     def logCurrentObs(self):
+        #Moving to ObsWriter Class, the functionality should be separate
         pass
 
     def getCurrentObs(self):
+        """
+        Returns the observation that the telescope should be making at the current time
+        """
         return self.currentObs
 
     def gotoNextObs(self):
