@@ -27,8 +27,11 @@ from threading import Thread
 #from SocketServer import ThreadingMixIn 
 
 
-
-
+# This is a test function to make sure commands are being parsed 
+def printphrase(phrase = 'default phrase'):
+    printed_phrase = f"I'm Printing the Phrase: {phrase}"
+    print(printed_phrase)
+    return printed_phrase
 
 def start_commandServer(addr = '', port = 7075):
     # Multithreaded Python server : TCP Server Socket Thread Pool

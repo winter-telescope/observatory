@@ -336,7 +336,7 @@ class QueueManager(object):
 
         self.logger.info(self.requests_allowed)
 
-    def next_obs(self, current_state, obs_log):
+    def next_obs(self, current_state, obs_log, time_limit = 30 * u.second):
         """Given current state, return the parameters for the next request"""
         # don't store the telescope state locally!
 
@@ -346,7 +346,7 @@ class QueueManager(object):
                 self.assign_nightly_requests(current_state, obs_log)
 
         # define functions that actually do the work in subclasses
-        next_obs = self._next_obs(current_state, obs_log)
+        next_obs = self._next_obs(current_state, obs_log,time_limit = time_limit)
 
         # check if we have a disallowed observation, and reject it:
         if next_obs['target_limiting_mag'] < 0:
@@ -517,7 +517,7 @@ class GurobiQueueManager(QueueManager):
         self._assign_slots(current_state, time_limit = time_limit, 
                 block_use = block_use)
 
-    def _next_obs(self, current_state, obs_log):
+    def _next_obs(self, current_state, obs_log, time_limit = 30.*u.second):
         """Select the highest value request."""
 
         # do the slot assignment at the beginning of the night 
@@ -525,7 +525,7 @@ class GurobiQueueManager(QueueManager):
 
         # if we've entered a new block, solve the TSP to sequence the requests
         if (block_index(current_state['current_time'])[0] != self.queue_slot):
-            self._sequence_requests_in_block(current_state)
+            self._sequence_requests_in_block(current_state, time_limit = time_limit)
 
         if (len(self.queue_order) == 0):
             raise QueueEmptyError("Ran out of observations this block.") 
@@ -673,12 +673,15 @@ class GurobiQueueManager(QueueManager):
             time_limit = time_limit, block_use = block_use)
 
         grp = df_slots.groupby('slot')
+        print('grp', grp.head())
         
         # W 
         self.queued_requests_by_slot = grp.apply(np.array)
         self.filter_by_slot = \
             grp['metric_filter_id'].apply(lambda x: np.unique(x)[0])
-
+            
+        print('queued', self.queued_requests_by_slot)
+        print('old', grp['request_id'].apply(list))
 
         # self.queued_requests_by_slot = grp['request_id'].apply(list)
         # self.filter_by_slot = \
@@ -731,10 +734,10 @@ class GurobiQueueManager(QueueManager):
         
         # avoid clobbering the solution file with restarts after observing has
         # completed
-        if before_noon_utc or (not os.path.exists(solution_outfile)):
-            dft.drop(columns=['Yrtf']).to_csv(solution_outfile)
+        # if before_noon_utc or (not os.path.exists(solution_outfile)):
+            # dft.drop(columns=['Yrtf']).to_csv(solution_outfile)
 
-    def _sequence_requests_in_block(self, current_state):
+    def _sequence_requests_in_block(self, current_state, time_limit = 30.*u.second):
         """Solve the TSP for requests in this slot"""
 
         self.queue_slot = block_index(current_state['current_time'])[0]
@@ -823,7 +826,8 @@ class GurobiQueueManager(QueueManager):
         slew_overhead = np.maximum(maxslews, READOUT_TIME)
         overhead_time = slew_overhead + filter_overhead
         
-        tsp_order, tsp_overhead_time = tsp_optimize(overhead_time.value)
+        tsp_order, tsp_overhead_time = tsp_optimize(overhead_time.value,
+                                                    time_limit = time_limit)
 
         # remove the fake starting point.  tsp_optimize always starts with
         # the first observation in df, which by construction is our fake point,
@@ -908,7 +912,7 @@ class GreedyQueueManager(QueueManager):
         if self.time_of_last_filter_change is None:
             self.time_of_last_filter_change = current_state['current_time']
 
-    def _next_obs(self, current_state, obs_log):
+    def _next_obs(self, current_state, obs_log, time_limit = 30.*u.second):
         """Select the highest value request."""
 
         # since this is a greedy queue, we update the queue after each obs
@@ -1192,7 +1196,7 @@ class ListQueueManager(QueueManager):
         else:
             self.queue = queue
 
-    def _next_obs(self, current_state, obs_log):
+    def _next_obs(self, current_state, obs_log, time_limit = 30.*u.second):
         """Return the next observation in the time ordered queue unless it has expired."""
 
         
