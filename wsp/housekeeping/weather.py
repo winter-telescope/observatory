@@ -89,7 +89,7 @@ class palomarWeather(object):
             print('Unable to Load the Weather Limits File: ',self.base_directory + '/config/' + self.limits_file)
         
     def getWeather(self,firsttime = False):
-        print(' Getting weather data...')
+        #print(' Getting weather data...')
         try: # LOAD DATA FROM THE PALOMAR TELEMETRY SERVER
             configObj = ConfigObj(self.full_filename)
             

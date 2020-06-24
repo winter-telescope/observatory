@@ -40,70 +40,65 @@ from dome import dome
 from schedule import schedule
 from utils import utils
 
-def sigint_handler(*args):
-    """
-    Make the thing die when you do ctl+c
-    Source:
-        https://stackoverflow.com/questions/19811141/make-qt-application-not-to-quit-when-last-window-is-closed
-    """
+# Create the control class -- it inherets from QObject
+# this is basically the "main" for the console application
+class control(QtCore.QObject):
     
-    """Handler for the SIGINT signal."""
-    sys.stderr.write('\r')
-    qb = QtWidgets.QMessageBox()
-    qb.raise_()
-    """
-    if qb.question(None, '', "Are you sure you want to quit?",
-                            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                            QtWidgets.QMessageBox.No) == QtWidgets.QMessageBox.Yes:
-        QtWidgets.QApplication.quit()
-        print("Okay... quitting.")
-    else:
-        pass
-    """
-    ans = qb.question(None, '', "Are you sure you want to quit?",
-                            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                            QtWidgets.QMessageBox.No)
-    
-    if ans== QtWidgets.QMessageBox.Yes:
-        QtWidgets.QApplication.quit()
-        print("Okay... quitting.")
-    else:
-        pass
-
-# create the control class
-
-class control(QtWidgets.QMainWindow):
-    
-
     ## Initialize Class ##
-    def __init__(self,mode,config_file,base_directory, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.config_file = config_file
+    def __init__(self,mode,config,base_directory, parent = None):
+        super(control, self).__init__(parent)
+        
+        # pass in the config 
+        self.config = config
+        
+        # pass in the base directory
         self.base_directory = base_directory
-        self.oktoobserve = False # Start it out by saying you shouldn't be observing
-
-        # Define the Dome Class
-        self.dome = dome.dome()
         
-        # Start the Housekeeping Loops
-        self.hk_slow = housekeeping.slowLoop(dome = self.dome)
-        self.hk_slow.start()
+        ### SET UP THE HARDWARE ###
         
-        # Start up the Command Server
+        # init the telescope
+        try:
+            print('control: trying to connect to telescope')
+            self.telescope_mount = pwi4.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
+        except Exception as e:
+            print("control: could not connect to telescope mount: ", e)
         
+        # init the weather
+        try:
+            print('control: trying to load weather')
+            self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini')
+        except Exception as e:
+            print("control: could not load weather data: ", e)
+            
+            
+        ### SET UP THE HOUSEKEEPING ###
         
-if __name__ == '__main__':
-    signal.signal(signal.SIGINT, sigint_handler)    
-    print('Executing Program')
-    opt = 0
-    base_directory = wsp_path
-    config_file = ''
-    # Standard way to start up the event loop in GUI mode
-    app = QtWidgets.QApplication([])
-    app.setQuitOnLastWindowClosed(False) #<-- otherwise it will quit once all windows are closed
-    
-    winter = control(mode = int(opt), config_file = '',base_directory = wsp_path)
-    app.exec_()
-    
-    #plt.show()
-    
+        # init the housekeeping class (this starts the daq and dirfile write loops)
+        self.hk = housekeeping.housekeeping(self.config, 
+                                            telescope = self.telescope_mount,
+                                            weather = self.weather)
+        
+        ### START UP THE OBSERVATION SEQUENCE ###
+        # Startup the Telescope
+        self.telescope_connect()
+        self.telescope_axes_enable()
+        #self.telescope_home()
+        random_alt = np.random.randint(16,89)
+        random_az = np.random.randint(1,359)
+        self.telescope_mount.mount_goto_alt_az(random_alt, random_az)
+        
+    # commands that are useful
+    def telescope_startup(self):
+        telescope.telescope_startup(self.telescope_mount)
+    def telescope_home(self):
+        telescope.home(self.telescope_mount)
+    def telescope_axes_enable(self):
+        telescope.axes_enable(self.telescope_mount)
+    def telescope_connect(self):
+        telescope.connect(self.telescope_mount)
+    def telescope_disconnect(self):
+        telescope.disconnect(self.telescope_mount)
+    def telescope_axes_disable(self):
+        telescope.axes_disable(self.telescope_mount)
+    def telescope_shutdown(self):
+        telescope.shutdown(self.telescope_mount)

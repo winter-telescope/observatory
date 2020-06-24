@@ -136,7 +136,7 @@ def goto(mount,az,alt):
         print ("Slewing to: ALT/AZ = %0.4f, %0.4f" %(alt,az))
         mount.mount_goto_alt_az(alt, az )
         
-        
+        """
         time.sleep(5)
         while True:
             s = mount.status()
@@ -154,7 +154,8 @@ def goto(mount,az,alt):
             time.sleep(0.5)
         
         print ("Slew complete. Stopping...")
-        mount.mount_stop()
+        """
+        #mount.mount_stop()
     except KeyboardInterrupt:
         mount.mount_stop()
         pass
