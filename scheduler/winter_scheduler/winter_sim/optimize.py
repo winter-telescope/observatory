@@ -646,7 +646,11 @@ def tsp_optimize(pairwise_distances, time_limit=30*u.second):
     m.params.LazyConstraints = 1 
     m.optimize(subtourelim) 
 
-    if m.Status != GRB.OPTIMAL:
+    #if m.Status != GRB.OPTIMAL:
+    #    raise ValueError("Optimization failure")
+
+    # W
+    if (m.Status != GRB.OPTIMAL) and (m.Status != GRB.TIME_LIMIT):
         raise ValueError("Optimization failure")
 
     solution = m.getAttr('x', vars) 
