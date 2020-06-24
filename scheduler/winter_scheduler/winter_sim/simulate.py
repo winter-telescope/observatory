@@ -91,27 +91,26 @@ def simulate(scheduler_config_file, sim_config_file,
         # check if it is a new night and reload queue with new requests
         if np.floor(tel.current_time.mjd) > current_night_mjd:
             # use the state machine to allow us to skip weathered out nights
-            if tel.check_if_ready():
-                current_state = tel.current_state_dict()
-                scheduler.obs_log.prev_obs = None
-                current_night_mjd = np.floor(tel.current_time.mjd)
+            # if tel.check_if_ready():
+            current_state = tel.current_state_dict()
+            scheduler.obs_log.prev_obs = None
+            current_night_mjd = np.floor(tel.current_time.mjd)
 
-                block_use = scheduler.find_block_use_tonight(
+            block_use = scheduler.find_block_use_tonight(
                                   tel.current_time)
-                timed_obs_count = scheduler.count_timed_observations_tonight()
+            timed_obs_count = scheduler.count_timed_observations_tonight()
                 
-                try:
-                    scheduler.queues['default'].assign_nightly_requests(
+            try:
+                scheduler.queues['default'].assign_nightly_requests(
                             tel.current_state_dict(),
                             scheduler.obs_log, block_use = block_use,
                             timed_obs_count = timed_obs_count, time_limit = time_limit)
                     
                     # log pool stats
-                    logger.info(calc_pool_stats(
+                logger.info(calc_pool_stats(
                         scheduler.queues['default'].rp.pool, intro="Nightly requests initialized"))
-                except QueueEmptyError:
-                    print('in this loop')
-                    logger.info("No new observations tonight in deafult Queue")
+            except QueueEmptyError:
+                logger.info("No new observations tonight in deafult Queue")
 
         if tel.check_if_ready():
             current_state = tel.current_state_dict()
