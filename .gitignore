@@ -11,8 +11,4 @@ __pycache__/
 *.swp
 *_obs.csv
 *_sch.csv
-
-
-
-
-
+*.DS_Store

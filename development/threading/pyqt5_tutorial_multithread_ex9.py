@@ -190,7 +190,11 @@ class timedLoop_0p5Hz(QtCore.QThread):
         """       
 
 class MainWindow(QtWidgets.QMainWindow):
-
+    
+    # Define the 
+    
+    
+    
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         
@@ -205,7 +209,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.slowloop.start()
         
         self.counter = 0
-        """
+        
         # GUI Stuff
         layout = QtWidgets.QVBoxLayout()
     
@@ -232,7 +236,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.recurring_timer)
         self.timer.start()
-        """
+        
 
     def thread_complete(self):
         # this is triggered when the worker emits the finished signal
