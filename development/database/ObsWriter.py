@@ -8,6 +8,7 @@ from astropy.time import Time
 import os
 import sys
 import pandas as pd
+import logging
 
 
 class ObsWriter():
@@ -21,6 +22,14 @@ class ObsWriter():
         Creates an empty table to write observations to.
         """
 
+        #set up logging
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('pseudoLog.log', mode='a')
+        format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(format)
+        self.logger.addHandler(fh)
+
         self.log_name = log_name
         self.survey_start_time = survey_start_time
         self.prev_obs = None
@@ -28,9 +37,9 @@ class ObsWriter():
             self.engine = db.create_engine('sqlite:///' + f'./{self.log_name}.db')
         except:
             print(sys.exc_info()[0]) # used to print error messages from sqlalchemy, delete later
-        print('made new engine')
+        self.logger.debug('made new engine')
         self.conn = self.engine.connect()
-        print('opened new connection')
+        self.logger.debug('opened new connection')
 
         self.create_obs_log(clobber=clobber)
 
@@ -99,8 +108,9 @@ class ObsWriter():
             record_row = pd.DataFrame(record,index=[uuid.uuid4().hex])
             # the uuid4 method doesnt use identifying info to make IDS. Maybe should be looked into more at some point.
             record_row.to_sql('Datalog', self.conn, index=False, if_exists='append')
-        except:
-            print(sys.exc_info()[0])
+            self.logger.debug(f'Inserted Row: {record}')
+        except Exception as e:
+            self.logger.error('query failed', exc_info=True )
 
 if __name__ == '__main__':
     # used to make this file importable

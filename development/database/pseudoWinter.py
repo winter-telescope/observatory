@@ -5,6 +5,8 @@ of schedule database and uses ObsWriter to log "data" into a new sqlite db.
 """
 
 import ObsWriter
+import logging
+
 
 class Controller():
 
@@ -13,6 +15,17 @@ class Controller():
         Basically a knockoff of the real controller, uses an infinite loop
         to keep the program running. For future tests may enable other modes.
         """
+
+        #set up logging
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('pseudoLog.log', mode='w')
+        format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(format)
+        self.logger.addHandler(fh)
+        self.logger.debug("created logger in Controller class")
+
+
         self.base_directory = base_directory
 
         if mode not in [0,1,2]:
@@ -23,8 +36,10 @@ class Controller():
             try:
 
                 self.schedule = Schedule(base_directory = self.base_directory, date = 'today')
-                self.schedule.loadSchedule(currentTime=400)
+                self.schedule.loadSchedule(currentTime=800)
+                self.logger.debug("got a scheduler")
                 self.writer = ObsWriter.ObsWriter('testData', self.base_directory) #the ObsWriter initialization
+                self.logger.debug("got a writer")
                 while True:
                     try:
                         print(self.schedule.getCurrentObs())
@@ -52,11 +67,20 @@ class Schedule():
         declared but not imlemented. In production they will most likely be implemented to
         provide full functionality.
         """
+
+        #set up logging
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('pseudoLog.log', mode='a')
+        format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(format)
+        self.logger.addHandler(fh)
+
         self.base_directory = base_directory
         self.schedulefile = base_directory + '/1_night_test.db'
         self.engine = db.create_engine('sqlite:///' + self.schedulefile)
         self.conn = self.engine.connect()
-        print("connected")
+        self.logger.error('successfully connected to db')
 
 
     def loadSchedule(self, currentTime=0, startFresh=False):
@@ -73,13 +97,13 @@ class Schedule():
         #Query the database starting at the correct time of night
         try:
             self.result = self.conn.execute(summary.select().where(summary.c.obsHistID >= currentTime))
-            print("succesfully queried")
-        except:
-            print('query failed')
+            self.logger.debug('successfully queried db')
+        except Exception as e:
+            self.logger.error('query failed', exc_info=True )
 
         # The fetchone method grabs the first row in the result of the query and stores it as currentObs
         self.currentObs = self.result.fetchone()
-        print("got one: ")
+        self.logger.debug('popped first result')
 
     def makeObsLog(self):
         #Moving to ObsWriter Class, the functionality should be separate
