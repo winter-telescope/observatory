@@ -111,6 +111,8 @@ def simulate(scheduler_config_file, sim_config_file,
                         scheduler.queues['default'].rp.pool, intro="Nightly requests initialized"))
             except QueueEmptyError:
                 logger.info("No new observations tonight in deafult Queue")
+            except:
+                logger.info("Nightly requests could not be initialized")
 
         if tel.check_if_ready():
             current_state = tel.current_state_dict()
