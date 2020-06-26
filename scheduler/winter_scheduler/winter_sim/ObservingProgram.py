@@ -136,7 +136,7 @@ class ObservingProgram(object):
             # function above only returns fields that have been observed at
             # least once.  use the intersection if min_obs > 0:
             w = ((nobs >= self.nobs_range['min_obs']) & 
-                    (nobs <= self.nobs_range['max_obs']))
+                    (nobs < self.nobs_range['max_obs'])) # W
             if self.nobs_range['min_obs'] > 0:
                 nobs_inrange = nobs.loc[w]
                 request_fields = request_fields.join(nobs_inrange,how='inner')

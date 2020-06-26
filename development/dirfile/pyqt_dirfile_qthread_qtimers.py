@@ -47,6 +47,10 @@ class slow_loop(QtCore.QThread):
         self.timer.start()
         #self.exec()
         
+        # get the thread ID?
+        self.thread = self.currentThread()
+        print(f'slowloop: thread = {self.thread}')
+        
     def __del__(self):
         self.wait()
     
@@ -55,7 +59,7 @@ class slow_loop(QtCore.QThread):
         self.index +=1
     
         # update the data
-        # describe the mapping between variables and data
+        # describe the mapping between variables and datac
         self.map = dict({
             'scount' : self.index
             })
@@ -112,6 +116,10 @@ class fast_loop(QtCore.QThread):
         self.timer.start()
         #self.exec()
         
+        # get the thread ID?
+        self.thread = self.currentThread()
+        print(f'fastloop: thread  = {self.thread}')
+        
     def __del__(self):
         self.wait()
     
@@ -153,6 +161,7 @@ class fast_loop(QtCore.QThread):
 
 class write_thread(QtCore.QThread):
     
+    writing = QtCore.pyqtSignal()
     def __init__(self,config, dirfile, state, curframe):
         QtCore.QThread.__init__(self)
         
@@ -173,6 +182,10 @@ class write_thread(QtCore.QThread):
         self.timer.start()
         #self.exec()
         
+        # get the thread ID?
+        self.thread = self.currentThread()
+        print(f'writethread: thread ID = {self.thread}')
+        
     def __del__(self):
         self.wait()
     
@@ -188,7 +201,7 @@ class write_thread(QtCore.QThread):
             print(f'writethread: writing to {field}: {self.curframe[field]}')
             self.db.write_field(field, self.curframe[field], start_frame = 'last')
             
-        
+        self.writing.emit()
     def run(self):
         print("writethread: starting")
         """
@@ -238,6 +251,9 @@ class main(QtCore.QObject):
         self.slowloop = slow_loop(config = config, state = self.state, curframe = self.curframe)
         self.writethread = write_thread(config = config, dirfile = self.df, state = self.state, curframe = self.curframe)
         
+        # connect signal from the threads
+        self.writethread.writing.connect(self.caught_signal)
+        
         # start up the DAQ loops
         #self.fastloop.start()
         #self.slowloop.start()
@@ -253,7 +269,8 @@ class main(QtCore.QObject):
             print('deleting existing symbolic link')
             os.remove('dm.lnk')
             os.symlink(self.dirname,'dm.lnk')
-                
+    def caught_signal(self):
+        print('main: caught signal')            
     def create_dirfile(self):
         """
         Create the dirfile to hold the data from the DAQ loops
