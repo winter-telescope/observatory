@@ -22,7 +22,7 @@ def printphrase(phrase = 'default phrase'):
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # associate the socket with a server address: Bind to an address
-server_address = ('localhost', 7070)
+server_address = ('localhost', 8427)
 
 print(f'starting up on {server_address[0]} port {server_address[1]}')
 sock.bind(server_address)
@@ -34,7 +34,8 @@ while True:
     # wait for a connection
     print('Waiting for a connection')
     client_socket, client_address = sock.accept()
-    
+    print(f'client socket = {client_socket}')
+    print(f'client address = {client_address}')
     try:
         print(f'connection from IP {client_address[0]} | port  {client_address[1]}')
         
