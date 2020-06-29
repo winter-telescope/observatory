@@ -28,10 +28,10 @@ def main():
         pwi4.mount_enable(1)
 
     # Construct a grid of 3 x 6 = 18 Alt-Az points
-    # ranging from 20 to 80 degrees Altitude, and from 
+    # ranging from 20 to 80 degrees Altitude, and from
     # 5 to 355 degrees Azimuth.
     points = create_point_list(3, 20, 80, 6, 5, 355)
-    
+
     for (alt, azm) in points:
         map_point(pwi4, alt, azm)
 
@@ -86,7 +86,7 @@ def map_point(pwi4, alt_degs, azm_degs):
         if not status.mount.is_slewing:
             break
         time.sleep(0.1)
-    
+
     # Confirm that we actually reached our target.
     # If, for example, the user clicked Stop in the GUI during
     # the slew, we probably don't want to continue building the model.
@@ -120,7 +120,7 @@ def map_point(pwi4, alt_degs, azm_degs):
     except Exception, ex:
         print ex.message
         return
-    
+
     pwi4.mount_model_add_point(match["ra_j2000_hours"], match["dec_j2000_degrees"])
     print "Added point"
 
