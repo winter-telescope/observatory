@@ -20,6 +20,12 @@ max_exps_per_slot = np.ceil((TIME_BLOCK_SIZE /
                 (EXPOSURE_TIME + READOUT_TIME)).to(
                 u.dimensionless_unscaled).value).astype(int)
 
+# W 
+class QueueEmptyError(Exception):
+    """Error class for when the nightly queue has no more fields"""
+    pass
+
+
 def night_optimize(df_metric, df, requests_allowed, time_limit=30*u.second,
         block_use = defaultdict(float)):
     """Determine which requests to observe and in what slots.
