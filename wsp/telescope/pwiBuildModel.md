@@ -46,6 +46,8 @@ Uses the virtual camera in the PWI4 client module to get a simulated starfield. 
 
 runs an executable function outside of the python programs defined in this module, along with a few other arguments, then parses and returns the output. I don't know much about this code as it stands, so it may be a source of issues.
 
-## mount_model_add_point method
+Right now the location of the ps3cli.exe file is expected to be in a folder named ps3cli within the home folder of a unix file system. If it isn't there, there will likely be issues. The code here also uses the "default" catalog location, which would seem to also be in the home folder, under a Kepler/ directory.  
 
-This method makes another web request to the HTTP communicator, supposedly to add this point gained by running platesolve on the image taken by the build model module. 
+### mount_model_add_point method
+
+This method makes another web request to the HTTP communicator, supposedly to add this point gained by running platesolve on the image taken by the build model module.
