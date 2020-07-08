@@ -80,9 +80,11 @@ We no longer use the log to decide where to start in the schedule, since the sch
 
 The init method sets up a db connection under a name provided(maybe will change this to a hardcoded name if we don't intend to change the name of the database very often), and then calls create_obs_log to create the tables.
 
-`create_obs_log`:
+`create_tables`:
 
 This method uses the connection created in init to access the database and create the necessary tables to setup the database. If we don't need a new database, then perhaps we don't need to call this function, or we can implement it in such a way that it detects whether its functionality is necessary.
+
+**Update:** Implemented the function to create the tables if they don't exist, so the code will only run once per database name, which is controlled by methods further up the hierarchy.
 
 `log_observation`:
 
@@ -90,6 +92,6 @@ takes in row data in the form of a dictionary type object and a filepath to the 
 
 #### To implement as of July 6:
 
-Change the database structure to be cumulative across multiple days, and to utilize the relational structure of SQL.
+- [x] Change the database structure to be cumulative across multiple days, and to utilize the relational structure of SQL.
 
-Should change the way that `self.currentObs` is stored, so that it is a dictionary. Also change the log function to require a dictionary, rather than rowProxy input. 
+- [x] Should change the way that `self.currentObs` is stored, so that it is a dictionary. <del> Also change the log function to require a dictionary, rather than rowProxy input. </del> *decided to convert input to log function to dictionary regardless, so we can accept rowProxies and dictionaries safely for now*

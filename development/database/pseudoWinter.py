@@ -102,7 +102,7 @@ class Schedule():
             self.logger.error('query failed', exc_info=True )
 
         # The fetchone method grabs the first row in the result of the query and stores it as currentObs
-        self.currentObs = self.result.fetchone()
+        self.currentObs = dict(self.result.fetchone())
         self.logger.debug('popped first result')
 
     def makeObsLog(self):
@@ -124,7 +124,7 @@ class Schedule():
         Moves down a line in the database.
         When there are no more lines fetchone returns None and we know we've finished
         """
-        self.currentObs = self.result.fetchone()
+        self.currentObs = dict(self.result.fetchone())
         if self.currentObs == None:
             self.result.close()
             self.conn.close()
