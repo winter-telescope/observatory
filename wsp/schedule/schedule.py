@@ -15,40 +15,40 @@ file format is based on the ZTF scheduler which has been modified and
 adapted for use by WINTER.
 
 It loads in a csv file with the following columns:
-     
-    	obsHistID	
-        requestID	
-        propID	
-        fieldID	
-        fieldRA	
-        fieldDec	
-        filter	
-        expDate	
-        expMJD	
-        night	
-        visitTime	
-        visitExpTime	
-        FWHMgeom	
-        FWHMeff	
-        airmass	
-        filtSkyBright	
-        lst	
-        altitude	
-        azimuth	
-        dist2Moon	
-        solarElong	
-        moonRA	
-        moonDec	
-        moonAlt	
-        moonAZ	
-        moonPhase	
-        sunAlt	
-        sunAz	
-        slewDist	
-        slewTime	
-        fiveSigmaDepth	
-        totalRequestsTonight	
-        metricValue	
+
+    	obsHistID
+        requestID
+        propID
+        fieldID
+        fieldRA
+        fieldDec
+        filter
+        expDate
+        expMJD
+        night
+        visitTime
+        visitExpTime
+        FWHMgeom
+        FWHMeff
+        airmass
+        filtSkyBright
+        lst
+        altitude
+        azimuth
+        dist2Moon
+        solarElong
+        moonRA
+        moonDec
+        moonAlt
+        moonAZ
+        moonPhase
+        sunAlt
+        sunAz
+        slewDist
+        slewTime
+        fiveSigmaDepth
+        totalRequestsTonight
+        metricValue
         subprogram
 
 @author: nlourie
@@ -62,6 +62,8 @@ from datetime import datetime,timedelta
 import pytz
 import shutil
 
+import sqlalchemy as db
+
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
 sys.path.insert(1, wsp_path)
@@ -74,220 +76,183 @@ def makeSampleSchedule(date = 'today'):
     # Takes in a date (string or int) or 'today'/'tonight' and makes a sample
     # schedule file based on the example file, just resaves it with a name
     # based on the date provided
-    
+
     #TODO want this to make a file like 20200215_000.sch which increments if
-    # there is already a file with that name in the directory. That way old 
+    # there is already a file with that name in the directory. That way old
     # files are preserved
     filename = 'n' + utils.getdatestr(date)
-    
+
     filename = filename + '_sch.csv'#'.sch'
     # Copy the sample schedule file
     schedulepath = os.getcwd() + '/scheduleFiles/'
     samplefile =  'example_ztf_schedule_observable_altaz.csv'
     shutil.copyfile(schedulepath + samplefile, schedulepath + filename)
     print(f'Wrote Sample Schedule File to: {schedulepath + filename}')
-    
-            
-    
+
+
+
 
 class Schedule(object):
-    # This is a class that holds the full schedule 
-    def __init__(self,base_directory,date = 'today'):
+    # This is a class that holds the full schedule
+    # def __init__(self,base_directory,date = 'today'):
+    #     """
+    #     # Initiatialization procedure:
+    #         1. look for a schedule based on the input date
+    #         2. check if there is an obslog for tonight
+    #         3. if there is an obslog:
+    #                >load up the last observation,
+    #                >then find where that observation is in the most recent
+    #              schedule, of just start from the beginning if it's not found
+    #            else:
+    #                >create a new obslog
+    #                >start observations at the first line in the schedule
+    #         4. load the current line in the schedule into a bunch of useful fields
+    #         5. when commanded (by systemControl), write the current observation
+    #            line to the obslog
+    #         6. when commanded (by systemControl), increment the schedule to the
+    #            next line
+    #         7. when the schedule is completed, go into stop mode
+    #     """
+    #
+    #
+    #     self.base_directory = base_directory
+    #     self.date = utils.getdatestr(date)
+    #     self.schedulefile = base_directory + '/schedule/scheduleFiles/n' + self.date  +'_sch.csv'#'.sch'
+    #     self.obslogfile = base_directory + '/schedule/obslog/n' + self.date + '_obs.csv'#'.obs'
+    #     try:
+    #         self.loadSchedule()
+    #         self.currentScheduleLine = 0 # by default the current line should be line zero
+    #                                      # if all observations are done, then currentScheduleLine is set to -1
+    #         self.forceRestart = False # a flag to force the scheduler to restart from the beginning of the schedule
+    #         self.loadObslog()
+    #         self.getCurrentObs()
+    #     except:
+    #         print("Unable to make an observing plan for tonight!")
+
+    def __init__(self, base_directory, date = 'today'):
         """
-        # Initiatialization procedure:
-            1. look for a schedule based on the input date
-            2. check if there is an obslog for tonight
-            3. if there is an obslog:
-                   >load up the last observation,
-                   >then find where that observation is in the most recent
-                 schedule, of just start from the beginning if it's not found
-               else:
-                   >create a new obslog
-                   >start observations at the first line in the schedule
-            4. load the current line in the schedule into a bunch of useful fields
-            5. when commanded (by systemControl), write the current observation 
-               line to the obslog
-            6. when commanded (by systemControl), increment the schedule to the
-               next line
-            7. when the schedule is completed, go into stop mode
+        sets up logging and opens connection to the database. Does
+        not actually access any data yet.
         """
-        
-        
+
+        #set up logging
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('pseudoLog.log', mode='a')
+        format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(format)
+        self.logger.addHandler(fh)
+
         self.base_directory = base_directory
-        self.date = utils.getdatestr(date)
-        self.schedulefile = base_directory + '/schedule/scheduleFiles/n' + self.date  +'_sch.csv'#'.sch'
-        self.obslogfile = base_directory + '/schedule/obslog/n' + self.date + '_obs.csv'#'.obs'
-        try:
-            self.loadSchedule()
-            self.currentScheduleLine = 0 # by default the current line should be line zero
-                                         # if all observations are done, then currentScheduleLine is set to -1
-            self.forceRestart = False # a flag to force the scheduler to restart from the beginning of the schedule
-            self.loadObslog()
-            self.getCurrentObs()
-        except:
-            print("Unable to make an observing plan for tonight!")
-        
-    def loadSchedule(self):
-        try:
-            # Try to load the schedule for the specified date
-            print(f' Importing schedule file for {self.date}')
-            self.schedule = utils.readcsv(self.schedulefile)
-            
-            # Convert the altitude and azimuth from radians to degrees, which is easier for the telescope to ingest
-            for angle in ['altitude','azimuth']:
-                self.schedule[angle]= [(val*180.0/np.pi) for val in self.schedule[angle]]
-            
-            # Some things should be converted to integers
-            #TODO there is a better way than this!
-            for intField in ['','requestID','obsHistID','propID','fieldID','totalRequestsTonight']:
-                self.schedule[intField]= [int(val) for val in self.schedule[intField]]
-            
+        self.schedulefile = base_directory + '/1_night_test.db'
+        self.engine = db.create_engine('sqlite:///' + self.schedulefile)
+        self.conn = self.engine.connect()
+        self.logger.error('successfully connected to db')
 
-        except:
-            #TODO log this error
-            print(f" error loading schedule file: {self.schedulefile} (probably because it doesn't exist!)")
-    
-    def loadObslog(self):
-        try:
-            # Try to load the observation log for tonight
-            if os.path.isfile(self.obslogfile):
-                print(" found obslog for tonight")
-                # found an obslog. read it in and get the request ID from the last line
-                log = utils.readcsv(self.obslogfile,skiprows = 2)
-                
-                
-                # the get the most recent line and request
-                lastrequestID = int(log['requestID'][-1])
-                lastobsHistID = int(log['obsHistID'][-1])
 
-                
-                try:
-                    # see if the most recent requestID is in the schedule file
-                    #   MUST match the requestID and the obshistID
-                    # Need to make the lists numpy arrays to do the comparison
-                    #TODO is this the best place/time to make them numpy arrays?
-                    requestID_nparr = np.array(self.schedule['requestID'])
-                    obsHistID_nparr = np.array(self.schedule['obsHistID'])
-                    index = np.where((requestID_nparr == lastrequestID) & (obsHistID_nparr == lastobsHistID) )
-                    # there's a leftover empty element from the where, something like index = (array([14]),)
-                    index = index[0] 
-                    
-                    # if there are multiple places that match the last logged line, then restart schedule
-                    if len(index)>1:
-                        print(" reduncancy in rank of last observation. Starting from top")
-                        self.currentScheduleLine = 0
-                    else:
-                        index = int(index)
-                        
-                        # if the index is the index of the last line, then need special handling:
-                        if index >= self.schedule[''][-1]:
-                            # all the items in the schedule have been completed!
-                            if self.forceRestart:
-                                #if we're forcing a restart, then start again
-                                self.currentScheduleLine = 0
-                            else:
-                                print(f" All items in the schedule have been observed. Exiting...")
-                                self.currentScheduleLine = -1
-                                return
-                        # make the current line the next line after the last logged line
-                        print(f' Found the last logged obs in line {index} of the schedule! Starting schedule at line {index+1}')
-                        self.currentScheduleLine = self.schedule[''][index] + 1
-                except:
-                    print(" couldn't match last obs line with schedule")
-                
-                
-            else:
-                print(" could not find obslog for tonight. making one...")
-                self.makeObslog()
-        except:
-            print(" could not verify the obslog status!")
-    def makeObslog(self):
-        # Make a new obslog
-        # Never overwrite stuff in the log, only append!
-        file = open(self.obslogfile,'a')
-        date_obj = datetime.strptime(self.date,'%Y%m%d')
-        now_obj  = datetime.utcnow()
-        
-        calitz = pytz.timezone('America/Los_Angeles')
-        cali_now = datetime.now(calitz)
-        
-        file.write(f"# WINTER Observation Log for the night of {date_obj.strftime('%Y-%m-%d')}\n")
-        file.write(f"# Created: {now_obj.strftime('%Y-%m-%d %H:%M:%S')} UTC / {cali_now.strftime('%Y-%m-%d %H:%M:%S')} Palomar Time\n")
-        file.write(f"Time,\t")
-        selected_keys = ['obsHistID','requestID','propID','fieldID','fieldRA','fieldDec','filter','altitude','azimuth']
-        #for key in  self.schedule.keys():
-        for key in selected_keys:
-            file.write(f"{key},\t")
-        file.write("\n")
-        file.close()
-    
-    def logCurrentObs(self):
-        # log the current observation 
-        # if we're at the end of the schedule file don't log the observation
-        if self.currentScheduleLine == -1:
-            print(' all scheduled items completed, nothing to add to log')
-            pass
-        else:
-            now_obj  = datetime.utcnow()
-            file = open(self.obslogfile,'a')
-            #file.write(f" new observation made at {now_obj.strftime('%Y-%m-%d %H:%M:%S')} UTC")
-            self.observed_timestamp = int(datetime.timestamp(now_obj))
-            file.write(f'{self.observed_timestamp},\t')
-            #for val in self.currentObs.values():
-            selected_keys = ['obsHistID','requestID','propID','fieldID','fieldRA','fieldDec','filter','altitude','azimuth']
-            for key in selected_keys:
-                val = self.schedule[key][self.currentScheduleLine]
-                file.write(f"{val},\t")
-            file.write("\n")
-            file.close()
+    # def loadSchedule(self):
+    #     try:
+    #         # Try to load the schedule for the specified date
+    #         print(f' Importing schedule file for {self.date}')
+    #         self.schedule = utils.readcsv(self.schedulefile)
+    #
+    #         # Convert the altitude and azimuth from radians to degrees, which is easier for the telescope to ingest
+    #         for angle in ['altitude','azimuth']:
+    #             self.schedule[angle]= [(val*180.0/np.pi) for val in self.schedule[angle]]
+    #
+    #         # Some things should be converted to integers
+    #         #TODO there is a better way than this!
+    #         for intField in ['','requestID','obsHistID','propID','fieldID','totalRequestsTonight']:
+    #             self.schedule[intField]= [int(val) for val in self.schedule[intField]]
+    #
+    #
+    #     except:
+    #         #TODO log this error
+    #         print(f" error loading schedule file: {self.schedulefile} (probably because it doesn't exist!)")
+
+    def loadSchedule(self, currentTime=0, startFresh=False):
+        """
+        Load the schedule starting at the currentTime.
+        ### Note: At the moment currentTime is a misnomer, we are selecting by the IDs of the observations
+        since the schedule database does not include any time information. Should change this to
+        actually refer to time before deployment.
+        """
+
+        metadata = db.MetaData()
+        summary = db.Table('Summary', metadata, autoload=True, autoload_with=self.engine)
+
+        #Query the database starting at the correct time of night
+        try:
+            self.result = self.conn.execute(summary.select().where(summary.c.obsHistID >= currentTime))
+            self.logger.debug('successfully queried db')
+        except Exception as e:
+            self.logger.error('query failed', exc_info=True )
+
+        # The fetchone method grabs the first row in the result of the query and stores it as currentObs
+        self.currentObs = dict(self.result.fetchone())
+        self.logger.debug('popped first result')
+
+
+    # def getCurrentObs(self):
+    #     if self.currentScheduleLine == -1:
+    #         cur_keys = self.schedule.keys()
+    #         cur_vals = []
+    #         cur_vals = [cur_vals.append('None') for key in cur_keys]
+    #         self.currentObs = dict(zip(cur_keys,cur_vals))
+    #     else:
+    #         # makes a dictionary to hold the current observation
+    #         cur_vals = [elem[self.currentScheduleLine] for elem in self.schedule.values()]
+    #         cur_keys = self.schedule.keys()
+    #         self.currentObs = dict(zip(cur_keys,cur_vals))
+    # def gotoNextObs(self):
+    #     if self.forceRestart == True:
+    #         self.currentScheduleLine = 0
+    #     elif (self.currentScheduleLine >= self.schedule[''][-1]) or (self.currentScheduleLine == -1):
+    #         print('cannot go to next obs')
+    #         # you've hit the end of the schedule
+    #         self.currentScheduleLine = -1
+    #     else:
+    #         # increments the schedule and just goes to the next line
+    #         self.currentScheduleLine += 1
+    #
+    #     self.getCurrentObs()
+
     def getCurrentObs(self):
-        if self.currentScheduleLine == -1:
-            cur_keys = self.schedule.keys()
-            cur_vals = []
-            cur_vals = [cur_vals.append('None') for key in cur_keys]
-            self.currentObs = dict(zip(cur_keys,cur_vals))
-        else:
-            # makes a dictionary to hold the current observation
-            cur_vals = [elem[self.currentScheduleLine] for elem in self.schedule.values()]
-            cur_keys = self.schedule.keys()
-            self.currentObs = dict(zip(cur_keys,cur_vals))
-    def gotoNextObs(self):
-        if self.forceRestart == True:
-            self.currentScheduleLine = 0
-        elif (self.currentScheduleLine >= self.schedule[''][-1]) or (self.currentScheduleLine == -1):
-            print('cannot go to next obs')
-            # you've hit the end of the schedule
-            self.currentScheduleLine = -1
-        else:
-            # increments the schedule and just goes to the next line
-            self.currentScheduleLine += 1
-            
-        self.getCurrentObs()
-        
-        
-                    
+        """
+        Returns the observation that the telescope should be making at the current time
+        """
+        return self.currentObs
 
-        
+    def gotoNextObs(self):
+        """
+        Moves down a line in the database.
+        When there are no more lines fetchone returns None and we know we've finished
+        """
+        self.currentObs = dict(self.result.fetchone())
+        if self.currentObs == None:
+            self.result.close()
+            self.conn.close()
+
+
+
 
 if __name__ == '__main__':
-    date = 'today'
-    makeSampleSchedule(date = date)
-    s = Schedule(base_directory = wsp_path, date = date)
-    print()
-    print(f" the current line in the schedule file is {s.currentScheduleLine}")
-    print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
-    print()
-    print('Now go to the next line!')
-    
-    for j in range(2):
-        for i in range(100):
-            s.logCurrentObs()
-            s.gotoNextObs()
-            
-            print()
-            print(f" the current line in the schedule file is {s.currentScheduleLine}")
-            print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
-            print()
-            print('Now go to the next line!')
-    
-    
+    # date = 'today'
+    # makeSampleSchedule(date = date)
+    # s = Schedule(base_directory = wsp_path, date = date)
+    # print()
+    # print(f" the current line in the schedule file is {s.currentScheduleLine}")
+    # print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
+    # print()
+    # print('Now go to the next line!')
+    #
+    # for j in range(2):
+    #     for i in range(100):
+    #         s.logCurrentObs()
+    #         s.gotoNextObs()
+    #
+    #         print()
+    #         print(f" the current line in the schedule file is {s.currentScheduleLine}")
+    #         print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
+    #         print()
+    #         print('Now go to the next line!')

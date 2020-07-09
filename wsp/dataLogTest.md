@@ -95,3 +95,12 @@ takes in row data in the form of a dictionary type object and a filepath to the 
 - [x] Change the database structure to be cumulative across multiple days, and to utilize the relational structure of SQL.
 
 - [x] Should change the way that `self.currentObs` is stored, so that it is a dictionary. <del> Also change the log function to require a dictionary, rather than rowProxy input. </del> *decided to convert input to log function to dictionary regardless, so we can accept rowProxies and dictionaries safely for now*
+
+
+#### To implement as of July 8
+
+- [ ] Tentatively importing fields table from schedule db, since Danielle has already written code to generate fields.
+
+- [ ] Move functions into the real **schedule.py** file, and move **ObsWriter.py** into the WSP directory.
+
+- [ ] Integrate the new functions into the existing robotic operations mode so that we can test by end of the week.  

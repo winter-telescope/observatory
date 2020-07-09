@@ -60,12 +60,8 @@ class Schedule():
 
     def __init__(self, base_directory, date = 'today'):
         """
-        Open databases and find out where we are in the schedule.
-        Once finished, self.currentObs contains info about current task
-
-        The db access code is very similar to what is in Winter_Sim. Some methods are
-        declared but not imlemented. In production they will most likely be implemented to
-        provide full functionality.
+        sets up logging and opens connection to the database. Does
+        not actually access any data yet.
         """
 
         #set up logging
