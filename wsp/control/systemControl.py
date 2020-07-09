@@ -35,6 +35,7 @@ from command import commandServer_multiClient
 from housekeeping import weather
 from dome import dome
 from schedule import schedule
+from schedule import ObsWriter
 from utils import utils
 
 
@@ -92,7 +93,7 @@ class control(object):
                 self.schedule = schedule.Schedule(base_directory = self.base_directory, date = 'today')
                 ##NEW##
                 self.writer = ObsWriter.ObsWriter('demoRelational', self.base_directory) #the ObsWriter initialization
-                self.schedule.loadSchedule()
+                self.schedule.loadSchedule(currentTime=820,startFresh=False )
                 #####
                 while True:
                     try:
@@ -146,7 +147,7 @@ class control(object):
 
             except:
                 print("Problem starting robotic observations")
-                
+
 
 
 

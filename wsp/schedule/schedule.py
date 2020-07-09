@@ -63,6 +63,8 @@ import pytz
 import shutil
 
 import sqlalchemy as db
+import ObsWriter
+import logging
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -144,7 +146,7 @@ class Schedule(object):
         self.logger.addHandler(fh)
 
         self.base_directory = base_directory
-        self.schedulefile = base_directory + '/1_night_test.db'
+        self.schedulefile = base_directory + '/schedule/scheduleFiles/1_night_test.db'
         self.engine = db.create_engine('sqlite:///' + self.schedulefile)
         self.conn = self.engine.connect()
         self.logger.error('successfully connected to db')
