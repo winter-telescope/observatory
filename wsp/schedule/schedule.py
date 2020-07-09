@@ -63,7 +63,7 @@ import pytz
 import shutil
 
 import sqlalchemy as db
-import ObsWriter
+# import ObsWriter
 import logging
 
 # add the wsp directory to the PATH
