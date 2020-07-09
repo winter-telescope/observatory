@@ -1,0 +1,15 @@
+# This is a dirfile format file.
+# It was written using version 0.10.0 of the GetData Library.
+# Written on Tue 23 Jun 2020 01:05:22 AM GMT UTC by winter.
+
+/VERSION 10
+/ENDIAN little
+/PROTECT none
+/ENCODING none
+fcount RAW FLOAT64 100
+fcount/units STRING None
+fcount/quantity STRING FastCount
+scount RAW FLOAT64 5
+scount/units STRING None
+scount/quantity STRING SlowCount
+/REFERENCE fcount
