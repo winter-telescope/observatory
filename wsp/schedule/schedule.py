@@ -239,6 +239,7 @@ class Schedule(object):
 
 
 if __name__ == '__main__':
+    pass
     # date = 'today'
     # makeSampleSchedule(date = date)
     # s = Schedule(base_directory = wsp_path, date = date)
