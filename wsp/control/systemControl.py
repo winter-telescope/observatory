@@ -109,8 +109,8 @@ class control(object):
 
                                break
 
-                           AZ = float(self.schedule.currentObs['azimuth'])
-                           ALT = float(self.schedule.currentObs['altitude'])
+                           AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
+                           ALT = float(self.schedule.currentObs['altitude'])*180/np.pi
                            waittime = int(self.schedule.currentObs['visitTime'])
 
                            if not self.dome.isopen:
