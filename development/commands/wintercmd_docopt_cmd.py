@@ -39,62 +39,19 @@ The script relies primarily on two modules:
 
 
 import sys
+import cmd
 import time
 import queue
-import argparse
+from docopt import docopt, DocoptExit
+
+from schema import Schema, And, Or, Use, SchemaError
+
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
+#from PyQt5.QtWidgets import QMessageBox
+
+
 import traceback
 import signal
-import logging
-import os
-import datetime
-
-def update_logger_path(logger, newpath):
-    fmt = "%(asctime)s.%(msecs).03d [%(filename)s:%(lineno)s - %(funcName)s()] %(levelname)s: %(threadName)s: %(message)s"
-    datefmt = "%Y-%m-%dT%H:%M:%S"
-    formatter = logging.Formatter(fmt,datefmt=datefmt)
-    formatter.converter = time.gmtime
-
-    for fh in logger.handlers: logger.removeHandler(fh)
-    fh = logging.FileHandler(newpath, mode='a')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-def setup_logger(base_dir, night, logger_name):
-
-    path = base_dir + '/log/' + night
-
-    if os.path.exists(path) == False:
-        # use makedirs instead of mkdir because it makes any needed intermediary directories
-        os.makedirs(path)
-        
-    fmt = "%(asctime)s.%(msecs).03d [%(filename)s:%(lineno)s - %(funcName)s()] %(levelname)s: %(threadName)s: %(message)s"
-    datefmt = "%Y-%m-%d  %H:%M:%S"
-
-    logger = logging.getLogger(logger_name)
-    formatter = logging.Formatter(fmt,datefmt=datefmt)
-    formatter.converter = time.gmtime
-
-    fileHandler = logging.FileHandler(path + '/' + logger_name + '.log', mode='a')
-    fileHandler.setFormatter(formatter)
-
-    #console = logging.StreamHandler()
-    #console.setFormatter(formatter)
-    #console.setLevel(logging.INFO)
-    
-    # add a separate logger for the terminal (don't display debug-level messages)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(fileHandler)
-    #logger.addHandler(console)
-    
-    return logger
-
-
-def night():
-    today = datetime.datetime.utcnow()
-    if datetime.datetime.now().hour >= 10 and datetime.datetime.now().hour <= 16:
-        today = today + datetime.timedelta(days=1)
-    return 'n' + today.strftime('%Y%m%d')
 
 
 def printWord(word):
@@ -188,56 +145,42 @@ class Worker(QtCore.QRunnable):
 
 #%% #### COMMANDING STUFF #####
 
-
-#redefine the argument parser so it exits nicely and execptions are handled better
-
-class ArgumentParser(argparse.ArgumentParser):
-    '''
-    Subclass the exiting/error methods from argparse.ArgumentParser
-    so that we can keep it from killing the loop if we want
-    '''
-    
-    def exit(self, status=0, message=None):
-        if message:
-            self._print_message(message, sys.stderr)
-        #sys.exit(status)
-    
-    def error(self, message):
-        """error(message: string)
-
-        Prints a usage message incorporating the message to stderr and
-        exits.
-
-        If you override this in a subclass, it should not return -- it
-        should either exit or raise an exception.
-        """
-        self._print_message('Error in command call: \n \t', sys.stderr)
-        self.print_usage(sys.stderr)
-        #args = {'prog': self.prog, 'message': message}
-        #self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
-
-def cmd(func):
+def docopt_cmd(func):
     """
-    This is a simple wrapper to simplify the try/except statement
-    when executing a function in the command list.
+    This decorator is used to simplify the try/except block and pass the result
+    of the docopt parsing to the called action.
     """
-    def wrapper_cmd(*args, **kwargs):
+    def fn(self, arg):
         try:
-            func(*args, **kwargs)
-        except Exception as e:
-            """
-            Exceptions are already handled by the argument parser
-            so do nothing here.
-            """
+            opt = docopt(fn.__doc__, arg)
             
-            pass
-    return wrapper_cmd 
+        except DocoptExit as e:
+            # The DocoptExit is thrown when the args do not match.
+            # We print a message to the user and the usage block.
 
+            print('Invalid Command!')
+            print(e)
+            return
 
-class Wintercmd(object):
+        except SystemExit:
+            # The SystemExit exception prints the usage for --help
+            # We do not need to do the print here.
+
+            return
+
+        return func(self, opt)
+
+    fn.__name__ = func.__name__
+    fn.__doc__ = func.__doc__
+    fn.__dict__.update(func.__dict__)
+    return fn
+
+class Wintercmd(cmd.Cmd):
     
     
-    def __init__(self, telescope, logger):
+    
+    
+    def __init__(self, telescope):
         # init the parent class
         super().__init__()
         
@@ -247,121 +190,48 @@ class Wintercmd(object):
         
         # subclass some useful inputs
         self.telescope = telescope
-        self.logger = logger
-        self.defineParser()
         
-    def parse(self,argv = None):
-        
-        # parse_args defaults to [1:] for args, but you need to
-        # exclude the rest of the args too, or validation will fail
-        
-        if argv is None:
-            self.argv = sys.argv[1:]
-            if len(self.argv) < 1:
-                   #self.argv = ['-h']
-                   pass
-        else:
-            self.argv = argv.split(' ')
-        
-        self.logger.debug(f'self.argv = {self.argv}')
-            
-        self.command = self.parser.parse_args(self.argv[0:1]).command
-        #print(f'cmdarg = {cmdarg}')
-        self.arglist = self.argv[1:]
-        #self.command = cmdarg.command    
-        self.logger.debug(f'command = {self.command}')
-        
-        if not hasattr(self, self.command):
-            if self.command == '':
-                pass
-            else:
-                self.logger.warning('Unrecognized command: {self.command}')
-                self.parser.print_help()
-                
-                #sys.exit(1)
-                pass
-        # use dispatch pattern to invoke method with same name
-        else:
-            try:
-                getattr(self, self.command)()
-            except Exception as e:
-                self.logger.warning(f'Could not execute command {self.command}')
-                self.logger.debug(e)
-                
-    def getargs(self):
-        '''
-        this just runs the cmdparser and returns the arguments
-        '''
-        self.args = self.cmdparser.parse_args(self.arglist)
-        
-    def defineParser(self):
-        '''
-        this creates the base parser which parses the commands
-        '''
-        self.parser = ArgumentParser(
-            description='Pretends to be git',
-            usage='''git <command> [<args>]
-
-The most commonly used git commands are:
-   commit     Record changes to the repository
-   fetch      Download objects and refs from another repository
-''')
-        self.parser.add_argument('command', help='Subcommand to run')
-        
-    def defineCmdParser(self, description):
-        '''
-        this creates or recreates the subparser that parses the arguments
-        passed to whtaever the command is
-        '''
-        self.cmdparser = ArgumentParser(description = description)
-        
+        # define the types and error messages for the arguments
+        self.schema = Schema({'<int>' : Use(int, error = '<int> must be integer')})
     
-    @cmd
-    def commit(self):
-        self.defineParser(description='Record changes to the repository')
-        # prefixing the argument with -- means it's optional
-        self.cmdparser.add_argument('--amend', action='store_true')
-        self.getargs()
-        self.logger.info('Running git commit, amend=%s' % self.args.amend)    
-    
-    
-    
-    @cmd    
-    def count(self):
+    def argcheck(self, arg):
         
-        self.defineParser('Count up to specified number in the logger')
-        self.cmdparser.add_argument('num', 
-                                    nargs = 1, 
-                                    action = None, 
-                                    type = int,
-                                    help = "number to count up to")
-        self.getargs()
-        num = self.args.num[0]
-        self.logger.info(f'counting seconds up to {num}:')
-        i = 0
-        while i < num+1:
-            self.logger.info(f'   count = {i}')
-            i+=1
-            time.sleep(1)
+        try:
+            arg = self.schema.validate(arg)
+            return True
+        except SchemaError as e:
+            print('Argument Type Error: ',e)
+            print(__doc__)
+            return False
         
-    @cmd
-    def xyzzy(self):
+    @docopt_cmd
+    def do_count(self,arg):
+        """usage: count <int>"""
+        if self.argcheck(arg):
+            num = int(arg['<int>'])
+            print(f'counting seconds up to {num}:')
+            i = 0
+            while i < num:
+                print(f'   count = {i}')
+                i+=1
+                time.sleep(1)
+    
+    @docopt_cmd
+    def do_xyzzy(self, arg):
         
         """Usage: xyzzy"""
-        self.logger.info('nothing happened.')
+        print('nothing happened.')
 
-    @cmd
+    
+    @docopt_cmd
     def do_plover(self,arg):
         """Usage: plover <int>"""
-        self.defineParser('return the phrase "plover: <num>"')
-        self.cmdparser.add_argument('num',
-                                    nargs = 1,
-                                    action = None,
-                                    type = int,
-                                    help = 'integer number to plover')
-        
-        self.logger.info(f"plover: {arg['<int>']}")
-    '''
+        #print('args = ',arg)
+        if self.argcheck(arg):
+            print(type(arg['<int>']))
+            print(f"plover: {arg['<int>']}")
+
+    @docopt_cmd
     def do_goto_alt_az(self,arg):
         """Usage: goto_alt_az <alt> <az>"""
         #print('args = ',arg)
@@ -369,29 +239,29 @@ The most commonly used git commands are:
         az = arg['<az>']
         self.telescope.goto_alt_az(alt = alt, az = az)
         
-    def quit(self, arg):
+    def do_quit(self, arg):
         """Quits out of Interactive Mode."""
 
         print('Good Bye!')
         sys.exit()
-    '''
+        
+
 #%% Test Stuff
 class Telescope(object):
-    def __init__(self, logger):
-        self.logger = logger
+    def __init__(self):
         # this is just a sample class for testing
         self.alt = 0.0
         self.az = 0.0
         self.home()
     
     def home(self):
-        self.logger.info('telescope: homing telescope')
+        print('telescope: homing telescope')
     
     def get_status(self):
-        self.logger.info(f'telescope: ALT = {self.alt}, AZ = {self.az}')
+        print(f'telescope: ALT = {self.alt}, AZ = {self.az}')
         
     def goto_alt_az(self,alt,az):
-        self.logger.info(f"Slewing to ALT = {alt}, AZ = {az}")
+        print(f"Slewing to ALT = {alt}, AZ = {az}")
         self.alt = alt
         self.az = az
 #%% Testing
@@ -450,7 +320,7 @@ class cmd_executor(QtCore.QThread):
     The command queue is a prioritied FIFO queue and each item from the queue
     is executed in a QRunnable worker thread.
     """
-    def __init__(self,telescope,wintercmd,logger):
+    def __init__(self,telescope,wintercmd):
         super().__init__()
         
         # set up the threadpool
@@ -459,7 +329,6 @@ class cmd_executor(QtCore.QThread):
         # create the winter command object
         #self.wintercmd = Wintercmd(telescope)
         self.wintercmd = wintercmd
-        self.logger = logger
         
         # set up the command prompt
         #self.cmdprompt = cmd_prompt(telescope,self.wintercmd)
@@ -476,24 +345,23 @@ class cmd_executor(QtCore.QThread):
             
     
     def add_to_queue(self,cmd):
-        self.logger.debug(f"adding cmd to queue: {cmd}")
+        print(f"adding cmd to queue: {cmd}")
         self.queue.put((1,cmd))
         
     def execute(self,cmd):
         """
         Execute the command in a worker thread
         """
-        self.logger.debug(f'executing command {cmd}')
+        print(f'executing command {cmd}')
         try:
-            worker = Worker(self.wintercmd.parse,cmd)
+            worker = Worker(self.wintercmd.onecmd, cmd)
             #self.wintercmd.onecmd(cmd)
             self.threadpool.start(worker)
         except Exception as e:
             print(f'could not execute {cmd}: {e}')
-            
     def run(self):
        # if there are any commands in the queue, execute them!
-       self.logger.debug('waiting for commands to execute')
+       print('waiting for commands to execute')
        while True:
            if not self.queue.empty():
                priority, cmd = self.queue.get()
@@ -517,15 +385,9 @@ class main(QtCore.QObject):
         self.timer.timeout.connect(self.count)
         self.timer.start()
         
-        # set up the logger
-        self.base_dir = os.getcwd()
-        self.night = night()
-        self.logger = setup_logger(self.base_dir, self.night, logger_name = 'logtest')
-        
         # init some test stuff
-        self.telescope = Telescope(self.logger)
+        self.telescope = Telescope()
         
-        '''
         # parse the command interface
         
         self.opt = docopt(__doc__, ['-i'])
@@ -533,19 +395,17 @@ class main(QtCore.QObject):
         
         # init the command object
         self.wintercmd = Wintercmd(self.telescope)
-        '''
-        self.wintercmd = Wintercmd(self.telescope, self.logger)
+        
         
         
         # init the cmd executor
-        self.cmdexecutor = cmd_executor(self.telescope, self.wintercmd, self.logger)
+        self.cmdexecutor = cmd_executor(self.telescope, self.wintercmd)
         
         # init the cmd prompt
         self.cmdprompt = cmd_prompt(self.telescope, self.wintercmd)
         
         # connect the new command signal to the executor
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
-        
         
         
             
@@ -570,7 +430,7 @@ def sigint_handler( *args):
     mainthread.cmdexecutor.quit()
     
     QtCore.QCoreApplication.quit()
-#%%
+
 if __name__ == "__main__":
     app = QtCore.QCoreApplication(sys.argv)
 

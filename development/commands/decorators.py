@@ -17,3 +17,8 @@ def do_twice_args(func):
         func(*args, **kwargs)
         func(*args, **kwargs)
     return wrapper_do_twice
+
+def cmd(func):
+    def wrapper_cmd(*args, **kwargs):
+        func(*args, **kwargs)
+    return wrapper_cmd
