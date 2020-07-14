@@ -92,4 +92,4 @@ The most commonly used git commands are:
             
 
 if __name__ == '__main__':
-    a = FakeGit('fetch thing')
+    a = FakeGit('fetch -h')

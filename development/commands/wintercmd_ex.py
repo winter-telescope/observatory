@@ -196,7 +196,9 @@ class ArgumentParser(argparse.ArgumentParser):
     Subclass the exiting/error methods from argparse.ArgumentParser
     so that we can keep it from killing the loop if we want
     '''
-    
+    def __init__(self,logger,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logger = logger
     def exit(self, status=0, message=None):
         if message:
             self._print_message(message, sys.stderr)
@@ -211,6 +213,7 @@ class ArgumentParser(argparse.ArgumentParser):
         If you override this in a subclass, it should not return -- it
         should either exit or raise an exception.
         """
+        #self.logger.warning('Error in command call.')
         self._print_message('Error in command call: \n \t', sys.stderr)
         self.print_usage(sys.stderr)
         #args = {'prog': self.prog, 'message': message}
@@ -229,6 +232,7 @@ def cmd(func):
             Exceptions are already handled by the argument parser
             so do nothing here.
             """
+            #print('Could not execute command: ', e)
             
             pass
     return wrapper_cmd 
@@ -290,35 +294,46 @@ class Wintercmd(object):
                 
     def getargs(self):
         '''
-        this just runs the cmdparser and returns the arguments
+        this just runs the cmdparser and returns the arguments'
+        it also checks if the help option ('-h') has been called,
+        and then returns a boolean. If help has been called it set self.exit
+        to True, otherwise it's false.'
         '''
-        self.args = self.cmdparser.parse_args(self.arglist)
+        #print('arglist = ',self.arglist)
         
-    def defineParser(self):
+        self.args = self.cmdparser.parse_args(self.arglist)
+        #print('args = ',self.args)
+        #print('help selected? ','-h' in self.arglist)
+        if '-h' in self.arglist:
+            self.exit = True
+            #print('help True!')
+        else:
+            self.exit = False
+            #print('help False!')
+            
+        
+    def defineParser(self, description = None):
         '''
         this creates the base parser which parses the commands
+        the usage is grabbef from the documentation, so make sure it's documented
+        nicely!
         '''
-        self.parser = ArgumentParser(
-            description='Pretends to be git',
-            usage='''git <command> [<args>]
-
-The most commonly used git commands are:
-   commit     Record changes to the repository
-   fetch      Download objects and refs from another repository
-''')
+        self.parser = ArgumentParser(logger = self.logger,
+            description=description,
+            usage = __doc__)
         self.parser.add_argument('command', help='Subcommand to run')
         
-    def defineCmdParser(self, description):
+    def defineCmdParser(self, description = None):
         '''
         this creates or recreates the subparser that parses the arguments
         passed to whtaever the command is
         '''
-        self.cmdparser = ArgumentParser(description = description)
+        self.cmdparser = ArgumentParser(logger = self.logger, description = description)
         
     
     @cmd
     def commit(self):
-        self.defineParser(description='Record changes to the repository')
+        self.defineCmdParser(description='Record changes to the repository')
         # prefixing the argument with -- means it's optional
         self.cmdparser.add_argument('--amend', action='store_true')
         self.getargs()
@@ -329,13 +344,16 @@ The most commonly used git commands are:
     @cmd    
     def count(self):
         
-        self.defineParser('Count up to specified number in the logger')
+        self.defineCmdParser('Count up to specified number in the logger')
         self.cmdparser.add_argument('num', 
                                     nargs = 1, 
                                     action = None, 
                                     type = int,
                                     help = "number to count up to")
         self.getargs()
+        #print('self.exit? ',self.exit)
+        if self.exit: return
+        
         num = self.args.num[0]
         self.logger.info(f'counting seconds up to {num}:')
         i = 0
@@ -351,30 +369,39 @@ The most commonly used git commands are:
         self.logger.info('nothing happened.')
 
     @cmd
-    def do_plover(self,arg):
+    def plover(self):
         """Usage: plover <int>"""
-        self.defineParser('return the phrase "plover: <num>"')
+        self.defineCmdParser('return the phrase "plover: <num>"')
         self.cmdparser.add_argument('num',
                                     nargs = 1,
                                     action = None,
                                     type = int,
                                     help = 'integer number to plover')
-        
-        self.logger.info(f"plover: {arg['<int>']}")
-    '''
-    def do_goto_alt_az(self,arg):
+        self.getargs()
+        num = self.args.num[0]
+        self.logger.info(f"plover: {num}")
+    
+    @cmd
+    def goto_alt_az(self):
         """Usage: goto_alt_az <alt> <az>"""
-        #print('args = ',arg)
-        alt = arg['<alt>']
-        az = arg['<az>']
+        self.defineCmdParser('move telescope to specified alt/az in deg')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<alt_deg> <az_deg>')
+        self.getargs()
+        alt = self.args.position[0]
+        az = self.args.position[1]
         self.telescope.goto_alt_az(alt = alt, az = az)
-        
-    def quit(self, arg):
+    
+    @cmd
+    def quit(self):
         """Quits out of Interactive Mode."""
 
         print('Good Bye!')
-        sys.exit()
-    '''
+        sigint_handler()
+
 #%% Test Stuff
 class Telescope(object):
     def __init__(self, logger):
@@ -394,6 +421,7 @@ class Telescope(object):
         self.logger.info(f"Slewing to ALT = {alt}, AZ = {az}")
         self.alt = alt
         self.az = az
+        
 #%% Testing
 """        
 argv  = sys.argv[1:]
@@ -439,9 +467,13 @@ class cmd_prompt(QtCore.QThread):
         while True:
             # listen for an incoming command
             cmd = input(self.wintercmd.prompt)
-            
-            # emit signal that command has been received
-            self.newcmd.emit(cmd)
+            # don't do anyting if the command is just whitespace:            
+            if cmd.isspace() or ( cmd == ''):
+                pass
+            else:
+                # emit signal that command has been received
+                self.newcmd.emit(cmd)
+
             
 class cmd_executor(QtCore.QThread):           
     """
@@ -525,15 +557,6 @@ class main(QtCore.QObject):
         # init some test stuff
         self.telescope = Telescope(self.logger)
         
-        '''
-        # parse the command interface
-        
-        self.opt = docopt(__doc__, ['-i'])
-        print(__doc__)
-        
-        # init the command object
-        self.wintercmd = Wintercmd(self.telescope)
-        '''
         self.wintercmd = Wintercmd(self.telescope, self.logger)
         
         

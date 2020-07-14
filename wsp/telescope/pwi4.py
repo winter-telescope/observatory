@@ -237,6 +237,79 @@ class Section(object):
 
     pass
 
+
+class defaultPWI4Status:
+    """
+    this is a class that just defines default values for all the status fields
+    this can be returned if the status cannot be obtained from the telescope
+    """
+    def __init__(self, default_val = -999):
+        
+        self.raw = default_val  # Allow direct access to raw entries as needed
+
+        self.site = Section()
+        self.site.latitude_degs = default_val
+        self.site.longitude_degs = default_val
+        self.site.height_meters = default_val
+        self.site.lmst_hours = default_val
+
+        self.mount = Section()
+        self.mount.is_connected = default_val
+        self.mount.geometry = default_val
+        self.mount.ra_apparent_hours = default_val
+        self.mount.dec_apparent_degs = default_val
+        self.mount.ra_j2000_hours = default_val
+        self.mount.dec_j2000_degs = default_val
+        self.mount.azimuth_degs = default_val
+        self.mount.altitude_degs = default_val
+        self.mount.is_slewing = default_val
+        self.mount.is_tracking = default_val
+        self.mount.field_angle_here_degs = default_val
+        self.mount.field_angle_at_target_degs = default_val
+        self.mount.field_angle_rate_at_target_degs_per_sec = default_val
+        
+        self.mount.axis0 = Section()
+        self.mount.axis0.is_enabled = default_val
+        self.mount.axis0.rms_error_arcsec = default_val
+        self.mount.axis0.dist_to_target_arcsec = default_val
+        self.mount.axis0.servo_error_arcsec = default_val
+        self.mount.axis0.position_degs = default_val
+        
+        self.mount.axis1 = Section()
+        self.mount.axis1.is_enabled = default_val
+        self.mount.axis1.rms_error_arcsec = default_val
+        self.mount.axis1.dist_to_target_arcsec = default_val
+        self.mount.axis1.servo_error_arcsec = default_val
+        self.mount.axis1.position_degs = default_val
+
+        self.mount.model = Section()
+        self.mount.model.filename = default_val
+        self.mount.model.num_points_total = default_val
+        self.mount.model.num_points_enabled = default_val
+        self.mount.model.rms_error_arcsec = default_val
+
+        self.focuser = Section()
+        self.focuser.is_connected = default_val
+        self.focuser.is_enabled = default_val
+        self.focuser.position = default_val
+        self.focuser.is_moving = default_val
+        
+        self.rotator = Section()
+        self.rotator.is_connected = default_val
+        self.rotator.is_enabled = default_val
+        self.rotator.mech_position_degs = default_val
+        self.rotator.field_angle_degs = default_val
+        self.rotator.is_moving = default_val
+        self.rotator.is_slewing = default_val
+
+        self.m3 = Section()
+        self.m3.port = default_val
+
+
+
+
+
+
 class PWI4Status:
     """
     Wraps the status response for many PWI4 commands in a class with named members

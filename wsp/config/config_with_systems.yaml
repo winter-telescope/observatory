@@ -1,0 +1,91 @@
+# config file for WINTER
+
+
+# telescope
+telescope:
+    host: "thor"
+    port: 8220
+
+
+
+# housekeeping
+
+# define update times (ms)
+daq_dt:
+    fast: 10.0
+    slow: 1000.0
+    
+write_dt: 1000.0    
+
+# where to put the data. base directory is home
+housekeeping_data_directory: 'data/rawdir'
+housekeeping_data_link_directory: 'data'
+housekeeping_data_link_name: 'dm.lnk'
+
+
+# define housekeeping catagories to load in each mode
+mode:
+    instrument:
+        -instrument
+    telescope:
+        -telescope
+    observatory:
+        -weather
+        -telescope
+        -site
+        
+
+
+# define fields. 
+# Note: each rate must have a corresponding "daq_rate" as given above
+fields:
+    general:
+        fcount:
+            label: 'FastCount'
+            units: None
+            dtype: float64
+            rate: fast
+        scount:
+            label: 'SlowCount'
+            units: None
+            dtype: float64
+            rate: slow
+    telescope:
+        mount_is_connected:
+            label: 'MountConnected'
+            units: None
+            dtype: int64
+            rate: fast
+        mount_is_slewing:
+            label: 'MountSlewing'
+            units: None
+            dtype: int64
+            rate: fast
+        mount_az_deg:
+            label: 'Az'
+            units: 'deg'
+            dtype: float64
+            rate: fast
+        mount_alt_deg:
+            label: 'Alt'
+            units: 'deg'
+            dtype: float64
+            rate: fast
+    weather:
+        cds_cloud:
+            label: 'CDS-Clouds'
+            units: None
+            dtype: float64
+            rate: slow
+            sys: weather
+        cloud_min:
+            label: 'Clouds-Min'
+            units: None
+            dtype: float64
+            rate: slow
+        cloud_max:
+            label: 'Clouds-Max'
+            units: None
+            dtype: float64
+            rate: slow
+        

@@ -22,9 +22,24 @@ housekeeping_data_directory: 'data/rawdir'
 housekeeping_data_link_directory: 'data'
 housekeeping_data_link_name: 'dm.lnk'
 
+
+# define housekeeping catagories to load in each mode
+mode:
+    instrument:
+        -instrument
+    telescope:
+        -telescope
+    observatory:
+        -weather
+        -telescope
+        -site
+        
+
+
 # define fields. 
 # Note: each rate must have a corresponding "daq_rate" as given above
 fields:
+#general:
     fcount:
         label: 'FastCount'
         units: None
@@ -35,7 +50,7 @@ fields:
         units: None
         dtype: float64
         rate: slow
-    #telescope
+#telescope
     mount_is_connected:
         label: 'MountConnected'
         units: None
@@ -56,13 +71,13 @@ fields:
         units: 'deg'
         dtype: float64
         rate: fast
-        
-    # weather
+#weather:
     cds_cloud:
         label: 'CDS-Clouds'
         units: None
         dtype: float64
         rate: slow
+        sys: weather
     cloud_min:
         label: 'Clouds-Min'
         units: None

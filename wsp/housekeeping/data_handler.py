@@ -38,7 +38,7 @@ sys.path.insert(1, wsp_path)
 
 # winter modules
 from housekeeping import easygetdata as egd
-
+from telescope import pwi4
 
 class slow_loop(QtCore.QThread):
     
@@ -76,8 +76,16 @@ class slow_loop(QtCore.QThread):
         ### UPDATE THE DATA ###
         
         # update weather
-        self.weather.getWeather()
-        
+        try:
+            self.weather.getWeather()
+        except:
+            """ 
+            do nothing here. this avoids flooding the log with errors if
+            the system is disconnected. Instead, this should be handled by the
+            watchdog to signal/log when the system is offline at a reasonable 
+            cadance.
+            """
+            pass
         
         ### MAP THE DATA TO THE STATUS FIELDS ###
         # describe the mapping between variables and data
@@ -155,8 +163,18 @@ class fast_loop(QtCore.QThread):
         ### POLL THE DATA ###
         
         # poll telescope status
-        self.telescope_status = self.telescope.status()
-        
+        try:
+            self.telescope_status = self.telescope.status()
+        except:
+            """ 
+            do nothing here. this avoids flooding the log with errors if
+            the system is disconnected. Instead, this should be handled by the
+            watchdog to signal/log when the system is offline at a reasonable 
+            cadance.
+            """
+            self.telescope_status = pwi4.defaultPWI4Status()
+            
+            pass
         
         ### MAP THE DATA TO THE STORED VARIABLES ###
         # describe the mapping between variables and data

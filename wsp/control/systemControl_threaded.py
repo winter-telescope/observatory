@@ -34,6 +34,8 @@ from power import power
 from telescope import pwi4
 from telescope import telescope
 from command import commandServer_multiClient
+from command import wintercmd
+from command import commandParser
 from housekeeping import weather
 from housekeeping import housekeeping
 from dome import dome
@@ -45,11 +47,14 @@ from utils import utils
 class control(QtCore.QObject):
     
     ## Initialize Class ##
-    def __init__(self,mode,config,base_directory, parent = None):
+    def __init__(self,mode,config,base_directory, logger, parent = None):
         super(control, self).__init__(parent)
         
         # pass in the config 
         self.config = config
+        
+        # pass in the logger
+        self.logger = logger
         
         # pass in the base directory
         self.base_directory = base_directory
@@ -57,11 +62,8 @@ class control(QtCore.QObject):
         ### SET UP THE HARDWARE ###
         
         # init the telescope
-        try:
-            print('control: trying to connect to telescope')
-            self.telescope_mount = pwi4.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
-        except Exception as e:
-            print("control: could not connect to telescope mount: ", e)
+        self.telescope = pwi4.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
+        
         
         # init the weather
         try:
@@ -70,23 +72,51 @@ class control(QtCore.QObject):
         except Exception as e:
             print("control: could not load weather data: ", e)
             
-            
+        
+        
+    
+        ### SET UP THE COMMAND LINE INTERFACE
+        self.wintercmd = wintercmd.Wintercmd(self.telescope, self.logger)
+        
+        # init the cmd executor
+        self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
+        
+        # init the cmd prompt
+        self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
+        
+        # connect the new command signal to the executor
+        self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)    
+        
+        
         ### SET UP THE HOUSEKEEPING ###
         
         # init the housekeeping class (this starts the daq and dirfile write loops)
         self.hk = housekeeping.housekeeping(self.config, 
-                                            telescope = self.telescope_mount,
+                                            telescope = self.telescope,
                                             weather = self.weather)
         
         ### START UP THE OBSERVATION SEQUENCE ###
         # Startup the Telescope
-        self.telescope_connect()
-        self.telescope_axes_enable()
-        #self.telescope_home()
-        random_alt = np.random.randint(16,89)
-        random_az = np.random.randint(1,359)
-        self.telescope_mount.mount_goto_alt_az(random_alt, random_az)
-        
+        try:
+            print("control: trying to init telescope")
+            self.telescope_connect()
+            self.telescope_axes_enable()
+            #self.telescope_home()
+            random_alt = np.random.randint(16,89)
+            random_az = np.random.randint(1,359)
+            self.telescope_mount.mount_goto_alt_az(random_alt, random_az)
+        except Exception as e:
+            self.telescope_mount = None
+            print("control: could not connect to telescope mount: ")
+            
+            
+            
+            
+            
+            
+            
+            
+    """    
     # commands that are useful
     def telescope_startup(self):
         telescope.telescope_startup(self.telescope_mount)
@@ -102,3 +132,6 @@ class control(QtCore.QObject):
         telescope.axes_disable(self.telescope_mount)
     def telescope_shutdown(self):
         telescope.shutdown(self.telescope_mount)
+        
+    """
+    
