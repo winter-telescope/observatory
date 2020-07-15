@@ -23,7 +23,7 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
     total_data = []
     data = ''
     while True:
-        data = socket.recv(2048).decode("utf-8")
+        data = sock.recv(2048).decode("utf-8")
         if end_char in data:
             total_data.append(data[:data.find(end_char)] + end_char)
             break
@@ -45,7 +45,7 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
     
     
 
-d = query_server('WEATHER_JSON', '198.202,125.214', 4698, end_char = '}]')
+d = query_server('WEATHER_JSON', '198.202.125.214', 4698, end_char = '}]')
 # convert the string to dict using json loads
 
 
