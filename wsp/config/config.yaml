@@ -39,6 +39,19 @@ telescope_home:
     alt_degs: 16.0
     az_degs: 290.0       
 
+# define telemetry servers
+telemetry_server:
+    addr:  '198.202.125.214'
+    port: 4698
+    cmd: 'WEATHER'
+    endchar: '}]'
+
+command_server:
+    addr: '198.202.125.142'
+    port: 62000
+    cmd: 'status?'
+    endchar: '}'
+    
 
 # define fields. 
 # Note: each rate must have a corresponding "daq_rate" as given above
@@ -116,7 +129,7 @@ fields:
         rate: slow
     ws_gust_threshold_p48:
         label: 'windspeed'
-        units: 'm/s'
+        units: 'mps'
         dtype: float64
         rate: slow
     time_alarm_p48:
@@ -151,7 +164,7 @@ fields:
         rate: slow
     ws_avg_p48:
         label: 'speed'
-        units: 'm/s'
+        units: 'mps'
         dtype: float64
         rate:slow
     T_outside_air_p48:

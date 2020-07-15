@@ -23,6 +23,7 @@ import numpy as np
 from datetime import datetime,timedelta
 import pytz
 import sys
+from utils import utils
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -31,11 +32,13 @@ sys.path.insert(1, wsp_path)
 #%%
 # PDU Properties
 class palomarWeather(object):
-    def __init__(self,base_directory,weather_file,limits_file):
+    def __init__(self,base_directory,weather_file,limits_file, config, logger):
         
         self.base_directory = base_directory
         self.weather_file = weather_file
         self.limits_file = limits_file
+        self.config = config
+        self.logger = logger
         self.full_filename = base_directory + '/housekeeping/' + weather_file
         
         # THIS IS A FLAG THAT CAN BE SET TO OVERRIDE THE WEATHER DOME OPEN VETO:
@@ -100,6 +103,12 @@ class palomarWeather(object):
             #print(f'Loaded the {site} Property: ',configObj[site]['P2UTCTS']['INFO'])
             #
             # Load the P48 Properties
+            server = 'telemetry_server'
+            status = utils.query_server(cmd = self.config[server]['cmd'],
+                                        ipaddr = self.config[server]['addr'],
+                                        port = self.config[server]['port'],
+                                        end_char= self.config[server]['end_char'])
+            """
             site = 'P48'
             self.P4WINDS = configObj[site]['P4WINDS']['VAL']
             #print(f'Loaded the {site}  Property: ',configObj[site]['P4WINDS']['INFO'])
@@ -124,6 +133,8 @@ class palomarWeather(object):
             self.P4INDEW  = float(configObj[site]['P4INDEW']['VAL'])    # inside dewpoint (C)
             
             P4WETNES = configObj[site]['P4WETNES']['VAL']               # wetness
+            
+            """
             if P4WETNES.lower() == 'NO':
                 self.P4WETNES = False
             elif P4WETNES == 'YES':
@@ -412,7 +423,7 @@ class palomarWeather(object):
         return self.oktoopen
             
 if __name__ == '__main__':
-    weather = palomarWeather(os.path.dirname(os.getcwd()),'palomarWeather.ini','weather_limits.ini')
+    weather = palomarWeather(os.path.dirname(os.getcwd()),'palomarWeather.ini','weather_limits.ini',config = '', logger = '')
     
     #print('CDS Says OK to Open? ',weather.oktoopen_cds())
     #print('P48 Says OK to Open? ',weather.oktoopen_p48())
@@ -427,25 +438,3 @@ if __name__ == '__main__':
     print('Checking Weather:')
     print(weather.caniopen())
     
-#%%
-
-url = 'https://www.cleardarksky.com/txtc/PalomarObcsp.txt'
-page = urllib.request.urlopen(url)
-cdsdata = page.read()
-
-
-cdsdata = cdsdata.decode("utf-8")
-cdsdata = cdsdata.replace('"','')
-cdsdata = cdsdata.replace(')','')
-cdsdata = cdsdata.replace('(','')
-#weather_filename = "current_cds_weather.txt"
-#text_file = open(weather_filename, "w")
-#text_file.write(cdsdata)
-#text_file.close()
-weather_filename = io.StringIO(cdsdata)
-wtime,cloud,trans,seeing,wind,hum,temp = np.loadtxt(weather_filename,\
-                                                       unpack = True,\
-                                                       dtype = '|U32,int,int,int,int,int,int',\
-                                                       skiprows = 7,max_rows = 46,\
-                                                       delimiter = ',\t',usecols = (0,1,2,3,4,5,6),
-                                                       encoding = "utf-8")    

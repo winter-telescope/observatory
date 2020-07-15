@@ -68,7 +68,7 @@ class control(QtCore.QObject):
         # init the weather
         try:
             print('control: trying to load weather')
-            self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini')
+            self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini',config = self.config, logger = self.logger)
         except Exception as e:
             print("control: could not load weather data: ", e)
             
