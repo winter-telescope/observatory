@@ -12,7 +12,7 @@ import json
 def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048):
     # Connect to the server
     sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    server_address = ()
+    server_address = ((ipaddr, port))
     sock.connect(server_address)
     
     # Send a command
