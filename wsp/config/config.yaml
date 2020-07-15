@@ -122,11 +122,11 @@ fields:
         units: 's'
         dtype: float64
         rate: slow
-    ws_avg_threshold_p48:
-        label:'windspeed'
-        units: 'm/s'
-        dtype: float64
-        rate: slow
+    #ws_avg_threshold_p48:
+    #    label:'windspeed'
+    #    units:'mps'
+    #    dtype:float64
+    #    rate: slow
     ws_gust_threshold_p48:
         label: 'windspeed'
         units: 'mps'
@@ -166,7 +166,7 @@ fields:
         label: 'speed'
         units: 'mps'
         dtype: float64
-        rate:slow
+        rate: slow
     T_outside_air_p48:
         label: 'T'
         units: 'C'
@@ -207,6 +207,7 @@ fields:
         units: None
         dtype: int64
         rate: slow
+
         
     
         

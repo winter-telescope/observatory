@@ -104,6 +104,8 @@ class palomarWeather(object):
             #
             # Load the P48 Properties
             server = 'telemetry_server'
+            
+            """
             status = utils.query_server(cmd = self.config[server]['cmd'],
                                         ipaddr = self.config[server]['addr'],
                                         port = self.config[server]['port'],
@@ -132,9 +134,13 @@ class palomarWeather(object):
             self.P4INRHUM = float(configObj[site]['P4INRHUM']['VAL'])   # inside RH (%)
             self.P4INDEW  = float(configObj[site]['P4INDEW']['VAL'])    # inside dewpoint (C)
             
+            
+            # get weather from the swerver
+            #self.P4OTAIRT = status['P48_Outside_Air_Temp']
+            
             P4WETNES = configObj[site]['P4WETNES']['VAL']               # wetness
             
-            """
+            
             if P4WETNES.lower() == 'NO':
                 self.P4WETNES = False
             elif P4WETNES == 'YES':
