@@ -9,20 +9,15 @@ Created on Thu Feb 13 11:17:32 2020
 import socket
 import json
 
-# Connect to the server
-sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-server_address = ('198.202.125.214',4698)
-sock.connect(server_address)
+def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048):
+    # Connect to the server
+    sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    server_address = ()
+    sock.connect(server_address)
+    
+    # Send a command
+    sock.sendall(bytes(cmd,"utf-8"))
 
-# Send a command
-cmd = 'WEATHER_JSON\n'
-sock.sendall(bytes(cmd,"utf-8"))
-#reply = sock.recv(2048).decode("utf-8")
-#print(reply)
-
-end = '}]'
-
-def recv_end(socket, end_char, num = 2048):
     total_data = []
     data = ''
     while True:
@@ -40,14 +35,13 @@ def recv_end(socket, end_char, num = 2048):
                 total_data.pop()
                 break
         """
+    sock.close()
     return ''.join(total_data)
+    
+    
+    
 
-reply = recv_end(sock, end_char = '}]', num = 2048)
-#print(reply)
-# Close the connection
-sock.close()
-
-
+reply = query_server('WEATHER_JSON', '198.202,125.214', 4698, end_char = '}]')
 # convert the string to dict using json loads
 
 d = json.loads(reply)

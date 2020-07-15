@@ -14,6 +14,7 @@ This program reads and parses weather data from the Palomar telemetry server
 @author: nlourie
 """
 import os
+import io
 from configobj import ConfigObj
 import urllib.request
 import urllib.error
@@ -27,7 +28,7 @@ import sys
 wsp_path = os.path.dirname(os.getcwd())
 sys.path.insert(1, wsp_path)
 
-
+#%%
 # PDU Properties
 class palomarWeather(object):
     def __init__(self,base_directory,weather_file,limits_file):
@@ -429,5 +430,25 @@ if __name__ == '__main__':
     print('Checking Weather:')
     print(weather.caniopen())
     
-    
-    
+#%%
+
+url = 'https://www.cleardarksky.com/txtc/PalomarObcsp.txt'
+page = urllib.request.urlopen(url)
+cdsdata = page.read()
+
+
+cdsdata = cdsdata.decode("utf-8")
+cdsdata = cdsdata.replace('"','')
+cdsdata = cdsdata.replace(')','')
+cdsdata = cdsdata.replace('(','')
+#weather_filename = "current_cds_weather.txt"
+#text_file = open(weather_filename, "w")
+#text_file.write(cdsdata)
+#text_file.close()
+weather_filename = io.StringIO(cdsdata)
+wtime,cloud,trans,seeing,wind,hum,temp = np.loadtxt(weather_filename,\
+                                                       unpack = True,\
+                                                       dtype = '|U32,int,int,int,int,int,int',\
+                                                       skiprows = 7,max_rows = 46,\
+                                                       delimiter = ',\t',usecols = (0,1,2,3,4,5,6),
+                                                       encoding = "utf-8")    
