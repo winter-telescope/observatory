@@ -12,8 +12,10 @@ import json
 def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048):
     # Connect to the server
     sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    server_address = ((ipaddr, port))
+    server_address = (ipaddr, port)
     sock.connect(server_address)
+    
+    cmd = cmd + line_ending
     
     # Send a command
     sock.sendall(bytes(cmd,"utf-8"))
@@ -36,15 +38,17 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
                 break
         """
     sock.close()
-    return ''.join(total_data)
+    reply =  ''.join(total_data)
+    d = json.loads(reply)
+    return d
     
     
     
 
-reply = query_server('WEATHER_JSON', '198.202,125.214', 4698, end_char = '}]')
+d = query_server('WEATHER_JSON', '198.202,125.214', 4698, end_char = '}]')
 # convert the string to dict using json loads
 
-d = json.loads(reply)
+
 print(json.dumps(d,indent = 4))
 
 d_p200 = d[0]

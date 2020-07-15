@@ -184,11 +184,8 @@ class palomarWeather(object):
             cdsdata = cdsdata.replace('"','')
             cdsdata = cdsdata.replace(')','')
             cdsdata = cdsdata.replace('(','')
-            weather_filename = "current_cds_weather.txt"
-            text_file = open(weather_filename, "w")
-            text_file.write(cdsdata)
-            text_file.close()
-            wtime,cloud,trans,seeing,wind,hum,temp = np.loadtxt(weather_filename,\
+            weather_filestream = io.StringIO(cdsdata)
+            wtime,cloud,trans,seeing,wind,hum,temp = np.loadtxt(weather_filestream,\
                                                                    unpack = True,\
                                                                    dtype = '|U32,int,int,int,int,int,int',\
                                                                    skiprows = 7,max_rows = 46,\
