@@ -59,6 +59,7 @@ class ArgumentParser(argparse.ArgumentParser):
     def __init__(self,logger,*args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logger = logger
+        
     def exit(self, status=0, message=None):
         if message:
             self._print_message(message, sys.stderr)
@@ -92,7 +93,7 @@ def cmd(func):
             Exceptions are already handled by the argument parser
             so do nothing here.
             """
-            #print('Could not execute command: ', e)
+            print('Could not execute command: ', e)
             
             pass
     return wrapper_cmd 
@@ -101,7 +102,7 @@ def cmd(func):
 class Wintercmd(object):
     
     
-    def __init__(self, telescope, logger):
+    def __init__(self, config, telescope, logger):
         # init the parent class
         super().__init__()
         
@@ -111,6 +112,7 @@ class Wintercmd(object):
         
         # subclass some useful inputs
         self.telescope = telescope
+        self.config = config
         self.logger = logger
         self.defineParser()
         
@@ -242,7 +244,7 @@ class Wintercmd(object):
         self.logger.info(f"plover: {num}")
     
     @cmd
-    def goto_alt_az(self):
+    def mount_goto_alt_az(self):
         """Usage: goto_alt_az <alt> <az>"""
         self.defineCmdParser('move telescope to specified alt/az in deg')
         self.cmdparser.add_argument('position',
@@ -253,7 +255,7 @@ class Wintercmd(object):
         self.getargs()
         alt = self.args.position[0]
         az = self.args.position[1]
-        self.telescope.goto_alt_az(alt = alt, az = az)
+        self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
     
     @cmd
     def mount_connect(self):
@@ -266,19 +268,51 @@ class Wintercmd(object):
         self.telescope.mount_disconnect()
     
     @cmd
-    def mount_enable(self):
-        self.defineCmdParser('turn on motor axes')
-        self.telescope.mount_enable()
+    def mount_az_on(self):
+        self.defineCmdParser('turn on az motor')
+        self.telescope.mount_enable(0)
     
     @cmd
-    def mount_disable(self):
-        self.defineCmdParser('turn off motor axes')
-        self.telescope.mount_disable()
+    def mount_az_off(self):
+        self.defineCmdParser('turn off az motor')
+        self.telescope.mount_disable(0)
     
+    @cmd
+    def mount_alt_on(self):
+        self.defineCmdParser('turn on alt motor')
+        self.telescope.mount_enable(1)
+    
+    @cmd
+    def mount_alt_off(self):
+        self.defineCmdParser('turn off alt motor')
+        self.telescope.mount_disable(1)
+    
+    @cmd
+    def mount_stop(self):
+        self.defineCmdParser('STOP TELESCOPE MOTION')
+        self.telescope.mount_stop()
+        
+    @cmd
+    def mount_home(self):
+        self.defineCmdParser('point telescope mount to home position')
+        alt_degs = (self.config['telescope_home']['alt_degs'])
+        az_degs = self.config['telescope_home']['az_degs']
+        self.logger.info(f'slewing to home: ALT = {alt_degs}, AZ = {az_degs}')
+        self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
+        
+    @cmd
+    def mount_shutdown(self):
+        self.mount_home()
+        time.sleep(0.5)
+        self.mount_az_off()
+        time.sleep(0.5)
+        self.mount_alt_off()
+        time.sleep(0.5)
+        self.mount_disconnect()
     
     @cmd
     def quit(self):
         """Quits out of Interactive Mode."""
 
         print('Good Bye!')
-        #sigint_handler()
+        sys.exit()#sigint_handler()

@@ -183,7 +183,9 @@ class fast_loop(QtCore.QThread):
             'mount_is_connected'    : int(self.telescope_status.mount.is_connected),
             'mount_is_slewing'      : int(self.telescope_status.mount.is_slewing),
             'mount_az_deg'          : self.telescope_status.mount.azimuth_degs,
-            'mount_alt_deg'         : self.telescope_status.mount.altitude_degs
+            'mount_alt_deg'         : self.telescope_status.mount.altitude_degs,
+            'mount_az_is_enabled'   : self.telescope_status.mount.axis0.is_enabled,
+            'mount_alt_is_enabled'  : self.telescope_status.mount.axis1.is_enabled
             
             })
         #print('datahandler: map = ', self.map)

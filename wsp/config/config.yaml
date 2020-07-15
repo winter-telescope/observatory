@@ -12,7 +12,7 @@ telescope:
 
 # define update times (ms)
 daq_dt:
-    fast: 10.0
+    fast: 100.0
     slow: 1000.0
     
 write_dt: 1000.0    
@@ -33,7 +33,11 @@ mode:
         -weather
         -telescope
         -site
-        
+
+# define telescope home position
+telescope_home:
+    alt_degs: 16.0
+    az_degs: 290.0       
 
 
 # define fields. 
@@ -71,7 +75,18 @@ fields:
         units: 'deg'
         dtype: float64
         rate: fast
+    mount_az_is_enabled:
+        label: 'AzEnabled'
+        units: None
+        dtype: int
+        rate: fast
+    mount_alt_is_enabled:
+        label: 'AltEnabled'
+        units: None
+        dtype: int
+        rate: fast
 #weather:
+    #CDS (Clear Dark Skies)
     cds_cloud:
         label: 'CDS-Clouds'
         units: None
@@ -88,4 +103,114 @@ fields:
         units: None
         dtype: float64
         rate: slow
+    # Palomar telemetry server: P48
+    time_utc_p48:
+        label: 'p48-time'
+        units: 's'
+        dtype: float64
+        rate: slow
+    ws_avg_threshold_p48:
+        label:'windspeed'
+        units: 'm/s'
+        dtype: float64
+        rate: slow
+    ws_gust_threshold_p48:
+        label: 'windspeed'
+        units: 'm/s'
+        dtype: float64
+        rate: slow
+    time_alarm_p48:
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: slow
+    time_remaining_hold_p48:
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: slow
+    rh_threshold_outside_p48:
+        label: 'RH'
+        units: 'pct'
+        dtype: float64
+        rate: slow
+    rh_threshold_inside_p48:
+        label: 'RH'
+        units: 'pct'
+        dtype: float64
+        rate: slow
+    wind_dir_current_p48:
+        label: 'angle'
+        units: 'degrees'
+        dtype: float64
+        rate: slow
+    ws_current_p48:
+        label: 'speed'
+        units: 'm/s'
+        dtype: float64
+        rate: slow
+    ws_avg_p48:
+        label: 'speed'
+        units: 'm/s'
+        dtype: float64
+        rate:slow
+    T_outside_air_p48:
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+    rh_outside_p48:
+        label: 'RH'
+        units: 'pct'
+        dtype: float64
+        rate: slow
+    Tdp_outside_p48:
+        label: 'DewPoint'
+        units: 'C'
+        dtype: float64
+        rate: slow
+    T_inside_air_p48:
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+    rh_inside_p48:
+        label: 'RH'
+        units: 'pct'
+        dtype: float64
+        rate: slow
+    Tdp_inside_p48:
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+    wetness_p48:
+        label: 'wetness'
+        units: None
+        dtype: int64
+        rate: slow
+    status_p48:
+        label: 'ready'
+        units: None
+        dtype: int64
+        rate: slow
+        
     
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

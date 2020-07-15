@@ -76,7 +76,7 @@ class control(QtCore.QObject):
         
     
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.telescope, self.logger)
+        self.wintercmd = wintercmd.Wintercmd(self.config, self.telescope, self.logger)
         
         # init the cmd executor
         self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
