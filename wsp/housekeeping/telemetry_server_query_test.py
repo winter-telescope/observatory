@@ -94,8 +94,8 @@ try:
     d = query_server('status?', 
                      '198.202.125.142', 62000, 
                      end_char = '}',
-                     timeout = 1,
-                     badchars = None)
+                     timeout = 1)
+                     #badchars = '\\"')
     # convert the string to dict using json loads
     #d = d.replace('\\','')
     print(d)
