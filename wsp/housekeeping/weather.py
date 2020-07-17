@@ -23,6 +23,7 @@ import numpy as np
 from datetime import datetime,timedelta
 import pytz
 import sys
+import traceback
 from utils import utils
 
 # add the wsp directory to the PATH
@@ -32,87 +33,108 @@ sys.path.insert(1, wsp_path)
 #%%
 # PDU Properties
 class palomarWeather(object):
-    def __init__(self,base_directory,weather_file,limits_file, config, logger):
+    def __init__(self,base_directory, config, logger):
         
         self.base_directory = base_directory
-        self.weather_file = weather_file
-        self.limits_file = limits_file
         self.config = config
         self.logger = logger
-        self.full_filename = base_directory + '/housekeeping/' + weather_file
         
         # THIS IS A FLAG THAT CAN BE SET TO OVERRIDE THE WEATHER DOME OPEN VETO:
         self.override = False 
         
         self.getWeatherLimits()
         self.getWeather(firsttime = True)
-        self.caniopen() # checks all the dome vetoes based on weather
-        
+        #self.caniopen() # checks all the dome vetoes based on weather
         
         
     def getWeatherLimits(self):
         try: # Load in the weather limits from the config file
             
-            configObj = ConfigObj(self.base_directory + '/config/' + self.limits_file)
+            #configObj = ConfigObj(self.base_directory + '/config/' + self.limits_file)
+            section = 'weather_limits'
+            self.TEMP_OUT_MIN = self.config[section]['TEMP_OUT']['MIN']
+            self.TEMP_OUT_MAX = self.config[section]['TEMP_OUT']['MAX']
             
-            self.TEMP_OUT_MIN = float(configObj['DOME']['TEMP_OUT']['MIN'])
-            self.TEMP_OUT_MAX = float(configObj['DOME']['TEMP_OUT']['MAX'])
+            self.TEMP_IN_MIN = self.config[section]['TEMP_IN']['MIN']
+            self.TEMP_IN_MAX = self.config[section]['TEMP_IN']['MAX']
             
-            self.TEMP_IN_MIN = float(configObj['DOME']['TEMP_IN']['MIN'])
-            self.TEMP_IN_MAX = float(configObj['DOME']['TEMP_IN']['MAX'])
+            self.RH_OUT_MIN = self.config[section]['RH_OUT']['MIN']
+            self.RH_OUT_MAX = self.config[section]['RH_OUT']['MAX']
             
-            self.RH_OUT_MIN = float(configObj['DOME']['RH_OUT']['MIN'])
-            self.RH_OUT_MAX = float(configObj['DOME']['RH_OUT']['MAX'])
+            self.RH_IN_MIN = self.config[section]['RH_IN']['MIN']
+            self.RH_IN_MAX = self.config[section]['RH_IN']['MAX']
             
-            self.RH_IN_MIN = float(configObj['DOME']['RH_IN']['MIN'])
-            self.RH_IN_MAX = float(configObj['DOME']['RH_IN']['MAX'])
+            self.WIND_GUST_MIN = self.config[section]['WIND_GUST']['MIN']
+            self.WIND_GUST_MAX = self.config[section]['WIND_GUST']['MAX'] 
             
-            self.WIND_GUST_MIN = float(configObj['DOME']['WIND_GUST']['MIN'])
-            self.WIND_GUST_MAX = float(configObj['DOME']['WIND_GUST']['MAX'] ) 
+            self.WIND_SPEED_MIN = self.config[section]['WIND_SPEED']['MIN']
+            self.WIND_SPEED_MAX = self.config[section]['WIND_SPEED']['MAX']            
             
-            self.WIND_SPEED_MIN = float(configObj['DOME']['WIND_SPEED']['MIN'])
-            self.WIND_SPEED_MAX = float(configObj['DOME']['WIND_SPEED']['MAX'] )            
+            self.DEWPOINT_IN_MIN = self.config[section]['DEWPOINT_IN']['MIN']
+            self.DEWPOINT_IN_MAX = self.config[section]['DEWPOINT_IN']['MAX']
             
-            self.DEWPOINT_IN_MIN = float(configObj['DOME']['DEWPOINT_IN']['MIN'])
-            self.DEWPOINT_IN_MAX = float(configObj['DOME']['DEWPOINT_IN']['MAX'])
+            self.DEWPOINT_OUT_MIN = self.config[section]['DEWPOINT_OUT']['MIN']
+            self.DEWPOINT_OUT_MAX = self.config[section]['DEWPOINT_OUT']['MAX']
             
-            self.DEWPOINT_OUT_MIN = float(configObj['DOME']['DEWPOINT_OUT']['MIN'])
-            self.DEWPOINT_OUT_MAX = float(configObj['DOME']['DEWPOINT_OUT']['MAX'])
+            self.TRANS_MIN = self.config[section]['TRANSPARENCY']['MIN']
+            self.TRANS_MAX = self.config[section]['TRANSPARENCY']['MAX']
             
-            self.TRANS_MIN = float(configObj['DOME']['TRANSPARENCY']['MIN'])
-            self.TRANS_MAX = float(configObj['DOME']['TRANSPARENCY']['MAX'])
-            
-            self.SEEING_MIN = float(configObj['DOME']['SEEING']['MIN'])
-            self.SEEING_MAX = float(configObj['DOME']['SEEING']['MAX'])
-            
-            self.CLOUD_MIN = float(configObj['DOME']['CLOUDS']['MIN'])
-            self.CLOUD_MAX = float(configObj['DOME']['CLOUDS']['MAX'])
+            self.SEEING_MIN = self.config[section]['SEEING']['MIN']
+            self.SEEING_MAX = self.config[section]['SEEING']['MAX']
+        
+            self.CLOUD_MIN = self.config[section]['CLOUDS']['MIN']
+            self.CLOUD_MAX = self.config[section]['CLOUDS']['MAX']
             
             
-        except:
-            print('Unable to Load the Weather Limits File: ',self.base_directory + '/config/' + self.limits_file)
+        except Exception as e:
+            self.logger.warning('Unable to Load the Weather Limits : ',e)
         
     def getWeather(self,firsttime = False):
         #print(' Getting weather data...')
         try: # LOAD DATA FROM THE PALOMAR TELEMETRY SERVER
-            configObj = ConfigObj(self.full_filename)
+
             
-            # Load the P200 Properties
-            site = 'P200'
-            self.P2UTCTS = configObj[site]['P2UTCTS']['VAL']
-            #print(f'Loaded the {site} Property: ',configObj[site]['P2UTCTS']['INFO'])
-            #
-            # Load the P48 Properties
+            
+            # Query the Telemetry Server
             server = 'telemetry_server'
             
-            """
             status = utils.query_server(cmd = self.config[server]['cmd'],
                                         ipaddr = self.config[server]['addr'],
                                         port = self.config[server]['port'],
-                                        end_char= self.config[server]['end_char'])
+                                        end_char= self.config[server]['endchar'],
+                                        timeout = 1)
+            self.status_p200 = status[0]
+            self.status_p60 = status[1]
+            self.status_p48 = status[2]
+            wetdict   = {'YES': 1,
+                         'NO' : 0}
+            readydict = {'READY' : 1}
+            
+            self.P48_UTC                        = self.status_p48['P48_UTC']                                     # last query timestamp
+            self.P48_UTC_datetime_obj           = datetime.strptime(self.P48_UTC, '%Y-%m-%d %H:%M:%S.%f')   # last query time string
+            self.P48_UTC_timestamp              = self.P48_UTC_datetime_obj.timestamp()                     # last read timestamp
+            self.P48_Windspeed_Avg_Threshold    = self.status_p48['P48_Windspeed_Avg_Threshold']                 # windspeed threshold (m/s)
+            self.P48_Gust_Speed_Threshold       = self.status_p48['P48_Gust_Speed_Threshold']                    # gust wind speed threshold (m/s)
+            self.P48_Alarm_Hold_Time            = self.status_p48['P48_Alarm_Hold_Time']                         # alarm hold time (s)
+            self.P48_Remaining_Hold_Time        = self.status_p48['P48_Remaining_Hold_Time']                     # remaining hold time (s)
+            self.P48_Outside_DewPt_Threshold    = self.status_p48['P48_Outside_DewPt_Threshold']                 # outside dewpoint (C)
+            self.P48_Inside_DewPt_Threshold     = self.status_p48['P48_Inside_DewPt_Threshold']                  # inside dewpoint (C)
+            self.P48_Wind_Dir_Current           = self.status_p48['P48_Wind_Dir_Current']                        # wind direction angle (deg)
+            self.P48_Windspeed_Current          = self.status_p48['P48_Windspeed_Current']                       # windspeed current (m/s)
+            self.P48_Windspeed_Average          = self.status_p48['P48_Windspeed_Average']                       # windspeed average (m/s)
+            self.P48_Outside_Air_Temp           = self.status_p48['P48_Outside_Air_Temp']                        # outside air temp (C)
+            self.P48_Outside_Rel_Hum            = self.status_p48['P48_Outside_Rel_Hum']                         # outside RH (%)
+            self.P48_Outside_DewPt              = self.status_p48['P48_Outside_DewPt']                           # outside dewpoint (C)
+            self.P48_Inside_Air_Temp            = self.status_p48['P48_Inside_Air_Temp']                         # inside air temp (C)
+            self.P48_Inside_Rel_Hum             = self.status_p48['P48_Inside_Rel_Hum']                          # inside RH (%)
+            self.P48_Inside_DewPt               = self.status_p48['P48_Inside_DewPt']                            # inside dewpoint (C)
+            self.P48_Wetness                    = wetdict[self.status_p48['P48_Wetness']]                        # wetness (0 or 1)
+            self.P48_Weather_Status             = readydict.get(self.status_p48['P48_Weather_Status'],0)                     # ready? (1 if "READY", 0 if anything else)
+            
+            
+            
             """
-            site = 'P48'
-            self.P4WINDS = configObj[site]['P4WINDS']['VAL']
+
             #print(f'Loaded the {site}  Property: ',configObj[site]['P4WINDS']['INFO'])
             self.P4UTCTS  = int(configObj[site]['P4UTCTS']['VAL'])      # last query timestamp
             self.P4LDT    = configObj[site]['P4LDT']['VAL']             # last query time string
@@ -175,7 +197,7 @@ class palomarWeather(object):
                 #the last rain time to 24 hours ago
                 self.P4LASTWET_TIME = self.P4LASTREAD + timedelta(days = -1.0)
                 self.P4LASTFRZ_TIME = self.P4LASTREAD + timedelta(days = -1.0)
-            """
+            '''
             # If the current air temp is near freezing, note the time as the "last freezing time"
             if self.P4OTAIRT < 1:
                 self.P4LASTFRZ_TIME = self.P4LASTQUERY
@@ -185,9 +207,11 @@ class palomarWeather(object):
                 self.P4LASTWET_TIME = self.P4LASTQUERY
              
 
-            """                    
-        except:
-            print('ERROR loading weather config file: ',self.full_filename)
+            '''  
+            """                  
+        except Exception as e:
+            print(f"could not load weather from palomar, {type(e)}: {e}")
+            #traceback.print_exc()
             #TODO add an entry to the log
             #sys.exit()
             
@@ -202,10 +226,11 @@ class palomarWeather(object):
             cdsdata = cdsdata.replace(')','')
             cdsdata = cdsdata.replace('(','')
             weather_filestream = io.StringIO(cdsdata)
+            # Get the data in usable format, just grab the first 24 hours in the table
             wtime,cloud,trans,seeing,wind,hum,temp = np.loadtxt(weather_filestream,\
                                                                    unpack = True,\
                                                                    dtype = '|U32,int,int,int,int,int,int',\
-                                                                   skiprows = 7,max_rows = 46,\
+                                                                   skiprows = 7,max_rows = 24,\
                                                                    delimiter = ',\t',usecols = (0,1,2,3,4,5,6),
                                                                    encoding = "utf-8")
             
@@ -258,9 +283,9 @@ class palomarWeather(object):
             self.CDSTEMPMIN = (self.CDSTEMPI * 5) - 45
             
             
-        except:
-            print("problem loading weather data from clear dark skies")
-            
+        except Exception as e:
+            print(f"problem loading weather data from clear dark skies, {type(e)}: {e}")
+            #traceback.print_exc()
       
     def caniopen_p48(self):
         """
@@ -429,7 +454,11 @@ class palomarWeather(object):
         return self.oktoopen
             
 if __name__ == '__main__':
-    weather = palomarWeather(os.path.dirname(os.getcwd()),'palomarWeather.ini','weather_limits.ini',config = '', logger = '')
+    config = utils.loadconfig(wsp_path + '/config/config.yaml')
+    night = utils.night()
+    logger = utils.setup_logger(wsp_path, night, logger_name = 'logtest')
+     
+    weather = palomarWeather(os.path.dirname(os.getcwd()),config = config, logger = logger)
     
     #print('CDS Says OK to Open? ',weather.oktoopen_cds())
     #print('P48 Says OK to Open? ',weather.oktoopen_p48())
@@ -437,10 +466,48 @@ if __name__ == '__main__':
     #weather.caniopen()
     print()
     print('Checking Weather:')
-    print(weather.caniopen())
-    print()
-    weather.override = True
+    try:
+        print(weather.status_p48)
+    except Exception as e:
+        print(f'could not get P48 weather, {type(e)}: {e}')
     
-    print('Checking Weather:')
-    print(weather.caniopen())
+    try:
+        print(f'weather.CDSCLOUD = {weather.CDSCLOUD}')
+    except Exception as e:
+        print(f'could not get CDS weather, {type(e)}: {e}')
+
+    #weather.override = True
     
+    #print('Checking Weather:')
+    #print(weather.caniopen())
+    
+#%%
+"""
+url = 'https://www.cleardarksky.com/txtc/PalomarObcsp.txt'
+page = urllib.request.urlopen(url)
+cdsdata = page.read()
+
+
+cdsdata = cdsdata.decode("utf-8")
+cdsdata = cdsdata.replace('"','')
+cdsdata = cdsdata.replace(')','')
+cdsdata = cdsdata.replace('(','')
+
+    
+weather_filename = "current_cds_weather.txt"
+text_file = open(weather_filename, "w")
+text_file.write(cdsdata)
+text_file.close()
+
+
+weather_filestream = io.StringIO(cdsdata)
+
+wtime,cloud,trans,seeing,wind,hum,temp = np.loadtxt(weather_filestream,\
+                                                       unpack = True,\
+                                                       dtype = '|U32,int,int,int,int,int,int',\
+                                                       skiprows = 7,max_rows = 24,\
+                                                       delimiter = ',\t',usecols = (0,1,2,3,4,5,6),
+                                                       encoding = "utf-8")
+print(wtime)
+
+"""

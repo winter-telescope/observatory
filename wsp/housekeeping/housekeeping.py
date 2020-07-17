@@ -144,13 +144,13 @@ class housekeeping():
             
             # add an item to the state dictionary, initialize with zeros
             self.state.update({field : None})
-            print(f'adding field "{field}" to state dictionary')
+            print(f'housekeeping: adding field "{field}"')
             
             # add a numpy array item to the curframe dictionary
             spf = self.spf[self.config['fields'][field]['rate']]
             dtype = np.dtype(self.config['fields'][field]['dtype'])         
             self.curframe.update({field : np.full(spf, 0, dtype = dtype)})
-            print(f'adding vector with len = {spf} and type {dtype} to current frame dictionary')
+            #print(f'adding vector with len = {spf} and type {dtype} to current frame dictionary')
 
 
         

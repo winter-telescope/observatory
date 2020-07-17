@@ -26,6 +26,7 @@ import os
 import sys
 import pytz
 import logging
+import yaml
 import socket
 import json
 try:
@@ -40,6 +41,18 @@ plt.style.use(astropy_mpl_style)
 
 from astropy.utils.data import get_pkg_data_filename
 from astropy.io import fits
+
+
+
+
+def loadconfig(config_file):
+    """
+    just a wrapper to make the syntax easier to get the config
+    """
+    config = yaml.load(open(config_file), Loader = yaml.FullLoader)
+    return config
+
+
 
 def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001):
     """
@@ -433,7 +446,6 @@ def setup_logger(base_dir, night, logger_name):
     #logger.addHandler(console)
     
     return logger
-
 
 
 

@@ -97,8 +97,7 @@ if __name__ == "__main__":
 
     # load the config
     config_file = wsp_path + '/config/config.yaml'
-    config = yaml.load(open(config_file), Loader = yaml.FullLoader)
-    
+    config = utils.loadconfig(config_file)
     # get the mode flag
     opt = 0
     #mode = dict({})

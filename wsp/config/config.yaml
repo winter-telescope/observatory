@@ -52,6 +52,48 @@ command_server:
     cmd: 'status?'
     endchar: '}'
     
+# weather limits
+weather_limits:
+    TEMP_OUT: 
+        MIN: -20
+        MAX: 50
+    TEMP_IN:
+        MIN: -20
+        MAX: 50
+    RH_OUT:
+        MIN: -100
+        MAX: 100
+    RH_IN:
+        MIN: -100
+        MAX: 100
+    WIND_GUST:
+        MIN: 0
+        MAX: 35
+    WIND_SPEED:
+        MIN: 0
+        MAX: 30
+    DEWPOINT_IN:
+        MIN: -100
+        MAX: 100
+    DEWPOINT_OUT:
+        MIN: -100
+        MAX: 100 
+    # these are from clear dark skies:
+    TRANSPARENCY:
+        MIN: 3 # average
+        MAX: 5 # transparent   
+    SEEING:
+        MIN: 3 # average
+        MAX: 5 # excellent
+    CLOUDS:
+        MIN: 7 # 30pct covered
+        MAX: 10 # CLEAR
+    
+
+
+
+
+
 
 # define fields. 
 # Note: each rate must have a corresponding "daq_rate" as given above
@@ -62,42 +104,51 @@ fields:
         units: None
         dtype: float64
         rate: fast
+        var: 'index'
+        
     scount:
         label: 'SlowCount'
         units: None
         dtype: float64
         rate: slow
+        var: 'index'
 #telescope
     mount_is_connected:
         label: 'MountConnected'
         units: None
         dtype: int64
         rate: fast
+        var: 'telescope.mount.is_connected'
     mount_is_slewing:
         label: 'MountSlewing'
         units: None
         dtype: int64
         rate: fast
+        var: 'telescope.mount.is_slewing'
     mount_az_deg:
         label: 'Az'
         units: 'deg'
         dtype: float64
         rate: fast
+        var: 'telescope.mount.azimuth_degs'
     mount_alt_deg:
         label: 'Alt'
         units: 'deg'
         dtype: float64
         rate: fast
+        var: 'telescope.mount.altitude_degs'
     mount_az_is_enabled:
         label: 'AzEnabled'
         units: None
         dtype: int
         rate: fast
+        var: 'telescope.mount.axis0.is_enabled'
     mount_alt_is_enabled:
         label: 'AltEnabled'
         units: None
         dtype: int
         rate: fast
+        var: 'telescope.mount.axis1.is_enabled'
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud:
@@ -106,16 +157,19 @@ fields:
         dtype: float64
         rate: slow
         sys: weather
+        var: 'weather.CDSCLOUD'
     cloud_min:
         label: 'Clouds-Min'
         units: None
         dtype: float64
         rate: slow
+        var: 'weather.CLOUD_MIN'
     cloud_max:
         label: 'Clouds-Max'
         units: None
         dtype: float64
         rate: slow
+        var: 'weather.CLOUD_MAX'
     # Palomar telemetry server: P48
     time_utc_p48:
         label: 'p48-time'

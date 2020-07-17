@@ -68,8 +68,9 @@ class control(QtCore.QObject):
         # init the weather
         try:
             print('control: trying to load weather')
-            self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini',config = self.config, logger = self.logger)
+            self.weather = weather.palomarWeather(self.base_directory,config = self.config, logger = self.logger)
         except Exception as e:
+            self.weather = None
             print("control: could not load weather data: ", e)
             
         
@@ -96,6 +97,7 @@ class control(QtCore.QObject):
                                             weather = self.weather)
         
         ### START UP THE OBSERVATION SEQUENCE ###
+        """
         # Startup the Telescope
         try:
             print("control: trying to init telescope")
@@ -109,7 +111,7 @@ class control(QtCore.QObject):
             self.telescope_mount = None
             print("control: could not connect to telescope mount: ")
             
-            
+        """    
             
             
             

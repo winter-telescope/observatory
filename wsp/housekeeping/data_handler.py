@@ -58,7 +58,9 @@ class slow_loop(QtCore.QThread):
         self.state = state
         self.curframe = curframe
 
-        self.dt = self.config['daq_dt']['slow']
+        # describe the loop rate
+        self.rate = 'slow'
+        self.dt = self.config['daq_dt'][self.rate]
         
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
@@ -69,6 +71,37 @@ class slow_loop(QtCore.QThread):
     def __del__(self):
         self.wait()
     
+    def get(self, varname, default_val = -999):
+        try:
+            return eval( 'self.' + varname)
+        except Exception as e:
+            #print('could not get thing: ',e)
+            return default_val
+    
+    def update_status(self, default_value = -999):
+        for field in self.config['fields']:
+            if self.config['fields'][field]['rate'] == self.rate:
+                # if the field is to be sampled at the loop rate, then log it
+                try:
+                    # update the state and frame dictionaries
+                    curval = self.get(self.config['fields'][field]['var'])
+                    self.state.update({field : curval})
+                    
+                    # update the vectors in the current frame
+                    # shift over the vector by one, then replace the last
+                    self.curframe[field] = np.append(self.curframe[field][1:], curval)
+                except Exception as e:
+                    """
+                    we end up here if there's a problem either getting the field,
+                    or with the config for that field. either way log it and 
+                    just keep moving
+                    """
+                    #print(f'could not update field [{field}] due to {e.__class__}: {e}')
+                    pass
+            else:
+                pass
+    
+    
     def update(self):
         # Only print the even numbers
         self.index +=1
@@ -76,17 +109,11 @@ class slow_loop(QtCore.QThread):
         ### UPDATE THE DATA ###
         
         # update weather
-        try:
-            self.weather.getWeather()
-        except:
-            """ 
-            do nothing here. this avoids flooding the log with errors if
-            the system is disconnected. Instead, this should be handled by the
-            watchdog to signal/log when the system is offline at a reasonable 
-            cadance.
-            """
-            pass
-        
+
+        #self.weather.getWeather()
+        self.update_status()
+
+        """
         ### MAP THE DATA TO THE STATUS FIELDS ###
         # describe the mapping between variables and data
         self.map = dict({
@@ -95,6 +122,7 @@ class slow_loop(QtCore.QThread):
             'cloud_min'         : self.weather.CLOUD_MIN,
             'cloud_max'         : self.weather.CLOUD_MAX
             })
+        # try to update every item in the status 
         
         # update the state and frame dictionaries
         for field in self.map.keys():
@@ -107,7 +135,8 @@ class slow_loop(QtCore.QThread):
             self.curframe[field] = np.append(self.curframe[field][1:], curval)
             
         #print(f'slowloop: count = {self.index}, state = {self.state}')
- 
+        """
+        
         
     def run(self):
         print("slowloop: starting")
@@ -143,8 +172,9 @@ class fast_loop(QtCore.QThread):
         self.state = state
         self.curframe = curframe
         
-        # get the loop run time increment
-        self.dt = self.config['daq_dt']['fast']
+        # describe the loop rate
+        self.rate = 'fast'
+        self.dt = self.config['daq_dt'][self.rate]
         
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
@@ -154,6 +184,37 @@ class fast_loop(QtCore.QThread):
         
     def __del__(self):
         self.wait()
+    
+    def get(self, varname, default_val = -999):
+        try:
+            return eval( 'self.' + varname)
+        except Exception as e:
+            #print('could not get thing: ',e)
+            return default_val
+    
+    def update_status(self, default_value = -999):
+        for field in self.config['fields']:
+            if self.config['fields'][field]['rate'] == self.rate:
+                # if the field is to be sampled at the loop rate, then log it
+                try:
+                    # update the state and frame dictionaries
+                    curval = self.get(self.config['fields'][field]['var'])
+                    self.state.update({field : curval})
+                    
+                    # update the vectors in the current frame
+                    # shift over the vector by one, then replace the last
+                    self.curframe[field] = np.append(self.curframe[field][1:], curval)
+                except Exception as e:
+                    """
+                    we end up here if there's a problem either getting the field,
+                    or with the config for that field. either way log it and 
+                    just keep moving
+                    """
+                    #print(f'could not update field [{field}] due to {e.__class__}: {e}')
+                    pass
+            else:
+                pass
+    
     
     def update(self):
         # Only print the even numbers
@@ -172,11 +233,14 @@ class fast_loop(QtCore.QThread):
             watchdog to signal/log when the system is offline at a reasonable 
             cadance.
             """
-            self.telescope_status = pwi4.defaultPWI4Status()
+            #self.telescope_status = pwi4.defaultPWI4Status()
             
             pass
         
         ### MAP THE DATA TO THE STORED VARIABLES ###
+        self.update_status()
+        
+        """
         # describe the mapping between variables and data
         self.map = dict({
             'fcount'                : self.index,
@@ -198,6 +262,7 @@ class fast_loop(QtCore.QThread):
             # update the vectors in the current frame
             # shift over the vector by one, then replace the last
             self.curframe[field] = np.append(self.curframe[field][1:], curval)
+        """
         
     def run(self):
         print("fastloop: starting")
