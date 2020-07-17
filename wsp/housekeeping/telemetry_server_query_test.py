@@ -9,7 +9,7 @@ Created on Thu Feb 13 11:17:32 2020
 import socket
 import json
 
-def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001):
+def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001,badchars = None):
     """
     This is a utility to send a single command to a remote server,
     then wait a response. It tries to return a dictionary from the returned  
@@ -38,7 +38,7 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
                 break
             total_data.append(data)
     except socket.timeout as e:
-        print(e)
+        print(f'server query to {ipaddr} Port {port}: {e}')
         
         """
         if len(total_data)>1:
@@ -51,29 +51,65 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
         """
     sock.close()
     reply =  ''.join(total_data)
+    
+    # splice out any nasty characters from the reply string
+    if not badchars is None:
+        for char in badchars:
+            reply = reply.replace(char,'')
     try:
         d = json.loads(reply)
-    except:
+    except Exception as e:
+        print(f'could not turn reply into json, {type(e)}: {e}')
         d = reply
     return d
     
     
     
+#%%
+try:
+    d = query_server('WEATHER_JSON', 
+                     '198.202.125.214', 4698, 
+                     end_char = '}]',
+                     timeout = 1)
+    # convert the string to dict using json loads
+    
+    
+    #print(json.dumps(d,indent = 4))
+    
+    d_p200 = d[0]
+    d_p60 = d[1]
+    d_p48 = d[2]
+    
+    # try to grab a single element
+    print('Grabbing element from dict:')
+    elements = ['P48_UTC','P48_Outside_Air_Temp']
+    for element in elements:
+        
+        print(f'{element} = {d_p48[element]}')
+except:       
+        print('could not query telemetry server')
 
-d = query_server('WEATHER_JSON', 
-                 '198.202.125.214', 4698, 
-                 end_char = '}]',
-                 timeout = 5)
-# convert the string to dict using json loads
+#%%
+try: 
+    d = query_server('status?', 
+                     '198.202.125.142', 62000, 
+                     end_char = '}',
+                     timeout = 1,
+                     badchars = None)
+    # convert the string to dict using json loads
+    #d = d.replace('\\','')
+    print(d)
+    #print(json.dumps(d,indent = 4))
+    
+    """
+    # try to grab a single element
+    print('Grabbing element from dict:')
+    elements = ['P48_UTC','P48_Outside_Air_Temp']
+    for element in elements:
+        
+        print(f'{element} = {d_p48[element]}')
+    
+    """
+except:
+    print('could not query command server')
 
-
-print(json.dumps(d,indent = 4))
-
-d_p200 = d[0]
-d_p60 = d[1]
-d_p48 = d[2]
-
-# try to grab a single element
-print('Grabbing element from dict:')
-element = 'P48_Outside_DewPt'
-print(f'{element} = {d_p48[element]}')

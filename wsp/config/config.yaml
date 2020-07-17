@@ -45,12 +45,14 @@ telemetry_server:
     port: 4698
     cmd: 'WEATHER_JSON'
     endchar: '}]'
+    timeout: 0.01
 
 command_server:
     addr: '198.202.125.142'
     port: 62000
     cmd: 'status?'
     endchar: '}'
+    timeout: 0.01
     
 # weather limits
 weather_limits:
@@ -113,42 +115,85 @@ fields:
         rate: slow
         var: 'index'
 #telescope
+    site_latitude_degs:
+        label: Latitude
+        units: deg
+        dtype: float64
+        rate: fast
+        var: telescope_status.site.latitude_degs
+    site_longitude_degs:
+        label: Longitude
+        units: deg
+        dtype: float64
+        rate: fast
+        var: telescope_status.site.longitude_degs
+    site_height_meters:
+        label: Height
+        units: m
+        dtype: float64
+        rate: fast
+        var: telescope_status.site.height_meters
+    site_lmst_hours:
+        label: LMST
+        units: hours
+        dtype: float64
+        rate: fast
+        var: telescope_status.site.lmst_hours
+    
     mount_is_connected:
         label: 'MountConnected'
         units: None
         dtype: int64
         rate: fast
-        var: 'telescope.mount.is_connected'
+        var: telescope_status.mount.is_connected
+    mount_geometry:
+        label: Mode
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope_status.mount.geometry
+    mount_ra_apparent_hours:
+        label: RA
+        units: hours
+        dtype: float64
+        rate: fast
+        var: telescope_status.mount.ra_apparent_hours
+    mount_dec_apparent_degs:
+        label: DEC
+        units: degs
+        dtype: float64
+        rate: fast
+        var: telescope_status.mount.dec_apparent_degs
     mount_is_slewing:
         label: 'MountSlewing'
         units: None
         dtype: int64
         rate: fast
-        var: 'telescope.mount.is_slewing'
+        var: 'telescope_status.mount.is_slewing'
     mount_az_deg:
         label: 'Az'
         units: 'deg'
         dtype: float64
         rate: fast
-        var: 'telescope.mount.azimuth_degs'
+        var: 'telescope_status.mount.azimuth_degs'
     mount_alt_deg:
         label: 'Alt'
         units: 'deg'
         dtype: float64
         rate: fast
-        var: 'telescope.mount.altitude_degs'
+        var: 'telescope_status.mount.altitude_degs'
     mount_az_is_enabled:
         label: 'AzEnabled'
         units: None
         dtype: int
         rate: fast
-        var: 'telescope.mount.axis0.is_enabled'
+        var: 'telescope_status.mount.axis0.is_enabled'
     mount_alt_is_enabled:
         label: 'AltEnabled'
         units: None
         dtype: int
         rate: fast
-        var: 'telescope.mount.axis1.is_enabled'
+        var: 'telescope_status.mount.axis1.is_enabled'
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud:
@@ -176,92 +221,109 @@ fields:
         units: 's'
         dtype: float64
         rate: slow
-    #ws_avg_threshold_p48:
-    #    label:'windspeed'
-    #    units:'mps'
-    #    dtype:float64
-    #    rate: slow
+        var: weather.P48_UTC_timestamp
+    ws_avg_threshold_p48:
+        label: 'windspeed'
+        units: 'mps'
+        dtype: float64
+        rate: slow
+        var: weather.P48_Windspeed_Avg_Threshold
     ws_gust_threshold_p48:
         label: 'windspeed'
         units: 'mps'
         dtype: float64
         rate: slow
+        var: weather.P48_Gust_Speed_Threshold
     time_alarm_p48:
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
+        var: weather.P48_Alarm_Hold_Time
     time_remaining_hold_p48:
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
+        var: weather.P48_Remaining_Hold_Time
     rh_threshold_outside_p48:
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
+        var: weather.P48_Remaining_Hold_Time
     rh_threshold_inside_p48:
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
+        var: weather.P48_Inside_DewPt_Threshold
     wind_dir_current_p48:
         label: 'angle'
         units: 'degrees'
         dtype: float64
         rate: slow
+        var: weather.P48_Wind_Dir_Current
     ws_current_p48:
         label: 'speed'
         units: 'm/s'
         dtype: float64
         rate: slow
+        var: weather.P48_Windspeed_Current
     ws_avg_p48:
         label: 'speed'
         units: 'mps'
         dtype: float64
         rate: slow
+        var: weather.P48_Windspeed_Average
     T_outside_air_p48:
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
+        var: weather.P48_Outside_Air_Temp
     rh_outside_p48:
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
+        var: weather.P48_Outside_Rel_Hum
     Tdp_outside_p48:
         label: 'DewPoint'
         units: 'C'
         dtype: float64
         rate: slow
+        var: weather.P48_Outside_DewPt
     T_inside_air_p48:
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
-        var: 'weather.P48_Inside_Air_Temp'
+        var: weather.P48_Inside_Air_Temp
     rh_inside_p48:
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
+        var: weather.P48_Inside_Rel_Hum
     Tdp_inside_p48:
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
+        var: weather.P48_Inside_DewPt
     wetness_p48:
         label: 'wetness'
         units: None
         dtype: int64
         rate: slow
+        var: weather.P48_Wetness
     status_p48:
         label: 'ready'
         units: None
         dtype: int64
         rate: slow
+        var: weather.P48_Weather_Status
 
         
     

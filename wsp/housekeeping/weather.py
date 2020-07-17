@@ -104,10 +104,11 @@ class palomarWeather(object):
                                         ipaddr = self.config[server]['addr'],
                                         port = self.config[server]['port'],
                                         end_char= self.config[server]['endchar'],
-                                        timeout = 1)
+                                        timeout = self.config[server]['timeout'])
             self.status_p200 = status[0]
             self.status_p60 = status[1]
             self.status_p48 = status[2]
+            
             wetdict   = {'YES': 1,
                          'NO' : 0}
             readydict = {'READY' : 1}
@@ -212,10 +213,26 @@ class palomarWeather(object):
             '''  
             """                  
         except Exception as e:
-            print(f"could not load weather from palomar, {type(e)}: {e}")
-            traceback.print_exc()
+            self.logger.warning(f"could not load weather from palomar telemetry server, {type(e)}: {e}")
+            #traceback.print_exc()
             #TODO add an entry to the log
             #sys.exit()
+        
+        try: # LOAD DATA FROM THE PALOMAR COMMAND SERVER
+
+            
+            
+            # Query the command Server
+            server = 'command_server'
+            
+            status = utils.query_server(cmd = self.config[server]['cmd'],
+                                        ipaddr = self.config[server]['addr'],
+                                        port = self.config[server]['port'],
+                                        end_char= self.config[server]['endchar'],
+                                        timeout = self.config[server]['timeout'])
+            
+            
+            
             
         try: # Load data from clear dark skies at palomar
             url = 'https://www.cleardarksky.com/txtc/PalomarObcsp.txt'

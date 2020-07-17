@@ -110,7 +110,7 @@ class slow_loop(QtCore.QThread):
         
         # update weather
 
-        #self.weather.getWeather()
+        self.weather.getWeather()
         self.update_status()
 
         """
@@ -226,7 +226,7 @@ class fast_loop(QtCore.QThread):
         # poll telescope status
         try:
             self.telescope_status = self.telescope.status()
-        except:
+        except Exception as e:
             """ 
             do nothing here. this avoids flooding the log with errors if
             the system is disconnected. Instead, this should be handled by the
@@ -234,7 +234,7 @@ class fast_loop(QtCore.QThread):
             cadance.
             """
             #self.telescope_status = pwi4.defaultPWI4Status()
-            
+            #print(f'could not poll telescope status: {type(e)}: {e}')
             pass
         
         ### MAP THE DATA TO THE STORED VARIABLES ###

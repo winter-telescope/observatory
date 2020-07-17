@@ -54,7 +54,7 @@ def loadconfig(config_file):
 
 
 
-def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001):
+def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001 logger = None):
     """
     This is a utility to send a single command to a remote server,
     then wait a response. It tries to return a dictionary from the returned  
@@ -83,7 +83,11 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
                 break
             total_data.append(data)
     except socket.timeout as e:
-        print(e)
+        msg = f'server query to {ipaddr} Port {port}: {e}'
+        if logger is None:
+            print(msg)
+        else:
+            logger.warning(msg)
         
         """
         if len(total_data)>1:
