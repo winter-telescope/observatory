@@ -231,7 +231,8 @@ class palomarWeather(object):
                                         end_char= self.config[server]['endchar'],
                                         timeout = self.config[server]['timeout'])
             
-            
+        except Exception as e:
+            self.logger.warning(f"could not load weather from palomar command server, {type(e)}: {e}")
             
             
         try: # Load data from clear dark skies at palomar
