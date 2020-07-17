@@ -60,7 +60,10 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
     
     
 
-d = query_server('WEATHER_JSON', '198.202.125.214', 4698, end_char = '}]')
+d = query_server('WEATHER_JSON', 
+                 '198.202.125.214', 4698, 
+                 end_char = '}]',
+                 timeout = 5)
 # convert the string to dict using json loads
 
 

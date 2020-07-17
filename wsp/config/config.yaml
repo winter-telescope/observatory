@@ -43,7 +43,7 @@ telescope_home:
 telemetry_server:
     addr:  '198.202.125.214'
     port: 4698
-    cmd: 'WEATHER'
+    cmd: 'WEATHER_JSON'
     endchar: '}]'
 
 command_server:
@@ -241,6 +241,7 @@ fields:
         units: 'C'
         dtype: float64
         rate: slow
+        var: 'weather.P48_Inside_Air_Temp'
     rh_inside_p48:
         label: 'RH'
         units: 'pct'

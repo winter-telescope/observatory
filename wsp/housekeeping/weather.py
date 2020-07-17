@@ -24,11 +24,13 @@ from datetime import datetime,timedelta
 import pytz
 import sys
 import traceback
-from utils import utils
+
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
 sys.path.insert(1, wsp_path)
+
+from utils import utils
 
 #%%
 # PDU Properties
@@ -211,7 +213,7 @@ class palomarWeather(object):
             """                  
         except Exception as e:
             print(f"could not load weather from palomar, {type(e)}: {e}")
-            #traceback.print_exc()
+            traceback.print_exc()
             #TODO add an entry to the log
             #sys.exit()
             
