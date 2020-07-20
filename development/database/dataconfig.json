@@ -1,0 +1,27 @@
+{
+  "Observation":{
+    "obsHistID": {"type": "Integer", "primaryKey": true},
+    "fieldID": {"type": "Integer"},
+    "filter": {"type": "Text"},
+    "night": {"type": "Integer"},
+    "visitTime": {"type": "Real"},
+    "visitExpTime": {"type": "Real"},
+    "airmass": {"type": "Real"},
+    "filtSkyBright": {"type": "Real"},
+    "fiveSigmaDepth": {"type": "Real"},
+    "dist2Moon": {"type": "Real"},
+    "progID": {"type": "Integer", "altNames": ["propID"]},
+    "subprogram": {"type": "Text"},
+    "pathToFits": {"type": "Text"}
+  },
+  "Field":{
+    "fieldID": {"type": "Integer", "primaryKey": true},
+    "rightAscension": {"type": "Real", "altNames": ["fieldRA"]},
+    "declination": {"type": "Real", "altNames": ["fieldDec"]}
+  },
+  "Night":{
+    "nightID": {"type": "Integer", "primaryKey": true, "altNames": ["night"]},
+    "avgTemp": {"type": "Real"},
+    "moonPhase": {"type": "Real"}
+  }
+}
