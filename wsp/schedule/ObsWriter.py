@@ -44,9 +44,10 @@ class ObsWriter():
 
         # Initialize database structure from json file.
         #Note: Change to accept path argument instead of hardcoding
+        self.logger.debug('reading json file')
         with open(self.base_directory + '/config/' + "dataconfig.json") as json_data_file:
             self.dbStructure = json.load(json_data_file)
-
+        self.logger.debug("read json config file")
         self.create_tables(clobber=clobber)
 
 

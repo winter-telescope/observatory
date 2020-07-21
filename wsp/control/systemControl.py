@@ -78,7 +78,9 @@ class control(object):
             self.telescope_connect()
             self.telescope_axes_enable()
             self.telescope_home()
-
+            
+            self.telescope_shutdown()
+            return
             # Get the Site Weather Conditions
             self.weather = weather.palomarWeather(self.base_directory,'palomarWeather.ini','weather_limits.ini')
             if not self.weather.oktoopen:
