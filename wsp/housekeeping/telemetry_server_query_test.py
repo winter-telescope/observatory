@@ -88,7 +88,7 @@ try:
         print(f'{element} = {d_p48[element]}')
 except:       
         print('could not query telemetry server')
-
+print()
 #%%
 try: 
     d = query_server('status?', 
@@ -101,15 +101,15 @@ try:
     print(d)
     #print(json.dumps(d,indent = 4))
     
-    """
+    
     # try to grab a single element
     print('Grabbing element from dict:')
-    elements = ['P48_UTC','P48_Outside_Air_Temp']
+    elements = ['Shutter_Status']
     for element in elements:
         
-        print(f'{element} = {d_p48[element]}')
+        print(f'{element} = {d[element]}')
     
-    """
+    
 except:
     print('could not query command server')
 
