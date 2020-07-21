@@ -9,6 +9,7 @@ import os
 import sys
 import pandas as pd
 import logging
+import json
 
 
 class ObsWriter():
@@ -41,7 +42,31 @@ class ObsWriter():
         self.conn = self.engine.connect()
         self.logger.debug('opened new connection')
 
+        # Initialize database structure from json file.
+        #Note: Change to accept path argument instead of hardcoding
+        with open(self.base_directory + '/config/' + "dataconfig.json") as json_data_file:
+            self.dbStructure = json.load(json_data_file)
+
         self.create_tables(clobber=clobber)
+
+
+    def printDBStructure(self):
+        print(f'Creating database as follows:')
+        for table in self.dbStructure:
+            print(f'Table: {table}')
+            for column in self.dbStructure[table]:
+                print(f'    Field: {column} {self.dbStructure[table][column]}')
+
+    def generateDBCommands(self):
+        self.logger.debug("generating commands")
+        self.sqlCommands = {}
+        for table in self.dbStructure:
+            command = f'CREATE TABLE {table}('
+            for column in self.dbStructure[table]:
+                colDict = self.dbStructure[table][column]
+                command += f'\n{column} {colDict["type"].upper()}{" PRIMARY KEY" if colDict.get("primaryKey") else ""},'
+            command = command[:len(command)-1] + "\n)"
+            self.sqlCommands[table]={"createCommand": command}
 
     def create_tables(self, clobber=False):
 
@@ -53,48 +78,39 @@ class ObsWriter():
             except:
                 pass
 
-        if not self.engine.dialect.has_table(self.engine, 'Observation'):
-            # create table
+        self.generateDBCommands()
 
-            self.conn.execute("""
-            CREATE TABLE Observation(
-            obsHistID            INTEGER PRIMARY KEY,
-            fieldID              INTEGER,
-            filter               TEXT,
-            night                INTEGER,
-            visitTime            REAL,
-            visitExpTime         REAL,
-            airmass              REAL,
-            filtSkyBright        REAL,
-            fiveSigmaDepth       REAL,
-            dist2Moon            REAL,
-            progID               INTEGER,
-            subprogram           TEXT,
-            pathToFits           TEXT
-            )""")
+        for table in self.sqlCommands:
 
+            if not self.engine.dialect.has_table(self.engine, table):
+                try:
+                    self.conn.execute(self.sqlCommands[table]["createCommand"])
+                except:
+                    self.logger.error('create failed', exc_info=True )
 
-        if not self.engine.dialect.has_table(self.engine, 'Field'):
-            # create table
+    def populateFieldsTable(self):
+        path = os.getcwd() + '/1_night_test.db'
+        scheduleEngine = db.create_engine('sqlite:///' + path)
+        scheduleConn = scheduleEngine.connect()
+        self.logger.debug('copying fields table from schedule...')
 
-            self.conn.execute("""
-            CREATE TABLE Field(
-            fieldID            INTEGER PRIMARY KEY,
-            rightAscension            REAL,
-            declination               REAL
-            )""")
+        fields = db.Table('Field', db.MetaData(), autoload=True, autoload_with=scheduleEngine)
+        self.logger.debug('got table')
+        try:
+            result = scheduleConn.execute(db.select([fields]))
+        except Exception as e:
+            self.logger.error('query failed', exc_info=True )
 
+        self.logger.debug('got result ')
 
+        for row in result:
+            print(f'{row}')
 
-        if not self.engine.dialect.has_table(self.engine, 'Night'):
-            # create table
-
-            self.conn.execute("""
-            CREATE TABLE Night(
-            nightID            INTEGER PRIMARY KEY,
-            avgTemp            Real,
-            moonPhase          TEXT
-            )""")
+    def getPrimaryKey(self, tableName):
+        table = self.dbStructure[tableName]
+        for key in table:
+            if 'primaryKey' in table[key]:
+                return key
 
 
     def log_observation(self, data, image):
@@ -111,34 +127,52 @@ class ObsWriter():
         record['pathToFits'] = image
 
         #separate provided data into table friendly chunks
-        self.logger.error('separating data')
-        fieldData, nightData, obsData = separate_data_dict(record)
-        self.logger.error('separated data')
-
-        #append to Field table if necessary
-
-        #append to Night table if necessary
-
-        #append to Observation Table
+        self.logger.debug('separating data')
+        # fieldData, nightData, obsData = separate_data_dict(record)
         try:
-            record_row = pd.DataFrame(obsData,index=[uuid.uuid4().hex])
-            # the uuid4 method doesnt use identifying info to make IDS. Maybe should be looked into more at some point.
-            record_row.to_sql('Observation', self.conn, index=False, if_exists='append')
-            self.logger.debug(f'Inserted Row: {record}')
-        except Exception as e:
-            self.logger.error('query failed', exc_info=True )
+            separatedData = self.separate_data_dict(record)
+        except:
+            self.logger.error('separation failed', exc_info=True )
+        print(f'{separatedData}')
+        self.logger.debug('separated data')
 
-def separate_data_dict(dataDict):
-    fieldData = {'fieldID': dataDict['fieldID'], 'rightAscension': dataDict['fieldRA'], 'declination': dataDict['fieldDec']}
-    nightData = {'nightID': dataDict['night'], 'avgTemp': -314, 'moonPhase': dataDict['moonPhase']}
-    obsData = {}
-    obsFields = ['obsHistID', 'fieldID', 'filter', 'night', 'visitTime', 'visitExpTime', 'airmass', \
-    'filtSkyBright', 'fiveSigmaDepth', 'dist2Moon', 'subprogram', 'pathToFits' ]
-    for field in obsFields:
-        obsData[field] = dataDict[field]
-    obsData['progID'] = dataDict['propID']
+        for table in separatedData:
+            try:
+                dbTable = db.Table(table, db.MetaData(), autoload=True, autoload_with=self.engine)
+                primaryKey = self.getPrimaryKey(table)
+                exists = self.conn.execute(dbTable.select().where(dbTable.c[primaryKey] == separatedData[table][primaryKey])).fetchone()
+            except Exception as e:
+                self.logger.error('query failed', exc_info=True )
+            if exists is None:
+                try:
+                    record_row = pd.DataFrame(separatedData[table], index=[uuid.uuid4().hex])
+                    record_row.to_sql(table, self.conn, index=False, if_exists='append')
+                    self.logger.debug(f'Inserted {table} Row: {separatedData[table]}')
+                except:
+                    self.logger.error('insert failed:', exc_info=True )
+            else:
+                self.logger.debug('did not insert because the row already existed in the database')
 
-    return fieldData, nightData, obsData
+    def separate_data_dict(self, dataDict):
+        separatedData = {}
+        for table in self.dbStructure:
+            tableData = {}
+            for column in self.dbStructure[table]:
+                if column in dataDict:
+                    tableData[column] = dataDict[column]
+                elif "altNames" in self.dbStructure[table][column]:
+                    altNames = self.dbStructure[table][column]["altNames"]
+                    for name in altNames:
+                        if name in dataDict:
+                            tableData[column] = dataDict[name]
+                elif "default" in self.dbStructure[table][column]:
+                    tableData[column] = self.dbStructure[table][column]["default"]
+                else:
+                    tableData[column] = None
+                    ## Maybe catch a lack of a value in this function rather than waiting for it to be an issue later.
+            separatedData[table] = tableData
+        return separatedData
+
 
 if __name__ == '__main__':
     # used to make this file importable

@@ -93,7 +93,7 @@ class control(object):
                 self.schedule = schedule.Schedule(base_directory = self.base_directory, date = 'today')
                 ##NEW##
                 self.writer = ObsWriter.ObsWriter('demoRelational', self.base_directory) #the ObsWriter initialization
-                self.schedule.loadSchedule(currentTime=820,startFresh=False )
+                self.schedule.loadSchedule(currentTime=736,startFresh=False )
                 #####
                 while True:
                     try:
@@ -130,7 +130,7 @@ class control(object):
                            self.writer.log_observation(self.schedule.getCurrentObs(), imagename)
                            index += 1
                            ########
-                           utils.plotFITS(imagename)
+                           # utils.plotFITS(imagename)
 
                            self.schedule.gotoNextObs()
 
