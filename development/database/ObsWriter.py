@@ -106,6 +106,13 @@ class ObsWriter():
         for row in result:
             print(f'{row}')
 
+    def getPrimaryKey(self, tableName):
+        table = self.dbStructure[tableName]
+        for key in table:
+            if 'primaryKey' in table[key]:
+                return key
+
+
     def log_observation(self, data, image):
         """
         Take in data and a file path and combine them into a row that can be saved to our database.
@@ -133,34 +140,22 @@ class ObsWriter():
         obsData = separatedData['Observation']
         nightData = separatedData['Night']
 
-
-
-        #append to Field table if necessary
-        try:
-            field = db.Table('Field', db.MetaData(), autoload=True, autoload_with=self.engine)
-            exists = self.conn.execute(field.select().where(field.c.fieldID == fieldData['fieldID'])).fetchone()
-        except Exception as e:
-            self.logger.error('query failed', exc_info=True )
-        if exists is None:
+        for table in separatedData:
             try:
-                record_row = pd.DataFrame(fieldData,index=[uuid.uuid4().hex])
-                # the uuid4 method doesnt use identifying info to make IDS. Maybe should be looked into more at some point.
-                record_row.to_sql('Field', self.conn, index=False, if_exists='append')
-                self.logger.debug(f'Inserted Field Row: {fieldData}')
+                dbTable = db.Table(table, db.MetaData(), autoload=True, autoload_with=self.engine)
+                primaryKey = self.getPrimaryKey(table)
+                exists = self.conn.execute(dbTable.select().where(dbTable.c[primaryKey] == separatedData[table][primaryKey])).fetchone()
             except Exception as e:
                 self.logger.error('query failed', exc_info=True )
-
-
-        #append to Night table if necessary
-
-        #append to Observation Table
-        try:
-            record_row = pd.DataFrame(obsData,index=[uuid.uuid4().hex])
-            # the uuid4 method doesnt use identifying info to make IDS. Maybe should be looked into more at some point.
-            record_row.to_sql('Observation', self.conn, index=False, if_exists='append')
-            self.logger.debug(f'Inserted Row: {obsData}')
-        except Exception as e:
-            self.logger.error('query failed', exc_info=True )
+            if exists is None:
+                try:
+                    record_row = pd.DataFrame(separatedData[table], index=[uuid.uuid4().hex])
+                    record_row.to_sql(table, self.conn, index=False, if_exists='append')
+                    self.logger.debug(f'Inserted {table} Row: {separatedData[table]}')
+                except:
+                    self.logger.error('insert failed:', exc_info=True )
+            else:
+                self.logger.debug('did not insert because the row already existed in the database')
 
     def separate_data_dict(self, dataDict):
         separatedData = {}
@@ -174,6 +169,8 @@ class ObsWriter():
                     for name in altNames:
                         if name in dataDict:
                             tableData[column] = dataDict[name]
+                elif "default" in self.dbStructure[table][column]:
+                    tableData[column] = self.dbStructure[table][column]["default"]
                 else:
                     tableData[column] = None
                     ## Maybe catch a lack of a value in this function rather than waiting for it to be an issue later.

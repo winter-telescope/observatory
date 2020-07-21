@@ -21,7 +21,7 @@
   },
   "Night":{
     "nightID": {"type": "Integer", "primaryKey": true, "altNames": ["night"]},
-    "avgTemp": {"type": "Real"},
+    "avgTemp": {"type": "Real", "default": 273},
     "moonPhase": {"type": "Real"}
   }
 }

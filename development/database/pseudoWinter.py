@@ -36,7 +36,7 @@ class Controller():
             try:
 
                 self.schedule = Schedule(base_directory = self.base_directory, date = 'today')
-                self.schedule.loadSchedule(currentTime=835)
+                self.schedule.loadSchedule(currentTime=0)
                 self.logger.debug("got a scheduler")
                 self.writer = ObsWriter.ObsWriter('demoRelational', self.base_directory) #the ObsWriter initialization
                 self.logger.debug("got a writer")
