@@ -17,7 +17,7 @@ class ObsWriter():
     Heavily inspired by obsLogger.py in winter_sim and by code in the schedule.py file in WSP
     """
 
-    def __init__(self, log_name, output_path, survey_start_time = Time('2018-01-01'), clobber = False):
+    def __init__(self, log_name, base_directory, survey_start_time = Time('2018-01-01'), clobber = False):
         """
         Initialize an observation logger by opening a database connection for the night.
         Creates an empty table to write observations to.
@@ -32,6 +32,7 @@ class ObsWriter():
         self.logger.addHandler(fh)
 
         self.log_name = log_name
+        self.base_directory = base_directory
         self.survey_start_time = survey_start_time
         self.prev_obs = None
         try:
