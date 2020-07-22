@@ -48,7 +48,7 @@ class palomarWeather(object):
         self.getWeather(firsttime = True)
         #self.caniopen() # checks all the dome vetoes based on weather
         
-        
+    
     def getWeatherLimits(self):
         try: # Load in the weather limits from the config file
             
@@ -93,148 +93,197 @@ class palomarWeather(object):
         
     def getWeather(self,firsttime = False):
         #print(' Getting weather data...')
-        try: # LOAD DATA FROM THE PALOMAR TELEMETRY SERVER
-
-            
-            
-            # Query the Telemetry Server
-            server = 'telemetry_server'
-            
-            status = utils.query_server(cmd = self.config[server]['cmd'],
-                                        ipaddr = self.config[server]['addr'],
-                                        port = self.config[server]['port'],
-                                        end_char= self.config[server]['endchar'],
-                                        timeout = self.config[server]['timeout'])
-            self.status_p200 = status[0]
-            self.status_p60 = status[1]
-            self.status_p48 = status[2]
-            
-            wetdict   = {'YES': 1,
-                         'NO' : 0}
-            readydict = {'READY' : 1}
-            
-            self.P48_UTC                        = self.status_p48['P48_UTC']                                     # last query timestamp
-            self.P48_UTC_datetime_obj           = datetime.strptime(self.P48_UTC, '%Y-%m-%d %H:%M:%S.%f')   # last query time string
-            self.P48_UTC_timestamp              = self.P48_UTC_datetime_obj.timestamp()                     # last read timestamp
-            self.P48_Windspeed_Avg_Threshold    = self.status_p48['P48_Windspeed_Avg_Threshold']                 # windspeed threshold (m/s)
-            self.P48_Gust_Speed_Threshold       = self.status_p48['P48_Gust_Speed_Threshold']                    # gust wind speed threshold (m/s)
-            self.P48_Alarm_Hold_Time            = self.status_p48['P48_Alarm_Hold_Time']                         # alarm hold time (s)
-            self.P48_Remaining_Hold_Time        = self.status_p48['P48_Remaining_Hold_Time']                     # remaining hold time (s)
-            self.P48_Outside_DewPt_Threshold    = self.status_p48['P48_Outside_DewPt_Threshold']                 # outside dewpoint (C)
-            self.P48_Inside_DewPt_Threshold     = self.status_p48['P48_Inside_DewPt_Threshold']                  # inside dewpoint (C)
-            self.P48_Wind_Dir_Current           = self.status_p48['P48_Wind_Dir_Current']                        # wind direction angle (deg)
-            self.P48_Windspeed_Current          = self.status_p48['P48_Windspeed_Current']                       # windspeed current (m/s)
-            self.P48_Windspeed_Average          = self.status_p48['P48_Windspeed_Average']                       # windspeed average (m/s)
-            self.P48_Outside_Air_Temp           = self.status_p48['P48_Outside_Air_Temp']                        # outside air temp (C)
-            self.P48_Outside_Rel_Hum            = self.status_p48['P48_Outside_Rel_Hum']                         # outside RH (%)
-            self.P48_Outside_DewPt              = self.status_p48['P48_Outside_DewPt']                           # outside dewpoint (C)
-            self.P48_Inside_Air_Temp            = self.status_p48['P48_Inside_Air_Temp']                         # inside air temp (C)
-            self.P48_Inside_Rel_Hum             = self.status_p48['P48_Inside_Rel_Hum']                          # inside RH (%)
-            self.P48_Inside_DewPt               = self.status_p48['P48_Inside_DewPt']                            # inside dewpoint (C)
-            self.P48_Wetness                    = wetdict[self.status_p48['P48_Wetness']]                        # wetness (0 or 1)
-            self.P48_Weather_Status             = readydict.get(self.status_p48['P48_Weather_Status'],0)                     # ready? (1 if "READY", 0 if anything else)
-            
-            
-            
-            """
-
-            #print(f'Loaded the {site}  Property: ',configObj[site]['P4WINDS']['INFO'])
-            self.P4UTCTS  = int(configObj[site]['P4UTCTS']['VAL'])      # last query timestamp
-            self.P4LDT    = configObj[site]['P4LDT']['VAL']             # last query time string
-            self.P4WTS    = int(configObj[site]['P4WTS']['VAL'])        # last read timestamp
-            self.P4WINDS  = float(configObj[site]['P4WINDS']['VAL'])    # windspeed threshold (m/s)
-            
-            self.P4GWINDS = float(configObj[site]['P4GWINDS']['VAL'])   # gust wind speed threshold (m/s)
-            self.P4ALRMHT = float(configObj[site]['P4ALRMHT']['VAL'])   # alarm hold time (s)
-            self.P4REMHLD = float(configObj[site]['P4REMHLD']['VAL'])   # remaining hold time (s)
-            self.P4OTDEWT = float(configObj[site]['P4OTDEWT']['VAL'])   # outside dewpoint (C)
-            self.P4INDEWT = float(configObj[site]['P4INDEWT']['VAL'])   # inside dewpoint (C)
-            self.P4WINDD  = float(configObj[site]['P4WINDD']['VAL'])    # wind direction angle (deg)
-            self.P4WINDSP = float(configObj[site]['P4WINDSP']['VAL'])   # windspeed current (m/s)
-            self.P4WINDAV = float(configObj[site]['P4WINDAV']['VAL'])   # windspeed average (m/s)
-            self.P4OTAIRT = float(configObj[site]['P4OTAIRT']['VAL'])   # outside air temp (C)
-            self.P4OTRHUM = float(configObj[site]['P4OTRHUM']['VAL'])   # outside RH (%)
-            self.P4OUTDEW = float(configObj[site]['P4OUTDEW']['VAL'])   # outside dewpoint (C)
-            self.P4INAIRT = float(configObj[site]['P4INAIRT']['VAL'])   # inside air temp (C)
-            self.P4INRHUM = float(configObj[site]['P4INRHUM']['VAL'])   # inside RH (%)
-            self.P4INDEW  = float(configObj[site]['P4INDEW']['VAL'])    # inside dewpoint (C)
-            
-            
-            # get weather from the swerver
-            #self.P4OTAIRT = status['P48_Outside_Air_Temp']
-            
-            P4WETNES = configObj[site]['P4WETNES']['VAL']               # wetness
-            
-            
-            if P4WETNES.lower() == 'NO':
-                self.P4WETNES = False
-            elif P4WETNES == 'YES':
-                self.P4WETNES = True
-            else:
-                self.P4WETNES = 'Error'
-            P4STATUS = configObj[site]['P4STATUS']['VAL']               # status
-            if P4STATUS.lower() == 'ready':
-                self.P4STATUS = True
-            else:
-                self.P4STATUS = False
-            
-            # Make useful timestamp objects
-            self.P4LASTQUERY = datetime.fromtimestamp(self.P4UTCTS) #timestamp object of last query time
-            self.P4LASTREAD  = datetime.fromtimestamp(self.P4WTS) #timestamp object of last read time from P48
-            
-            # if it's the first time checking the weather, or the weatherrecord the last time
-            #   it was wet in the last 24 hours, and record the coldest temp
-            #   in the last 24 hours, or if its been 24 hours since the coldest temp was recorded
-            
-            if firsttime:
-                # if its the first time checking the weather, set: 
-                    # coldest temp in last 24 hours to current temp
-                    # time the coldest temp was recorded to now
-                    #TODO query the last 24 hours from the telescope
-                    
-                self.P4LASTWET_TIME = self.P4LASTREAD
-                self.P4LASTFRZ_TIME = self.P4LASTREAD
-                
-                #TODO: QUERY THE LAST 24 HOURS OF DATA
-                #If there has been no rain in the last 24 hours then just set
-                #the last rain time to 24 hours ago
-                self.P4LASTWET_TIME = self.P4LASTREAD + timedelta(days = -1.0)
-                self.P4LASTFRZ_TIME = self.P4LASTREAD + timedelta(days = -1.0)
-            '''
-            # If the current air temp is near freezing, note the time as the "last freezing time"
-            if self.P4OTAIRT < 1:
-                self.P4LASTFRZ_TIME = self.P4LASTQUERY
-            
-            # If the current wetness status is True, then log the time as the last wet time
-            if self.P4WETNES:
-                self.P4LASTWET_TIME = self.P4LASTQUERY
-             
-
-            '''  
-            """                  
-        except Exception as e:
-            self.logger.warning(f"could not load weather from palomar telemetry server, {type(e)}: {e}")
-            #traceback.print_exc()
-            #TODO add an entry to the log
-            #sys.exit()
         
-        try: # LOAD DATA FROM THE PALOMAR COMMAND SERVER
+        #######################################################################
+        # PTS: PALOMAR TELEMETRY SERVER
+    
+        #try: # LOAD DATA FROM THE PALOMAR TELEMETRY SERVER
+        
+        # Query the Telemetry Server
+        server = 'telemetry_server'
+        
+        newstatus = utils.query_server(cmd = self.config[server]['cmd'],
+                                    ipaddr = self.config[server]['addr'],
+                                    port = self.config[server]['port'],
+                                    end_char= self.config[server]['endchar'],
+                                    timeout = self.config[server]['timeout'],
+                                    logger = self.logger)
+        
+        # if the query_server command fails it returns None
+        if newstatus is None:
+            self.PTS_status = [dict(), dict(), dict()]
+            self.P48_Online = 1
+        else:
+            self.PTS_status = newstatus
+            self.P48_Online = 0
+            
+        #except Exception as e:
+        #    errmsg = f"could not load weather from palomar telemetry server, {type(e)}: {e}"
+        #    print(errmsg)
+            
+            #self.logger.warning(errmsg)
+            #traceback.print_exc()
+            #pass
+        #print()
+        #print('PTS Status: ', self.PTS_status)
+        self.status_p200 = self.PTS_status[0]
+        self.status_p60 = self.PTS_status[1]
+        self.status_p48 = self.PTS_status[2]
+        
+        
+        default = self.config['default_value']
+        self.P48_UTC                        = self.status_p48.get('P48_UTC', '1970-01-01 00:00:00.00')     # last query timestamp
+        self.P48_UTC_datetime_obj           = datetime.strptime(self.P48_UTC, '%Y-%m-%d %H:%M:%S.%f')   # last query time string
+        self.P48_UTC_timestamp              = self.P48_UTC_datetime_obj.timestamp()                     # last read timestamp
+        self.P48_Windspeed_Avg_Threshold    = self.status_p48.get('P48_Windspeed_Avg_Threshold', default)  # windspeed threshold (m/s)
+        self.P48_Gust_Speed_Threshold       = self.status_p48.get('P48_Gust_Speed_Threshold', default)     # gust wind speed threshold (m/s)
+        self.P48_Alarm_Hold_Time            = self.status_p48.get('P48_Alarm_Hold_Time', default)                      # alarm hold time (s)
+        self.P48_Remaining_Hold_Time        = self.status_p48.get('P48_Remaining_Hold_Time', default)                    # remaining hold time (s)
+        self.P48_Outside_DewPt_Threshold    = self.status_p48.get('P48_Outside_DewPt_Threshold', default)                # outside dewpoint (C)
+        self.P48_Inside_DewPt_Threshold     = self.status_p48.get('P48_Inside_DewPt_Threshold', default)                  # inside dewpoint (C)
+        self.P48_Wind_Dir_Current           = self.status_p48.get('P48_Wind_Dir_Current', default)                  # wind direction angle (deg)
+        self.P48_Windspeed_Current          = self.status_p48.get('P48_Windspeed_Current', default)                       # windspeed current (m/s)
+        self.P48_Windspeed_Average          = self.status_p48.get('P48_Windspeed_Average', default)                        # windspeed average (m/s)
+        self.P48_Outside_Air_Temp           = self.status_p48.get('P48_Outside_Air_Temp', default)                         # outside air temp (C)
+        self.P48_Outside_Rel_Hum            = self.status_p48.get('P48_Outside_Rel_Hum', default)                        # outside RH (%)
+        self.P48_Outside_DewPt              = self.status_p48.get('P48_Outside_DewPt', default)                        # outside dewpoint (C)
+        self.P48_Inside_Air_Temp            = self.status_p48.get('P48_Inside_Air_Temp', default)                        # inside air temp (C)
+        self.P48_Inside_Rel_Hum             = self.status_p48.get('P48_Inside_Rel_Hum', default)                     # inside RH (%)
+        self.P48_Inside_DewPt               = self.status_p48.get('P48_Inside_DewPt', default)                      # inside dewpoint (C)
+        self.P48_Wetness                    = self.status_p48.get('P48_Wetness', 'YES')
+        self.P48_Wetness_Num                = self.config['status_dict']['P48_Wetness'].get(self.P48_Wetness,  default) # wetness (0 or 1)
+        self.P48_Weather_Status             = self.status_p48.get('P48_Weather_Status', 'UNKNOWN')                      
+        self.P48_Weather_Status_Num         = self.config['status_dict']['P48_Weather_Status'].get(self.P48_Weather_Status, default) # ready? (1 if "READY", 0 if anything else)
+                             
+        
+        
+            
+        """
 
+        #print(f'Loaded the {site}  Property: ',configObj[site]['P4WINDS']['INFO'])
+        self.P4UTCTS  = int(configObj[site]['P4UTCTS']['VAL'])      # last query timestamp
+        self.P4LDT    = configObj[site]['P4LDT']['VAL']             # last query time string
+        self.P4WTS    = int(configObj[site]['P4WTS']['VAL'])        # last read timestamp
+        self.P4WINDS  = float(configObj[site]['P4WINDS']['VAL'])    # windspeed threshold (m/s)
+        
+        self.P4GWINDS = float(configObj[site]['P4GWINDS']['VAL'])   # gust wind speed threshold (m/s)
+        self.P4ALRMHT = float(configObj[site]['P4ALRMHT']['VAL'])   # alarm hold time (s)
+        self.P4REMHLD = float(configObj[site]['P4REMHLD']['VAL'])   # remaining hold time (s)
+        self.P4OTDEWT = float(configObj[site]['P4OTDEWT']['VAL'])   # outside dewpoint (C)
+        self.P4INDEWT = float(configObj[site]['P4INDEWT']['VAL'])   # inside dewpoint (C)
+        self.P4WINDD  = float(configObj[site]['P4WINDD']['VAL'])    # wind direction angle (deg)
+        self.P4WINDSP = float(configObj[site]['P4WINDSP']['VAL'])   # windspeed current (m/s)
+        self.P4WINDAV = float(configObj[site]['P4WINDAV']['VAL'])   # windspeed average (m/s)
+        self.P4OTAIRT = float(configObj[site]['P4OTAIRT']['VAL'])   # outside air temp (C)
+        self.P4OTRHUM = float(configObj[site]['P4OTRHUM']['VAL'])   # outside RH (%)
+        self.P4OUTDEW = float(configObj[site]['P4OUTDEW']['VAL'])   # outside dewpoint (C)
+        self.P4INAIRT = float(configObj[site]['P4INAIRT']['VAL'])   # inside air temp (C)
+        self.P4INRHUM = float(configObj[site]['P4INRHUM']['VAL'])   # inside RH (%)
+        self.P4INDEW  = float(configObj[site]['P4INDEW']['VAL'])    # inside dewpoint (C)
+        
+        
+        # get weather from the swerver
+        #self.P4OTAIRT = status['P48_Outside_Air_Temp']
+        
+        P4WETNES = configObj[site]['P4WETNES']['VAL']               # wetness
+        
+        
+        if P4WETNES.lower() == 'NO':
+            self.P4WETNES = False
+        elif P4WETNES == 'YES':
+            self.P4WETNES = True
+        else:
+            self.P4WETNES = 'Error'
+        P4STATUS = configObj[site]['P4STATUS']['VAL']               # status
+        if P4STATUS.lower() == 'ready':
+            self.P4STATUS = True
+        else:
+            self.P4STATUS = False
+        
+        # Make useful timestamp objects
+        self.P4LASTQUERY = datetime.fromtimestamp(self.P4UTCTS) #timestamp object of last query time
+        self.P4LASTREAD  = datetime.fromtimestamp(self.P4WTS) #timestamp object of last read time from P48
+        
+        # if it's the first time checking the weather, or the weatherrecord the last time
+        #   it was wet in the last 24 hours, and record the coldest temp
+        #   in the last 24 hours, or if its been 24 hours since the coldest temp was recorded
+        
+        if firsttime:
+            # if its the first time checking the weather, set: 
+                # coldest temp in last 24 hours to current temp
+                # time the coldest temp was recorded to now
+                #TODO query the last 24 hours from the telescope
+                
+            self.P4LASTWET_TIME = self.P4LASTREAD
+            self.P4LASTFRZ_TIME = self.P4LASTREAD
             
-            
-            # Query the command Server
-            server = 'command_server'
-            
-            status = utils.query_server(cmd = self.config[server]['cmd'],
-                                        ipaddr = self.config[server]['addr'],
-                                        port = self.config[server]['port'],
-                                        end_char= self.config[server]['endchar'],
-                                        timeout = self.config[server]['timeout'])
-            
-        except Exception as e:
-            self.logger.warning(f"could not load weather from palomar command server, {type(e)}: {e}")
-            
-            
+            #TODO: QUERY THE LAST 24 HOURS OF DATA
+            #If there has been no rain in the last 24 hours then just set
+            #the last rain time to 24 hours ago
+            self.P4LASTWET_TIME = self.P4LASTREAD + timedelta(days = -1.0)
+            self.P4LASTFRZ_TIME = self.P4LASTREAD + timedelta(days = -1.0)
+        '''
+        # If the current air temp is near freezing, note the time as the "last freezing time"
+        if self.P4OTAIRT < 1:
+            self.P4LASTFRZ_TIME = self.P4LASTQUERY
+        
+        # If the current wetness status is True, then log the time as the last wet time
+        if self.P4WETNES:
+            self.P4LASTWET_TIME = self.P4LASTQUERY
+         
+
+        '''  
+        """                  
+        
+        
+        
+        #######################################################################
+        # PCS: Palomar Command Server
+        
+        # Query the command Server
+        server = 'command_server'
+        
+        # LOAD DATA FROM THE PALOMAR COMMAND SERVER
+        newstatus = utils.query_server(cmd = self.config[server]['cmd'],
+                                    ipaddr = self.config[server]['addr'],
+                                    port = self.config[server]['port'],
+                                    end_char= self.config[server]['endchar'],
+                                    timeout = self.config[server]['timeout'],
+                                    logger = self.logger)
+        
+        # if the query_server command fails it returns None
+        if newstatus is None:
+            self.status_PCS = dict()
+            self.PCS_Online = 1
+        else:
+            self.status_PCS = newstatus
+            self.PCS_Online = 0
+        
+        
+        default = self.config['default_value']
+        self.PCS_UTC                        = self.status_PCS.get('UTC', '1970-01-01 00:00:00.00') # last query timestamp
+        self.PCS_UTC_datetime_obj           = datetime.strptime(self.PCS_UTC, '%Y-%m-%d %H:%M:%S.%f')        # last query time string
+        self.PCS_UTC_timestamp              = self.PCS_UTC_datetime_obj.timestamp()                          # last read timestamp
+        self.PCS_Dome_Azimuth               = self.status_PCS.get('Dome_Azimuth', default)                                # azimuth of observatory dome
+        self.PCS_Dome_Status                = self.status_PCS.get('Dome_Status', 'FAULT')               # status of observatory dome
+        self.PCS_Dome_Status_Num            = self.config['status_dict']['Dome_Status'].get(self.PCS_Dome_Status, default)
+        self.PCS_Shutter_Status             = self.status_PCS.get('Shutter_Status','FAULT')
+        self.PCS_Shutter_Status_Num         = self.config['status_dict']['Shutter_Status'].get(self.PCS_Shutter_Status, default)
+        self.PCS_Control_Status             = self.status_PCS.get('Control_Status','FAULT')
+        self.PCS_Control_Status_Num         = self.config['status_dict']['Control_Status'].get(self.PCS_Control_Status, default)      
+        self.PCS_Close_Status               = self.status_PCS.get('Close_Status','FAULT')
+        self.PCS_Close_Status_Num           = self.config['status_dict']['Close_Status'].get(self.PCS_Close_Status, default) 
+        self.PCS_Weather_Status             = self.status_PCS.get('Weather_Status','FAULT')
+        self.PCS_Weather_Status_Num         = self.config['status_dict']['Weather_Status'].get(self.PCS_Weather_Status, default) 
+        self.PCS_Outside_Dewpoint_Threshold = self.status_PCS.get('Outside_Dewpoint_Threshold',default)
+        self.PCS_Outside_Temp               = self.status_PCS.get('Outside_Temp', default)
+        self.PCS_Outside_RH                 = self.status_PCS.get('Outside_RH', default)
+        self.PCS_Outside_Dewpoint           = self.status_PCS.get('Outside_Dewpoint', default)
+        self.PCS_Weather_Hold_time          = self.status_PCS.get('Weather_Hold_time', default)
+        
+        
+        
+        
         try: # Load data from clear dark skies at palomar
             url = 'https://www.cleardarksky.com/txtc/PalomarObcsp.txt'
             page = urllib.request.urlopen(url)
@@ -487,14 +536,16 @@ if __name__ == '__main__':
     print()
     print('Checking Weather:')
     try:
-        print(weather.status_p48)
+        #print(weather.status_p48)
+        print(f'\tP48_Wetness = {weather.P48_Wetness}')
+        print(f'\tP48_Wetness_Num = {weather.P48_Wetness_Num}')
     except Exception as e:
-        print(f'could not get P48 weather, {type(e)}: {e}')
+        print(f'\tcould not get P48 weather, {type(e)}: {e}')
     
     try:
-        print(f'weather.CDSCLOUD = {weather.CDSCLOUD}')
+        print(f'\tweather.CDSCLOUD = {weather.CDSCLOUD}')
     except Exception as e:
-        print(f'could not get CDS weather, {type(e)}: {e}')
+        print(f'\tcould not get CDS weather, {type(e)}: {e}')
 
     #weather.override = True
     

@@ -23,7 +23,8 @@ class PWI4:
         self.host = host
         self.port = port
         self.comm = PWI4HttpCommunicator(host, port)
-
+        # NPL: Initialize the status with a default status
+        self.state = defaultPWI4Status()
     ### High-level methods #################################
 
     def status(self):
@@ -228,7 +229,23 @@ class PWI4:
         response_dict = self.status_text_to_dict(response_text)
         return PWI4Status(response_dict)
     
+    def update_state(self, verbose = False):
+        # written by NPL
+        # poll telescope status
+        try:
+            self.state = self.status()
+        except Exception as e:
+            '''
+            do nothing here. this avoids flooding the log with errors if
+            the system is disconnected. Instead, this should be handled by the
+            watchdog to signal/log when the system is offline at a reasonable 
+            cadance.
+            '''
+            self.state = defaultPWI4Status()
+            if verbose:
+                print(f'could not update telescope status: {type(e)}: {e}')
 
+    
     
 class Section(object): 
     """
@@ -494,3 +511,14 @@ class PWI4HttpCommunicator:
 
         payload = response.read()
         return payload
+
+
+if __name__ == '__main__':
+    
+    
+    telescope = PWI4('thor')
+    print(f'site.lmst_hours = {telescope.state.site.lmst_hours}')
+    print()
+    print('updating state: ')
+    telescope.update_state()
+    print(f'site.lmst_hours = {telescope.state.site.lmst_hours}')

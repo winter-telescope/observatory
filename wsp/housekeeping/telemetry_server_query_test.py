@@ -82,7 +82,7 @@ try:
     
     # try to grab a single element
     print('Grabbing element from dict:')
-    elements = ['P48_UTC','P48_Outside_Air_Temp']
+    elements = ['P48_UTC','P48_Outside_Air_Temp','P48_Wetness','P48_Weather_Status']
     for element in elements:
         
         print(f'{element} = {d_p48[element]}')

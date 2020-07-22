@@ -12,9 +12,10 @@ telescope:
 
 # define update times (ms)
 daq_dt:
-    fast: 100.0
+    fast: 500.0
     slow: 1000.0
-    
+
+# this will crash if this is not greater than or equal to the max daq_dt
 write_dt: 1000.0    
 
 # where to put the data. base directory is home
@@ -45,15 +46,59 @@ telemetry_server:
     port: 4698
     cmd: 'WEATHER_JSON'
     endchar: '}]'
-    timeout: 0.01
+    timeout: 0.1
 
 command_server:
     addr: '198.202.125.142'
     port: 62000
     cmd: 'status?'
     endchar: '}'
-    timeout: 0.01
+    timeout: 0.1
+
+# dictionaries to interpret the status from the weather servers
+# *NOTE*: it's best to use keys in quoatations to avoid the yaml loader converting them
+#   for example, yaml loads key = YES as a boolean True value, but "YES" as a string
+##P48
+status_dict:
+    P48_Wetness:
+        'YES': 1
+        'NO': 0
+    P48_Weather_Status:
+        'READY': 1
+        'UNKNOWN': 0
+        
+    ## Palomar Command Server
+    Dome_Status:
+        'OFF': 0
+        'STOPPED': 1
+        'STOWED': 2
+        'GO_TO': 3
+        'FAULT': -9
+                
+    Shutter_Status:
+        'OPENED': 1
+        'OPENING': 5
+        'CLOSED': 0
+        'CLOSING': -5
+        'STOPPED': 0
+        'FAULT': -9
+        
+    Control_Status:
+        'AVAILABLE': 0
+        'REMOTE': 1
+        'CONSOLE': 2
+        'MANUAL': 3
+        
+    Close_Status:
+        'READY': 1
+        'NOT_READY': 0
     
+    Weather_Status:
+        'READY': 1
+        'NOT_READY': 0
+
+
+
 # weather limits
 weather_limits:
     TEMP_OUT: 
@@ -93,7 +138,8 @@ weather_limits:
     
 
 
-
+# default value for housekeeping fields
+default_value: -999
 
 
 
@@ -120,80 +166,80 @@ fields:
         units: deg
         dtype: float64
         rate: fast
-        var: telescope_status.site.latitude_degs
+        var: telescope.state.site.latitude_degs
     site_longitude_degs:
         label: Longitude
         units: deg
         dtype: float64
         rate: fast
-        var: telescope_status.site.longitude_degs
+        var: telescope.state.site.longitude_degs
     site_height_meters:
         label: Height
         units: m
         dtype: float64
         rate: fast
-        var: telescope_status.site.height_meters
+        var: telescope.state.site.height_meters
     site_lmst_hours:
         label: LMST
         units: hours
         dtype: float64
         rate: fast
-        var: telescope_status.site.lmst_hours
+        var: telescope.state.site.lmst_hours
     
     mount_is_connected:
         label: 'MountConnected'
         units: None
         dtype: int64
         rate: fast
-        var: telescope_status.mount.is_connected
+        var: telescope.state.mount.is_connected
     mount_geometry:
         label: Mode
         units: None
         dtype: int64
         rate: fast
-        var: telescope_status.mount.geometry
+        var: telescope.state.mount.geometry
     mount_ra_apparent_hours:
         label: RA
         units: hours
         dtype: float64
         rate: fast
-        var: telescope_status.mount.ra_apparent_hours
+        var: telescope.state.mount.ra_apparent_hours
     mount_dec_apparent_degs:
         label: DEC
         units: degs
         dtype: float64
         rate: fast
-        var: telescope_status.mount.dec_apparent_degs
+        var: telescope.state.mount.dec_apparent_degs
     mount_is_slewing:
         label: 'MountSlewing'
         units: None
         dtype: int64
         rate: fast
-        var: 'telescope_status.mount.is_slewing'
+        var: 'telescope.state.mount.is_slewing'
     mount_az_deg:
         label: 'Az'
         units: 'deg'
         dtype: float64
         rate: fast
-        var: 'telescope_status.mount.azimuth_degs'
+        var: 'telescope.state.mount.azimuth_degs'
     mount_alt_deg:
         label: 'Alt'
         units: 'deg'
         dtype: float64
         rate: fast
-        var: 'telescope_status.mount.altitude_degs'
+        var: 'telescope.state.mount.altitude_degs'
     mount_az_is_enabled:
         label: 'AzEnabled'
         units: None
         dtype: int
         rate: fast
-        var: 'telescope_status.mount.axis0.is_enabled'
+        var: 'telescope.state.mount.axis0.is_enabled'
     mount_alt_is_enabled:
         label: 'AltEnabled'
         units: None
         dtype: int
         rate: fast
-        var: 'telescope_status.mount.axis1.is_enabled'
+        var: 'telescope.state.mount.axis1.is_enabled'
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud:
@@ -215,9 +261,94 @@ fields:
         dtype: float64
         rate: slow
         var: 'weather.CLOUD_MAX'
+    # Palomar Command Server: PCS
+    pcs_is_online:
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'weather.PCS_Online'
+    time_utc_pcs:
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: slow
+        var: 'weather.PCS_UTC_timestamp'
+    dome_az_deg:
+        label: 'Az'
+        units: 'deg'
+        dtype: float64
+        rate: slow
+        var: 'weather.PCS_Dome_Azimuth'
+    dome_status:
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'weather.PCS_Dome_Status_Num'
+    dome_shutter_Status:
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'weather.PCS_Dome_Shutter_Status_Num'
+    dome_control_status:
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'weather.PCS_Dome_Control_Status_Num'
+    dome_close_status:
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'weather.PCS_Dome_Close_Status_Num'
+    dome_weather_status:
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'weather.PCS_Dome_Weather_Status_Num'  
+    Tdp_outside_threshold_pcs:
+        label: 'DewPoint'
+        units: 'C'
+        dtype: float64
+        rate: slow
+        var: 'weather.PCS_Outside_Dewpoint_Threshold'
+    T_outside_pcs:
+        label: 'T'
+        units: 'C'
+        dtype: float64  
+        rate: slow
+        var: 'weather.PCS_Outside_Temp'
+    rh_outside_pcs:
+        label: 'RH'
+        units: 'pct'
+        dtype: float64
+        rate: slow
+        var: 'weather.PCS_Outside_RH'
+    Tdp_outside_pcs:
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+        var: 'weather.PCS_Outside_Dewpoint'
+    time_remaining_hold_pcs:
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: slow
+        var: 'weather.PCS_Weather_Hold_time'
     # Palomar telemetry server: P48
+    p48_is_online:
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'weather.P48_Online'
     time_utc_p48:
-        label: 'p48-time'
+        label: 'time'
         units: 's'
         dtype: float64
         rate: slow
@@ -317,13 +448,13 @@ fields:
         units: None
         dtype: int64
         rate: slow
-        var: weather.P48_Wetness
+        var: weather.P48_Wetness_Num
     status_p48:
         label: 'ready'
         units: None
         dtype: int64
         rate: slow
-        var: weather.P48_Weather_Status
+        var: weather.P48_Weather_Status_Num
 
         
     

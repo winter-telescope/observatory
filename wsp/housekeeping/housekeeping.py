@@ -60,14 +60,25 @@ class housekeeping():
         self.create_dirfile()
         
         # define the DAQ loops
-        self.fastloop = data_handler.fast_loop(config = config, 
+        self.daq_telescope = data_handler.daq_loop(config = self.config,
+                                                   func = self.telescope.update_state, 
+                                                   rate = 'fast')
+        
+        self.daq_weather = data_handler.daq_loop(config = self.config,
+                                                 func = self.weather.getWeather,
+                                                 rate = 'slow')
+        
+        # define the status update loops
+        self.fastloop = data_handler.fast_loop(config = self.config, 
                                                state = self.state, 
                                                curframe = self.curframe, 
                                                telescope = self.telescope)
-        self.slowloop = data_handler.slow_loop(config = config, 
+        self.slowloop = data_handler.slow_loop(config = self.config, 
                                                state = self.state, 
                                                curframe = self.curframe,
                                                weather = self.weather)
+        
+        # define the dirfile write loop
         self.writethread = data_handler.write_thread(config = config, dirfile = self.df, state = self.state, curframe = self.curframe)
         
         print("Done init'ing housekeeping")
