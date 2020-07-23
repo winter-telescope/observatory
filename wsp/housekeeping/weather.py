@@ -48,6 +48,8 @@ class palomarWeather(object):
         self.getWeather(firsttime = True)
         #self.caniopen() # checks all the dome vetoes based on weather
         
+        self.status_PCS = dict()
+        self.PTS_status = [dict(), dict(), dict()]
     
     def getWeatherLimits(self):
         try: # Load in the weather limits from the config file
@@ -111,11 +113,11 @@ class palomarWeather(object):
         
         # if the query_server command fails it returns None
         if newstatus is None:
-            self.PTS_status = [dict(), dict(), dict()]
-            self.P48_Online = 1
+            #self.PTS_status = [dict(), dict(), dict()]
+            self.P48_Online = 0
         else:
             self.PTS_status = newstatus
-            self.P48_Online = 0
+            self.P48_Online = 1
             
         #except Exception as e:
         #    errmsg = f"could not load weather from palomar telemetry server, {type(e)}: {e}"
@@ -244,6 +246,7 @@ class palomarWeather(object):
         server = 'command_server'
         
         # LOAD DATA FROM THE PALOMAR COMMAND SERVER
+        
         newstatus = utils.query_server(cmd = self.config[server]['cmd'],
                                     ipaddr = self.config[server]['addr'],
                                     port = self.config[server]['port'],
@@ -253,11 +256,11 @@ class palomarWeather(object):
         
         # if the query_server command fails it returns None
         if newstatus is None:
-            self.status_PCS = dict()
-            self.PCS_Online = 1
+            #self.status_PCS = dict()
+            self.PCS_Online = 0
         else:
             self.status_PCS = newstatus
-            self.PCS_Online = 0
+            self.PCS_Online = 1
         
         
         default = self.config['default_value']
