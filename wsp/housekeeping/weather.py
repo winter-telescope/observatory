@@ -41,6 +41,11 @@ class palomarWeather(object):
         self.config = config
         self.logger = logger
         
+        # init the dicts that will hold weather from the servers
+        self.status_PCS = dict()
+        self.PTS_status = [dict(), dict(), dict()]
+        
+        
         # THIS IS A FLAG THAT CAN BE SET TO OVERRIDE THE WEATHER DOME OPEN VETO:
         self.override = False 
         
@@ -48,8 +53,7 @@ class palomarWeather(object):
         self.getWeather(firsttime = True)
         #self.caniopen() # checks all the dome vetoes based on weather
         
-        self.status_PCS = dict()
-        self.PTS_status = [dict(), dict(), dict()]
+        
     
     def getWeatherLimits(self):
         try: # Load in the weather limits from the config file
