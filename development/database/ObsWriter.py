@@ -137,10 +137,6 @@ class ObsWriter():
         print(f'{separatedData}')
         self.logger.debug('separated data')
 
-        fieldData = separatedData['Field']
-        obsData = separatedData['Observation']
-        nightData = separatedData['Night']
-
         for table in separatedData:
             try:
                 dbTable = db.Table(table, db.MetaData(), autoload=True, autoload_with=self.engine)
@@ -170,6 +166,11 @@ class ObsWriter():
                     for name in altNames:
                         if name in dataDict:
                             tableData[column] = dataDict[name]
+                    if column not in tableData:
+                        if "default" in self.dbStructure[table][column]:
+                            tableData[column] = self.dbStructure[table][column]["default"]
+                        else:
+                            tableData[column] = None
                 elif "default" in self.dbStructure[table][column]:
                     tableData[column] = self.dbStructure[table][column]["default"]
                 else:

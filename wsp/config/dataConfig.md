@@ -44,3 +44,10 @@ For the configuration of the WINTER database, we use a three level json file, wi
   }
 }
 ```
+Defining a new table is as easy as creating a new entry in the first level of the config file. The key should be a string, which names the table, and then the value is another javascript object, or python dictionary-like set of key value pairs, defining the columns in the table. The column names should also be strings mapped to dictionary-like objects.
+
+To define the properties of each column we have a mapping of keys to values for supported properties of columns. `"type"` refers to the data type of the data belonging in that column, and should be included in the definition of every column. Other fields are optional, including `"primaryKey"`, which is mapped to a boolean value `true` or `false`. If this key value is not included in the definition, the code which reads the config file assumes that the column will not be a PRIMARY KEY.
+
+In the future I may add support for other SQL column features, like increment, etc. (especially if requested).
+
+Other optional features include the `"altNames"` field, and `"default"` field. `altNames` maps to a list of alternative names for the data which should be stored under a particular column. When `ObsWriter` prepares the data received from the telescope for archiving in the database, it first looks for data with the same name as the column, and if it cannot find anything for this value, will look for data with the names given in `altNames`. If it finds no data under the original column name nor under any of the provided altNames, it will check for a `"default"` value for the column. Otherwise it will record that field as `None` in python, which eventually is translated to `null` in the database(75% sure of this).
