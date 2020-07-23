@@ -31,6 +31,7 @@ import numpy as np
 import time
 from datetime import datetime
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
+import functools
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -61,12 +62,14 @@ class slow_loop(QtCore.QThread):
         # describe the loop rate
         self.rate = 'slow'
         self.dt = self.config['daq_dt'][self.rate]
-        
+
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
         self.timer.timeout.connect(self.update_status)
         self.timer.start()
         #self.exec()
+        print(f'datahandler: running slowloop update in thread {self.currentThread()}')
+
         
     def __del__(self):
         self.wait()
@@ -127,12 +130,13 @@ class fast_loop(QtCore.QThread):
         # describe the loop rate
         self.rate = 'fast'
         self.dt = self.config['daq_dt'][self.rate]
-        
+
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
         self.timer.timeout.connect(self.update)
         self.timer.start()
         #self.exec()
+        print(f'datahandler: running fastloop update in thread {self.currentThread()}')
         
     def __del__(self):
         self.wait()
@@ -194,10 +198,10 @@ class fast_loop(QtCore.QThread):
         self.update_status()
         
         
-        
+    """
     def run(self):
         print("fastloop: starting")
-        """
+        '''
         while True:
             self.update()
             time.sleep(float(self.dt) / 1000.)
@@ -207,8 +211,9 @@ class fast_loop(QtCore.QThread):
         self.timer.timeout.connect(self.update)
         self.timer.start()
         #self.exec()
-        """
+        '''
         print("fastloop: ending?")
+    """
 
 class daq_loop(QtCore.QThread):
     """
@@ -234,13 +239,13 @@ class daq_loop(QtCore.QThread):
         # describe the loop rate
         self.rate = rate
         self.dt = self.config['daq_dt'][self.rate]
-        
+
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
         self.timer.timeout.connect(self.update)
         self.timer.start()
         #self.exec()
-        
+        print(f'datahandler: running daqloop of func: {self.func.__name__} in thread {self.currentThread()}')
     def __del__(self):
         self.wait()
 
@@ -281,12 +286,14 @@ class write_thread(QtCore.QThread):
         
         self.index = 0
         self.dt = self.config['write_dt']
-        
+
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
         self.timer.timeout.connect(self.update)
         self.timer.start()
         #self.exec()
+        print(f'datahandler: running dirfile write in thread {self.currentThread()}')
+
         
     def __del__(self):
         self.wait()
@@ -303,7 +310,7 @@ class write_thread(QtCore.QThread):
             #print(f'writethread: writing to {field}: {self.curframe[field]}')
             self.db.write_field(field, self.curframe[field], start_frame = 'last')
             
-        
+    '''
     def run(self):
         print("writethread: starting")
         """
@@ -318,3 +325,4 @@ class write_thread(QtCore.QThread):
         #self.exec()
         """
         print("writethread: ending?")
+    '''

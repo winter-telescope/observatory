@@ -131,6 +131,7 @@ class cmd_prompt(QtCore.QThread):
         self.getcommands()
     
     def getcommands(self):
+        print(f'commandparser: running command console in thread {self.currentThread()}')
         while True:
             # listen for an incoming command
             cmd = input(self.wintercmd.prompt)
@@ -193,6 +194,7 @@ class cmd_executor(QtCore.QThread):
     def run(self):
        # if there are any commands in the queue, execute them!
        self.logger.debug('waiting for commands to execute')
+       print(f'commandparser: running command queue manager in thread {self.currentThread()}')
        while True:
            if not self.queue.empty():
                priority, cmd = self.queue.get()

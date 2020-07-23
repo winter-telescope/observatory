@@ -12,11 +12,11 @@ telescope:
 
 # define update times (ms)
 daq_dt:
-    fast: 500.0
-    slow: 1000.0
+    fast: 200.0
+    slow: 200.0
 
 # this will crash if this is not greater than or equal to the max daq_dt
-write_dt: 1000.0    
+write_dt: 200.0    
 
 # where to put the data. base directory is home
 housekeeping_data_directory: 'data/rawdir'

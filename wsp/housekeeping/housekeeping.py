@@ -122,7 +122,7 @@ class housekeeping():
         try:
             os.symlink(self.dirpath, hk_linkpath)
         except FileExistsError:
-            print('deleting existing symbolic link')
+            print('housekeeping: deleting existing symbolic link')
             os.remove(hk_linkpath)
             os.symlink(self.dirpath, hk_linkpath)
         
