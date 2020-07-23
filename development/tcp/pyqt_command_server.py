@@ -148,19 +148,30 @@ class command_thread(QtCore.QThread):
     
     # define some custom signals
     new_client_conn = QtCore.pyqtSignal(object)  
+    client_disconnected = QtCore.pyqtSignal(object)
+    
     testSignal = QtCore.pyqtSignal(int)
     
     def __init__(self, server_socket):
         QtCore.QThread.__init__(self)
         
+        # subclass the server stuff
+        self.server_socket = server_socket
+        
+        self.start()
+        
+    def run(self):    
         # start a counter to watch loop execution
         self.index = 0
-        
+        """
         self.timer = QtCore.QTimer()
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.listen_for_connection)
         self.timer.start()
-    
+
+        """
+        self.listen_for_connection()
+        
         """
         Command Thread
         
@@ -175,8 +186,7 @@ class command_thread(QtCore.QThread):
         self.thread = self.currentThread()
         print(f'commandThread: thread ID = {self.thread}')
         
-        # subclass the server stuff
-        self.server_socket = server_socket
+        
         
         
         # sit and wait for a client connection
@@ -193,9 +203,12 @@ class command_thread(QtCore.QThread):
         
         # sit and wait for incoming connection: THIS BLOCKS THE THREAD
         print('commandThread: waiting for new incoming connection...')
+        """
         self.index += 1
-        print(f'commandThread: emitting test signal {self.index}')
+        #print(f'commandThread: emitting test signal {self.index}')
         self.testSignal.emit(self.index)
+        """
+        
         # listen for incoming connections
         self.server_socket.listen(5)
         self.client_socket, self.client_addr_port = self.server_socket.accept()
@@ -205,59 +218,80 @@ class command_thread(QtCore.QThread):
         print(f'commandThread: [+] new connection from {self.client_addr} | port {self.client_port}')
         
         # store the client information in a new command client object
-        new_client = command_client(self.client_socket, self.client_addr, self.client_port, self.thread)
-        print(f'commandThread: signaling new conn from client: {new_client.name}')
+        self.client = command_client(self.client_socket, self.client_addr, self.client_port, self.thread)
+        print(f'commandThread: signaling new conn from client: {self.client.name}')
         # if we get passed the socket.accept() line, it means we have a new connection!
-        self.new_client_conn.emit(new_client)
+        self.new_client_conn.emit(self.client)
         
+        self.listen_for_command()
+    
+    def listen_for_command(self):
+        # receive the data in small chunks and retransmit it
+        while True:
+            cmd = self.client_socket.recv(1024)
+            print(f'received: {cmd.decode("utf-8")}')
+            cmd_txt = cmd.decode("utf-8")
+            if cmd:
+                #reply = f'received command: {cmd}\n'
+                #client_socket.send(bytes(reply,"utf-8"))
+                if cmd_txt.lower() == 'killserver':
+                    self.client_socket.close()
+                    self.server_socket.close()
+                    #sys.exit()
+                else:
+                    try:
+                        # try to evaluate the command
+                        result = eval(cmd_txt)
+                        reply = f'command [{cmd_txt}] executed, result = [{result}]'
+                        self.client_socket.send(bytes(reply,"utf-8"))
+                    except:
+                        reply = f'command [{cmd_txt}] not executed properly: \n enter "quit" to stop client session or "killserver" to stop command server'
+                        self.client_socket.send(bytes(reply,"utf-8"))
+            else:
+                print(f'Client at {self.client_addr} | {self.client_port} disconnected')
+                self.client_disconnected.emit(self.client)
+                break
         
     def __del__(self):
         self.wait()
     
+class server_thread(QtCore.QThread):
     
-
-class main(QtCore.QObject):   
-
-                  
-    def __init__(self, parent=None ):            
-        super(main, self).__init__(parent)   
+    def __init__(self, addr, port):
+        QtCore.QThread.__init__(self)
         
-        # start a counter to watch loop execution
-        self.index = 0
+        self.server_addr = addr
+        self.server_port = port
         
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(1000)
-        self.timer.timeout.connect(self.count)
-        self.timer.start()
-        
-        
+        # the thread needs to be started otherwise it doesn't instatiate a new thread
+        self.start()
+    
+        self.thread = self.currentThread()
+        print(f'serverThread: thread ID = {self.thread}')
+    
+    def run(self):
         
         
         # start up the command server
-        self.start_command_server('localhost',8454)
+        self.start_command_server()
+        
         
         # create initial command thread
         print(f'main: initing new command thread')
         self.new_comm_thread = command_thread(server_socket = self.server_socket)
         #self.new_comm_thread = command_thread(server_socket = '')
-        # connect the signals
+        # connect the signal for the intial thread
         self.new_comm_thread.new_client_conn.connect(self.new_client_detected)
-        self.new_comm_thread.testSignal.connect(self.caught_signal)
+        self.new_comm_thread.client_disconnected.connect(self.client_disconnected)
         
         
-        
-        
-    def caught_signal(self,number):
-        print(f'main: caught signal {number}') 
-    
-    def start_command_server(self,addr, port):
+    def start_command_server(self):
         """
         creates a TCP/IP socket for the command server, and instantiates
         a command_thread object to wait for connections to the server in a new
         thread
         """
-        self.server_addr = addr
-        self.server_port = port
+
         
         print(f'main: creating new socket at {self.server_addr} | port {self.server_port}')
         
@@ -296,12 +330,23 @@ class main(QtCore.QObject):
         # create a new command thread
         print(f'main: initing new command thread')
         self.new_comm_thread = command_thread(server_socket = self.server_socket)
+        self.new_comm_thread.new_client_conn.connect(self.new_client_detected)
+        self.new_comm_thread.client_disconnected.connect(self.client_disconnected)
         
-    def count(self):
-        self.index += 1
-        print(f'main: index = {self.index}')
-     
-    def add_client_to_dict(self,command_client):
+    def print_client_list(self):
+        # print out the client list to the terminal
+        print()
+        print('Current Connected Client List:')
+        num = 0
+        if len(self.server_clients.keys()) > 0:
+            for key in self.server_clients.keys():
+                print(f'     [{num}] {self.server_clients[key].addr} | {self.server_clients[key].port}')
+                num += 1
+        else:
+            print('     None.')
+        print()
+        
+    def add_client_to_dict(self,command_client,thread):
         """
         Any time a new connection is detected (ie any time the new_client_conn
         signal is caught), add the client to the connection list.
@@ -318,8 +363,18 @@ class main(QtCore.QObject):
         """
         print(f'main: adding new client [{command_client.name}] to client list')
         
+        command_client.thread = thread
+        
         # add the connection to the list of current clients
         self.server_clients.update({command_client.name : command_client})
+        self.print_client_list()
+        
+        # 
+        """
+        # connect the signals for all threads in the list
+        for key in self.server_clients.keys():
+            self.server_clients[key].thread.connect(self.new_client_detected)
+        """
         
     def new_client_detected(self,command_client):
         """
@@ -338,27 +393,107 @@ class main(QtCore.QObject):
             the command client of the most recently detected connection.
 
         """
-        print(f'main: caught new client connected signal from client at {command_client.addr} | port {command_client.port}')
+        print()
+        print(f'serverThread: caught new client connected signal from client at {command_client.addr} | port {command_client.port}')
         
         # add the client to the list
-        self.add_client_to_dict(command_client)
+        self.add_client_to_dict(command_client,self.new_comm_thread)
         
         # start up a new thread to listen for connections
         self.create_command_thread()
         
+    def client_disconnected(self,command_client):
+        """
+        This catches the disconnection event, then:
+            1. closes the socket
+            2. closes the thread
+            3. removes the client from the current client list
+        """
         
-def sigint_handler(*args):
+        key = command_client.name
+        
+        # close the socket
+        self.server_clients[key].socket.close()
+        
+        # close the thread
+        self.server_clients[key].thread.quit()
+        
+        # remove the client from the list
+        self.server_clients.pop(key)
+        
+        # print out the updated client list
+        self.print_client_list()
+    
+    def shutdown(self):
+        """ 
+        This is a shutdown sequece to properly close all open sockets.
+        
+        """
+        
+        # close all the client socket
+        
+        
+        # close the server socket
+        
+        pass
+    
+    
+class main(QtCore.QObject):   
+
+                  
+    def __init__(self, parent=None ):            
+        super(main, self).__init__(parent)   
+        
+        #self.thread = self.currentThread()
+        #print(f'mainThread: thread ID = {self.thread}')
+        
+        # start a counter to watch loop execution
+        self.index = 0
+        
+        self.timer = QtCore.QTimer()
+        self.timer.setInterval(1000)
+        self.timer.timeout.connect(self.count)
+        self.timer.start()
+        
+        # create the server thread
+        self.server_thread = server_thread('localhost', 9992)
+        
+        
+        #self.server_thread.new_comm_thread.testSignal.connect(self.caught_signal)
+        
+        
+        
+        
+        
+    def caught_signal(self,number):
+        print(f'main: caught signal {number}') 
+    
+    
+        
+    def count(self):
+        self.index += 1
+        #print(f'main: index = {self.index}')
+     
+    
+        
+        
+def sigint_handler( *args):
     """Handler for the SIGINT signal."""
     sys.stderr.write('\r')
+    
+    mainthread.server_thread.shutdown()
+    
+    mainthread.server_thread.quit()
     
     QtCore.QCoreApplication.quit()
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, sigint_handler)
     app = QtCore.QCoreApplication(sys.argv)
 
     
     mainthread = main()
+
+    signal.signal(signal.SIGINT, sigint_handler)
 
     # Run the interpreter every so often to catch SIGINT
     timer = QtCore.QTimer()

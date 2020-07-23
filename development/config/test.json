@@ -1,0 +1,16 @@
+{
+    "fields": {
+        "fcount": {
+            "label": "FastCount",
+            "units": "None",
+            "dtype": "float64",
+            "rate": "fast"
+        },
+        "scount": {
+            "label": "SlowCount",
+            "units": "None",
+            "dtype": "float64",
+            "rate": "slow"
+        }
+    }
+}

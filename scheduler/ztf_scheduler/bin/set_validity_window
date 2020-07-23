@@ -1,0 +1,38 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+import pandas as pd
+import numpy as np
+import argparse
+
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+parser = argparse.ArgumentParser(description='(Re)set validity window for a queue')
+parser.add_argument("queue_name", help="queue to adjust"),
+parser.add_argument("window_start_mjd", help="window start time (MJD)")
+parser.add_argument("window_stop_mjd", help="window stop time (MJD)")
+args = parser.parse_args()
+
+validity_window_mjd = [float(args.window_start_mjd),float(args.window_stop_mjd)]
+
+try:
+    r = requests.put(f'{HOST}:{PORT}/validity_window', 
+                json = {'queue_name':args.queue_name,
+                        'validity_window': validity_window_mjd})
+except:
+    #TODO: logging
+    print('Error getting response from scheduler')
+    sys.exit(1)
+
+if r.status_code == 200:
+    sys.exit(0)
+elif r.status_code == 404:
+    # missing queue
+    print(f'Error!  Queue {args.queue} not found...')
+    sys.exit(2)
+else:
+    print('Unknown error...')
+    sys.exit(1)

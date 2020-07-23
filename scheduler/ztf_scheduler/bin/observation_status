@@ -1,0 +1,22 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+if (len(sys.argv) != 3):
+    sys.exit(1)
+
+try:
+    r = requests.put(f'{HOST}:{PORT}/obs_status',
+            json = {'status':int(sys.argv[1]), 'request_id':int(sys.argv[2])})
+except:
+    #TODO: logging
+    sys.exit(1)
+
+if r.status_code == 200:
+    sys.exit(0)
+else:
+    sys.exit(1)

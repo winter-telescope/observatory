@@ -12,3 +12,7 @@ __pycache__/
 *_obs.csv
 *_sch.csv
 *.DS_Store
+*.dm
+*dm.lnk
+
+

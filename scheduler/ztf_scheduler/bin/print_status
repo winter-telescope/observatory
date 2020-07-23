@@ -1,0 +1,53 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+import pandas as pd
+import numpy as np
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+try:
+    r = requests.get(f'{HOST}:{PORT}/current_queue', json={})
+except:
+    #TODO: logging
+    print('Error getting response from scheduler')
+    sys.exit(1)
+
+if r.status_code == 200:
+    data = r.json()
+    print('Current queue information:')
+    print(f"   Queue name: {data['queue_name']}")
+    print(f"   Queue type: {data['queue_type']}")
+    print(f"   Is current: {data['is_current']}")
+    print(f"   Validity Window: {data['validity_window_mjd']}")
+    print(f"   Is now in validity window: {data['is_valid']}")
+    print(f"   Is TOO: {data['is_TOO']}")
+    queue = pd.read_json(data['queue'], orient='records')
+    print(f"   Number of queued requests: {len(queue)}")
+    if len(queue) > 0:
+        n_fields = len(queue['field_id'].unique())
+        print(f"   Number of unique field_ids: {n_fields}")
+        w = queue['ordered']
+        if np.sum(w) > 0:
+            print(f"   Ordered requests:")
+            print(queue.loc[w,['field_id', 'ra', 'dec', 'filter_id', 'program_id','subprogram_name']].to_string())
+        print(f"   Unordered requests:")
+        if 'slot_start_time' in queue.columns:
+            grp = queue[~w].groupby('slot_start_time')
+            for start_time, rows in grp:
+                print(f"      {start_time}:")
+                print(rows[['field_id', 'ra', 'dec', 'filter_id', 'program_id','subprogram_name']].to_string())
+
+            pass
+        else:
+            print(queue.loc[~w,['field_id', 'ra', 'dec', 'filter_id', 'program_id','subprogram_name']].to_string())
+    sys.exit(0)
+elif r.status_code == 404:
+    # queue empty
+    print('Error!  Queue Empty!')
+    sys.exit(2)
+else:
+    print('Unknown error...')
+    sys.exit(1)

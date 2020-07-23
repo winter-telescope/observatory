@@ -1,0 +1,37 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+import pandas as pd
+import json
+import astropy.coordinates as coord
+import astropy.units as u
+import os
+
+HOST = 'http://127.0.0.1'
+PORT = 9999
+
+ROZ_FILTER_NAME_TO_ID = {'FILTER_ZTF_G': 1, 'FILTER_ZTF_R': 2,
+        'FILTER_ZTF_I': 3, 'FILTER_EMPTY': None}
+
+
+if len(sys.argv) != 2:
+    print('Usage: load_list_json queue_file.json')
+    sys.exit(1)
+
+queue_file = sys.argv[1]
+
+if not os.path.exists(queue_file):
+    print(f'File not found! {queue_file}')
+    exit(1)
+
+
+with open(queue_file) as json_data:
+    data = json.load(json_data)
+data['queue_type'] = 'list'
+r = requests.put(f'{HOST}:{PORT}/queues',json=data)
+
+if r.status_code == 200:
+    sys.exit(0)
+else:
+    sys.exit(1)

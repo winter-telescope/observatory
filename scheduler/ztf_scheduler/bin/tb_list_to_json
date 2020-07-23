@@ -1,0 +1,57 @@
+#!/home/ztf/miniconda3/bin/python
+
+import sys
+import requests
+import pandas as pd
+import json
+import astropy.coordinates as coord
+import astropy.units as u
+
+ROZ_FILTER_NAME_TO_ID = {'FILTER_ZTF_G': 1, 'FILTER_ZTF_R': 2,
+        'FILTER_ZTF_I': 3, 'FILTER_EMPTY': None}
+
+
+if len(sys.argv) not in [5,6]:
+    print('Usage: tb_list_to_json target_file.csv queue_name window_start_mjd window_stop_mjd [max_airmass]')
+    print('       Format: request_id, program_id, field_id, ra (H:M:S), dec (D:M:S), epoch, ra_rate, dec_rate, exposure_time (sec), filter [FILTER_ZTF_R, etc.], PI, comment')
+    sys.exit(1)
+
+queue_name = sys.argv[2]
+
+if float(sys.argv[4]) <= float(sys.argv[3]):
+    print('Error specifying validity window!')
+    sys.exit(1)
+validity_window_mjd = [float(sys.argv[3]), float(sys.argv[4])]
+
+
+
+columns = ['request_id', 'program_id', 'field_id', 'ra_hms', 'dec_dms', 'epoch', 'ra_rate', 'dec_rate', 'exposure_time', 'roz_filter_name', 'program_pi', 'subprogram_name']
+
+#try:
+df = pd.read_csv(sys.argv[1], names = columns)
+sc = coord.SkyCoord(df.ra_hms,df.dec_dms, unit=(u.hourangle, u.degree))
+df['ra'] = sc.ra.degree
+df['dec'] = sc.dec.degree
+fid = df.roz_filter_name.apply(lambda x: ROZ_FILTER_NAME_TO_ID[x])
+fid.name = 'filter_id'
+df['filter_id'] = fid
+df['n_repeats'] = 1
+
+# TODO: not passing all the information in
+list_queue =  json.loads(df[['field_id','filter_id', 
+    'exposure_time','program_id', 'program_pi',
+    'subprogram_name','n_repeats']].to_json(orient='records'))
+
+payload = {'queue_name':queue_name, 
+            'validity_window_mjd': validity_window_mjd,
+            'queue_manager': 'list', 'targets':list_queue}
+
+if len(sys.argv) == 6:
+    max_airmass = float(sys.argv[5])
+    if (max_airmass < 1) or (max_airmass > 10):
+        print('Error specifying max airmass!')
+        sys.exit(1)
+    else:
+        payload['max_airmass'] = max_airmass
+
+print(json.dumps(payload,indent=2))
