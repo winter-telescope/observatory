@@ -12,11 +12,11 @@ telescope:
 
 # define update times (ms)
 daq_dt:
-    fast: 200.0
-    slow: 200.0
+    fast: 500.0
+    slow: 500.0
 
 # this will crash if this is not greater than or equal to the max daq_dt
-write_dt: 200.0    
+write_dt: 500.0    
 
 # where to put the data. base directory is home
 housekeeping_data_directory: 'data/rawdir'
@@ -73,15 +73,15 @@ status_dict:
         'STOPPED': 1
         'STOWED': 2
         'GO_TO': 3
-        'FAULT': -9
+        'FAULT': -20
                 
     Shutter_Status:
-        'OPENED': 1
+        'OPENED': 10
         'OPENING': 5
-        'CLOSED': 0
+        'CLOSED': -10
         'CLOSING': -5
         'STOPPED': 0
-        'FAULT': -9
+        'FAULT': -20
         
     Control_Status:
         'AVAILABLE': 0
@@ -148,18 +148,30 @@ default_value: -999
 fields:
 #general:
     fcount:
-        label: 'FastCount'
+        label: 'count'
         units: None
         dtype: float64
         rate: fast
         var: 'index'
+    ftime:
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: fast
+        var: 'timestamp'
         
     scount:
-        label: 'SlowCount'
+        label: 'count'
         units: None
         dtype: float64
         rate: slow
         var: 'index'
+    stime:
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'timestamp'
 #telescope
     site_latitude_degs:
         label: Latitude
@@ -291,25 +303,25 @@ fields:
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Dome_Shutter_Status_Num'
+        var: 'weather.PCS_Shutter_Status_Num'
     dome_control_status:
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Dome_Control_Status_Num'
+        var: 'weather.PCS_Control_Status_Num'
     dome_close_status:
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Dome_Close_Status_Num'
+        var: 'weather.PCS_Close_Status_Num'
     dome_weather_status:
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Dome_Weather_Status_Num'  
+        var: 'weather.PCS_Weather_Status_Num'  
     Tdp_outside_threshold_pcs:
         label: 'DewPoint'
         units: 'C'

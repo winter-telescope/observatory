@@ -47,6 +47,7 @@ class slow_loop(QtCore.QThread):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
+        self.timestamp = datetime.utcnow().timestamp()
         
         # subclass the methods passed in (ie, the hardware systems)
         self.weather = weather
@@ -83,6 +84,7 @@ class slow_loop(QtCore.QThread):
     
     def update_status(self, default_value = -999):
         self.index +=1
+        self.timestamp = datetime.utcnow().timestamp()
         
         for field in self.config['fields']:
             if self.config['fields'][field]['rate'] == self.rate:
@@ -119,6 +121,7 @@ class fast_loop(QtCore.QThread):
         
         # loop execution number
         self.index = 0
+        self.timestamp = datetime.utcnow().timestamp()
         
         # pass the config to the thread
         self.config = config
@@ -176,6 +179,7 @@ class fast_loop(QtCore.QThread):
     def update(self):
         # Update the loop number
         self.index +=1
+        self.timestamp = datetime.utcnow().timestamp()
 
         """
         ### POLL THE DATA ###

@@ -541,7 +541,14 @@ if __name__ == '__main__':
         print(f'\tP48_Wetness_Num = {weather.P48_Wetness_Num}')
     except Exception as e:
         print(f'\tcould not get P48 weather, {type(e)}: {e}')
-    
+    print()
+    try:
+        #print(weather.status_p48)
+        print(f'\tPCS_Shutter_Status = {weather.PCS_Shutter_Status}')
+        print(f'\tPCS_Shutter_Status_Num = {weather.PCS_Shutter_Status_Num}')
+    except Exception as e:
+        print(f'\tcould not get P48 weather, {type(e)}: {e}')
+    print()
     try:
         print(f'\tweather.CDSCLOUD = {weather.CDSCLOUD}')
     except Exception as e:
