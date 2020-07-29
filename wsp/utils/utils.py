@@ -132,6 +132,8 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
                     total_data.pop()
                     break
             """
+            # close up shop
+            sock.sendall(bytes('BYE\n',"utf-8"))
             sock.close()
             return None
     except Exception as e:
@@ -140,10 +142,11 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
                 print(msg)
         else:
             logger.warning(msg)
+        sock.sendall(bytes('BYE\n',"utf-8"))
         sock.close()
         return None
         
-        
+    sock.sendall(bytes('BYE\n',"utf-8"))    
     sock.close()
     reply =  ''.join(total_data)
     try:
