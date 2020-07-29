@@ -43,39 +43,7 @@ from astropy.utils.data import get_pkg_data_filename
 from astropy.io import fits
 
 
-def getFrom2Dicts(key, dict1, dict2, default = None):
-    """
-    dict1 and dict2 are both dictionaries that have entries for the key
-    
-    the value returned from dict1 is a key of a subdictionary in dict2, 
-    
-    this returns the value of the key
-    gets the value associated with key from dict1, and then uses that
-    as the key in dict2 and returns that value
-    
-    Example:
-        config = {'status_dict': {'P48_Wetness': {'YES' : 1, 'NO' : 0}}
-        status = {'P48_Wetness' : 'NO'}
-        
-        #to get the P48_Wetneses value as a number (specified by the config), we do:
-            
-        key = 'P48_Wetness'
-        default = '-99'
-        
-        subkey = status.get(key, default)
-        # >> subkey = 'NO'
-        numeric_value = config['status_dict'][key].get(subkey,default)
-        # >> numeric_value = 0
-        
-        # or, equivalently:
-        numeric_value = getFrom2Dicts(key, status, config['status_dict'], default)
-    """
-    
-    subkey = dict1.get(key, default)
-    
-    val = dict2[key].get(subkey, default)
-    
-    return val
+
     
     
 def loadconfig(config_file):
@@ -87,7 +55,7 @@ def loadconfig(config_file):
 
 
 
-def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001, logger = None):
+def connect_and_query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001, logger = None):
     """
     This is a utility to send a single command to a remote server,
     then wait a response. It tries to return a dictionary from the returned  
@@ -151,10 +119,95 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
     except:
         d = reply
     return d
+
+def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001, logger = None):
+    """
+    This is a utility to send a single command to a remote server,
+    then wait a response. It tries to return a dictionary from the returned  
+    text.
+    """
     
+    
+    # Connect to the server
+    sock = socket
+    sock.settimeout(timeout)
+    try:
+        
+        cmd = cmd + line_ending
+        
+        # Send a command
+        sock.sendall(bytes(cmd,"utf-8"))
+    
+        total_data = []
+        data = ''
+        try:
+            while True:
+                data = sock.recv(2048).decode("utf-8")
+                if end_char in data:
+                    total_data.append(data[:data.find(end_char)] + end_char)
+                    break
+                total_data.append(data)
+        except socket.timeout as e:
+            msg = f'server query to {ipaddr} Port {port}: {e}'
+            if logger is None:
+                print(msg)
+            else:
+                logger.warning(msg)
+            
+            """
+            if len(total_data)>1:
+                # check if the end_of_data_was split
+                last_pair = total_data[-2]+total_data[-1]
+                if end_char in last_pair:
+                    total_data[-2] = last_pair[:last_pair.find(end_char)]
+                    total_data.pop()
+                    break
+            """
+            sock.close()
+            return None
+    except Exception as e:
+        msg = f'problem with query server, {type(e)}: {e}'
+        if logger is None:
+                print(msg)
+        else:
+            logger.warning(msg)
 
+        return None
+        
+        
+    sock.close()
+    reply =  ''.join(total_data)
+    try:
+        d = json.loads(reply)
+    except:
+        d = reply
+    return d
 
+def connect_to_server(ipaddr, port, timeout = 0.001, logger = None):
+    """
+    this takes in a ip address and port, attempts to create a socket connection
+    and returns the socket
+    """
+    # Connect to the server
+    sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    server_address = (ipaddr, port)
+    try:
+        # attempt to connect to the server
+        sock.connect(server_address)
+        
+        
+    except Exception as e:
+        msg = f'problem establishing connection to server, {type(e)}: {e}'
+        if logger is None:
+                print(msg)
+        else:
+            logger.warning(msg)
+        sock.close()
+        
+    return sock
 
+    
 
 
 
@@ -172,16 +225,6 @@ def plotFITS(filename):
     plt.show(block = False)
     plt.pause(0.1)
     
-if __name__ == '__main__' :
-    plt.figure()
-    while True:
-        i = 0
-        print(f'taking image {i}')
-        time.sleep(2)    
-        #plt.plot([1,2,3])
-        plotFITS('/home/winter/WINTER_GIT/code/wsp/data/' + 'testimage.FITS')
-        i += 1
-    #plt.show()
 
 
 def getdatestr(date = 'today'):
@@ -499,5 +542,17 @@ def setup_logger(base_dir, night, logger_name):
 
 
 
-
+if __name__ == '__main__' :
+    """
+    plt.figure()
+    while True:
+        i = 0
+        print(f'taking image {i}')
+        time.sleep(2)    
+        #plt.plot([1,2,3])
+        plotFITS('/home/winter/WINTER_GIT/code/wsp/data/' + 'testimage.FITS')
+        i += 1
+    #plt.show()
+    """
+    sock = connect_to_server('198.202.125.142', 4698)
 
