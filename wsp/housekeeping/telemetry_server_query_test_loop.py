@@ -8,6 +8,9 @@ Created on Thu Feb 13 11:17:32 2020
 
 import socket
 import json
+from datetime import datetime
+import time
+
 
 def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001,badchars = None):
     """
@@ -17,11 +20,7 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
     """
     
     
-    # Connect to the server
-    sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    sock.settimeout(timeout)
-    server_address = (ipaddr, port)
-    sock.connect(server_address)
+    
     
     cmd = cmd + line_ending
     
@@ -49,7 +48,7 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
                 total_data.pop()
                 break
         """
-    sock.close()
+    
     reply =  ''.join(total_data)
     
     # splice out any nasty characters from the reply string
@@ -66,31 +65,49 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
     
     
 #%%
-try:
-    d = query_server('WEATHER_JSON', 
-                     '198.202.125.214', 4698, 
-                     end_char = '}]',
-                     timeout = 1)
-    # convert the string to dict using json loads
     
-    
-    
-    
-    d_p200 = d[0]
-    d_p60 = d[1]
-    d_p48 = d[2]
-    
-    # try to grab a single element
-    print('Grabbing element from dict:')
-    elements = ['P48_UTC','P48_Outside_Air_Temp','P48_Wetness','P48_Weather_Status']
-    #for element in elements:
-    #    print(f'{element} = {d_p48[element]}')
-    print()
-    print(json.dumps(d_p48,indent = 4))
-except:       
-        print('could not query telemetry server')
+# Connect to the server
+sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+sock.settimeout(0.5)
+server_address = ('198.202.125.214', 4698)
+sock.connect(server_address)
 
 
+#%%
+index = 0
+while True:
+    print(f'query number: {index}')
+    try:
+        d = query_server('WEATHER_JSON', 
+                         '198.202.125.214', 4698, 
+                         end_char = '}]',
+                         timeout = 1)
+        # convert the string to dict using json loads
+        
+        
+        
+        
+        d_p200 = d[0]
+        d_p60 = d[1]
+        d_p48 = d[2]
+        
+        # try to grab a single element
+        print('Grabbing element from dict:')
+        elements = ['P48_UTC','P48_Outside_Air_Temp','P48_Wetness','P48_Weather_Status']
+        #for element in elements:
+        #    print(f'{element} = {d_p48[element]}')
+        print()
+        print(json.dumps(d_p48,indent = 4))
+    except:       
+            print('could not query telemetry server')
+    time.sleep(0.5)
+    index+=1
+    
+    
+# Send a command
+#sock.sendall(bytes('BYE\n',"utf-8"))
+    
+sock.close()
 #%%
 """
 try: 

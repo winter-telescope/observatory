@@ -167,6 +167,11 @@ class ObsWriter():
                     for name in altNames:
                         if name in dataDict:
                             tableData[column] = dataDict[name]
+                    if column not in tableData:
+                        if "default" in self.dbStructure[table][column]:
+                            tableData[column] = self.dbStructure[table][column]["default"]
+                        else:
+                            tableData[column] = None
                 elif "default" in self.dbStructure[table][column]:
                     tableData[column] = self.dbStructure[table][column]["default"]
                 else:
