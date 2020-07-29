@@ -179,7 +179,7 @@ def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 204
         return None
         
         
-    sock.close()
+    #sock.close()
     reply =  ''.join(total_data)
     try:
         d = json.loads(reply)
@@ -187,7 +187,7 @@ def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 204
         d = reply
     return d
 
-def connect_to_server(ipaddr, port, timeout = 0.01, logger = None):
+def create_socket(ipaddr, port, timeout = 0.01, logger = None):
     """
     this takes in a ip address and port, attempts to create a socket connection
     and returns the socket
@@ -211,7 +211,22 @@ def connect_to_server(ipaddr, port, timeout = 0.01, logger = None):
         
     return sock
 
-
+def connect_to_server(config,servername,logger = None):
+    """
+    this creates a socket and does so using the nicely formatted dict from
+    the config file.
+    
+    expects the config to have a line like this in it:
+        servername:
+            ipaddr = 128.91.1.10
+            port = 777
+            timeout = 1.5
+    """    
+    sock = create_socket(ipaddr     = config[servername]['addr'],
+                         port       = config[servername]['port'],
+                         timeout    = config[servername]['timeout'],
+                         logger     = logger)
+    return sock
 
 def plotFITS(filename):
     plt.close('all')

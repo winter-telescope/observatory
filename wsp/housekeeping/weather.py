@@ -45,6 +45,10 @@ class palomarWeather(object):
         self.status_PCS = dict()
         self.PTS_status = [dict(), dict(), dict()]
         
+        # init the connections to the weather servers
+        self.reconnect_PTS()
+        self.reconnect_PCS()
+        
         
         # THIS IS A FLAG THAT CAN BE SET TO OVERRIDE THE WEATHER DOME OPEN VETO:
         self.override = False 
@@ -53,7 +57,20 @@ class palomarWeather(object):
         self.getWeather(firsttime = True)
         #self.caniopen() # checks all the dome vetoes based on weather
         
-        
+    def reconnect_PTS(self):
+        """
+        tries to reestablish the palomar telemetry server socket connection
+        """
+        self.PTS_socket = utils.connect_to_server(config     = self.config,
+                                                  servername = 'telemetry_server',
+                                                  logger     = self.logger)
+    def reconnect_PCS(self):
+        """
+        tries to reestablish the palomar telemetry server socket connection
+        """
+        self.PTS_socket = utils.connect_to_server(config     = self.config,
+                                                  servername = 'telemetry_server',
+                                                  logger     = self.logger)
     
     def getWeatherLimits(self):
         try: # Load in the weather limits from the config file
@@ -108,17 +125,24 @@ class palomarWeather(object):
         # Query the Telemetry Server
         server = 'telemetry_server'
         
+        #def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001, logger = None):
+        
         newstatus = utils.query_server(cmd = self.config[server]['cmd'],
-                                    ipaddr = self.config[server]['addr'],
-                                    port = self.config[server]['port'],
-                                    end_char= self.config[server]['endchar'],
-                                    timeout = self.config[server]['timeout'],
-                                    logger = self.logger)
+                                       socket = self.PTS_socket,
+                                       end_char= self.config[server]['endchar'],
+                                       timeout = self.config[server]['timeout'],
+                                       logger = self.logger)
         
         # if the query_server command fails it returns None
         if newstatus is None:
             #self.PTS_status = [dict(), dict(), dict()]
             self.P48_Online = 0
+            
+            # try to reconnect
+            #TODO eventually this shouldn't happen here. want more control over this 
+            # and time limits on this, so it tries to reconnect like once every minute, not at the sample frequency
+            # but for not this is fine... probably. NPL 7/29/20
+            self.reconnect_PTS()
         else:
             self.PTS_status = newstatus
             self.P48_Online = 1
@@ -252,16 +276,21 @@ class palomarWeather(object):
         # LOAD DATA FROM THE PALOMAR COMMAND SERVER
         
         newstatus = utils.query_server(cmd = self.config[server]['cmd'],
-                                    ipaddr = self.config[server]['addr'],
-                                    port = self.config[server]['port'],
-                                    end_char= self.config[server]['endchar'],
-                                    timeout = self.config[server]['timeout'],
-                                    logger = self.logger)
+                                       socket = self.PTS_socket,
+                                       end_char= self.config[server]['endchar'],
+                                       timeout = self.config[server]['timeout'],
+                                       logger = self.logger)
         
         # if the query_server command fails it returns None
         if newstatus is None:
             #self.status_PCS = dict()
             self.PCS_Online = 0
+            
+            # try to reconnect
+            #TODO eventually this shouldn't happen here. want more control over this 
+            # and time limits on this, so it tries to reconnect like once every minute, not at the sample frequency
+            # but for not this is fine... probably. NPL 7/29/20
+            self.reconnect_PCS()
         else:
             self.status_PCS = newstatus
             self.PCS_Online = 1
