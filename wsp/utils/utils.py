@@ -150,7 +150,8 @@ def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 204
                     total_data.append(data[:data.find(end_char)] + end_char)
                     break
                 total_data.append(data)
-        except socket.timeout as e:
+        except Exception as e:
+            ipaddr, port = sock.getsockname()
             msg = f'server query to {ipaddr} Port {port}: {e}'
             if logger is None:
                 print(msg)
@@ -186,7 +187,7 @@ def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 204
         d = reply
     return d
 
-def connect_to_server(ipaddr, port, timeout = 0.001, logger = None):
+def connect_to_server(ipaddr, port, timeout = 0.01, logger = None):
     """
     this takes in a ip address and port, attempts to create a socket connection
     and returns the socket
@@ -209,8 +210,6 @@ def connect_to_server(ipaddr, port, timeout = 0.001, logger = None):
         sock.close()
         
     return sock
-
-    
 
 
 
@@ -557,5 +556,11 @@ if __name__ == '__main__' :
         i += 1
     #plt.show()
     """
-    sock = connect_to_server('198.202.125.142', 4698)
+    sock = connect_to_server('198.202.125.142', 62000,timeout = 0.1)   
+
+    d = query_server('status?', 
+                         socket = sock, 
+                         end_char = '}',
+                         timeout = 1)
+    print(d)
 

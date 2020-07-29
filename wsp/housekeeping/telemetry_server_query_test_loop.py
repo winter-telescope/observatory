@@ -109,7 +109,7 @@ while True:
     
 sock.close()
 #%%
-"""
+
 try: 
     d = query_server('status?', 
                      '198.202.125.142', 62000, 
@@ -132,4 +132,4 @@ try:
     
 except:
     print('could not query command server')
-"""
+
