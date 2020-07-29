@@ -131,11 +131,12 @@ def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 204
     """
     
     
-    # Connect to the server
-    sock = socket
-    sock.settimeout(timeout)
+   
+    
     try:
-        
+        # Connect to the server
+        sock = socket
+        sock.settimeout(timeout)
         cmd = cmd + line_ending
         
         # Send a command
@@ -192,7 +193,7 @@ def create_socket(ipaddr, port, timeout = 0.01, logger = None):
     this takes in a ip address and port, attempts to create a socket connection
     and returns the socket
     """
-    # Connect to the server
+    
     sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     sock.settimeout(timeout)
     server_address = (ipaddr, port)
@@ -222,10 +223,20 @@ def connect_to_server(config,servername,logger = None):
             port = 777
             timeout = 1.5
     """    
-    sock = create_socket(ipaddr     = config[servername]['addr'],
-                         port       = config[servername]['port'],
-                         timeout    = config[servername]['timeout'],
-                         logger     = logger)
+    
+    
+    ipaddr     = config[servername]['addr']
+    port       = config[servername]['port']
+    timeout    = config[servername]['timeout']
+    
+    # Connect to the server
+    msg = f'attempting to create new socket connection to server at {ipaddr} port {port}'
+    if logger is None:
+        print(msg)
+    else:
+        logger.info(msg)
+    sock = create_socket(ipaddr = ipaddr, port = port, timeout = timeout, logger = logger)
+
     return sock
 
 def plotFITS(filename):

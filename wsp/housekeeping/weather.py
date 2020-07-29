@@ -68,8 +68,8 @@ class palomarWeather(object):
         """
         tries to reestablish the palomar telemetry server socket connection
         """
-        self.PTS_socket = utils.connect_to_server(config     = self.config,
-                                                  servername = 'telemetry_server',
+        self.PCS_socket = utils.connect_to_server(config     = self.config,
+                                                  servername = 'command_server',
                                                   logger     = self.logger)
     
     def getWeatherLimits(self):
@@ -276,7 +276,7 @@ class palomarWeather(object):
         # LOAD DATA FROM THE PALOMAR COMMAND SERVER
         
         newstatus = utils.query_server(cmd = self.config[server]['cmd'],
-                                       socket = self.PTS_socket,
+                                       socket = self.PCS_socket,
                                        end_char= self.config[server]['endchar'],
                                        timeout = self.config[server]['timeout'],
                                        logger = self.logger)

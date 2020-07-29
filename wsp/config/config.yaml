@@ -254,13 +254,97 @@ fields:
         var: 'telescope.state.mount.axis1.is_enabled'
 #weather:
     #CDS (Clear Dark Skies)
-    cds_cloud:
-        label: 'CDS-Clouds'
+    cds_cloud_index:
+        label: 'CloudIndex'
         units: None
         dtype: float64
         rate: slow
         sys: weather
         var: 'weather.CDSCLOUD'
+    cds_trans_index:
+        label: TransIndex
+        units: None
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSTRANS'
+    cds_seeing_index:
+        label: SeeingIndex
+        units: None
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSSEEING'
+    cds_wind_index:
+        label: WindIndex
+        units: None
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSWINDI'
+    ws_cds_max:
+        label: Speed
+        units: mph
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSWINDMAX'
+    ws_cds_min:
+        label: Speed
+        units: mph
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSWINDMIN'
+    cds_rh_index:
+        label: RHIndex
+        units: None
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSRHI'
+    rh_cds_min:
+        label: RH
+        units: pct
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSRHMIN'
+    rh_cds_max:
+        label: RH
+        units: pct
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSRHMAX'
+    rh_cds_min:
+        label: RH
+        units: pct
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSRHMAX'
+    cds_temp_index:
+        label: TempIndex
+        units: None
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSTEMPI'
+    T_cds_min:
+        label: T
+        units: C
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSTEMPMIN'
+    T_cds_max:
+        label: T
+        units: C
+        dtype: float64
+        rate: slow
+        sys: weather
+        var: 'weather.CDSTEMPMAX'
     cloud_min:
         label: 'Clouds-Min'
         units: None
