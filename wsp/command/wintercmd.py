@@ -102,7 +102,7 @@ def cmd(func):
 class Wintercmd(object):
 
 
-    def __init__(self, config, telescope, logger, schedule):
+    def __init__(self, config, telescope, logger, schedule, writer):
         # init the parent class
         super().__init__()
 
@@ -113,6 +113,7 @@ class Wintercmd(object):
         # subclass some useful inputs
         self.telescope = telescope
         self.schedule = schedule
+        self.writer = writer
         self.config = config
         self.logger = logger
         self.defineParser()
@@ -330,8 +331,17 @@ class Wintercmd(object):
                                     help = 'integer observsation ID')
         self.getargs()
         obsID = self.args.obsID[0]
+        self.schedule.loadSchedule(currentTime=obsID, startFresh=False)
+        if self.schedule.currentObs is not None:
+            AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
+            ALT = float(self.schedule.currentObs['altitude'])*180/np.pi
+            self.telescope.mount_goto_alt_az(alt_degs = ALT, az_degs = AZ)
 
-        self.telescope.mount_goto_alt_az(alt_degs = 45, az_degs = 45)
+    @cmd
+    def write_test(self):
+        self.defineCmdParser('write a line to the database')
+        self.writer.log_observation(self.schedule.getCurrentObs(), "/fakepath")
+        self.schedule.gotoNextObs()
 
     @cmd
     def quit(self):

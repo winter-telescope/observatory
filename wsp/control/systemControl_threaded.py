@@ -40,6 +40,7 @@ from housekeeping import weather
 from housekeeping import housekeeping
 from dome import dome
 from schedule import schedule
+from schedule import ObsWriter
 from utils import utils
 
 # Create the control class -- it inherets from QObject
@@ -77,12 +78,12 @@ class control(QtCore.QObject):
         self.schedule = schedule.Schedule(base_directory = self.base_directory, date = 'today')
 
         ## init the database writer
-        # self.writer = ObsWriter.ObsWriter('demoRelational', self.base_directory) #the ObsWriter initialization
+        self.writer = ObsWriter.ObsWriter('demoRelational', self.base_directory) #the ObsWriter initialization
 
 
 
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.config, self.telescope, self.logger, self.schedule)
+        self.wintercmd = wintercmd.Wintercmd(self.config, self.telescope, self.logger, self.schedule, self.writer)
 
         # init the cmd executor
         self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
