@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import time
-import pwi4_client
+import pwi4_client_py3
 from platesolve import platesolve
 
 # NOTE: Replace this with the estimated arcseconds per pixel
