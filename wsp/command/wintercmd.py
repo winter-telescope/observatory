@@ -304,44 +304,44 @@ class Wintercmd(object):
 
     @cmd
     def mount_shutdown(self):
-        # self.mount_home()
-        # time.sleep(0.5)
-        # self.mount_az_off()
-        # time.sleep(0.5)
-        # self.mount_alt_off()
-        # time.sleep(0.5)
-        # self.mount_disconnect()
+        self.mount_home()
+        time.sleep(0.5)
+        self.mount_az_off()
+        time.sleep(0.5)
+        self.mount_alt_off()
+        time.sleep(0.5)
+        self.mount_disconnect()
 
-        # possible alternate structure: Probably won't work
-        alt_degs = (self.config['telescope_home']['alt_degs'])
-        az_degs = self.config['telescope_home']['az_degs']
-        self.logger.info(f'slewing to home: ALT = {alt_degs}, AZ = {az_degs}')
-        self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
-        self.telescope.mount_disable(0)
-        self.telescope.mount_disable(1)
-
-    @cmd
-    def mount_check_schedule(self):
-        """Usage: check_schedule <obsID>"""
-        self.defineCmdParser('move telescope to alt/az specified in schedule for an <obsID>')
-        self.cmdparser.add_argument('obsID',
-                                    nargs = 1,
-                                    action = None,
-                                    type = int,
-                                    help = 'integer observsation ID')
-        self.getargs()
-        obsID = self.args.obsID[0]
-        self.schedule.loadSchedule(currentTime=obsID, startFresh=False)
-        if self.schedule.currentObs is not None:
-            AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
-            ALT = float(self.schedule.currentObs['altitude'])*180/np.pi
-            self.telescope.mount_goto_alt_az(alt_degs = ALT, az_degs = AZ)
-
-    @cmd
-    def write_test(self):
-        self.defineCmdParser('write a line to the database')
-        self.writer.log_observation(self.schedule.getCurrentObs(), "/fakepath")
-        self.schedule.gotoNextObs()
+    #     # possible alternate structure: Probably won't work
+    #     alt_degs = (self.config['telescope_home']['alt_degs'])
+    #     az_degs = self.config['telescope_home']['az_degs']
+    #     self.logger.info(f'slewing to home: ALT = {alt_degs}, AZ = {az_degs}')
+    #     self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
+    #     self.telescope.mount_disable(0)
+    #     self.telescope.mount_disable(1)
+    #
+    # @cmd
+    # def mount_check_schedule(self):
+    #     """Usage: check_schedule <obsID>"""
+    #     self.defineCmdParser('move telescope to alt/az specified in schedule for an <obsID>')
+    #     self.cmdparser.add_argument('obsID',
+    #                                 nargs = 1,
+    #                                 action = None,
+    #                                 type = int,
+    #                                 help = 'integer observsation ID')
+    #     self.getargs()
+    #     obsID = self.args.obsID[0]
+    #     self.schedule.loadSchedule(currentTime=obsID, startFresh=False)
+    #     if self.schedule.currentObs is not None:
+    #         AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
+    #         ALT = float(self.schedule.currentObs['altitude'])*180/np.pi
+    #         self.telescope.mount_goto_alt_az(alt_degs = ALT, az_degs = AZ)
+    #
+    # @cmd
+    # def write_test(self):
+    #     self.defineCmdParser('write a line to the database')
+    #     self.writer.log_observation(self.schedule.getCurrentObs(), "/fakepath")
+    #     self.schedule.gotoNextObs()
 
     @cmd
     def quit(self):
