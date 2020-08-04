@@ -98,7 +98,7 @@ class control(QtCore.QObject):
         ### SET UP THE HOUSEKEEPING ###
 
         # init the housekeeping class (this starts the daq and dirfile write loops)
-        self.hk = housekeeping.housekeeping(self.config,
+        # self.hk = housekeeping.housekeeping(self.config,
                                             telescope = self.telescope,
                                             weather = self.weather)
 
