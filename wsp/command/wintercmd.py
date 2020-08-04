@@ -304,21 +304,21 @@ class Wintercmd(object):
 
     @cmd
     def mount_shutdown(self):
-        self.mount_home()
-        time.sleep(0.5)
-        self.mount_az_off()
-        time.sleep(0.5)
-        self.mount_alt_off()
-        time.sleep(0.5)
-        self.mount_disconnect()
+        # self.mount_home()
+        # time.sleep(0.5)
+        # self.mount_az_off()
+        # time.sleep(0.5)
+        # self.mount_alt_off()
+        # time.sleep(0.5)
+        # self.mount_disconnect()
 
-        ## possible alternate structure:
-        # alt_degs = (self.config['telescope_home']['alt_degs'])
-        # az_degs = self.config['telescope_home']['az_degs']
-        # self.logger.info(f'slewing to home: ALT = {alt_degs}, AZ = {az_degs}')
-        # self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
-        # self.telescope.mount_disable(0)
-        # self.telescope.mount_disable(1)
+        # possible alternate structure: Probably won't work
+        alt_degs = (self.config['telescope_home']['alt_degs'])
+        az_degs = self.config['telescope_home']['az_degs']
+        self.logger.info(f'slewing to home: ALT = {alt_degs}, AZ = {az_degs}')
+        self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
+        self.telescope.mount_disable(0)
+        self.telescope.mount_disable(1)
 
     @cmd
     def mount_check_schedule(self):
