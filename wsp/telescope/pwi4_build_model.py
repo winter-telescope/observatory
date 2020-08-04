@@ -12,19 +12,19 @@ IMAGE_ARCSEC_PER_PIXEL = 1.0
 def main():
     pwi4 = pwi4_client.PWI4()
 
-    print "Checking connection to PWI4"
+    print("Checking connection to PWI4")
     status = pwi4.status()
 
     if not status.mount.is_connected:
-        print "Connecting to mount"
+        print("Connecting to mount")
         pwi4.mount_connect()
 
     status = pwi4.status()
     if not status.mount.axis0.is_enabled:
-        print "Enabling axis 0"
+        print("Enabling axis 0")
         pwi4.mount_enable(0)
     if not status.mount.axis1.is_enabled:
-        print "Enabling axis 1"
+        print("Enabling axis 1")
         pwi4.mount_enable(1)
 
     # Construct a grid of 3 x 6 = 18 Alt-Az points
@@ -35,7 +35,7 @@ def main():
     for (alt, azm) in points:
         map_point(pwi4, alt, azm)
 
-    print "DONE!"
+    print("DONE!")
 
 def create_point_list(num_alt, min_alt, max_alt, num_azm, min_azm, max_azm):
     """
@@ -78,7 +78,7 @@ def map_point(pwi4, alt_degs, azm_degs):
     PlateSolve it, and (if successful) add to the model
     """
 
-    print "Slewing to Azimuth %.3f, Altitude %3f..." % (azm_degs, alt_degs)
+    print("Slewing to Azimuth %.3f, Altitude %3f..." % (azm_degs, alt_degs))
     pwi4.mount_goto_alt_az(alt_degs, azm_degs)
 
     while True:
@@ -108,21 +108,21 @@ def map_point(pwi4, alt_degs, azm_degs):
     # on sidereal tracking before taking an image
 
 
-    print "Taking image..."
+    print("Taking image...")
 
     take_image("image.fits", pwi4)
 
-    print "Saved FITS image"
+    print("Saved FITS image")
 
-    print "Running PlateSolve..."
+    print("Running PlateSolve...")
     try:
         match = platesolve("image.fits", IMAGE_ARCSEC_PER_PIXEL)
-    except Exception, ex:
-        print ex.message
+    except Exception as ex:
+        print(ex.message)
         return
 
     pwi4.mount_model_add_point(match["ra_j2000_hours"], match["dec_j2000_degrees"])
-    print "Added point"
+    print("Added point")
 
 if __name__ == "__main__":
     main()
