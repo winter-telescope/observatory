@@ -10,7 +10,7 @@ from platesolve import platesolve
 IMAGE_ARCSEC_PER_PIXEL = 1.0
 
 def main():
-    pwi4 = pwi4_client.PWI4()
+    pwi4 = pwi4_client.PWI4(host = "thor", port = 8220)
 
     print("Checking connection to PWI4")
     status = pwi4.status()
