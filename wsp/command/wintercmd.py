@@ -338,7 +338,7 @@ class Wintercmd(object):
             ALT = float(self.schedule.currentObs['altitude'])*180/np.pi
             self.telescope.mount_goto_alt_az(alt_degs = ALT, az_degs = AZ)
             waittime = int(self.schedule.currentObs['visitTime'])
-            print(f' Taking a {waittime} second exposure...')
+            # print(f' Taking a {waittime} second exposure...')
             time.sleep(waittime)
             self.schedule.gotoNextObs()
 
