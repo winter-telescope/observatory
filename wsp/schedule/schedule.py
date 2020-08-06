@@ -74,26 +74,6 @@ sys.path.insert(1, wsp_path)
 from utils import utils
 
 
-def makeSampleSchedule(date = 'today'):
-    # Takes in a date (string or int) or 'today'/'tonight' and makes a sample
-    # schedule file based on the example file, just resaves it with a name
-    # based on the date provided
-
-    #TODO want this to make a file like 20200215_000.sch which increments if
-    # there is already a file with that name in the directory. That way old
-    # files are preserved
-    filename = 'n' + utils.getdatestr(date)
-
-    filename = filename + '_sch.csv'#'.sch'
-    # Copy the sample schedule file
-    schedulepath = os.getcwd() + '/scheduleFiles/'
-    samplefile =  'example_ztf_schedule_observable_altaz.csv'
-    shutil.copyfile(schedulepath + samplefile, schedulepath + filename)
-    print(f'Wrote Sample Schedule File to: {schedulepath + filename}')
-
-
-
-
 class Schedule(object):
     # This is a class that holds the full schedule
     # def __init__(self,base_directory,date = 'today'):
@@ -148,8 +128,7 @@ class Schedule(object):
         self.base_directory = base_directory
         self.schedulefile = base_directory + '/schedule/scheduleFiles/1_night_test.db'
         self.engine = db.create_engine('sqlite:///' + self.schedulefile)
-        self.conn = self.engine.connect()
-        self.logger.error('successfully connected to db')
+
 
 
     # def loadSchedule(self):
@@ -180,6 +159,8 @@ class Schedule(object):
         actually refer to time before deployment.
         """
 
+        self.conn = self.engine.connect()
+        self.logger.error('successfully connected to db')
         metadata = db.MetaData()
         summary = db.Table('Summary', metadata, autoload=True, autoload_with=self.engine)
 
