@@ -48,6 +48,7 @@ import signal
 import logging
 import os
 import datetime
+import numpy as np
 
 #redefine the argument parser so it exits nicely and execptions are handled better
 
