@@ -7,7 +7,7 @@ This file is part of wsp
 
 # PURPOSE #
 This program is the top-level control loop which runs operations for the
-WINTER instrument. 
+WINTER instrument.
 
 
 
@@ -45,7 +45,7 @@ caption1 = '\n\t\033[32mWSP - The WINTER Supervisor Program'
 caption2 = '\n\t\033[32mPlease Select an Operating Mode:'
 captions = [caption1, caption2]
 main_opts= ['Schedule File Mode',\
-            'Get Ready and Wait',\
+            'Start with Housekeeping(temporary debugging)',\
             'Manual Mode',\
             'Exit']
 logo = []
@@ -83,7 +83,7 @@ def menu(captions, options):
 
 
 #########################################################################
-    
+
 
 def sigint_handler(*args):
     """Handler for the SIGINT signal."""
@@ -101,9 +101,9 @@ if __name__ == "__main__":
     # get the mode flag
     opt = 0
     #mode = dict({})
-    
+
     #menu(config)
-    
+
     # set up the logger
 
     night = utils.night()
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     while True:
         cmd = input('select a mode: ')
         print(f'You selected mode: {cmd}')
-        
+
         if cmd == 'quit':
             app.quit()
             sys.exit()
@@ -127,17 +127,17 @@ if __name__ == "__main__":
                     print("Initializing systems and waiting for further commands")
                 elif opt == "2":
                     print("Entering fully manual mode and waiting for commands")
-                    
+
                 winter = systemControl_threaded.control(mode = int(opt), config = config, base_directory = wsp_path, logger = logger)
-    
+
                 break
-               
+
             elif opt == "3":
                 print("Killing WSP...")
                 sys.exit()
                 break
             else:
-                print("Please choose a valid option:") 
+                print("Please choose a valid option:")
     except KeyboardInterrupt:
         pass
 
@@ -145,11 +145,11 @@ if __name__ == "__main__":
     # instatiate the control (ie main) class
     #TODO port this to the real systemControl instead
     #winter = systemControl_threaded.control(mode = int(opt), config = config, base_directory = wsp_path, logger = logger)
-    
+
     """
     # Run the interpreter every so often to catch SIGINT
     timer = QtCore.QTimer()
-    timer.start(500) 
-    timer.timeout.connect(lambda: None) 
+    timer.start(500)
+    timer.timeout.connect(lambda: None)
     """
     sys.exit(app.exec_())

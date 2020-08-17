@@ -85,22 +85,30 @@ class control(QtCore.QObject):
         ### SET UP THE COMMAND LINE INTERFACE
         self.wintercmd = wintercmd.Wintercmd(self.config, self.telescope, self.logger, self.schedule, self.writer)
 
+        #init the schedule executor
+        self.scheduleExec = commandParser.schedule_executor(self.telescope, self.schedule, self.writer, self.logger)
+
         # init the cmd executor
-        self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
+        self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
 
         # init the cmd prompt
         self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
 
-        # connect the new command signal to the executor
+        #init the schedule executor
+        self.scheduleExec = commandParser.schedule_executor(self.telescope, self.schedule, self.writer, self.logger)
+
+        # connect the new command signal to the executors
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
+        self.cmdprompt.newcmd.connect(self.scheduleExec.interrupt)
 
 
         ### SET UP THE HOUSEKEEPING ###
 
+        if mode == 1:
         # init the housekeeping class (this starts the daq and dirfile write loops)
-        # self.hk = housekeeping.housekeeping(self.config,
-        #                                     telescope = self.telescope,
-        #                                     weather = self.weather)
+            self.hk = housekeeping.housekeeping(self.config,
+                                                telescope = self.telescope,
+                                                weather = self.weather)
 
         ### START UP THE OBSERVATION SEQUENCE ###
         """
