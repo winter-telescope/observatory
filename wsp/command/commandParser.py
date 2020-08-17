@@ -220,7 +220,7 @@ class schedule_executor(QtCore.QThread):
         self.writer = writer
         self.logger = logger
         self.lastSeen = -1
-        self.getSchedule()
+
 
     def getSchedule(self):
         self.schedule.loadSchedule(self.lastSeen+1)
@@ -230,7 +230,7 @@ class schedule_executor(QtCore.QThread):
 
     def run(self):
         print(f'scheduleExecutor: running scheduleExec in thread {self.currentThread()}')
-
+        self.getSchedule()
         while self.schedule.currentObs is not None:
             self.lastSeen = self.schedule.currentObs['obsHistID']
             AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
