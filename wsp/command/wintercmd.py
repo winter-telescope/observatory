@@ -317,7 +317,7 @@ class Wintercmd(object):
 
 class ManualCmd(Wintercmd):
 
-    def __init__():
+    def __init__(self, config, telescope, logger):
         super().__init__(self, config, telescope, logger)
         self.prompt = 'wintercmd(M): '
 
@@ -335,7 +335,7 @@ class ManualCmd(Wintercmd):
         az = self.args.position[1]
         self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
 
-    
+
 
 class ScheduleCmd(Wintercmd):
 
