@@ -102,6 +102,9 @@ class control(QtCore.QObject):
         self.cmdprompt.newcmd.connect(self.scheduleExec.interrupt)
 
 
+        if mode == 0:
+            self.scheduleExec.start()
+
         ### SET UP THE HOUSEKEEPING ###
 
         if mode == 1:
