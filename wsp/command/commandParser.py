@@ -213,6 +213,8 @@ class schedule_executor(QtCore.QThread):
     """
 
     def __init__(self, telescope, schedule, writer, logger):
+        super().__init__()
+
         self.telescope = telescope
         self.schedule = schedule
         self.writer = writer
