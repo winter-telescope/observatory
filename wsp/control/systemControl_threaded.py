@@ -53,18 +53,14 @@ class control(QtCore.QObject):
 
         # pass in the config
         self.config = config
-
         # pass in the logger
         self.logger = logger
-
         # pass in the base directory
         self.base_directory = base_directory
 
         ### SET UP THE HARDWARE ###
-
         # init the telescope
         self.telescope = pwi4.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
-
 
         # init the weather
         try:
@@ -76,17 +72,19 @@ class control(QtCore.QObject):
 
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, date = 'today')
-
         ## init the database writer
         self.writer = ObsWriter.ObsWriter('demoRelational', self.base_directory) #the ObsWriter initialization
 
-
-
+        '''
+        In this section we set up the appropriate command interface and executors for the chosen mode
+        '''
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.ManualCmd(self.config, self.telescope, self.logger)
-
-        #init the schedule executor
-        self.scheduleExec = commandParser.schedule_executor(self.telescope, self.schedule, self.writer, self.logger)
+        if mode == 0:
+            self.wintercmd = wintercmd.ScheduleCmd(self.config, self.telescope, self.logger)
+            #init the schedule executor
+            self.scheduleExec = commandParser.schedule_executor(self.telescope, self.schedule, self.writer, self.logger)
+        else:
+            self.wintercmd = wintercmd.ManualCmd(self.config, self.telescope, self.logger)
 
         # init the cmd executor
         self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
@@ -95,10 +93,11 @@ class control(QtCore.QObject):
         self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
 
 
-
         # connect the new command signal to the executors
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
-        self.cmdprompt.newcmd.connect(self.scheduleExec.interrupt)
+        if mode == 0:
+            self.cmdprompt.newcmd.connect(self.scheduleExec.interrupt)
+
 
 
         if mode == 0:
@@ -111,6 +110,17 @@ class control(QtCore.QObject):
             self.hk = housekeeping.housekeeping(self.config,
                                                 telescope = self.telescope,
                                                 weather = self.weather)
+
+
+
+
+
+
+
+
+
+
+
 
         ### START UP THE OBSERVATION SEQUENCE ###
         """
