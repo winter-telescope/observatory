@@ -318,7 +318,7 @@ class Wintercmd(object):
 class ManualCmd(Wintercmd):
 
     def __init__(self, config, telescope, logger):
-        super().__init__(self, config, telescope, logger)
+        super().__init__(config, telescope, logger)
         self.prompt = 'wintercmd(M): '
 
     @cmd
