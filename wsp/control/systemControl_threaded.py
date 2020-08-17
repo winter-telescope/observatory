@@ -83,7 +83,7 @@ class control(QtCore.QObject):
 
 
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.config, self.telescope, self.logger, self.schedule, self.writer)
+        self.wintercmd = wintercmd.Wintercmd(self.config, self.telescope, self.logger)
 
         #init the schedule executor
         self.scheduleExec = commandParser.schedule_executor(self.telescope, self.schedule, self.writer, self.logger)
@@ -94,8 +94,7 @@ class control(QtCore.QObject):
         # init the cmd prompt
         self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
 
-        #init the schedule executor
-        self.scheduleExec = commandParser.schedule_executor(self.telescope, self.schedule, self.writer, self.logger)
+        
 
         # connect the new command signal to the executors
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
