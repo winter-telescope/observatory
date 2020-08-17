@@ -229,6 +229,8 @@ class schedule_executor(QtCore.QThread):
         self.schedule.currentObs = None
 
     def run(self):
+        print(f'scheduleExecutor: running scheduleExec in thread {self.currentThread()}')
+
         while self.schedule.currentObs is not None:
             self.lastSeen = self.schedule.currentObs['obsHistID']
             AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
