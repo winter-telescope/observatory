@@ -219,6 +219,7 @@ class schedule_executor(QtCore.QThread):
         self.logger = logger
         self.lastSeen = -1
         self.getSchedule()
+        self.start()
 
     def getSchedule(self):
         self.schedule.loadSchedule(self.lastSeen+1)
