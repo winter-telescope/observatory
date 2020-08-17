@@ -246,20 +246,6 @@ class Wintercmd(object):
         self.logger.info(f"plover: {num}")
 
     @cmd
-    def mount_goto_alt_az(self):
-        """Usage: goto_alt_az <alt> <az>"""
-        self.defineCmdParser('move telescope to specified alt/az in deg')
-        self.cmdparser.add_argument('position',
-                                    nargs = 2,
-                                    action = None,
-                                    type = float,
-                                    help = '<alt_deg> <az_deg>')
-        self.getargs()
-        alt = self.args.position[0]
-        az = self.args.position[1]
-        self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
-
-    @cmd
     def mount_connect(self):
         self.defineCmdParser('connect to telescope mount')
         self.telescope.mount_connect()
@@ -320,7 +306,7 @@ class Wintercmd(object):
         self.telescope.mount_disable(0)
         self.telescope.mount_disable(1)
 
-    
+
 
     @cmd
     def quit(self):
@@ -328,3 +314,31 @@ class Wintercmd(object):
 
         print('Good Bye!')
         sys.exit()#sigint_handler()
+
+class ManualCmd(Wintercmd):
+
+    def __init__():
+        super().__init__(self, config, telescope, logger)
+        self.prompt = 'wintercmd(M): '
+
+    @cmd
+    def mount_goto_alt_az(self):
+        """Usage: goto_alt_az <alt> <az>"""
+        self.defineCmdParser('move telescope to specified alt/az in deg')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<alt_deg> <az_deg>')
+        self.getargs()
+        alt = self.args.position[0]
+        az = self.args.position[1]
+        self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
+
+    
+
+class ScheduleCmd(Wintercmd):
+
+    def __init__():
+        super().__init__(self, config, telescope, logger)
+        self.prompt = 'wintercmd(S): '
