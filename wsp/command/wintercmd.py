@@ -103,7 +103,7 @@ def cmd(func):
 class Wintercmd(object):
 
 
-    def __init__(self, config, telescope, logger, schedule, writer):
+    def __init__(self, config, telescope, logger):
         # init the parent class
         super().__init__()
 
@@ -113,8 +113,7 @@ class Wintercmd(object):
 
         # subclass some useful inputs
         self.telescope = telescope
-        self.schedule = schedule
-        self.writer = writer
+
         self.config = config
         self.logger = logger
         self.defineParser()
@@ -321,32 +320,7 @@ class Wintercmd(object):
         self.telescope.mount_disable(0)
         self.telescope.mount_disable(1)
 
-    @cmd
-    def mount_check_schedule(self):
-        """Usage: check_schedule <obsID>"""
-        self.defineCmdParser('move telescope to alt/az specified in schedule for an <obsID>')
-        self.cmdparser.add_argument('obsID',
-                                    nargs = 1,
-                                    action = None,
-                                    type = int,
-                                    help = 'integer observsation ID')
-        self.getargs()
-        obsID = self.args.obsID[0]
-        self.schedule.loadSchedule(currentTime=obsID, startFresh=False)
-        while self.schedule.currentObs is not None:
-            AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
-            ALT = float(self.schedule.currentObs['altitude'])*180/np.pi
-            self.telescope.mount_goto_alt_az(alt_degs = ALT, az_degs = AZ)
-            waittime = int(self.schedule.currentObs['visitTime'])
-            # print(f' Taking a {waittime} second exposure...')
-            time.sleep(waittime)
-            self.schedule.gotoNextObs()
-
-    @cmd
-    def write_test(self):
-        self.defineCmdParser('write a line to the database')
-        self.writer.log_observation(self.schedule.getCurrentObs(), "/fakepath")
-        self.schedule.gotoNextObs()
+    
 
     @cmd
     def quit(self):
