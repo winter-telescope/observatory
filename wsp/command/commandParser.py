@@ -132,6 +132,10 @@ class cmd_prompt(QtCore.QThread):
         self.running = False
         self.start()
 
+    def stop():
+        self.running = False
+        ## TODO: Anything else that needs to happen before stopping the thread
+        
     def run(self):
         self.running = True
         self.getcommands()
