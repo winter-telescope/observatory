@@ -132,10 +132,10 @@ class cmd_prompt(QtCore.QThread):
         self.running = False
         self.start()
 
-    def stop():
+    def stop(self):
         self.running = False
         ## TODO: Anything else that needs to happen before stopping the thread
-        
+
     def run(self):
         self.running = True
         self.getcommands()
@@ -205,7 +205,7 @@ class cmd_executor(QtCore.QThread):
         except Exception as e:
             print(f'could not execute {cmd}: {e}')
 
-    def stop():
+    def stop(self):
         self.running = False
         ## TODO: Anything else that needs to happen before stopping the thread
 
@@ -242,7 +242,7 @@ class schedule_executor(QtCore.QThread):
     def interrupt(self):
         self.schedule.currentObs = None
 
-    def stop():
+    def stop(self):
         self.running = False
         ## TODO: Anything else that needs to happen before stopping the thread
 
