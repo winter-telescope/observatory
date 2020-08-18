@@ -313,7 +313,10 @@ class Wintercmd(object):
         """Quits out of Interactive Mode."""
 
         print('Good Bye!')
-        sys.exit()#sigint_handler()
+        if self.promptThread and self.execThread:
+            self.promptThread.quit()
+            self.execThread.quit()
+        # sys.exit()#sigint_handler()
 
 class ManualCmd(Wintercmd):
 

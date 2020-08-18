@@ -127,6 +127,7 @@ class cmd_prompt(QtCore.QThread):
         super().__init__()
 
         self.wintercmd = wintercmd
+        self.wintercmd.promptThread = self
         self.telescope = telescope
         self.start()
 
@@ -162,6 +163,7 @@ class cmd_executor(QtCore.QThread):
         # create the winter command object
         #self.wintercmd = Wintercmd(telescope)
         self.wintercmd = wintercmd
+        self.wintercmd.execThread = self
         self.logger = logger
         self.listener = listener
 
