@@ -83,11 +83,13 @@ class control(QtCore.QObject):
             self.wintercmd = wintercmd.ScheduleCmd(self.config, self.telescope, self.logger)
             #init the schedule executor
             self.scheduleExec = commandParser.schedule_executor(self.telescope, self.schedule, self.writer, self.logger)
+            # init the cmd executor
+            self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
         else:
             self.wintercmd = wintercmd.ManualCmd(self.config, self.telescope, self.logger)
+            # init the cmd executor
+            self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
 
-        # init the cmd executor
-        self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
 
         # init the cmd prompt
         self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
