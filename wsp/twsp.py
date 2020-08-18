@@ -130,7 +130,7 @@ if __name__ == "__main__":
 
                 winter = systemControl_threaded.control(mode = int(opt), config = config, base_directory = wsp_path, logger = logger)
 
-                # break
+                break
 
             elif opt == "3":
                 print("Killing WSP...")
