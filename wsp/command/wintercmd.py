@@ -316,8 +316,8 @@ class Wintercmd(object):
         if self.promptThread and self.execThread:
             self.promptThread.quit()
             self.execThread.quit()
-        else:
-            sys.exit()#sigint_handler()
+            
+        sys.exit()#sigint_handler()
 
 class ManualCmd(Wintercmd):
 
