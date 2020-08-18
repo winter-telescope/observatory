@@ -129,14 +129,16 @@ class cmd_prompt(QtCore.QThread):
         self.wintercmd = wintercmd
         self.wintercmd.promptThread = self
         self.telescope = telescope
+        self.running = False
         self.start()
 
     def run(self):
+        self.running = True
         self.getcommands()
 
     def getcommands(self):
         print(f'commandparser: running command console in thread {self.currentThread()}')
-        while True:
+        while self.running:
             # listen for an incoming command
             cmd = input(self.wintercmd.prompt)
             # don't do anyting if the command is just whitespace:
@@ -199,11 +201,16 @@ class cmd_executor(QtCore.QThread):
         except Exception as e:
             print(f'could not execute {cmd}: {e}')
 
+    def stop():
+        self.running = False
+        ## TODO: Anything else that needs to happen before stopping the thread
+
     def run(self):
-       # if there are any commands in the queue, execute them!
-       self.logger.debug('waiting for commands to execute')
-       print(f'commandparser: running command queue manager in thread {self.currentThread()}')
-       while True:
+        self.running = True
+        # if there are any commands in the queue, execute them!
+        self.logger.debug('waiting for commands to execute')
+        print(f'commandparser: running command queue manager in thread {self.currentThread()}')
+        while self.running:
            if not self.queue.empty():
                priority, cmd = self.queue.get()
                self.execute(cmd)
@@ -222,6 +229,7 @@ class schedule_executor(QtCore.QThread):
         self.writer = writer
         self.logger = logger
         self.lastSeen = -1
+        self.running = False
 
 
     def getSchedule(self):
@@ -230,10 +238,15 @@ class schedule_executor(QtCore.QThread):
     def interrupt(self):
         self.schedule.currentObs = None
 
+    def stop():
+        self.running = False
+        ## TODO: Anything else that needs to happen before stopping the thread
+
     def run(self):
+        self.running = True
         print(f'scheduleExecutor: running scheduleExec in thread {self.currentThread()}')
         self.getSchedule()
-        while self.schedule.currentObs is not None:
+        while self.schedule.currentObs is not None and self.running:
             self.lastSeen = self.schedule.currentObs['obsHistID']
             AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
             ALT = float(self.schedule.currentObs['altitude'])*180/np.pi

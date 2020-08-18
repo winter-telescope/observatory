@@ -314,9 +314,9 @@ class Wintercmd(object):
 
         print('Good Bye!')
         if self.promptThread and self.execThread:
-            self.promptThread.quit()
-            self.execThread.quit()
-            
+            self.promptThread.stop()
+            self.execThread.stop()
+
         sys.exit()#sigint_handler()
 
 class ManualCmd(Wintercmd):
