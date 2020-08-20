@@ -231,7 +231,7 @@ class schedule_executor(QtCore.QThread):
 
         self.telescope = telescope
         self.wintercmd = wintercmd
-        self.wintercmd.execThread = self
+        self.wintercmd.scheduleThread = self
         self.schedule = schedule
         self.writer = writer
         self.logger = logger

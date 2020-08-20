@@ -360,11 +360,11 @@ class ScheduleCmd(Wintercmd):
     @cmd
     def resume_schedule(self):
         self.defineCmdParser('resume scheduled observations')
-        if self.execThread:
+        if self.scheduleThread:
             self.execThread.start()
 
     @cmd
     def pause_schedule(self):
         self.defineCmdParser('interrupt scheduled observations')
-        if self.execThread:
-            self.execThread.stop()
+        if self.scheduleThread:
+            self.scheduleThread.stop()
