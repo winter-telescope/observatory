@@ -273,4 +273,3 @@ class schedule_executor(QtCore.QThread):
 
         ## TODO: Code to close connection to the database.
         self.schedule.closeConnection()
-        self.telescope.mount_home()
