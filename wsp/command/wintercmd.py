@@ -343,7 +343,7 @@ class ManualCmd(Wintercmd):
 
 class ScheduleCmd(Wintercmd):
 
-    def __init__():
+    def __init__(self, config, telescope, logger):
         super().__init__(self, config, telescope, logger)
         self.prompt = 'wintercmd(S): '
 
