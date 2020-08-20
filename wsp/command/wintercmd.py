@@ -346,3 +346,25 @@ class ScheduleCmd(Wintercmd):
     def __init__():
         super().__init__(self, config, telescope, logger)
         self.prompt = 'wintercmd(S): '
+
+    @cmd
+    def LIGO_alert(self):
+        self.defineCmdParser('change to the LIGO observing schedule')
+        pass
+
+    @cmd
+    def use_nightly_schedule(self):
+        self.defineCmdParser('set the schedule file read to the nightly plan')
+        pass
+
+    @cmd
+    def resume_schedule(self):
+        self.defineCmdParser('resume scheduled observations')
+        if self.execThread:
+            self.execThread.start()
+
+    @cmd
+    def pause_schedule(self):
+        self.defineCmdParser('interrupt scheduled observations')
+        if self.execThread:
+            self.execThread.stop()

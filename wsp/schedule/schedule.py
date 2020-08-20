@@ -212,9 +212,16 @@ class Schedule(object):
         When there are no more lines fetchone returns None and we know we've finished
         """
         self.currentObs = dict(self.result.fetchone())
-        if self.currentObs == None:
-            self.result.close()
-            self.conn.close()
+        #Commented following lines to separate the close connection code from gotoNext. There are other situations which prompt closure
+        # if self.currentObs == None:
+        #     self.closeConnection()
+
+    def closeConnection(self):
+        """
+        Closes the result and the connection to the database
+        """
+        self.result.close()
+        self.conn.close()
 
 
 

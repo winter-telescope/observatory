@@ -199,8 +199,9 @@ class cmd_executor(QtCore.QThread):
         try:
             worker = Worker(self.wintercmd.parse,cmd)
             #self.wintercmd.onecmd(cmd)
-            if self.listener:
-                worker.signals.finished.connect(self.listener.getSchedule)
+            ## for the moment the following lines commented, since we are not interrupting for commands without pausing schedule
+            # if self.listener:
+            #     worker.signals.finished.connect(self.listener.start)
             self.threadpool.start(worker)
         except Exception as e:
             print(f'could not execute {cmd}: {e}')
@@ -225,10 +226,12 @@ class schedule_executor(QtCore.QThread):
     modes of WINTER's operation.
     """
 
-    def __init__(self, telescope, schedule, writer, logger):
+    def __init__(self, telescope, wintercmd, schedule, writer, logger):
         super().__init__()
 
         self.telescope = telescope
+        self.wintercmd = wintercmd
+        self.wintercmd.execThread = self
         self.schedule = schedule
         self.writer = writer
         self.logger = logger
@@ -247,9 +250,16 @@ class schedule_executor(QtCore.QThread):
         ## TODO: Anything else that needs to happen before stopping the thread
 
     def run(self):
+        '''
+        This function must contain all of the database manipulation code to remain threadsafe and prevent
+        exceptions from being raised during operation
+        '''
         self.running = True
         print(f'scheduleExecutor: running scheduleExec in thread {self.currentThread()}')
+
+        # code that sets up the connection to the database
         self.getSchedule()
+
         while self.schedule.currentObs is not None and self.running:
             self.lastSeen = self.schedule.currentObs['obsHistID']
             AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
@@ -260,3 +270,7 @@ class schedule_executor(QtCore.QThread):
             time.sleep(waittime)
 
             self.schedule.gotoNextObs()
+
+        ## TODO: Code to close connection to the database.
+        self.schedule.closeConnection()
+        self.telescope.mount_home()

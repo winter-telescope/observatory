@@ -82,7 +82,7 @@ class control(QtCore.QObject):
         if mode == 0:
             self.wintercmd = wintercmd.ScheduleCmd(self.config, self.telescope, self.logger)
             #init the schedule executor
-            self.scheduleExec = commandParser.schedule_executor(self.telescope, self.schedule, self.writer, self.logger)
+            self.scheduleExec = commandParser.schedule_executor(self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
             # init the cmd executor
             self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
         else:
@@ -97,8 +97,10 @@ class control(QtCore.QObject):
 
         # connect the new command signal to the executors
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
-        if mode == 0:
-            self.cmdprompt.newcmd.connect(self.scheduleExec.interrupt)
+
+        ## Not loving this approach at the moment, trying something else 
+        # if mode == 0:
+        #     self.cmdprompt.newcmd.connect(self.scheduleExec.stop)
 
 
 
