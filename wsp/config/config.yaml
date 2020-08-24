@@ -16,7 +16,7 @@ daq_dt:
     slow: 500.0
 
 # this will crash if this is not greater than or equal to the max daq_dt
-write_dt: 500.0    
+write_dt: 500.0
 
 # where to put the data. base directory is home
 housekeeping_data_directory: 'data/rawdir'
@@ -38,7 +38,7 @@ mode:
 # define telescope home position
 telescope_home:
     alt_degs: 16.0
-    az_degs: 290.0       
+    az_degs: 290.0
 
 # define telemetry servers
 telemetry_server:
@@ -66,7 +66,7 @@ status_dict:
     P48_Weather_Status:
         'READY': 1
         'UNKNOWN': 0
-        
+
     ## Palomar Command Server
     Dome_Status:
         'OFF': 0
@@ -74,7 +74,7 @@ status_dict:
         'STOWED': 2
         'GO_TO': 3
         'FAULT': -20
-                
+
     Shutter_Status:
         'OPENED': 10
         'OPENING': 5
@@ -82,17 +82,17 @@ status_dict:
         'CLOSING': -5
         'STOPPED': 0
         'FAULT': -20
-        
+
     Control_Status:
         'AVAILABLE': 0
         'REMOTE': 1
         'CONSOLE': 2
         'MANUAL': 3
-        
+
     Close_Status:
         'READY': 1
         'NOT_READY': 0
-    
+
     Weather_Status:
         'READY': 1
         'NOT_READY': 0
@@ -101,7 +101,7 @@ status_dict:
 
 # weather limits
 weather_limits:
-    TEMP_OUT: 
+    TEMP_OUT:
         MIN: -20
         MAX: 50
     TEMP_IN:
@@ -124,18 +124,18 @@ weather_limits:
         MAX: 100
     DEWPOINT_OUT:
         MIN: -100
-        MAX: 100 
+        MAX: 100
     # these are from clear dark skies:
     TRANSPARENCY:
         MIN: 3 # average
-        MAX: 5 # transparent   
+        MAX: 5 # transparent
     SEEING:
         MIN: 3 # average
         MAX: 5 # excellent
     CLOUDS:
         MIN: 7 # 30pct covered
         MAX: 10 # CLEAR
-    
+
 
 
 # default value for housekeeping fields
@@ -143,7 +143,7 @@ default_value: -999
 
 
 
-# define fields. 
+# define fields.
 # Note: each rate must have a corresponding "daq_rate" as given above
 fields:
 #general:
@@ -159,7 +159,7 @@ fields:
         dtype: float64
         rate: fast
         var: 'timestamp'
-        
+
     scount:
         label: 'count'
         units: None
@@ -172,6 +172,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'timestamp'
+#schedule
+    az_scheduled:
+        label: 'Az'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: scheduleExec.currentAZ
 #telescope
     site_latitude_degs:
         label: Latitude
@@ -197,7 +204,7 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state.site.lmst_hours
-    
+
     mount_is_connected:
         label: 'MountConnected'
         units: None
@@ -405,7 +412,7 @@ fields:
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Weather_Status_Num'  
+        var: 'weather.PCS_Weather_Status_Num'
     Tdp_outside_threshold_pcs:
         label: 'DewPoint'
         units: 'C'
@@ -415,7 +422,7 @@ fields:
     T_outside_pcs:
         label: 'T'
         units: 'C'
-        dtype: float64  
+        dtype: float64
         rate: slow
         var: 'weather.PCS_Outside_Temp'
     rh_outside_pcs:
@@ -551,24 +558,3 @@ fields:
         dtype: int64
         rate: slow
         var: weather.P48_Weather_Status_Num
-
-        
-    
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        

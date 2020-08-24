@@ -236,6 +236,8 @@ class schedule_executor(QtCore.QThread):
         self.writer = writer
         self.logger = logger
         self.lastSeen = -1
+        self.currentALT = 0
+        self.currentAZ = 0
         self.running = False
 
 
@@ -262,9 +264,9 @@ class schedule_executor(QtCore.QThread):
 
         while self.schedule.currentObs is not None and self.running:
             self.lastSeen = self.schedule.currentObs['obsHistID']
-            AZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
-            ALT = float(self.schedule.currentObs['altitude'])*180/np.pi
-            self.telescope.mount_goto_alt_az(alt_degs = ALT, az_degs = AZ)
+            self.currentALT = float(self.schedule.currentObs['altitude'])*180/np.pi
+            self.currentAZ = float(self.schedule.currentObs['azimuth'])*180/np.pi
+            self.telescope.mount_goto_alt_az(alt_degs = self.currentALT, az_degs = self.currentAZ)
             waittime = int(self.schedule.currentObs['visitTime'])
             # print(f' Taking a {waittime} second exposure...')
             time.sleep(waittime)

@@ -98,7 +98,7 @@ class control(QtCore.QObject):
         # connect the new command signal to the executors
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
 
-        ## Not loving this approach at the moment, trying something else 
+        ## Not loving this approach at the moment, trying something else
         # if mode == 0:
         #     self.cmdprompt.newcmd.connect(self.scheduleExec.stop)
 
@@ -109,9 +109,9 @@ class control(QtCore.QObject):
 
         ### SET UP THE HOUSEKEEPING ###
 
-        if mode == 1:
+        # if mode == 1:
         # init the housekeeping class (this starts the daq and dirfile write loops)
-            self.hk = housekeeping.housekeeping(self.config,
+        self.hk = housekeeping.housekeeping(self.config,
                                                 telescope = self.telescope,
                                                 weather = self.weather)
 
