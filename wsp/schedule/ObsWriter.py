@@ -54,7 +54,7 @@ class ObsWriter():
         self.logger.debug('opened new connection')
         self.create_tables()
 
-    def closeConnection():
+    def closeConnection(self):
         self.conn.close()
 
 
@@ -142,8 +142,7 @@ class ObsWriter():
             separatedData = self.separate_data_dict(record)
         except:
             self.logger.error('separation failed', exc_info=True )
-        print(f'{separatedData}')
-        self.logger.debug('separated data')
+        self.logger.debug(f'Separated Data: {separatedData}')
 
         for table in separatedData:
             try:
