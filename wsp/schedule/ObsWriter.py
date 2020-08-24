@@ -40,8 +40,7 @@ class ObsWriter():
         except:
             print(sys.exc_info()[0]) # used to print error messages from sqlalchemy, delete later
         self.logger.debug('made new engine')
-        self.conn = self.engine.connect()
-        self.logger.debug('opened new connection')
+
 
         # Initialize database structure from json file.
         #Note: Change to accept path argument instead of hardcoding
@@ -49,7 +48,14 @@ class ObsWriter():
         with open(self.base_directory + '/config/' + "dataconfig.json") as json_data_file:
             self.dbStructure = json.load(json_data_file)
         self.logger.debug("read json config file")
+
+    def setUpDatabase(self):
+        self.conn = self.engine.connect()
+        self.logger.debug('opened new connection')
         self.create_tables(clobber=clobber)
+
+    def closeConnection():
+        self.conn.close()
 
 
     def printDBStructure(self):
@@ -121,8 +127,9 @@ class ObsWriter():
         data is None checks for the condition that we've finished reading the schedule for tonight
         """
         if data is None:
-            self.conn.close()
-            self.engine.close()
+            #Might not want to do all the closing down here
+            # self.conn.close()
+            # self.engine.close()
             return
 
         record = dict(data)

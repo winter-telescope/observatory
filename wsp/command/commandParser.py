@@ -259,8 +259,9 @@ class schedule_executor(QtCore.QThread):
         self.running = True
         print(f'scheduleExecutor: running scheduleExec in thread {self.currentThread()}')
 
-        # code that sets up the connection to the database
+        # code that sets up the connections to the databases
         self.getSchedule()
+        self.writer.setUpDatabase()
 
         while self.schedule.currentObs is not None and self.running:
             self.lastSeen = self.schedule.currentObs['obsHistID']
@@ -271,7 +272,12 @@ class schedule_executor(QtCore.QThread):
             # print(f' Taking a {waittime} second exposure...')
             time.sleep(waittime)
 
+            imagename = base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
+            # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
+            self.writer.log_observation(self.schedule.getCurrentObs(), imagename)
+
             self.schedule.gotoNextObs()
 
-        ## TODO: Code to close connection to the database.
+        ## TODO: Code to close connections to the databases.
         self.schedule.closeConnection()
+        self.writer.closeConnection()
