@@ -34,7 +34,7 @@ from housekeeping import data_handler
 # the main housekeeping class it lives in the namespace of the control class
 
 class housekeeping():                     
-    def __init__(self, config, telescope = None, weather = None):            
+    def __init__(self, config, telescope = None, weather = None, schedule = None):            
         
         
         # store the config
@@ -43,6 +43,7 @@ class housekeeping():
         # redefine the methods passed in: ie the hardware systems
         self.telescope = telescope
         self.weather = weather
+        self.schedule = schedule
         # define the housekeeping data dictionaries
         # samples per frame for each daq loop
         self.spf = dict()
@@ -76,7 +77,8 @@ class housekeeping():
         self.slowloop = data_handler.slow_loop(config = self.config, 
                                                state = self.state, 
                                                curframe = self.curframe,
-                                               weather = self.weather)
+                                               weather = self.weather,
+                                               schedule = self.schedule)
         
         # define the dirfile write loop
         self.writethread = data_handler.write_thread(config = config, dirfile = self.df, state = self.state, curframe = self.curframe)

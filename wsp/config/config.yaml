@@ -178,7 +178,7 @@ fields:
         units: deg
         dtype: float64
         rate: slow
-        var: scheduleExec.currentAZ
+        var: "schedule.currentObs['azimuth']*180/np.pi"
 #telescope
     site_latitude_degs:
         label: Latitude

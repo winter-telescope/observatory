@@ -43,7 +43,7 @@ from telescope import pwi4
 
 class slow_loop(QtCore.QThread):
     
-    def __init__(self,config, state, curframe, weather):
+    def __init__(self,config, state, curframe, weather,schedule):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -51,7 +51,7 @@ class slow_loop(QtCore.QThread):
         
         # subclass the methods passed in (ie, the hardware systems)
         self.weather = weather
-        
+        self.schedule = schedule
         
         # pass the config to the thread
         self.config = config
