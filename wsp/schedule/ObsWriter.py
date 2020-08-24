@@ -52,7 +52,7 @@ class ObsWriter():
     def setUpDatabase(self):
         self.conn = self.engine.connect()
         self.logger.debug('opened new connection')
-        self.create_tables(clobber=clobber)
+        self.create_tables()
 
     def closeConnection():
         self.conn.close()
