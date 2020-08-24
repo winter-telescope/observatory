@@ -272,7 +272,7 @@ class schedule_executor(QtCore.QThread):
             # print(f' Taking a {waittime} second exposure...')
             time.sleep(waittime)
 
-            imagename = writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
+            imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
             # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
             self.writer.log_observation(self.schedule.getCurrentObs(), imagename)
 
