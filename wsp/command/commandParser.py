@@ -235,7 +235,7 @@ class schedule_executor(QtCore.QThread):
         self.schedule = schedule
         self.writer = writer
         self.logger = logger
-        self.lastSeen = -1
+        self.lastSeen = 450
         self.currentALT = 0
         self.currentAZ = 0
         self.running = False
