@@ -7,7 +7,7 @@ scheduleFile_directory: 'schedule/scheduleFiles'
 scheduleFile_nightly_prefix: 'WINTER_NightlySchedule_'
 
 # dither table
-dither_file: 'config/dither_list.txt'
+dither_file: 'config/dither_list.conf'
 
 # telescope
 telescope:
