@@ -44,10 +44,11 @@ linebreak = '\n \033[34m########################################################
 caption1 = '\n\t\033[32mWSP - The WINTER Supervisor Program'
 caption2 = '\n\t\033[32mPlease Select an Operating Mode:'
 captions = [caption1, caption2]
-main_opts= ['Schedule File Mode',\
-            'Start with Housekeeping(temporary debugging)',\
-            'Manual Mode',\
-            'Exit']
+main_opts= dict({'S': 'Schedule File Mode',
+            'I': 'Instrument-only Mode',
+            'M':'Manual Mode',
+            'Q': 'Exit'})
+
 logo = []
 logo.append('__      _____ _ __             _  _')
 logo.append("\ \ /\ / / __| '_ \           | )/ )")
@@ -58,7 +59,7 @@ logo.append("             |_|  ")
 
 # Logo Credit: https://ascii.co.uk/art/wasp
 #########################################################################
-def menu(captions, options):
+def numbered_menu(captions, options):
     """Creates menu for terminal interface
        inputs:
            list captions: List of menu captions
@@ -81,6 +82,29 @@ def menu(captions, options):
     opt = input().strip()
     return opt
 
+def dict_menu(captions, options):
+    """Creates menu for terminal interface
+       inputs:
+           list captions: List of menu captions
+           dict options: List of menu options
+       outputs:
+           int opt: Integer corresponding to menu option chosen by user
+           list allowed_opts: list of all the lowercase menu opptions allowed to be chosen
+           """
+           
+    allowed_opts = []
+    print(linebreak)
+    for logo_line in logo:
+        print('     ',logo_line)
+    print ('\t' + captions[0])
+    print(linebreak)
+    for key in options.keys():
+        print( '\t' +  '\033[32m' + key + ' ..... ' '\033[0m' +  options[key] + '\n')
+        allowed_opts.append(key.lower())
+    print ('\t' + captions[1] + '\n')
+    
+    opt = input().strip().lower()
+    return opt,allowed_opts
 
 #########################################################################
 
@@ -119,20 +143,20 @@ if __name__ == "__main__":
     """
     try:
         while True:
-            opt = menu(captions,main_opts)
-            if opt in ["0","1","2"]:
-                if opt == "0":
+            opt,allowed_opts = dict_menu(captions,main_opts)
+            if opt in allowed_opts:
+                if opt == "s":
                     print ("Entering robotic schedule file mode!")
-                elif opt == "1":
-                    print("Initializing systems and waiting for further commands")
-                elif opt == "2":
-                    print("Entering fully manual mode and waiting for commands")
+                elif opt == "i":
+                    print("Entering instrument mode: initializing instrument subsystems and waiting for commands")
+                elif opt == "m":
+                    print("Entering fully manual mode: initializing all subsystems and waiting for commands")
 
-                winter = systemControl_threaded.control(mode = int(opt), config = config, base_directory = wsp_path, logger = logger)
+                winter = systemControl_threaded.control(mode = opt, config = config, base_directory = wsp_path, logger = logger)
 
                 break
 
-            elif opt == "3":
+            elif opt == "q":
                 print("Killing WSP...")
                 sys.exit()
                 break

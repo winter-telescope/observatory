@@ -1,12 +1,22 @@
 # config file for WINTER
 
 
+# SCHEDULING
+# location of the schedule files (base directory + this directory)
+scheduleFile_directory: 'schedule/scheduleFiles'
+scheduleFile_nightly_prefix: 'WINTER_NightlySchedule_'
+
+# dither table
+dither_file: 'config/dither_list.txt'
+
 # telescope
 telescope:
     host: "thor"
     port: 8220
 
-
+# commanding (seconds)
+cmd_timeout: 10.0
+cmd_status_dt: 0.25
 
 # housekeeping
 
@@ -178,7 +188,25 @@ fields:
         units: deg
         dtype: float64
         rate: slow
-        var: "schedule.currentObs['azimuth']*180/np.pi"
+        var: "schedule.scheduleExec.az_scheduled"
+    alt_scheduled:
+        label: 'Alt'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "schedule.scheduleExec.alt_scheduled"
+    current_field_alt:
+        label: 'Alt'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "schedule.scheduleExec.current_field_alt"
+    current_field_az:
+        label: 'Alt'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "schedule.scheduleExec.current_field_az"
 #telescope
     site_latitude_degs:
         label: Latitude
@@ -259,6 +287,18 @@ fields:
         dtype: int
         rate: fast
         var: 'telescope.state.mount.axis1.is_enabled'
+    mount_az_dist_to_target:
+        label: 'Dist'
+        units: 'degs'
+        dtype: float64
+        rate: fast
+        var: 'telescope.state.mount.axis0.dist_to_target_arcsec'
+    mount_alt_dist_to_target:
+        label: 'Dist'
+        units: 'degs'
+        dtype: float64
+        rate: fast
+        var: 'telescope.state.mount.axis1.dist_to_target_arcsec'
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud_index:

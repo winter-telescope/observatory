@@ -50,7 +50,9 @@ class control(QtCore.QObject):
     ## Initialize Class ##
     def __init__(self,mode,config,base_directory, logger, parent = None):
         super(control, self).__init__(parent)
-
+        
+        
+        
         # pass in the config
         self.config = config
         # pass in the logger
@@ -71,50 +73,63 @@ class control(QtCore.QObject):
             print("control: could not load weather data: ", e)
 
         #init the scheduler
-        self.schedule = schedule.Schedule(base_directory = self.base_directory, date = 'today')
+        self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
         ## init the database writer
         self.writer = ObsWriter.ObsWriter('demoRelational', self.base_directory) #the ObsWriter initialization
 
-        '''
-        In this section we set up the appropriate command interface and executors for the chosen mode
-        '''
-        ### SET UP THE COMMAND LINE INTERFACE
-        if mode == 0:
-            self.wintercmd = wintercmd.ScheduleCmd(self.config, self.telescope, self.logger)
-            #init the schedule executor
-            self.scheduleExec = commandParser.schedule_executor(self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
-            # init the cmd executor
-            self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
-        else:
-            self.wintercmd = wintercmd.ManualCmd(self.config, self.telescope, self.logger)
-            # init the cmd executor
-            self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
-
-
-        # init the cmd prompt
-        self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
-
-
-        # connect the new command signal to the executors
-        self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
-
-        ## Not loving this approach at the moment, trying something else
-        # if mode == 0:
-        #     self.cmdprompt.newcmd.connect(self.scheduleExec.stop)
-
-
-
-        if mode == 0:
-            self.scheduleExec.start()
 
         ### SET UP THE HOUSEKEEPING ###
 
         # if mode == 1:
         # init the housekeeping class (this starts the daq and dirfile write loops)
         self.hk = housekeeping.housekeeping(self.config,
+                                                mode = mode,
                                                 telescope = self.telescope,
                                                 weather = self.weather,
                                                 schedule = self.schedule)
+
+
+        '''
+        In this section we set up the appropriate command interface and executors for the chosen mode
+        '''
+        ### SET UP THE COMMAND LINE INTERFACE
+        if mode in 's':
+            #self.wintercmd = wintercmd.ScheduleCmd(self.config, self.hk.state, self.telescope, self.logger)
+            self.wintercmd = wintercmd.Wintercmd(self.config, self.hk.state, self.telescope, self.logger)
+            #init the schedule executor
+            self.scheduleExec = commandParser.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
+            # init the cmd executor
+            self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
+            
+            # init the cmd prompt
+            self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
+    
+    
+            # connect the new command signal to the executors
+            self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
+            self.scheduleExec.newcmd.connect(self.cmdexecutor.add_to_queue)
+        else:
+            self.wintercmd = wintercmd.Wintercmd(self.config, self.hk.state, self.telescope, self.logger)
+            #self.wintercmd = wintercmd.ManualCmd(self.config, self.hk.state, self.telescope, self.logger)
+            # init the cmd executor
+            self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
+            # init the cmd prompt
+            self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
+            # connect the new command signal to the executors
+            self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
+        # 
+        
+        
+        ## Not loving this approach at the moment, trying something else
+        # if mode == 0:
+        #     self.cmdprompt.newcmd.connect(self.scheduleExec.stop)
+
+
+
+        if mode == 's':
+            self.scheduleExec.start()
+
+        
 
 
 

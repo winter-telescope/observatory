@@ -1,0 +1,8 @@
+# dither file in alt/az. units are arcseconds, and are deltas with respect to center of field
+dither_list:
+    alt az
+0.0     0.0
+10.0    -10.0
+0.0     20.0
+-20.0   0.0
+0.0     -20.0

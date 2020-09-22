@@ -103,7 +103,7 @@ def cmd(func):
 class Wintercmd(object):
 
 
-    def __init__(self, config, telescope, logger):
+    def __init__(self, config, state, telescope, logger):
         # init the parent class
         super().__init__()
 
@@ -112,6 +112,7 @@ class Wintercmd(object):
         self.prompt = 'wintercmd: '
 
         # subclass some useful inputs
+        self.state = state
         self.telescope = telescope
 
         self.config = config
@@ -249,31 +250,45 @@ class Wintercmd(object):
     def mount_connect(self):
         self.defineCmdParser('connect to telescope mount')
         self.telescope.mount_connect()
+        while not self.state['mount_is_connected']:
+            time.sleep(self.config['cmd_status_dt'])
 
     @cmd
     def mount_disconnect(self):
         self.defineCmdParser('disconnect from telescope mount')
         self.telescope.mount_disconnect()
+        while self.state['mount_is_connected']:
+            time.sleep(self.config['cmd_status_dt'])
 
     @cmd
     def mount_az_on(self):
         self.defineCmdParser('turn on az motor')
         self.telescope.mount_enable(0)
+        while not self.state['mount_az_is_enabled']:
+            time.sleep(self.config['cmd_status_dt'])
 
     @cmd
     def mount_az_off(self):
         self.defineCmdParser('turn off az motor')
         self.telescope.mount_disable(0)
+        while self.state['mount_az_is_enabled']:
+            time.sleep(self.config['cmd_status_dt'])
 
     @cmd
     def mount_alt_on(self):
         self.defineCmdParser('turn on alt motor')
         self.telescope.mount_enable(1)
+        while not self.state['mount_az_is_enabled']:
+            time.sleep(self.config['cmd_status_dt'])
+        
 
     @cmd
     def mount_alt_off(self):
         self.defineCmdParser('turn off alt motor')
         self.telescope.mount_disable(1)
+        while self.state['mount_alt_is_enabled']:
+            time.sleep(self.config['cmd_status_dt'])
+        
 
     @cmd
     def mount_stop(self):
@@ -287,25 +302,34 @@ class Wintercmd(object):
         az_degs = self.config['telescope_home']['az_degs']
         self.logger.info(f'slewing to home: ALT = {alt_degs}, AZ = {az_degs}')
         self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
+        # wait for the telescope to stop moving before returning
+        while self.state['mount_is_slewing']:
+            time.sleep(self.config['cmd_status_dt'])
 
     @cmd
     def mount_shutdown(self):
-        # self.mount_home()
-        # time.sleep(0.5)
-        # self.mount_az_off()
-        # time.sleep(0.5)
-        # self.mount_alt_off()
-        # time.sleep(0.5)
-        # self.mount_disconnect()
 
-        # possible alternate structure: Probably won't work
-        alt_degs = (self.config['telescope_home']['alt_degs'])
-        az_degs = self.config['telescope_home']['az_degs']
-        self.logger.info(f'slewing to home: ALT = {alt_degs}, AZ = {az_degs}')
-        self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
-        self.telescope.mount_disable(0)
-        self.telescope.mount_disable(1)
+        self.defineCmdParser('shut down the mount safely')
+        self.mount_home()
+        time.sleep(self.config['cmd_status_dt'])
+        self.mount_az_off()
+        time.sleep(self.config['cmd_status_dt'])
+        self.mount_alt_off()
+        time.sleep(self.config['cmd_status_dt'])
+        self.mount_disconnect()
+        time.sleep(self.config['cmd_status_dt'])
 
+
+    @cmd
+    def mount_startup(self):
+        self.defineCmdParser('connect and home the mount')
+        self.mount_connect()
+        time.sleep(self.config['cmd_status_dt'])
+        self.mount_az_on()
+        time.sleep(self.config['cmd_status_dt'])
+        self.mount_alt_on()
+        time.sleep(self.config['cmd_status_dt'])
+        self.mount_home()
 
 
     @cmd
@@ -319,12 +343,13 @@ class Wintercmd(object):
 
         sys.exit()#sigint_handler()
 
+        """
 class ManualCmd(Wintercmd):
 
-    def __init__(self, config, telescope, logger):
-        super().__init__(config, telescope, logger)
+    def __init__(self, config, state, telescope, logger):
+        super().__init__(config, state, telescope, logger)
         self.prompt = 'wintercmd(M): '
-
+        """
     @cmd
     def mount_goto_alt_az(self):
         """Usage: goto_alt_az <alt> <az>"""
@@ -338,28 +363,42 @@ class ManualCmd(Wintercmd):
         alt = self.args.position[0]
         az = self.args.position[1]
         self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
+        # wait for the telescope to stop moving before returning
+        while self.state['mount_is_slewing']:
+            time.sleep(self.config['cmd_status_dt'])
+        
 
 
-
+        """
 class ScheduleCmd(Wintercmd):
 
-    def __init__(self, config, telescope, logger):
-        super().__init__(config, telescope, logger)
+    def __init__(self, config, state, telescope, logger):
+        super().__init__(config, state, telescope, logger)
         self.prompt = 'wintercmd(S): '
+        """    
 
     @cmd
-    def LIGO_alert(self):
-        self.defineCmdParser('change to the LIGO observing schedule')
+    def load_target_schedule(self):
+        """Usage: load_target_schedule <TOO_ScheduleFile.db>"""
+        self.defineCmdParser('load in a TOO target schedule file')
+        self.cmdparser.add_argument('schedulefile_name',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<target_schedulefile.db>')
+        self.getargs()
+        schedulefile_name = self.args.schedulefile_name[0]
+        # send signal that the schedule executor should swap schedule files
+        self.scheduleThread.changeSchedule.emit(schedulefile_name)
+
+    @cmd
+    def load_nightly_schedule(self):
+        self.defineCmdParser('load the schedule file for the nightly plan')
         pass
 
     @cmd
-    def use_nightly_schedule(self):
-        self.defineCmdParser('set the schedule file read to the nightly plan')
-        pass
-
-    @cmd
-    def resume_schedule(self):
-        self.defineCmdParser('resume scheduled observations')
+    def start_schedule(self):
+        self.defineCmdParser('start/resume scheduled observations')
         if self.scheduleThread:
             self.scheduleThread.start()
 

@@ -34,11 +34,14 @@ from housekeeping import data_handler
 # the main housekeeping class it lives in the namespace of the control class
 
 class housekeeping():                     
-    def __init__(self, config, telescope = None, weather = None, schedule = None):            
+    def __init__(self, config, mode = None, telescope = None, weather = None, schedule = None):            
         
         
         # store the config
         self.config = config
+        
+        # define the housekeeping mode. this dictates which fields are read
+        self.mode = mode
         
         # redefine the methods passed in: ie the hardware systems
         self.telescope = telescope

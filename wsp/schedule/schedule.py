@@ -111,12 +111,14 @@ class Schedule(object):
     #     except:
     #         print("Unable to make an observing plan for tonight!")
 
-    def __init__(self, base_directory, date = 'today'):
+    def __init__(self, base_directory, config, date = 'today'):
         """
         sets up logging and opens connection to the database. Does
         not actually access any data yet.
         """
-
+        # take in the config
+        self.config = config
+            
         #set up logging
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -126,9 +128,11 @@ class Schedule(object):
         self.logger.addHandler(fh)
 
         self.base_directory = base_directory
-        self.schedulefile = base_directory + '/schedule/scheduleFiles/1_night_test.db'
-        self.engine = db.create_engine('sqlite:///' + self.schedulefile)
-
+        self.scheduleFile_directory = self.config['scheduleFile_directory']
+        # NL 9-21-20: moving these into the loadSchedule method
+        #self.schedulefile = base_directory + '/schedule/scheduleFiles/1_night_test.db'
+        #self.engine = db.create_engine('sqlite:///' + self.schedulefile)
+        self.scheduleType = None
 
 
     # def loadSchedule(self):
@@ -151,13 +155,32 @@ class Schedule(object):
     #         #TODO log this error
     #         print(f" error loading schedule file: {self.schedulefile} (probably because it doesn't exist!)")
 
-    def loadSchedule(self, currentTime=0, startFresh=False):
+    def loadSchedule(self, schedulefile_name, currentTime=0, startFresh=False):
         """
         Load the schedule starting at the currentTime.
         ### Note: At the moment currentTime is a misnomer, we are selecting by the IDs of the observations
         since the schedule database does not include any time information. Should change this to
         actually refer to time before deployment.
         """
+        
+        # set up the schedule file
+        if schedulefile_name is None:
+            self.schedulefile = None
+            #TODO: this isn't handled properly!
+        else:
+            if schedulefile_name.lower() == 'nightly':
+                self.schedulefile_name = self.config['scheduleFile_nightly_prefix'] + utils.tonight() +'.db'
+                self.scheduleType = 'nightly'
+            else:
+                if '.db' not in schedulefile_name:
+                    schedulefile_name = schedulefile_name + '.db'
+                self.schedulefile_name = schedulefile_name
+                self.scheduleType = 'target'
+            
+        self.schedulefile = self.base_directory + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
+        
+        self.engine = db.create_engine('sqlite:///' + self.schedulefile)
+        #TODO: NPL: what happens if this file doesn't exist?
 
         self.conn = self.engine.connect()
         self.logger.error('successfully connected to db')
@@ -169,7 +192,7 @@ class Schedule(object):
             self.result = self.conn.execute(summary.select().where(summary.c.obsHistID >= currentTime))
             self.logger.debug('successfully queried db')
         except Exception as e:
-            self.logger.error('query failed', exc_info=True )
+            self.logger.error(f'query failed because of {type(e)}: {e}', exc_info=True )
 
         # The fetchone method grabs the first row in the result of the query and stores it as currentObs
         self.currentObs = dict(self.result.fetchone())
