@@ -1,0 +1,21 @@
+Metadata-Version: 1.2
+Name: ztf-sim
+Version: 1.0
+Summary: ztf_sim: Scheduling library for the Zwicky Transient Facility
+Home-page: https://github.com/ZwickyTransientFacility/ztf_sim/
+Author: Eric Bellm
+Author-email: ecbellm@uw.edu
+Maintainer: Eric Bellm
+Maintainer-email: ecbellm@uw.edu
+License: BSD (3-clause)
+Download-URL: https://github.com/ZwickyTransientFacility/ztf_sim/
+Description: Scheduling library for the Zwicky Tranisent Facility
+        
+Platform: UNKNOWN
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 3.6
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Topic :: Scientific/Engineering :: Visualization
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Unix
+Classifier: Operating System :: MacOS

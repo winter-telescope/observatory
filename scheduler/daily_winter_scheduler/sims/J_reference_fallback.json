@@ -1,0 +1,19 @@
+{
+	"queue_name": "fallback",
+	"queue_description": "J_reference_year",
+	"queue_manager": "greedy",
+	"observing_programs": [
+		{"program_name": "Palomar",
+		 "subprogram_name": "reference_building_j",
+		 "program_pi": "Kasliwal",
+         "program_observing_fraction": 1.0,
+         "subprogram_fraction": 1.0,
+		 "field_selections":{"dec_range":[-36,90]},
+		 "filter_choice": "sequence",
+		 "filter_ids": [2],
+		 "internight_gap_days": 30,
+		 "n_visits_per_night": 1,
+		 "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":1},
+		 "active_months": "all"}
+	]
+}
