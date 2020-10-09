@@ -1,0 +1,32 @@
+{
+    "queue_name": "default",
+    "queue_description": "W_reference_building",
+    "queue_manager": "gurobi",
+    "observing_programs": [
+        {"program_name": "Palomar",
+        "subprogram_name": "all-sky",
+        "program_pi": "Kasliwal",
+        "program_observing_fraction": 0.8,
+        "subprogram_fraction": 1.0,
+        "field_selections":{"dec_range":[-35,90]},
+        "filter_choice": "sequence",
+        "filter_ids": [2],
+        "internight_gap_days": 1,
+        "n_visits_per_night": 1,
+        "nobs_range": {"filter_id":2,"min_obs":0,"max_obs":7},
+        "active_months": "all"},
+	{"program_name": "WINTER",
+        "subprogram_name": "other",
+        "program_pi": "Simcoe",
+        "program_observing_fraction": 0.2,
+        "subprogram_fraction": 1.0,
+        "field_selections":{"dec_range":[30,35]},
+        "filter_choice": "sequence",
+        "filter_ids": [3],
+        "internight_gap_days": 1,
+        "n_visits_per_night": 1,
+        "nobs_range": {"filter_id":3,"min_obs":0,"max_obs":500},
+        "active_months": "all"}
+    ]
+}
+
