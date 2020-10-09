@@ -1,0 +1,21 @@
+{
+    "queue_name": "fallback",
+    "queue_description": "fallback shallow-wide",
+    "queue_manager": "greedy",
+    "observing_programs": [
+        {"program_name": "WINTER",
+        "subprogram_name": "shallow-wide",
+        "program_pi": "Simcoe",
+        "program_observing_fraction": 1,
+        "subprogram_fraction": 1.0,
+        "field_selections":{"dec_range":[30,35]},
+        "filter_choice": "sequence",
+        "filter_ids": [1,3],
+        "internight_gap_days": 1,
+        "n_visits_per_night": 2,
+        "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":600},
+        "nobs_range": {"filter_id":3,"min_obs":0,"max_obs":600},
+        "active_months": "all"}
+    ]
+}
+
