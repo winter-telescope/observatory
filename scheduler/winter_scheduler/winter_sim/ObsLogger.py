@@ -67,7 +67,7 @@ class ObsLogger(object):
                                'ecliptic_lon': 'fieldEL',
                                'ecliptic_lat': 'fieldEB'}, inplace=True)
             df.set_index(['fieldID'], inplace=True)
-            df['fieldFov'] = 10.428
+            df['fieldFov'] = 1.08
 
             df_min = df[['fieldFov','fieldRA', 'fieldDec', 'fieldGL', 'fieldGB',
                 'fieldEL', 'fieldEB']]
@@ -173,8 +173,8 @@ class ObsLogger(object):
         # despite the docs, it seems lst is stored as radians
         record['lst'] = np.radians(exposure_start.sidereal_time('apparent').to(
             u.hourangle).value/24.*360.)
-        record['altitude'] = altaz.alt.to(u.radian).value
-        record['azimuth'] = altaz.az.to(u.radian).value
+        record['altitude'] = altaz.alt.value
+        record['azimuth'] = altaz.az.value
         
         # W trying to get the simukations to run faster
         # Spending about 5 min per night recording moon and sun position
