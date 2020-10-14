@@ -1,9 +1,9 @@
 {
-	"run_name": "example_J_winter_reference",
+	"run_name": "J_7visit_gurobi_20s_test2",
 	"queues": [
-		{"config_file": "J_reference_year.json",
+		{"config_file": "7_visit.json",
 			"queue_name": "default"},
-        {"config_file": "J_reference_fallback.json",
+        {"config_file": "J_7visit_fallback.json",
         "queue_name": "fallback"}
 	]
 }	

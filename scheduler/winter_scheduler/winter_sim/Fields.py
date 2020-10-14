@@ -39,9 +39,9 @@ class Fields(object):
             skiprows=1)
 
 
-        # drop fields below dec of -31 degrees for speed
-        # (grid_id = 0 has a row at -31.5)
-        df = df[df['dec'] >= -32]
+        # drop fields below dec of -36 degrees for speed
+        # 
+        df = df[df['dec'] >= -35]
 
         # W Add more
         # label the grid ids
