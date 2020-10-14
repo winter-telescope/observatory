@@ -43,7 +43,7 @@ from telescope import pwi4
 
 class slow_loop(QtCore.QThread):
     
-    def __init__(self,config, state, curframe, weather,schedule):
+    def __init__(self,config, state, curframe, weather,schedule,labjacks):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -52,6 +52,7 @@ class slow_loop(QtCore.QThread):
         # subclass the methods passed in (ie, the hardware systems)
         self.weather = weather
         self.schedule = schedule
+        self.labjacks = labjacks
         
         # pass the config to the thread
         self.config = config
@@ -85,6 +86,10 @@ class slow_loop(QtCore.QThread):
     def update_status(self, default_value = -999):
         self.index +=1
         self.timestamp = datetime.utcnow().timestamp()
+        
+        # is it faster to put the labjack poll here?
+        #self.labjacks.read_all_labjacks()
+        
         
         for field in self.config['fields']:
             if self.config['fields'][field]['rate'] == self.rate:

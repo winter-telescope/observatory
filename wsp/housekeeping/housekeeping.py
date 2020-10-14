@@ -22,6 +22,7 @@ import time
 from datetime import datetime
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import pathlib
+from labjack import ljm
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -30,15 +31,17 @@ sys.path.insert(1, wsp_path)
 # winter modules
 from housekeeping import easygetdata as egd
 from housekeeping import data_handler
+from housekeeping import labjacks
 
 # the main housekeeping class it lives in the namespace of the control class
 
 class housekeeping():                     
-    def __init__(self, config, mode = None, telescope = None, weather = None, schedule = None):            
+    def __init__(self, config, base_directory, mode = None, telescope = None, weather = None, schedule = None):            
         
         
         # store the config
         self.config = config
+        self.base_directory = base_directory
         
         # define the housekeeping mode. this dictates which fields are read
         self.mode = mode
@@ -47,6 +50,23 @@ class housekeeping():
         self.telescope = telescope
         self.weather = weather
         self.schedule = schedule
+        
+        # setup any labjacks that are in the config
+        '''
+        ### Labjack Definitions ###
+        labjacks:
+            lj0:
+                config: 'labjack0_config.yaml'
+        '''
+        self.labjacks = labjacks.labjack_set(self.config, self.base_directory)
+        #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
+        
+        #self.labjacks.read_all_labjacks()
+        #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
+        
+ 
+        
+        
         # define the housekeeping data dictionaries
         # samples per frame for each daq loop
         self.spf = dict()
@@ -64,14 +84,22 @@ class housekeeping():
         self.create_dirfile()
         
         # define the DAQ loops
-        self.daq_telescope = data_handler.daq_loop(config = self.config,
-                                                   func = self.telescope.update_state, 
-                                                   rate = 'fast')
+        if mode.lower() in ['m','s']:
+            self.daq_telescope = data_handler.daq_loop(config = self.config,
+                                                       func = self.telescope.update_state, 
+                                                       rate = 'fast')
+            
+            self.daq_weather = data_handler.daq_loop(config = self.config,
+                                                     func = self.weather.getWeather,
+                                                     rate = 'slow')
         
-        self.daq_weather = data_handler.daq_loop(config = self.config,
-                                                 func = self.weather.getWeather,
-                                                 rate = 'slow')
         
+        self.daq_labjacks = data_handler.daq_loop(config = self.config,
+                                                  func = self.labjacks.read_all_labjacks,
+                                                  rate = 'very_slow')
+        
+        #self.labjacks.read_all_labjacks()
+        #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
         # define the status update loops
         self.fastloop = data_handler.fast_loop(config = self.config, 
                                                state = self.state, 
@@ -81,7 +109,10 @@ class housekeeping():
                                                state = self.state, 
                                                curframe = self.curframe,
                                                weather = self.weather,
-                                               schedule = self.schedule)
+                                               schedule = self.schedule,
+                                               labjacks = self.labjacks)
+        
+        #print(f"housekeeping: lj0 AIN1 = {self.labjacks.labjacks['lj0'].state['AIN1']}")
         
         # define the dirfile write loop
         self.writethread = data_handler.write_thread(config = config, dirfile = self.df, state = self.state, curframe = self.curframe)
@@ -139,7 +170,7 @@ class housekeeping():
                                   units = self.config['fields'][field]['units'],
                                   label = self.config['fields'][field]['label'])
         
-        
+           
         
     def build_dicts(self):
         """

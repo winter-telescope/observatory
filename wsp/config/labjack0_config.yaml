@@ -1,0 +1,44 @@
+# Labjack setup config
+
+
+### DEVICE INFORMATION ###
+lj_type: "T7"
+conn_type: 'ETHERNET'
+address: "192.168.1.110"
+
+
+
+
+### ANALOG INPUTS ###
+# Can set for AIN0-14
+ANALOG_INPUTS:
+    AIN0:
+        RESOLUTION_INDEX: 8 # 8 is the max for the T7
+        NEGATIVE_CH: 199    # 199 is the default: single-ended measurement
+        RANGE: 1           # the max voltage (ie sets the gain): can be 10, 1, 0.1, 0.01
+        SETTLING_US: 0      # settling time in microseconds. 0 is automatic settling (recommended)
+    
+    AIN1:
+        RANGE: 1
+    
+    AIN2:
+        RANGE: 1
+#    AIN44444:
+#        RANGE: 1
+
+
+
+### DIGITAL INPUTS/OUTPUTS ###
+DIGITAL_INPUTS:
+    - FIO2
+    
+DIGITAL_OUTPUTS:
+    # output is zero or one
+    FIO3:
+        OUTPUT: 0
+    
+    
+        
+        
+    
+    

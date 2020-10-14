@@ -27,10 +27,10 @@ from configobj import ConfigObj
 
 # PDU Properties
 class PDU(object):
-    def __init__(self,config_file,base_directory,brand = 'digital loggers'):
+    def __init__(self,pdu_config_file,base_directory,brand = 'digital loggers'):
         
         self.base_directory = base_directory
-        self.config_file = config_file
+        self.config_file = pdu_config_file
         self.load_config()
     
     def load_config(self):

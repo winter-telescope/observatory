@@ -1,7 +1,6 @@
 # config file for WINTER
 
-
-# SCHEDULING
+########## SCHEDULING ##########
 # location of the schedule files (base directory + this directory)
 scheduleFile_directory: 'schedule/scheduleFiles'
 scheduleFile_nightly_prefix: 'WINTER_NightlySchedule_'
@@ -18,12 +17,14 @@ telescope:
 cmd_timeout: 10.0
 cmd_status_dt: 0.25
 
-# housekeeping
+########### HOUSEKEEPING ##########
+
 
 # define update times (ms)
 daq_dt:
     fast: 500.0
     slow: 500.0
+    very_slow: 2000.0
 
 # this will crash if this is not greater than or equal to the max daq_dt
 write_dt: 500.0
@@ -64,6 +65,7 @@ command_server:
     cmd: 'status?'
     endchar: '}'
     timeout: 0.1
+    
 
 # dictionaries to interpret the status from the weather servers
 # *NOTE*: it's best to use keys in quoatations to avoid the yaml loader converting them
@@ -150,6 +152,13 @@ weather_limits:
 
 # default value for housekeeping fields
 default_value: -999
+
+### Labjack Definitions ###
+labjacks:
+    lj0:
+        config: 'labjack0_config.yaml'
+        
+
 
 
 
@@ -598,3 +607,29 @@ fields:
         dtype: int64
         rate: slow
         var: weather.P48_Weather_Status_Num
+    
+    ### LABJACK STUFF###
+    V_LJ0_AIN0:
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN0']
+    V_LJ0_AIN1:
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN1']
+    V_LJ0_AIN2:
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN2']
+    V_LJ0_FIO2:
+        label: 'State'
+        units: '-'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['FIO2']

@@ -1,0 +1,38 @@
+#This is a config file to describe the IP addr of all relevant systems
+
+# COMPUTERS #
+
+telescope_computer:
+    name: thor
+    addr: 192.168.1.12
+    port: 8220
+
+gateway:
+    name: heimdall
+    addr: 192.168.1.10
+
+
+router:
+    name: chilly
+    addr: 192.168.1.1
+
+labjack:
+    name: labjack
+    addr: 192.168.1.110
+
+
+
+
+# HARDWARE #
+
+telescope:
+    name: hammer
+    addr: 192.168.1.40
+
+
+
+webcam:
+    name: wintercam1
+    addr: 192.168.1.15
+
+

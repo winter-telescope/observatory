@@ -42,6 +42,7 @@ from dome import dome
 from schedule import schedule
 from schedule import ObsWriter
 from utils import utils
+from power import power
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -61,16 +62,24 @@ class control(QtCore.QObject):
         self.base_directory = base_directory
 
         ### SET UP THE HARDWARE ###
+        # init the network power supply
+        try:
+            self.pdu1 = power.PDU('pdu1.ini',base_directory = self.base_directory)
+        
+        except Exception as e:
+            self.logger.warning(f"control: could not init NPS at pdu1, {type(e)}: {e}")
+
+        
         # init the telescope
         self.telescope = pwi4.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
 
         # init the weather
         try:
-            print('control: trying to load weather')
+            self.logger.info('control: trying to load weather')
             self.weather = weather.palomarWeather(self.base_directory,config = self.config, logger = self.logger)
         except Exception as e:
             self.weather = None
-            print("control: could not load weather data: ", e)
+            self.logger.warning(f"control: could not load weather data: {e}")
 
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
@@ -83,6 +92,7 @@ class control(QtCore.QObject):
         # if mode == 1:
         # init the housekeeping class (this starts the daq and dirfile write loops)
         self.hk = housekeeping.housekeeping(self.config,
+                                                base_directory = self.base_directory,
                                                 mode = mode,
                                                 telescope = self.telescope,
                                                 weather = self.weather,
