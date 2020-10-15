@@ -744,10 +744,17 @@ fields:
         var: labjacks.labjacks['lj0'].state['FIO3']
 
 derived_fields:
+    # note the base directory for the LUT is the wsp directory
     T_LJ0:
         ftype: lincom
         input_field: 'V_LJ0_AIN14'
         slope: -92.6
         intercept: 194.45
+        label: 'T'
+        units: 'C'
+    T_LJ0_AIN0:
+        ftype: linterp
+        input_field: 'V_LJ0_AIN0'
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
         label: 'T'
         units: 'C'

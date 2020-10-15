@@ -183,7 +183,12 @@ class housekeeping():
                                         intercept = self.config['derived_fields'][field]['intercept'],
                                         units = self.config['derived_fields'][field]['units'],
                                         label = self.config['derived_fields'][field]['label'])
-  
+            elif ftype == 'linterp':
+                self.df.add_linterp_entry(field, 
+                                          input_field = self.config['derived_fields'][field]['input_field'], 
+                                          LUT_file = self.base_directory + '/' + self.config['derived_fields'][field]['LUT_file'],
+                                          units = self.config['derived_fields'][field]['units'],
+                                          label = self.config['derived_fields'][field]['label'])
     def build_dicts(self):
         """
         gets the fields and daq rates from the config file
