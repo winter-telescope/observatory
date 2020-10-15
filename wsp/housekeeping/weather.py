@@ -143,6 +143,10 @@ class palomarWeather(object):
             # and time limits on this, so it tries to reconnect like once every minute, not at the sample frequency
             # but for not this is fine... probably. NPL 7/29/20
             self.reconnect_PTS()
+            
+        elif not type(newstatus[0]) is dict:
+            #sometimes the PTS gives back weird nonsense and it doesn't load it properly
+            self.PTS_status = [dict(), dict(), dict()]
         else:
             self.PTS_status = newstatus
             self.P48_Online = 1

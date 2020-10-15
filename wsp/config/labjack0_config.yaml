@@ -15,14 +15,19 @@ ANALOG_INPUTS:
     AIN0:
         RESOLUTION_INDEX: 8 # 8 is the max for the T7
         NEGATIVE_CH: 199    # 199 is the default: single-ended measurement
-        RANGE: 1           # the max voltage (ie sets the gain): can be 10, 1, 0.1, 0.01
+        RANGE: 10       # the max voltage (ie sets the gain): can be 10, 1, 0.1, 0.01
         SETTLING_US: 0      # settling time in microseconds. 0 is automatic settling (recommended)
     
     AIN1:
-        RANGE: 1
+        RANGE: 10
     
     AIN2:
-        RANGE: 1
+        RANGE: 10
+    AIN3:
+        RANGE: 10
+    AIN14:
+    # this is the internal temperature sens
+        RANGE: 10
 #    AIN44444:
 #        RANGE: 1
 
@@ -30,11 +35,18 @@ ANALOG_INPUTS:
 
 ### DIGITAL INPUTS/OUTPUTS ###
 DIGITAL_INPUTS:
+    - FIO0
+    - FIO1
     - FIO2
+    - FIO3
     
 DIGITAL_OUTPUTS:
     # output is zero or one
-    FIO3:
+    FIO4:
+        OUTPUT: 0
+    FIO5:
+        OUTPUT: 0
+    FIO6:
         OUTPUT: 0
     
     

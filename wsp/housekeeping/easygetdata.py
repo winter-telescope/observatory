@@ -89,6 +89,61 @@ class EasyGetData:
             self._df.add_spec(f'{field}/quantity STRING {label}')
         self._df.flush()
         
+    def add_linterp_entry(self, field, input_field, LUT_file, units = None, label = None):
+        """
+        add linear interpretation entry to the dirfile.
+        
+        Arguments:
+            - fieldname:    name of the field to add
+            - input_field:  name of the field that will be used as the input to the interpolation
+            - LUT_file: filepath of the linear intepolation file to use to add 
+            - units:    units label that will be added to the format file/readable with kst
+            - label:    axis label that will be added to the format file/readable with kst
+        """
+        
+        
+        # write the linterp entry in the dirfile db format file
+        self._df.add_spec(f'{field} LINTERP {input_field} {LUT_file}')
+        
+        # now add the units and axis label to the format file
+        if ((not units is None) or (units.lower() == 'none')):
+            self._df.add_spec(f'{field}/units STRING {units}')
+        if ((not label is None) or (label.lower() == 'none')):
+            self._df.add_spec(f'{field}/quantity STRING {label}')
+        self._df.flush()
+    
+    def add_lincom_entry(self, field, input_field, slope, intercept, units = None, label = None):
+
+        """
+        add linear combination entry to the dirfile.
+        
+        at the moment only allows a linear combination of a single entry, although
+        this could be made more general like the dirfile standard which allows up to three entries
+        
+        the created derived field will have a value determined by:
+            value = field*slope + intercept
+        
+        Arguments:
+            - fieldname:    name of the field to add
+            - input_field:  name of the field that will be used as the input to the interpolation
+            - slope:    the slope of the line
+            - intercept: the intercept of the line
+            - units:    units label that will be added to the format file/readable with kst
+            - label:    axis label that will be added to the format file/readable with kst
+        """
+        
+        
+        # write the linterp entry in the dirfile db format file
+        num_input_fields = 1
+        self._df.add_spec(f'{field} LINCOM {num_input_fields} {input_field} {slope} {intercept}')
+        
+        # now add the units and axis label to the format file
+        if ((not units is None) or (units.lower() == 'none')):
+            self._df.add_spec(f'{field}/units STRING {units}')
+        if ((not label is None) or (label.lower() == 'none')):
+            self._df.add_spec(f'{field}/quantity STRING {label}')
+        self._df.flush()
+        
     def write_field(self, field, data, start_frame = 'last'):
         """
         Wrapper for putdata: write the data to the specified field

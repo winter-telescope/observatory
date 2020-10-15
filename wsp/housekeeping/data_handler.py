@@ -92,6 +92,7 @@ class slow_loop(QtCore.QThread):
         
         
         for field in self.config['fields']:
+            
             if self.config['fields'][field]['rate'] == self.rate:
                 # if the field is to be sampled at the loop rate, then log it
                 try:
@@ -112,6 +113,7 @@ class slow_loop(QtCore.QThread):
                     pass
             else:
                 pass
+            
 
 
         
@@ -159,6 +161,7 @@ class fast_loop(QtCore.QThread):
     def update_status(self, default_value = -999):
         #print('telescope mount az = ', self.telescope.state.mount.azimuth_degs)
         for field in self.config['fields']:
+
             if self.config['fields'][field]['rate'] == self.rate:
                 # if the field is to be sampled at the loop rate, then log it
                 try:
@@ -179,6 +182,7 @@ class fast_loop(QtCore.QThread):
                     pass
             else:
                 pass
+            
     
     
     def update(self):

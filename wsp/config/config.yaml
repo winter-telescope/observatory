@@ -167,12 +167,14 @@ labjacks:
 fields:
 #general:
     fcount:
+        ftype: raw
         label: 'count'
         units: None
         dtype: float64
         rate: fast
         var: 'index'
     ftime:
+        ftype: raw
         label: 'time'
         units: ctime
         dtype: float64
@@ -180,12 +182,14 @@ fields:
         var: 'timestamp'
 
     scount:
+        ftype: raw
         label: 'count'
         units: None
         dtype: float64
         rate: slow
         var: 'index'
     stime:
+        ftype: raw
         label: 'time'
         units: ctime
         dtype: float64
@@ -193,24 +197,28 @@ fields:
         var: 'timestamp'
 #schedule
     az_scheduled:
+        ftype: raw
         label: 'Az'
         units: deg
         dtype: float64
         rate: slow
         var: "schedule.scheduleExec.az_scheduled"
     alt_scheduled:
+        ftype: raw
         label: 'Alt'
         units: deg
         dtype: float64
         rate: slow
         var: "schedule.scheduleExec.alt_scheduled"
     current_field_alt:
+        ftype: raw
         label: 'Alt'
         units: deg
         dtype: float64
         rate: slow
         var: "schedule.scheduleExec.current_field_alt"
     current_field_az:
+        ftype: raw
         label: 'Alt'
         units: deg
         dtype: float64
@@ -218,24 +226,28 @@ fields:
         var: "schedule.scheduleExec.current_field_az"
 #telescope
     site_latitude_degs:
+        ftype: raw
         label: Latitude
         units: deg
         dtype: float64
         rate: fast
         var: telescope.state.site.latitude_degs
     site_longitude_degs:
+        ftype: raw
         label: Longitude
         units: deg
         dtype: float64
         rate: fast
         var: telescope.state.site.longitude_degs
     site_height_meters:
+        ftype: raw
         label: Height
         units: m
         dtype: float64
         rate: fast
         var: telescope.state.site.height_meters
     site_lmst_hours:
+        ftype: raw
         label: LMST
         units: hours
         dtype: float64
@@ -243,66 +255,77 @@ fields:
         var: telescope.state.site.lmst_hours
 
     mount_is_connected:
+        ftype: raw
         label: 'MountConnected'
         units: None
         dtype: int64
         rate: fast
         var: telescope.state.mount.is_connected
     mount_geometry:
+        ftype: raw
         label: Mode
         units: None
         dtype: int64
         rate: fast
         var: telescope.state.mount.geometry
     mount_ra_apparent_hours:
+        ftype: raw
         label: RA
         units: hours
         dtype: float64
         rate: fast
         var: telescope.state.mount.ra_apparent_hours
     mount_dec_apparent_degs:
+        ftype: raw
         label: DEC
         units: degs
         dtype: float64
         rate: fast
         var: telescope.state.mount.dec_apparent_degs
     mount_is_slewing:
+        ftype: raw
         label: 'MountSlewing'
         units: None
         dtype: int64
         rate: fast
         var: 'telescope.state.mount.is_slewing'
     mount_az_deg:
+        ftype: raw
         label: 'Az'
         units: 'deg'
         dtype: float64
         rate: fast
         var: 'telescope.state.mount.azimuth_degs'
     mount_alt_deg:
+        ftype: raw
         label: 'Alt'
         units: 'deg'
         dtype: float64
         rate: fast
         var: 'telescope.state.mount.altitude_degs'
     mount_az_is_enabled:
+        ftype: raw
         label: 'AzEnabled'
         units: None
         dtype: int
         rate: fast
         var: 'telescope.state.mount.axis0.is_enabled'
     mount_alt_is_enabled:
+        ftype: raw
         label: 'AltEnabled'
         units: None
         dtype: int
         rate: fast
         var: 'telescope.state.mount.axis1.is_enabled'
     mount_az_dist_to_target:
+        ftype: raw
         label: 'Dist'
         units: 'degs'
         dtype: float64
         rate: fast
         var: 'telescope.state.mount.axis0.dist_to_target_arcsec'
     mount_alt_dist_to_target:
+        ftype: raw
         label: 'Dist'
         units: 'degs'
         dtype: float64
@@ -311,6 +334,7 @@ fields:
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud_index:
+        ftype: raw
         label: 'CloudIndex'
         units: None
         dtype: float64
@@ -318,6 +342,7 @@ fields:
         sys: weather
         var: 'weather.CDSCLOUD'
     cds_trans_index:
+        ftype: raw
         label: TransIndex
         units: None
         dtype: float64
@@ -325,6 +350,7 @@ fields:
         sys: weather
         var: 'weather.CDSTRANS'
     cds_seeing_index:
+        ftype: raw
         label: SeeingIndex
         units: None
         dtype: float64
@@ -332,6 +358,7 @@ fields:
         sys: weather
         var: 'weather.CDSSEEING'
     cds_wind_index:
+        ftype: raw
         label: WindIndex
         units: None
         dtype: float64
@@ -339,6 +366,7 @@ fields:
         sys: weather
         var: 'weather.CDSWINDI'
     ws_cds_max:
+        ftype: raw
         label: Speed
         units: mph
         dtype: float64
@@ -346,6 +374,7 @@ fields:
         sys: weather
         var: 'weather.CDSWINDMAX'
     ws_cds_min:
+        ftype: raw
         label: Speed
         units: mph
         dtype: float64
@@ -353,6 +382,7 @@ fields:
         sys: weather
         var: 'weather.CDSWINDMIN'
     cds_rh_index:
+        ftype: raw
         label: RHIndex
         units: None
         dtype: float64
@@ -360,6 +390,7 @@ fields:
         sys: weather
         var: 'weather.CDSRHI'
     rh_cds_min:
+        ftype: raw
         label: RH
         units: pct
         dtype: float64
@@ -367,6 +398,7 @@ fields:
         sys: weather
         var: 'weather.CDSRHMIN'
     rh_cds_max:
+        ftype: raw
         label: RH
         units: pct
         dtype: float64
@@ -374,6 +406,7 @@ fields:
         sys: weather
         var: 'weather.CDSRHMAX'
     rh_cds_min:
+        ftype: raw
         label: RH
         units: pct
         dtype: float64
@@ -381,6 +414,7 @@ fields:
         sys: weather
         var: 'weather.CDSRHMAX'
     cds_temp_index:
+        ftype: raw
         label: TempIndex
         units: None
         dtype: float64
@@ -388,6 +422,7 @@ fields:
         sys: weather
         var: 'weather.CDSTEMPI'
     T_cds_min:
+        ftype: raw
         label: T
         units: C
         dtype: float64
@@ -395,6 +430,7 @@ fields:
         sys: weather
         var: 'weather.CDSTEMPMIN'
     T_cds_max:
+        ftype: raw
         label: T
         units: C
         dtype: float64
@@ -402,12 +438,14 @@ fields:
         sys: weather
         var: 'weather.CDSTEMPMAX'
     cloud_min:
+        ftype: raw
         label: 'Clouds-Min'
         units: None
         dtype: float64
         rate: slow
         var: 'weather.CLOUD_MIN'
     cloud_max:
+        ftype: raw
         label: 'Clouds-Max'
         units: None
         dtype: float64
@@ -415,78 +453,91 @@ fields:
         var: 'weather.CLOUD_MAX'
     # Palomar Command Server: PCS
     pcs_is_online:
+        ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
         var: 'weather.PCS_Online'
     time_utc_pcs:
+        ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
         var: 'weather.PCS_UTC_timestamp'
     dome_az_deg:
+        ftype: raw
         label: 'Az'
         units: 'deg'
         dtype: float64
         rate: slow
         var: 'weather.PCS_Dome_Azimuth'
     dome_status:
+        ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
         var: 'weather.PCS_Dome_Status_Num'
     dome_shutter_Status:
+        ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
         var: 'weather.PCS_Shutter_Status_Num'
     dome_control_status:
+        ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
         var: 'weather.PCS_Control_Status_Num'
     dome_close_status:
+        ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
         var: 'weather.PCS_Close_Status_Num'
     dome_weather_status:
+        ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
         var: 'weather.PCS_Weather_Status_Num'
     Tdp_outside_threshold_pcs:
+        ftype: raw
         label: 'DewPoint'
         units: 'C'
         dtype: float64
         rate: slow
         var: 'weather.PCS_Outside_Dewpoint_Threshold'
     T_outside_pcs:
+        ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
         var: 'weather.PCS_Outside_Temp'
     rh_outside_pcs:
+        ftype: raw
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
         var: 'weather.PCS_Outside_RH'
     Tdp_outside_pcs:
+        ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
         var: 'weather.PCS_Outside_Dewpoint'
     time_remaining_hold_pcs:
+        ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
@@ -494,114 +545,133 @@ fields:
         var: 'weather.PCS_Weather_Hold_time'
     # Palomar telemetry server: P48
     p48_is_online:
+        ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
         var: 'weather.P48_Online'
     time_utc_p48:
+        ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
         var: weather.P48_UTC_timestamp
     ws_avg_threshold_p48:
+        ftype: raw
         label: 'windspeed'
         units: 'mps'
         dtype: float64
         rate: slow
         var: weather.P48_Windspeed_Avg_Threshold
     ws_gust_threshold_p48:
+        ftype: raw
         label: 'windspeed'
         units: 'mps'
         dtype: float64
         rate: slow
         var: weather.P48_Gust_Speed_Threshold
     time_alarm_p48:
+        ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
         var: weather.P48_Alarm_Hold_Time
     time_remaining_hold_p48:
+        ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
         var: weather.P48_Remaining_Hold_Time
     rh_threshold_outside_p48:
+        ftype: raw
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
         var: weather.P48_Remaining_Hold_Time
     rh_threshold_inside_p48:
+        ftype: raw
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
         var: weather.P48_Inside_DewPt_Threshold
     wind_dir_current_p48:
+        ftype: raw
         label: 'angle'
         units: 'degrees'
         dtype: float64
         rate: slow
         var: weather.P48_Wind_Dir_Current
     ws_current_p48:
+        ftype: raw
         label: 'speed'
         units: 'm/s'
         dtype: float64
         rate: slow
         var: weather.P48_Windspeed_Current
     ws_avg_p48:
+        ftype: raw
         label: 'speed'
         units: 'mps'
         dtype: float64
         rate: slow
         var: weather.P48_Windspeed_Average
     T_outside_air_p48:
+        ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
         var: weather.P48_Outside_Air_Temp
     rh_outside_p48:
+        ftype: raw
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
         var: weather.P48_Outside_Rel_Hum
     Tdp_outside_p48:
+        ftype: raw
         label: 'DewPoint'
         units: 'C'
         dtype: float64
         rate: slow
         var: weather.P48_Outside_DewPt
     T_inside_air_p48:
+        ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
         var: weather.P48_Inside_Air_Temp
     rh_inside_p48:
+        ftype: raw
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
         var: weather.P48_Inside_Rel_Hum
     Tdp_inside_p48:
+        ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
         var: weather.P48_Inside_DewPt
     wetness_p48:
+        ftype: raw
         label: 'wetness'
         units: None
         dtype: int64
         rate: slow
         var: weather.P48_Wetness_Num
     status_p48:
+        ftype: raw
         label: 'ready'
         units: None
         dtype: int64
@@ -610,26 +680,74 @@ fields:
     
     ### LABJACK STUFF###
     V_LJ0_AIN0:
+        ftype: raw
         label: 'Voltage'
         units: 'V'
         dtype: float64
         rate: slow
         var: labjacks.labjacks['lj0'].state['AIN0']
     V_LJ0_AIN1:
+        ftype: raw
         label: 'Voltage'
         units: 'V'
         dtype: float64
         rate: slow
         var: labjacks.labjacks['lj0'].state['AIN1']
     V_LJ0_AIN2:
+        ftype: raw
         label: 'Voltage'
         units: 'V'
         dtype: float64
         rate: slow
         var: labjacks.labjacks['lj0'].state['AIN2']
-    V_LJ0_FIO2:
+    V_LJ0_AIN3:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN3']
+    V_LJ0_AIN14:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN14']
+    LJ0_FIO0:
+        ftype: raw
+        label: 'State'
+        units: '-'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['FIO0']
+    LJ0_FIO1:
+        ftype: raw
+        label: 'State'
+        units: '-'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['FIO1']
+    LJ0_FIO2:
+        ftype: raw
         label: 'State'
         units: '-'
         dtype: float64
         rate: slow
         var: labjacks.labjacks['lj0'].state['FIO2']
+    LJ0_FIO3:
+        ftype: raw
+        label: 'State'
+        units: '-'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['FIO3']
+
+derived_fields:
+    T_LJ0:
+        ftype: lincom
+        input_field: 'V_LJ0_AIN14'
+        slope: -92.6
+        intercept: 194.45
+        label: 'T'
+        units: 'C'

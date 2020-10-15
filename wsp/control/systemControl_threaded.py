@@ -76,11 +76,12 @@ class control(QtCore.QObject):
         # init the weather
         try:
             self.logger.info('control: trying to load weather')
+            print('control: trying to load weather')
             self.weather = weather.palomarWeather(self.base_directory,config = self.config, logger = self.logger)
         except Exception as e:
             self.weather = None
             self.logger.warning(f"control: could not load weather data: {e}")
-
+            print(f"control: could not load weather data: {e}")
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
         ## init the database writer
