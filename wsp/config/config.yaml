@@ -758,3 +758,21 @@ derived_fields:
         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
         label: 'T'
         units: 'C'
+    T_LJ0_AIN1:
+        ftype: linterp
+        input_field: 'V_LJ0_AIN1'
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+        label: 'T'
+        units: 'C'
+    T_LJ0_AIN2:
+        ftype: linterp
+        input_field: 'V_LJ0_AIN2'
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+        label: 'T'
+        units: 'C'
+    T_LJ0_AIN3:
+        ftype: linterp
+        input_field: 'V_LJ0_AIN3'
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+        label: 'T'
+        units: 'C'
