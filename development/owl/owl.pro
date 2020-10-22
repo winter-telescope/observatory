@@ -4,9 +4,6 @@ QT      += core gui xml widgets
 TARGET   = owl
 TEMPLATE = app
 
-INCLUDEPATH += '/usr/local/include'
-INCLUDEPATH += '/usr/local/include/getdata'
-INCLUDEPATH += '/Users/nlourie/anaconda3/include'
 unix:!mac {
   target.path = /usr/local/bin
   LIBS += -lpython2.7
@@ -27,7 +24,6 @@ mac {
 }
 INSTALLS += target
 CONFIG += link_pkgconfig
-#CONFIG += no_keywords
 
 owlfiles.path = /data/etc/owl
 owlfiles.files += owl-files/spider.owl

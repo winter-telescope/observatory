@@ -31,9 +31,9 @@
 #include <iostream>
 #include <QDebug>
 #ifdef __APPLE__
-#include <python3.7m/Python.h>
+#include <python2.6/Python.h>
 #else
-#include <python3.7m/Python.h>   // Replace python2.7 with your version of Python
+#include <python2.7/Python.h>   // Replace python2.7 with your version of Python
 #endif
 
 void usage(QString appname) {
