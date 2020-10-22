@@ -7,7 +7,6 @@ __pycache__/
 ~*
 /wsp/credentials/*
 *.FITS
-*.txt
 *.swp
 *_obs.csv
 *_sch.csv
