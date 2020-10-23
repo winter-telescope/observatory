@@ -4,6 +4,8 @@ QT      += core gui xml widgets
 TARGET   = owl
 TEMPLATE = app
 
+INCLUDEPATH += /home/winter/anaconda3/envs/py2/include
+
 unix:!mac {
   target.path = /usr/local/bin
   LIBS += -lpython2.7
@@ -29,6 +31,7 @@ owlfiles.path = /data/etc/owl
 owlfiles.files += owl-files/spider.owl
 owlfiles.files += owl-files/bit2016.owl
 INSTALLS += owlfiles
+
 
 contains(QT_MAJOR_VERSION, 5) {
   greaterThan(QT_MINOR_VERSION, 2) {

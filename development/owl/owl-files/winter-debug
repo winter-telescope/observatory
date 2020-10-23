@@ -1,0 +1,27 @@
+{
+    "OWL FILE rev.": "20140928",
+    "PObject": {
+        "_id": "0"
+    },
+    "boxes": [
+    ],
+    "extremas": [
+    ],
+    "linkNames": [
+        "/home/winter/data/dm.lnk",
+        "/data/etc/dialup.lnk",
+        "/data/etc/tdrss.lnk",
+        "/data/etc/pilot.lnk",
+        "/data/etc/packets.lnk"
+    ],
+    "linkSelected": 0,
+    "owls": [
+    ],
+    "styles": [
+    ],
+    "webPort": "￿",
+    "windowCellHeight": 63,
+    "windowCellWidth": 75,
+    "windowHeight": 1084,
+    "windowWidth": 1280
+}
