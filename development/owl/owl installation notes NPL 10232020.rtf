@@ -1,0 +1,117 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1671\cocoasubrtf600
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fmodern\fcharset0 Courier;\f2\fmodern\fcharset0 Courier-Bold;
+}
+{\colortbl;\red255\green255\blue255;\red255\green238\blue149;\red21\green102\blue47;\red0\green0\blue0;
+\red0\green0\blue0;\red88\green229\blue64;\red0\green0\blue152;}
+{\*\expandedcolortbl;;\cssrgb\c100000\c94118\c64706;\cssrgb\c7451\c46667\c23922;\cssrgb\c0\c0\c0;
+\csgray\c0\c0;\cssrgb\c39490\c89864\c31574;\cssrgb\c0\c0\c66136;}
+\margl1440\margr1440\vieww19260\viewh17620\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Installing owl:\
+\
+Had to install a version of python 2.7 on the computer otherwise it won\'92t compile:\
+\
+	> \
+\
+Pointed the installer to this version by adding this line to owl.pro:\
+\
+	> 
+\f1 \cf2 \cb3 \CocoaLigature0 INCLUDEPATH += /home/winter/anaconda3/envs/py2/include\cf4 \cb5 \
+\
+Then had to fix some other install issues:\
+\
+Had to get rid of reference to web server in owl.pro. There was an issue \
+where it was being called in the SOURCES += line\
+\
+Had problem where it wouldn\'92t make because of error: \'93/usr/bin/ld: cannot find -lqjson\'94. To fix this I installed libqjson-dev (based on tip from here: https://stackoverflow.com/questions/12774697/using-qjson-library-in-qt-creator-under-ubuntu):\
+	> sudo apt-get install libqjson-dev\
+\
+Then it had a problem: \'93/usr/bin/ld: cannot find -lGL\'94. This was a bit trickier. I basically followed this: https://stackoverflow.com/questions/335928/ld-cannot-find-an-existing-library. I did this to find where the libGL library was (supposedly should be already there:\
+	> locate libGL\
+\
+This then returned a whole bunch of stuff:\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 \cb3  
+\f2\b \cf6 winter@odin
+\f1\b0 \cf2 :
+\f2\b \cf7 ~/WINTER_GIT/code/development/owl
+\f1\b0 \cf2 $ locate libGL\
+/home/winter/.local/share/kite/kite-v2.20201014.0/linux-unpacked/libGLESv2.so\
+/home/winter/.local/share/kite/kite-v2.20201014.0/linux-unpacked/swiftshader/libGLESv2.so\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGL.so.1\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGL.so.1.0.0\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGLX.so.0\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGLX_indirect.so.0\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0\
+/snap/gnome-3-28-1804/128/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGL.so.1\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGL.so.1.0.0\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGLX.so.0\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGLX_indirect.so.0\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0\
+/snap/gnome-3-28-1804/145/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGL.so\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGL.so.1\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGL.so.1.0.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLESv1_CM.so\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLESv1_CM.so.1\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLESv1_CM.so.1.0.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLESv2.so\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLESv2.so.2\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLESv2.so.2.0.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLX.so\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLX.so.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLX_indirect.so.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLdispatch.so\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0\
+/snap/gnome-3-34-1804/36/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGL.so\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGL.so.1\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGL.so.1.0.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLESv1_CM.so\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLESv1_CM.so.1\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLESv1_CM.so.1.0.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLESv2.so\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLESv2.so.2\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLESv2.so.2.0.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLX.so\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLX.so.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLX_indirect.so.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLdispatch.so\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0\
+/snap/gnome-3-34-1804/60/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0\
+/usr/lib/x86_64-linux-gnu/libGL.so.1\
+/usr/lib/x86_64-linux-gnu/libGL.so.1.0.0\
+/usr/lib/x86_64-linux-gnu/libGLESv2.so.2\
+/usr/lib/x86_64-linux-gnu/libGLESv2.so.2.0.0\
+/usr/lib/x86_64-linux-gnu/libGLU.so.1\
+/usr/lib/x86_64-linux-gnu/libGLU.so.1.3.1\
+/usr/lib/x86_64-linux-gnu/libGLX.so.0\
+/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0\
+/usr/lib/x86_64-linux-gnu/libGLX_indirect.so.0\
+/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0\
+/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0\
+/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0\
+/usr/lib/x86_64-linux-gnu/libGLdispatch.so.0.0.0\
+\cf4 \cb5 \
+\
+I picked the first one in /usr/bin (like the stackoverflow example) and relinked it:\
+	> \cf2 \cb3 sudo ln -s /usr/lib/x86_64-linux-gnu/libGL.so.1 /usr/lib/libGL.so\cf4 \cb5 \
+\
+Then I refreshed (I think that\'92s what\'92s happening??) the \'93linker/loader\'94. This is the same thing I had to do to get getdata to be happy (https://sourceforge.net/p/getdata/mailman/message/31388141/).\
+	> \cf2 \cb3 sudo /sbin/ldconfig \cf4 \cb5 \
+\
+Then it was all happy. Doing \'93qmake" and then \'93sudo make\'94 installed and compiled everything.}
