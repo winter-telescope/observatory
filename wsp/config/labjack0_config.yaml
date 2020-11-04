@@ -25,6 +25,26 @@ ANALOG_INPUTS:
         RANGE: 10
     AIN3:
         RANGE: 10
+    AIN4:
+        RANGE: 10
+    AIN5:
+        RANGE: 10
+    AIN6:
+        RANGE: 10
+    AIN7:
+        RANGE: 10
+    AIN8:
+        RANGE: 10
+    AIN9:
+        RANGE: 10
+    AIN10:
+        RANGE: 10
+    AIN11:
+        RANGE: 10
+    AIN12:
+        RANGE: 10
+    AIN13:
+        RANGE: 10
     AIN14:
     # this is the internal temperature sens
         RANGE: 10

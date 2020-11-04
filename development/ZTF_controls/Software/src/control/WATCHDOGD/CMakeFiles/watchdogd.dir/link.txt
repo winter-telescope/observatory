@@ -1,0 +1,1 @@
+/usr/bin/c++    -rdynamic CMakeFiles/watchdogd.dir/watchdogd.cpp.o CMakeFiles/watchdogd.dir/watchdogd_server.cpp.o  -o ../../../bin/watchdogd  -L/home/winter/WINTER_GIT/code/development/ZTF_controls/Software/lib -Wl,-rpath,/home/winter/WINTER_GIT/code/development/ZTF_controls/Software/lib ../../../lib/libutil.a -lpthread -lboost_system -lboost_thread 

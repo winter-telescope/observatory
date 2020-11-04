@@ -50,10 +50,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 86,
-            "geometryWidth": 256,
-            "geometryX": 17,
-            "geometryY": 85
+            "geometryHeight": 75,
+            "geometryWidth": 225,
+            "geometryX": 15,
+            "geometryY": 75
         },
         {
             "PObject": {
@@ -115,10 +115,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 154,
-            "geometryWidth": 256,
-            "geometryX": 17,
-            "geometryY": 187
+            "geometryHeight": 135,
+            "geometryWidth": 225,
+            "geometryX": 15,
+            "geometryY": 165
         },
         {
             "PObject": {
@@ -304,10 +304,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 324,
-            "geometryWidth": 256,
-            "geometryX": 578,
-            "geometryY": 17
+            "geometryHeight": 285,
+            "geometryWidth": 225,
+            "geometryX": 510,
+            "geometryY": 15
         },
         {
             "PObject": {
@@ -321,10 +321,10 @@
             "cellY": 1,
             "dataItems": [
             ],
-            "geometryHeight": 51,
-            "geometryWidth": 154,
-            "geometryX": 17,
-            "geometryY": 17
+            "geometryHeight": 45,
+            "geometryWidth": 135,
+            "geometryX": 15,
+            "geometryY": 15
         },
         {
             "PObject": {
@@ -398,10 +398,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 154,
-            "geometryWidth": 273,
-            "geometryX": 289,
-            "geometryY": 17
+            "geometryHeight": 135,
+            "geometryWidth": 240,
+            "geometryX": 255,
+            "geometryY": 15
         },
         {
             "PObject": {
@@ -458,10 +458,10 @@
                     "type": "PTDI"
                 }
             ],
-            "geometryHeight": 273,
-            "geometryWidth": 256,
-            "geometryX": 17,
-            "geometryY": 357
+            "geometryHeight": 240,
+            "geometryWidth": 225,
+            "geometryX": 15,
+            "geometryY": 315
         },
         {
             "PObject": {
@@ -475,10 +475,10 @@
             "cellY": 11,
             "dataItems": [
             ],
-            "geometryHeight": 154,
-            "geometryWidth": 273,
-            "geometryX": 289,
-            "geometryY": 187
+            "geometryHeight": 135,
+            "geometryWidth": 240,
+            "geometryX": 255,
+            "geometryY": 165
         },
         {
             "PObject": {
@@ -692,10 +692,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 273,
-            "geometryWidth": 273,
-            "geometryX": 289,
-            "geometryY": 357
+            "geometryHeight": 240,
+            "geometryWidth": 240,
+            "geometryX": 255,
+            "geometryY": 315
         },
         {
             "PObject": {
@@ -709,10 +709,10 @@
             "cellY": 21,
             "dataItems": [
             ],
-            "geometryHeight": 273,
-            "geometryWidth": 256,
-            "geometryX": 578,
-            "geometryY": 357
+            "geometryHeight": 240,
+            "geometryWidth": 225,
+            "geometryX": 510,
+            "geometryY": 315
         }
     ],
     "extremas": [
@@ -1014,10 +1014,10 @@
             "cellWidth": 5,
             "cellX": 11,
             "cellY": 0,
-            "geometryHeight": 119,
-            "geometryWidth": 85,
-            "geometryX": 187,
-            "geometryY": -17
+            "geometryHeight": 105,
+            "geometryWidth": 75,
+            "geometryX": 165,
+            "geometryY": 0
         }
     ],
     "styles": [
@@ -1276,8 +1276,8 @@
         }
     ],
     "webPort": "\u0000",
-    "windowCellHeight": 47,
-    "windowCellWidth": 89,
-    "windowHeight": 801,
-    "windowWidth": 1510
+    "windowCellHeight": 42,
+    "windowCellWidth": 52,
+    "windowHeight": 639,
+    "windowWidth": 778
 }

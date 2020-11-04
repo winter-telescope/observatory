@@ -31,7 +31,8 @@
 # include "common.h"
 # include "robo_client.h"
 # include "communications.h"
-# include "sensors.h"
+//NPL 10-26-20 commenting out the following line bc of compile error
+//# include "sensors.h"
 
 
 /** \namespace Optitemp

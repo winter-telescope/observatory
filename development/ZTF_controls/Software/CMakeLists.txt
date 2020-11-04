@@ -14,11 +14,11 @@ message ("Compiling " ${PROJECT} " on host " ${HOST})
 
 # Set the name of the main control computer for the project. This is used to
 # compile only required software on main and other computer systems.
-set (CONTROL_HOST "Test")
+set (CONTROL_HOST "odin")
 
 # Set project base directory for output files
-set (PROJECT_BASE_DIR "/home/ztf/WINTER/Software")
-set (PROJECT_DATA_DIR "/home/ztf/WINTER/Data")
+set (PROJECT_BASE_DIR "/home/winter/WINTER_GIT/code/development/ZTF_controls/Software")
+set (PROJECT_DATA_DIR "/home/winter/data")
 
 # Set variables that select modules to compile
 set (QUEUE_SYSTEM "ZTF")

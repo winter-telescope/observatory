@@ -707,6 +707,76 @@ fields:
         dtype: float64
         rate: slow
         var: labjacks.labjacks['lj0'].state['AIN3']
+    V_LJ0_AIN4:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN4']
+    V_LJ0_AIN5:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN5']
+    V_LJ0_AIN6:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN6']
+    V_LJ0_AIN7:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN7']
+    V_LJ0_AIN8:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN8']
+    V_LJ0_AIN9:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN9']
+    V_LJ0_AIN10:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN10']
+    V_LJ0_AIN11:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN11']
+    V_LJ0_AIN12:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN12']
+    V_LJ0_AIN13:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: slow
+        var: labjacks.labjacks['lj0'].state['AIN13']
     V_LJ0_AIN14:
         ftype: raw
         label: 'Voltage'

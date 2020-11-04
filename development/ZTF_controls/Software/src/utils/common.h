@@ -51,7 +51,7 @@
 /// so it should always be in the package and findable.  If the directory path
 /// needs to be hardcoded, then rewrite this define with that as the value
 /// instead (example:  # define COMMON_CONFIG_FILE "/home/dir/common.cfg")
-# define  COMMON_CONFIG_FILE  "/home/ztf/WINTER/Software/Config/common.cfg"
+# define  COMMON_CONFIG_FILE  "/home/winter/WINTER_GIT/code/development/ZTF_controls/Software/Config/common.cfg"
 
 /// ROBO command and reply codes
 enum {
@@ -267,12 +267,12 @@ public:
    log file name shared through the software.   */
   ROBO_common(std::string set_config_file, bool verbose_in):
   user_id(0), config_file(""), verbose(true),
-  home_dir("/home/ztf/WINTER/Software/"),
-  log_dir("/home/ztf/WINTER/Software/Logs/"),
-  config_dir("/home/ztf/WINTER/Software/Config/"),
-  status_dir("/home/ztf/WINTER/Software/Status/"),
-  executable_name(""), data_dir("/home/ztf/WINTER/Data/"),
-  telemetry_dir("/home/ztf/WINTER/Data/Telemetry/"), log_name("common")
+  home_dir("/home/winter/WINTER_GIT/code/development/ZTF_controls/Software/"),
+  log_dir("/home/winter/WINTER_GIT/code/development/ZTF_controls/Software/Logs/"),
+  config_dir("/home/winter/WINTER_GIT/code/development/ZTF_controls/Software/Config/"),
+  status_dir("/home/winter/WINTER_GIT/code/development/ZTF_controls/Software/Status/"),
+  executable_name(""), data_dir("/home/winter/data/"),
+  telemetry_dir("/home/winter/data/Telemetry/"), log_name("common")
   {
     // Read in the configuration file
     this->common_config(set_config_file);

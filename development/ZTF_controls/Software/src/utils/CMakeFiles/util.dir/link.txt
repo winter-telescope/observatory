@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../lib/libutil.a  CMakeFiles/util.dir/common.cpp.o CMakeFiles/util.dir/communications.cpp.o CMakeFiles/util.dir/file_ops.cpp.o CMakeFiles/util.dir/operations.cpp.o CMakeFiles/util.dir/robo_time.cpp.o CMakeFiles/util.dir/state.cpp.o
+/usr/bin/ranlib ../../lib/libutil.a
