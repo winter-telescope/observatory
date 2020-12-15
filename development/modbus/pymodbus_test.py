@@ -54,3 +54,13 @@ if __name__ == '__main__':
         reply = read_register(client, regnum)
     
         print(f'reply = {reply}')
+    
+    else:
+        regnum = 16383
+        print(f'reading register {regnum}')
+    
+        reply = read_register(client, regnum)
+    
+        print(f'reply = {reply}')
+        
+    
