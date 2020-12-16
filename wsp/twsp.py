@@ -37,7 +37,7 @@ from command import commandServer_multiClient
 from housekeeping import easygetdata
 from control import systemControl_threaded
 from utils import utils
-
+from utils import logging_setup
 #######################################################################
 # Captions and menu options for terminal interface
 linebreak = '\n \033[34m#######################################################################'
@@ -130,8 +130,9 @@ if __name__ == "__main__":
 
     # set up the logger
 
-    night = utils.night()
-    logger = utils.setup_logger(wsp_path, night, logger_name = 'logtest')
+    #night = utils.night()
+    #logger = utils.setup_logger(wsp_path, night, logger_name = 'logtest')
+    logger = logging_setup.setup_logger(wsp_path, config)
     """
     while True:
         cmd = input('select a mode: ')

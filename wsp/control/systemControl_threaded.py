@@ -33,7 +33,8 @@ sys.path.insert(1, wsp_path)
 from power import power
 from telescope import pwi4
 from telescope import telescope
-from command import commandServer_multiClient
+#from command import commandServer_multiClient
+from command import commandServer
 from command import wintercmd
 from command import commandParser
 from housekeeping import weather
@@ -122,13 +123,19 @@ class control(QtCore.QObject):
         else:
             self.wintercmd = wintercmd.Wintercmd(self.config, self.hk.state, self.telescope, self.logger)
             #self.wintercmd = wintercmd.ManualCmd(self.config, self.hk.state, self.telescope, self.logger)
+
             # init the cmd executor
             self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
+            
             # init the cmd prompt
             self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
             # connect the new command signal to the executors
             self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
-        # 
+            
+            # set up the command server which listens for command requests of the network
+            self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
+            # connect the command server to the command executor
+            self.commandServer.newcmd.connect(self.cmdexecutor.add_to_queue)
         
         
         ## Not loving this approach at the moment, trying something else

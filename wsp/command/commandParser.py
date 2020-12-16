@@ -113,7 +113,37 @@ class Worker(QtCore.QRunnable):
             self.signals.finished.emit()  # Done
 
 
-
+class cmd_request(object):
+    """
+    A cmd_request object is generated each time a user tries to execute a
+    command, either by typing into the local command prompt or externally from
+    a network connection. 
+    
+    The cmd_request object contains the specified command argument, which 
+    should be one of the cmd entries in wintercmd if it is to be successful,
+    the priority level of the command (set variously in the code depending on
+    who is the sender), as well as information about the requester, 
+    namely their ip address, port.
+    """
+    def __init__(self, cmd, request_addr, request_port, priority = 'low'):
+        try:
+            self.cmd = cmd
+            self.request_addr = request_addr
+            self.request_port = request_port
+            self._priority_dict_ = dict({'low'      : 4,
+                                         'med'      : 3,
+                                         'medium'   : 3,
+                                         'high'     : 2,
+                                         'sudo'     : 1})
+            self.priority = priority
+            self.priority_num = self._priority_dict_.get(self.priority,4)
+        except:
+            try:
+                print(f'invalid command request {cmd} (priority {priority} from user at [{request_addr} : {request_port}]')
+                #TODO log it
+            except:
+                print('invalud command request!')
+                #TODO log it
 
 class cmd_prompt(QtCore.QThread):
     """
@@ -121,8 +151,9 @@ class cmd_prompt(QtCore.QThread):
     and then sends any received command out to be executed in a worker thread
     """
     # define a signal which will emit when a new command is received
-    newcmd = QtCore.pyqtSignal(str)
-
+    #newcmd = QtCore.pyqtSignal(str)
+    newcmd = QtCore.pyqtSignal(object) #not just a str, now has more info
+    
     def __init__(self,telescope,wintercmd):
         super().__init__()
 
@@ -149,8 +180,14 @@ class cmd_prompt(QtCore.QThread):
             if cmd.isspace() or ( cmd == ''):
                 pass
             else:
+                # create a command request object
+                new_cmd_request = cmd_request(cmd = cmd, 
+                                              request_addr = 'localhost',
+                                              request_port = 'terminal',
+                                              priority = 'medium')
                 # emit signal that command has been received
-                self.newcmd.emit(cmd)
+                #self.newcmd.emit(cmd) #old system where just the command was passed
+                self.newcmd.emit(new_cmd_request)
 
 
 class cmd_executor(QtCore.QThread):
@@ -187,10 +224,11 @@ class cmd_executor(QtCore.QThread):
 
 
 
-    def add_to_queue(self,cmd):
-        self.logger.debug(f"adding cmd to queue: {cmd}")
-        self.queue.put((1,cmd))
-
+    def add_to_queue(self,cmd_request):
+        self.logger.debug(f"adding cmd to queue: {cmd_request.cmd}, from user at {cmd_request.request_addr}|{cmd_request.request_port}")
+        #self.queue.put((1,cmd))
+        self.queue.put((cmd_request.priority_num, cmd_request.cmd))
+        
     def execute(self,cmd):
         """
         Execute the command in a worker thread

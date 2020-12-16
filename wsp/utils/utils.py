@@ -123,7 +123,7 @@ def connect_and_query_server(cmd, ipaddr, port,line_ending = '\n', end_char = ''
         d = reply
     return d
 
-def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001, logger = None):
+def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001, logger = None, verbose = False):
     """
     This is a utility to send a single command to a remote server,
     then wait a response. It tries to return a dictionary from the returned  
@@ -154,11 +154,13 @@ def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 204
         except Exception as e:
             ipaddr, port = sock.getsockname()
             msg = f'server query to {ipaddr} Port {port}: {e}'
-            if logger is None:
-                print(msg)
-            else:
-                logger.warning(msg)
             
+            if verbose:
+                if logger is None:
+                    print(msg)
+                else:
+                    logger.warning(msg)
+                
             """
             if len(total_data)>1:
                 # check if the end_of_data_was split
@@ -172,10 +174,11 @@ def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 204
             return None
     except Exception as e:
         msg = f'problem with query server, {type(e)}: {e}'
-        if logger is None:
-                print(msg)
-        else:
-            logger.warning(msg)
+        if verbose:
+            if logger is None:
+                    print(msg)
+            else:
+                logger.warning(msg)
 
         return None
         
@@ -188,7 +191,7 @@ def query_server(cmd, socket, line_ending = '\n', end_char = '', num_chars = 204
         d = reply
     return d
 
-def create_socket(ipaddr, port, timeout = 0.01, logger = None):
+def create_socket(ipaddr, port, timeout = 0.01, logger = None, verbose = False):
     """
     this takes in a ip address and port, attempts to create a socket connection
     and returns the socket
@@ -203,16 +206,17 @@ def create_socket(ipaddr, port, timeout = 0.01, logger = None):
         
         
     except Exception as e:
-        msg = f'problem establishing connection to server, {type(e)}: {e}'
-        if logger is None:
-                print(msg)
-        else:
-            logger.warning(msg)
+        if verbose:
+            msg = f'problem establishing connection to server, {type(e)}: {e}'
+            if logger is None:
+                    print(msg)
+            else:
+                logger.warning(msg)
         sock.close()
         
     return sock
 
-def connect_to_server(config,servername,logger = None):
+def connect_to_server(config,servername,logger = None, verbose = False):
     """
     this creates a socket and does so using the nicely formatted dict from
     the config file.
@@ -230,11 +234,12 @@ def connect_to_server(config,servername,logger = None):
     timeout    = config[servername]['timeout']
     
     # Connect to the server
-    msg = f'attempting to create new socket connection to server at {ipaddr} port {port}'
-    if logger is None:
-        print(msg)
-    else:
-        logger.info(msg)
+    if verbose:
+        msg = f'attempting to create new socket connection to server at {ipaddr} port {port}'
+        if logger is None:
+            print(msg)
+        else:
+            logger.info(msg)
     sock = create_socket(ipaddr = ipaddr, port = port, timeout = timeout, logger = logger)
 
     return sock

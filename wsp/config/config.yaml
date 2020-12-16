@@ -1,5 +1,15 @@
 # config file for WINTER
 
+########## WINTERCMD COMMANDING ##########
+wintercmd_server_addr: 'localhost'
+wintercmd_server_port: 7000
+# trusted hosts (whitelist). allow commands from these machines
+wintercmd_trusted_hosts:
+    -127.0.0.1
+    -127.0.1.1
+    -192.168.1.10
+    -192.168.1.11
+
 ########## SCHEDULING ##########
 # location of the schedule files (base directory + this directory)
 scheduleFile_directory: 'schedule/scheduleFiles'
@@ -33,6 +43,11 @@ write_dt: 500.0
 housekeeping_data_directory: 'data/rawdir'
 housekeeping_data_link_directory: 'data'
 housekeeping_data_link_name: 'dm.lnk'
+
+# where to put the log. base directory is home
+log_directory: 'data/log'
+log_link_directory: 'data'
+log_link_name: 'winter.log'
 
 
 # define housekeeping catagories to load in each mode
