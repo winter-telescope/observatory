@@ -456,7 +456,7 @@ class main(QtCore.QObject):
         self.timer.start()
         
         # create the server thread
-        self.server_thread = server_thread('localhost', 9992)
+        self.server_thread = server_thread('localhost', 7000)
         
         
         #self.server_thread.new_comm_thread.testSignal.connect(self.caught_signal)

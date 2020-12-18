@@ -132,7 +132,7 @@ class housekeeping():
         
         now = datetime.utcnow() # or can use now for local time
         #now = str(int(now.timestamp())) # give the name the current ctime
-        now_str = now.strftime('%Y%M%d_%H%M%S') # give the name a more readable date format
+        now_str = now.strftime('%Y%m%d_%H%M%S') # give the name a more readable date format
         self.dirname = now_str + '.dm'
         self.dirpath = hk_dir + '/' + self.dirname
         
