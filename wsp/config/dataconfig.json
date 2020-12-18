@@ -10,9 +10,11 @@
     "filtSkyBright": {"type": "Real"},
     "fiveSigmaDepth": {"type": "Real"},
     "dist2Moon": {"type": "Real"},
-    "progID": {"type": "Integer", "altNames": ["propID"]},
+    "propID": {"type": "Integer", "altNames": ["propID"]},
+    "expMJD": {"type": "Real"},
     "subprogram": {"type": "Text"},
-    "pathToFits": {"type": "Text"}
+    "pathToFits": {"type": "Text"},
+    "time_utc_pcs": {"type": "Real"}
   },
   "Field":{
     "fieldID": {"type": "Integer", "primaryKey": true},

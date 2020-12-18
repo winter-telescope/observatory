@@ -225,11 +225,11 @@ class schedule_executor(QtCore.QThread):
     This is a thread which handles the tracking and execution of the scheduled observations for the robotic execution
     modes of WINTER's operation.
     """
-    
+
     # define useful signals
     changeSchedule = QtCore.pyqtSignal(object)
     newcmd = QtCore.pyqtSignal(object)
-    
+
     def __init__(self, config, state, telescope, wintercmd, schedule, writer, logger):
         super().__init__()
         self.config = config
@@ -248,13 +248,13 @@ class schedule_executor(QtCore.QThread):
         self.schedulefile_name = None
         # if the changeSchedule signal is caught, set up a new schedule
         self.changeSchedule.connect(self.setup_new_schedule)
-        
+
         # load the dither list
         self.dither_alt, self.dither_az = np.loadtxt(self.schedule.base_directory + '/' + self.config['dither_file'], unpack = True)
         # convert from arcseconds to degrees
         self.dither_alt *= (1/3600.0)
         self.dither_az  *= (1/3600.0)
-        
+
     def getSchedule(self, schedulefile_name):
         self.schedule.loadSchedule(schedulefile_name, self.lastSeen+1)
 
@@ -271,16 +271,16 @@ class schedule_executor(QtCore.QThread):
         new schedule. It is called when the changeSchedule signal is caught,
         as well as when the thread is first initialized.
         """
-        
+
         print(f'scheduleExecutor: setting up new schedule from file >> {schedulefile_name}')
-        
+
         if self.running:
             self.stop()
-        
+
         self.schedulefile_name = schedulefile_name
-        
+
     #def observe(self):
-        
+
 
     def run(self):
         '''
@@ -289,24 +289,24 @@ class schedule_executor(QtCore.QThread):
         '''
         self.running = True
         #print(f'scheduleExecutor: running scheduleExec in thread {self.currentThread()}')
-        
+
         #print(f'scheduleExecutor: attempting to load schedulefile_name = {self.schedulefile_name}')
         if self.schedulefile_name is None:
             # NPL 9-21-20: put this in for now so that the while loop in run wouldn't go if the schedule is None
             self.schedule.currentObs = None
-            
+
         else:
             #print(f'scheduleExecutor: loading schedule file [{self.schedulefile_name}]')
             # code that sets up the connections to the databases
             self.getSchedule(self.schedulefile_name)
             self.writer.setUpDatabase()
-        
+
         while self.schedule.currentObs is not None and self.running:
             #print(f'scheduleExecutor: in the observing loop!')
             self.lastSeen = self.schedule.currentObs['obsHistID']
-            self.current_field_alt = float(self.schedule.currentObs['altitude'])*180/np.pi
-            self.current_field_az = float(self.schedule.currentObs['azimuth'])*180/np.pi
-            
+            self.current_field_alt = float(self.schedule.currentObs['altitude'])
+            self.current_field_az = float(self.schedule.currentObs['azimuth'])
+
             for i in range(len(self.dither_alt)):
                 # step through the prescribed dither sequence
                 dither_alt = self.dither_alt[i]
@@ -314,7 +314,7 @@ class schedule_executor(QtCore.QThread):
                 print(f'Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
                 self.alt_scheduled = self.current_field_alt + dither_alt
                 self.az_scheduled = self.current_field_az + dither_az
-                
+
                 #self.newcmd.emit(f'mount_goto_alt_az {self.currentALT} {self.currentAZ}')
                 self.telescope.mount_goto_alt_az(alt_degs = self.alt_scheduled, az_degs = self.az_scheduled)
                 # wait for the telescope to stop moving before returning
@@ -323,13 +323,14 @@ class schedule_executor(QtCore.QThread):
                 waittime = int(self.schedule.currentObs['visitTime'])
                 # print(f' Taking a {waittime} second exposure...')
                 time.sleep(waittime)
-    
+
                 imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
                 # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
-                self.writer.log_observation(self.schedule.getCurrentObs(), imagename)
+                data_to_write = {**self.schedule.getCurrentObs(), **self.state} ## can add other dictionaries here
+                self.writer.log_observation(data_to_write, imagename)
 
             self.schedule.gotoNextObs()
-        
+
         if not self.schedulefile_name is None:
             ## TODO: Code to close connections to the databases.
             self.schedule.closeConnection()

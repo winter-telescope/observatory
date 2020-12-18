@@ -1,0 +1,17 @@
+OldEarthOrientationDataWarning: For best precision (on the order of arcseconds), you must download an up-to-date IERS Bulletin A table. To do so, run:
+
+>>> from astroplan import download_IERS_A
+>>> download_IERS_A()
+
+Change in allowed exposures:             n_obs
+program_id       
+1               0
+2               0
+3               0
+Number of timed observations: {0: 0, 1: 0, 2: 0, 3: 0}
+{(3, 'reference_building_y'): 343, (3, 'reference_building_j'): 353, (3, 'reference_building_h'): 343}
+OldEarthOrientationDataWarning: For best precision (on the order of arcseconds), you must download an up-to-date IERS Bulletin A table. To do so, run:
+
+>>> from astroplan import download_IERS_A
+>>> download_IERS_A()
+
