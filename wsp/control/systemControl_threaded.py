@@ -52,9 +52,9 @@ class control(QtCore.QObject):
     ## Initialize Class ##
     def __init__(self,mode,config,base_directory, logger, parent = None):
         super(control, self).__init__(parent)
-        
-        
-        
+
+
+
         # pass in the config
         self.config = config
         # pass in the logger
@@ -66,11 +66,11 @@ class control(QtCore.QObject):
         # init the network power supply
         try:
             self.pdu1 = power.PDU('pdu1.ini',base_directory = self.base_directory)
-        
+
         except Exception as e:
             self.logger.warning(f"control: could not init NPS at pdu1, {type(e)}: {e}")
 
-        
+
         # init the telescope
         self.telescope = pwi4.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
 
@@ -86,7 +86,7 @@ class control(QtCore.QObject):
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
         ## init the database writer
-        self.writer = ObsWriter.ObsWriter('demoRelational', self.base_directory) #the ObsWriter initialization
+        self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory) #the ObsWriter initialization
 
 
         ### SET UP THE HOUSEKEEPING ###
@@ -112,11 +112,11 @@ class control(QtCore.QObject):
             self.scheduleExec = commandParser.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
             # init the cmd executor
             self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
-            
+
             # init the cmd prompt
             self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
-    
-    
+
+
             # connect the new command signal to the executors
             self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
             self.scheduleExec.newcmd.connect(self.cmdexecutor.add_to_queue)
@@ -126,18 +126,18 @@ class control(QtCore.QObject):
 
             # init the cmd executor
             self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
-            
+
             # init the cmd prompt
             self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
             # connect the new command signal to the executors
             self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
-            
+
             # set up the command server which listens for command requests of the network
             self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
             # connect the command server to the command executor
             self.commandServer.newcmd.connect(self.cmdexecutor.add_to_queue)
-        
-        
+
+
         ## Not loving this approach at the moment, trying something else
         # if mode == 0:
         #     self.cmdprompt.newcmd.connect(self.scheduleExec.stop)
@@ -147,7 +147,7 @@ class control(QtCore.QObject):
         if mode == 's':
             self.scheduleExec.start()
 
-        
+
 
 
 
