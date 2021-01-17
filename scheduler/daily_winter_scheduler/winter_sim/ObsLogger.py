@@ -27,32 +27,34 @@ class ObsLogger(object):
         self.prev_obs = None
         self.mjd_tonight = None
         self.moon_illumination_tonight = None
-        
+
         # W
         now = datetime.now()
         now_str = now.strftime('%Y%m%d') # give the name a more readable date format
-        
+
         file_dir = output_path + 'schedules'
         file_path = file_dir + '/nightly_' + now_str + '.db'
         file_link_path = output_path + 'nightly_schedule.lnk'
-        
+
         # create the data directory if it doesn't exist already
         pathlib.Path(file_dir).mkdir(parents = True, exist_ok = True)
-        
+
         self.engine = create_engine('sqlite:///'+os.path.join(file_path))
 
         self.conn = self.engine.connect()
         self.create_fields_table(clobber=clobber)
         self.create_pointing_log(clobber=clobber)
-        
+
         # W
         #history_path = '../../wsp/demoRelational.db'
         #self.historyengine = create_engine('sqlite:///'+os.path.join(history_path))
-        self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
+        # self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
+        self.historyEngine = create_engine(
+                'sqlite:///'+os.path.join(BASE_DIR,f'WINTER_ObsLog.db'))
         self.history = pd.read_sql('Observation', self.historyengine)
-        
+
         self.log_tonight = pd.read_sql('Summary', self.engine)
-        
+
         # make a symbolic link (symlink) to the file
         print(f'trying to create link at {file_link_path} to {file_path}')
 
@@ -73,7 +75,7 @@ class ObsLogger(object):
                 pass
 
         # If the table doesn't exist, create it
-        if not self.engine.dialect.has_table(self.engine, 'Field'): 
+        if not self.engine.dialect.has_table(self.engine, 'Field'):
 
             self.conn.execute("""
             CREATE TABLE Field(
@@ -115,7 +117,7 @@ class ObsLogger(object):
                 pass
 
         # If the table doesn't exist, create it
-        if not self.engine.dialect.has_table(self.engine, 'Summary'): 
+        if not self.engine.dialect.has_table(self.engine, 'Summary'):
 
             # create table
             self.conn.execute("""
@@ -205,11 +207,11 @@ class ObsLogger(object):
             u.hourangle).value/24.*360.)
         record['altitude'] = altaz.alt.value
         record['azimuth'] = altaz.az.value
-        
+
         # W trying to get the simukations to run faster
         # Spending about 5 min per night recording moon and sun position
         # TODO: uncomment for production code
-        
+
         record['dist2Moon'] = 0.
         record['solarElong'] = 0.
         record['moonRA'] = 0.
@@ -219,7 +221,7 @@ class ObsLogger(object):
         record['moonPhase'] = 0.
         record['sunAlt'] = 0.
         record['sunAz'] = 0.
-        
+
         ''' sun = coord.get_sun(exposure_start)
         sun_altaz = skycoord_to_altaz(sun, exposure_start)
         moon = coord.get_moon(exposure_start, W_loc)
@@ -248,7 +250,7 @@ class ObsLogger(object):
 
         record['sunAlt'] = sun_altaz.alt.to(u.radian).value
         record['sunAz'] = sun_altaz.az.to(u.radian).value '''
-        
+
         if self.prev_obs is not None:
             sc_prev = coord.SkyCoord(self.prev_obs['fieldRA'] * u.radian,
                                      self.prev_obs['fieldDec'] * u.radian)
@@ -262,7 +264,7 @@ class ObsLogger(object):
         record['totalRequestsTonight'] = \
             request['target_total_requests_tonight']
         record['metricValue'] = request['target_metric_value']
-        record['subprogram'] = request['target_subprogram_name'] 
+        record['subprogram'] = request['target_subprogram_name']
 
         record_row = pd.DataFrame(record,index=[uuid.uuid1().hex])
 
@@ -299,8 +301,8 @@ class ObsLogger(object):
 
         if mjd_range is not None:
             assert mjd_range[0] <= mjd_range[1]
-            w = ((self.history['expMJD'] >= mjd_range[0]) & 
-                  (self.history['expMJD'] <= mjd_range[1])) 
+            w = ((self.history['expMJD'] >= mjd_range[0]) &
+                  (self.history['expMJD'] <= mjd_range[1]))
             hist = self.history[w]
         else:
             hist = self.history
@@ -324,7 +326,7 @@ class ObsLogger(object):
 
     def count_equivalent_obs_by_program(self, mjd_range = None):
         """Count of number of equivalent standard exposures by program."""
-        
+
 
         hist = self._mjd_filter_history(mjd_range)
 
@@ -364,7 +366,7 @@ class ObsLogger(object):
 
     def count_total_obs_by_subprogram(self, mjd_range = None):
         """Count of observations by program and subprogram.
-        
+
         Returns a dict with keys (program_id, subprogram_name)"""
 
         hist = _mjd_filter_history(mjd_range)
@@ -380,11 +382,11 @@ class ObsLogger(object):
         return s
 
     def select_last_observed_time_by_field(self,
-            field_ids = None, filter_ids = None, 
-            program_ids = None, subprogram_names = None, 
+            field_ids = None, filter_ids = None,
+            program_ids = None, subprogram_names = None,
             mjd_range = None):
 
-        # start with "True" 
+        # start with "True"
         w = self.history['expMJD'] > 0
 
         if field_ids is not None:
@@ -392,33 +394,33 @@ class ObsLogger(object):
 
         if filter_ids is not None:
             filter_names = [FILTER_ID_TO_NAME[fi] for fi in filter_ids]
-            w &= self.history['filter'].apply(lambda x: 
+            w &= self.history['filter'].apply(lambda x:
                     x in filter_names)
 
         if program_ids is not None:
-            w &= self.history['propID'].apply(lambda x: 
+            w &= self.history['propID'].apply(lambda x:
                     x in program_ids)
 
         if subprogram_names is not None:
-            w &= self.history['subprogram'].apply(lambda x: 
+            w &= self.history['subprogram'].apply(lambda x:
                     x in subprogram_names)
 
         if mjd_range is not None:
             assert mjd_range[0] <= mjd_range[1]
-            w &= ((self.history['expMJD'] >= mjd_range[0]) & 
-                  (self.history['expMJD'] <= mjd_range[1])) 
+            w &= ((self.history['expMJD'] >= mjd_range[0]) &
+                  (self.history['expMJD'] <= mjd_range[1]))
 
-        # note that this only returns fields that have previously 
+        # note that this only returns fields that have previously
         # been observed under these constraints!
         return self.history.loc[
                 w,['fieldID','expMJD']].groupby('fieldID').agg(np.max)
 
     def select_n_obs_by_field(self,
-            field_ids = None, filter_ids = None, 
-            program_ids = None, subprogram_names = None, 
+            field_ids = None, filter_ids = None,
+            program_ids = None, subprogram_names = None,
             mjd_range = None):
 
-        # start with "True" 
+        # start with "True"
         w = self.history['expMJD'] > 0
 
         if field_ids is not None:
@@ -426,24 +428,24 @@ class ObsLogger(object):
 
         if filter_ids is not None:
             filter_names = [FILTER_ID_TO_NAME[fi] for fi in filter_ids]
-            w &= self.history['filter'].apply(lambda x: 
+            w &= self.history['filter'].apply(lambda x:
                     x in filter_names)
 
         if program_ids is not None:
-            w &= self.history['propID'].apply(lambda x: 
+            w &= self.history['propID'].apply(lambda x:
                     x in program_ids)
 
         if subprogram_names is not None:
-            w &= self.history['subprogram'].apply(lambda x: 
+            w &= self.history['subprogram'].apply(lambda x:
                     x in subprogram_names)
 
         if mjd_range is not None:
             assert mjd_range[0] <= mjd_range[1]
-            w &= ((self.history['expMJD'] >= mjd_range[0]) & 
-                  (self.history['expMJD'] <= mjd_range[1])) 
+            w &= ((self.history['expMJD'] >= mjd_range[0]) &
+                  (self.history['expMJD'] <= mjd_range[1]))
 
-        # note that this only returns fields that have previously 
-        # been observed!   
+        # note that this only returns fields that have previously
+        # been observed!
         grp =  self.history.loc[
                 w,['fieldID','expMJD']].groupby('fieldID')
         nobs = grp['expMJD'].agg(len)
@@ -455,10 +457,9 @@ class ObsLogger(object):
         """Return one night's observation history"""
 
         mjd_range = [np.floor(time.mjd), np.floor(time.mjd)+1.]
-        w = ((self.history['expMJD'] >= mjd_range[0]) & 
-                  (self.history['expMJD'] <= mjd_range[1])) 
-        return self.history.loc[w, 
+        w = ((self.history['expMJD'] >= mjd_range[0]) &
+                  (self.history['expMJD'] <= mjd_range[1]))
+        return self.history.loc[w,
                 ['propID', 'fieldID',
                     'fieldRA', 'fieldDec', 'filter', 'expMJD', 'visitExpTime',
                     'airmass', 'subprogram']]
-
