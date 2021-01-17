@@ -51,7 +51,7 @@ class ObsLogger(object):
         # self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
         self.historyEngine = create_engine(
                 'sqlite:///'+os.path.join(BASE_DIR,f'WINTER_ObsLog.db'))
-        self.history = pd.read_sql('Observation', self.historyengine)
+        self.history = pd.read_sql('Observation', self.historyEngine)
 
         self.log_tonight = pd.read_sql('Summary', self.engine)
 
