@@ -38,7 +38,7 @@ class ObsLogger(object):
 
         # create the data directory if it doesn't exist already
         pathlib.Path(file_dir).mkdir(parents = True, exist_ok = True)
-
+        print('sqlite:///'+os.path.join(file_path))
         self.engine = create_engine('sqlite:///'+os.path.join(file_path))
 
         self.conn = self.engine.connect()
