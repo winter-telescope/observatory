@@ -49,11 +49,12 @@ class ObsLogger(object):
         #history_path = '../../wsp/demoRelational.db'
         #self.historyengine = create_engine('sqlite:///'+os.path.join(history_path))
         # self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
+        print('sqlite:///'+os.path.join('home/winter/data/',f'WINTER_ObsLog.db'))
         self.historyEngine = create_engine(
                 'sqlite:///'+os.path.join('home/winter/data/',f'WINTER_ObsLog.db'))
         self.history = pd.read_sql('Observation', self.historyEngine)
 
-        self.log_tonight = pd.read_sql('Summary', self.engine)
+        # self.log_tonight = pd.read_sql('Summary', self.engine)
 
         # make a symbolic link (symlink) to the file
         print(f'trying to create link at {file_link_path} to {file_path}')
@@ -270,7 +271,9 @@ class ObsLogger(object):
 
         # append to our local history DataFrame
         # note that the index here will change when reloaded from the db
-        self.log_tonight = self.log_tonight.append(record_row, sort=False)
+        # self.log_tonight = self.log_tonight.append(record_row, sort=False)
+        self.history = self.history.append(record_row, sort=False)
+
 
         # write to the database
         record_row.to_sql('Summary', self.conn, index=False, if_exists='append')

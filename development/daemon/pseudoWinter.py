@@ -38,12 +38,13 @@ class Controller():
                 self.schedule.loadSchedule(currentTime=0)
                 try:
                     self.weather = Pyro5.client.Proxy("PYRONAME:weather")
-                    print(str(self.weather.weather_safe()))
+                    self.weather.startWeather()
                     self.logger.error('weather connect succesful')
                 except Exception as e:
                     self.logger.error('weather connect failed', exc_info=True )
 
-                while True:
+                counter = 0
+                while True and counter <= 12:
                     try:
                         safe = self.weather.weather_safe()
                         print("Weather Safe: " + str(safe))
@@ -52,9 +53,11 @@ class Controller():
                             self.schedule.gotoNextObs()
 
                         time.sleep(5)
+                        counter +=1
                     except:
                         print("errors in the use of schedule or writer")
                         break
+                self.weather.shutdownWeather()
             except:
                 print('failed to initialize schedule or writer')
 
