@@ -42,6 +42,11 @@ class Controller():
                     self.logger.error('weather connect succesful')
                 except Exception as e:
                     self.logger.error('weather connect failed', exc_info=True )
+                try:
+                    self.camera = Pyro5.client.Proxy("PYRONAME:camera")
+                    self.logger.error('camera connect succesful')
+                except Exception as e:
+                    self.logger.error('camera connect failed', exc_info=True )
 
                 counter = 0
                 while True and counter <= 12:
@@ -49,11 +54,19 @@ class Controller():
                         safe = self.weather.weather_safe()
                         print("Weather Safe: " + str(safe))
                         if safe:
-                            print(self.schedule.getCurrentObs())
-                            self.schedule.gotoNextObs()
-
+                            if not self.camera.get_status()['exposing']:
+                                print(f'Last Image Name: {self.camera.get_last_image()}')
+                                print(f'Starting Next Exposure at : {self.schedule.getCurrentObs()}')
+                                try:
+                                    self.camera.take_image(10, {'metaData': 10})
+                                except Exception as e:
+                                    self.logger.error('take image failed', exc_info=True )
+                                self.schedule.gotoNextObs()
+                                counter +=1
+                            else:
+                                print('exposing')
+                                time.sleep(2)
                         time.sleep(5)
-                        counter +=1
                     except:
                         print("errors in the use of schedule or writer")
                         break
