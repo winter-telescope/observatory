@@ -692,6 +692,14 @@ fields:
         dtype: int64
         rate: slow
         var: weather.P48_Weather_Status_Num
+    ### ROBOTIC DECISION MAKING STUFF ###
+    ok_to_observe:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: weather.ok_to_observe
     
     ### LABJACK STUFF###
     V_LJ0_AIN0:
