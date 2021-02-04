@@ -246,28 +246,28 @@ fields:
         units: deg
         dtype: float64
         rate: fast
-        var: telescope.state.site.latitude_degs
+        var: telescope.state["site.latitude_degs"]
     site_longitude_degs:
         ftype: raw
         label: Longitude
         units: deg
         dtype: float64
         rate: fast
-        var: telescope.state.site.longitude_degs
+        var: telescope.state["site.longitude_degs"]
     site_height_meters:
         ftype: raw
         label: Height
         units: m
         dtype: float64
         rate: fast
-        var: telescope.state.site.height_meters
+        var: telescope.state["site.height_meters"]
     site_lmst_hours:
         ftype: raw
         label: LMST
         units: hours
         dtype: float64
         rate: fast
-        var: telescope.state.site.lmst_hours
+        var: telescope.state["site.lmst_hours"]
 
     mount_is_connected:
         ftype: raw
@@ -275,77 +275,77 @@ fields:
         units: None
         dtype: int64
         rate: fast
-        var: telescope.state.mount.is_connected
+        var: telescope.state["mount.is_connected"]
     mount_geometry:
         ftype: raw
         label: Mode
         units: None
         dtype: int64
         rate: fast
-        var: telescope.state.mount.geometry
+        var: telescope.state["mount.geometry"]
     mount_ra_apparent_hours:
         ftype: raw
         label: RA
         units: hours
         dtype: float64
         rate: fast
-        var: telescope.state.mount.ra_apparent_hours
+        var: telescope.state["mount.ra_apparent_hours"]
     mount_dec_apparent_degs:
         ftype: raw
         label: DEC
         units: degs
         dtype: float64
         rate: fast
-        var: telescope.state.mount.dec_apparent_degs
+        var: 'telescope.state["mount.dec_apparent_degs"]'
     mount_is_slewing:
         ftype: raw
         label: 'MountSlewing'
         units: None
         dtype: int64
         rate: fast
-        var: 'telescope.state.mount.is_slewing'
+        var: 'telescope.state["mount.is_slewing"]'
     mount_az_deg:
         ftype: raw
         label: 'Az'
         units: 'deg'
         dtype: float64
         rate: fast
-        var: 'telescope.state.mount.azimuth_degs'
+        var: 'telescope.state["mount.azimuth_degs"]'
     mount_alt_deg:
         ftype: raw
         label: 'Alt'
         units: 'deg'
         dtype: float64
         rate: fast
-        var: 'telescope.state.mount.altitude_degs'
+        var: 'telescope.state["mount.altitude_degs"]'
     mount_az_is_enabled:
         ftype: raw
         label: 'AzEnabled'
         units: None
         dtype: int
         rate: fast
-        var: 'telescope.state.mount.axis0.is_enabled'
+        var: 'telescope.state["mount.axis0.is_enabled"]'
     mount_alt_is_enabled:
         ftype: raw
         label: 'AltEnabled'
         units: None
         dtype: int
         rate: fast
-        var: 'telescope.state.mount.axis1.is_enabled'
+        var: 'telescope.state["mount.axis1.is_enabled"]'
     mount_az_dist_to_target:
         ftype: raw
         label: 'Dist'
         units: 'degs'
         dtype: float64
         rate: fast
-        var: 'telescope.state.mount.axis0.dist_to_target_arcsec'
+        var: "telescope.state['mount.axis0.dist_to_target_arcsec']"
     mount_alt_dist_to_target:
         ftype: raw
         label: 'Dist'
         units: 'degs'
         dtype: float64
         rate: fast
-        var: 'telescope.state.mount.axis1.dist_to_target_arcsec'
+        var: 'telescope.state["mount.axis1.dist_to_target_arcsec"]'
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud_index:

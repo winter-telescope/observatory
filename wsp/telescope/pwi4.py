@@ -518,7 +518,9 @@ if __name__ == '__main__':
     
     telescope = PWI4('thor')
     print(f'site.lmst_hours = {telescope.state.site.lmst_hours}')
+    print(f'mount.is_connected = {telescope.state.mount.is_connected}')
     print()
     print('updating state: ')
     telescope.update_state()
     print(f'site.lmst_hours = {telescope.state.site.lmst_hours}')
+    print(f'mount.is_connected = {telescope.state.mount.is_connected}')
