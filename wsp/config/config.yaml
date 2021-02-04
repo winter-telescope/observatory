@@ -240,6 +240,41 @@ fields:
         rate: slow
         var: "schedule.scheduleExec.current_field_az"
 #telescope
+    pwi4_version_field0:
+        ftype: raw
+        label: Version
+        units: None
+        dtype: float64
+        rate: fast
+        var: telescope.state["pwi4.version_field[0]"]
+    pwi4_version_field1:
+        ftype: raw
+        label: Version
+        units: None
+        dtype: float64
+        rate: fast
+        var: telescope.state["pwi4.version_field[1]"]
+    pwi4_version_field2:
+        ftype: raw
+        label: Version
+        units: None
+        dtype: float64
+        rate: fast
+        var: telescope.state["pwi4.version_field[2]"]
+    pwi4_version_field3:
+        ftype: raw
+        label: Version
+        units: None
+        dtype: float64
+        rate: fast
+        var: telescope.state["pwi4.version_field[3]"]
+    telescope_timestamp_utc:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: fast
+        var: telescope.state["response.timestamp_utc"]
     site_latitude_degs:
         ftype: raw
         label: Latitude
@@ -268,7 +303,6 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state["site.lmst_hours"]
-
     mount_is_connected:
         ftype: raw
         label: 'MountConnected'
@@ -283,6 +317,27 @@ fields:
         dtype: int64
         rate: fast
         var: telescope.state["mount.geometry"]
+    mount_timestamp_utc:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.timestamp_utc"]
+    mount_mjd:
+        ftype: raw
+        label: 'MDJ'
+        units: None
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.julian_date"]
+    mount_slew_time_constant:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.slew_time_constant"]
     mount_ra_apparent_hours:
         ftype: raw
         label: RA
@@ -297,13 +352,34 @@ fields:
         dtype: float64
         rate: fast
         var: 'telescope.state["mount.dec_apparent_degs"]'
-    mount_is_slewing:
+    mount_ra_j2000_hours:
         ftype: raw
-        label: 'MountSlewing'
-        units: None
-        dtype: int64
+        label: RAJ2000
+        units: 'hours'
+        dtype: float64
         rate: fast
-        var: 'telescope.state["mount.is_slewing"]'
+        var: telescope.state["mount.ra_j2000_hours"]
+    mount_dec_j2000_deg:
+        ftype: raw
+        label: DECJ2000
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.dec_j2000_deg"]
+    mount_target_ra_apparent_hours:
+        ftype: raw
+        label: RA
+        units: 'hours'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.target_ra_apparent_hours"]
+    mount_target_dec_apparent_deg:
+        ftype: raw
+        label: DEC
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.target_dec_apparent_deg"]
     mount_az_deg:
         ftype: raw
         label: 'Az'
@@ -318,34 +394,269 @@ fields:
         dtype: float64
         rate: fast
         var: 'telescope.state["mount.altitude_degs"]'
+    mount_is_slewing:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: 'telescope.state["mount.is_slewing"]'
+    mount_is_tracking:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["mount.is_tracking"]
+    mount_field_angle_here:
+        ftype: raw
+        label: 'Angle'
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.field_angle_here_degs"]
+    mount_angle_at_target:
+        ftype: raw
+        label: 'Angle'
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.field_angle_at_target_degs"]
+    mount_field_angle_rate_at_target:
+        ftype: raw
+        label: 'rate'
+        units: 'dps'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.field_angle_rate_at_target_degs_per_sec"]
+    mount_path_angle_at_target:
+        ftype: raw
+        label: 'Angle'
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.path_angle_at_target_degs"]
+    mount_path_angle_rate_at_target:
+        ftype: raw
+        label: 'rate'
+        units: 'dps'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.path_angle_rate_at_target_degs_per_sec"]
+    # axis0 = AZ
     mount_az_is_enabled:
         ftype: raw
-        label: 'AzEnabled'
+        label: 'Status'
         units: None
-        dtype: int
+        dtype: int64
         rate: fast
         var: 'telescope.state["mount.axis0.is_enabled"]'
+    mount_az_rms_error:
+        ftype: raw
+        label: 'Angle'
+        units: 'arcsec'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.axis0.rms_error_arcsec"]
+    mount_az_dist_to_target:
+        ftype: raw
+        label: 'Angle'
+        units: 'arcsec'
+        dtype: float64
+        rate: fast
+        var: "telescope.state['mount.axis0.dist_to_target_arcsec']"
+    mount_az_servo_error:
+        ftype: raw
+        label: 'Angle'
+        units: 'arcsec'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.axis0.servo_error_arcsec"]
+    mount_az_position:
+        ftype: raw
+        label: 'Angle'
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.axis0.position_degs"]
+    mount_az_position_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.axis0.position_timestamp"]
+    # axis1 = alt
     mount_alt_is_enabled:
         ftype: raw
-        label: 'AltEnabled'
+        label: 'Status'
         units: None
         dtype: int
         rate: fast
         var: 'telescope.state["mount.axis1.is_enabled"]'
-    mount_az_dist_to_target:
+    mount_alt_rms_error:
         ftype: raw
-        label: 'Dist'
-        units: 'degs'
+        label: 'Angle'
+        units: 'arcsec'
         dtype: float64
         rate: fast
-        var: "telescope.state['mount.axis0.dist_to_target_arcsec']"
+        var: telescope.state["mount.axis1.rms_error_arcsec"]
     mount_alt_dist_to_target:
         ftype: raw
-        label: 'Dist'
-        units: 'degs'
+        label: 'Angle'
+        units: 'deg'
         dtype: float64
         rate: fast
         var: 'telescope.state["mount.axis1.dist_to_target_arcsec"]'
+    mount_alt_servo_error:
+        ftype: raw
+        label: 'Angle'
+        units: 'arcsec'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.axis1.servo_error_arcsec"]
+    mount_alt_position:
+        ftype: raw
+        label: 'Angle'
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.axis1.position_degs"]
+    mount_alt_position_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.axis1.position_timestamp"]
+    # Telescope Sky Model Information
+    mount_model_num_points_total:
+        ftype: raw
+        label: 'number'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["mount.model.num_points_total"]
+    mount_model_num_points_enabled:
+        ftype: raw
+        label: 'number'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["mount.model.num_points_enabled"]
+    mount_model_rms_error:
+        ftype: raw
+        label: 'Angle'
+        units: 'arcsec'
+        dtype: float64
+        rate: fast
+        var: telescope.state["mount.model.rms_error_arcsec"]
+    # focuser
+    focuser_is_connected:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["focuser.is_connected"]
+    focuser_is_enabled:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["focuser.is_enabled"]
+    focuser_position:
+        ftype: raw
+        label: 'Position'
+        units: 'steps'
+        dtype: float64
+        rate: fast
+        var: telescope.state["focuser.position"]
+    focuser_is_moving:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["focuser.is_moving"]
+    rotator_is_connected:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["rotator.is_connected"]
+    rotator_is_enabled:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["rotator.is_enabled"]
+    rotator_mech_position:
+        ftype: raw
+        label: 'Position'
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["rotator.mech_position_degs"]
+    rotator_field_angle:
+        ftype: raw
+        label: 'Angle'
+        units: 'deg'
+        dtype: float64
+        rate: fast
+        var: telescope.state["rotator.field_angle_degs"]
+    rotator_is_moving:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["rotator.is_moving"]
+    rotator_is_slewing:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["rotator.is_slewing"]
+    telescope_m3_port:
+        ftype: raw
+        label: 'Port'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["m3.port"]
+    telescope_autofocus_is_running:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["autofocus.is_running"]
+    telescope_autofocus_success:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["autofocus.success"]
+    telescope_autofocus_best_position:
+        ftype: raw
+        label: 'Position'
+        units: 'steps'
+        dtype: float64
+        rate: fast
+        var: telescope.state["autofocus.best_position"]
+    telescope_autofocus_tolerance:
+        ftype: raw
+        label: 'Position'
+        units: 'steps'
+        dtype: float64
+        rate: fast
+        var: telescope.state["autofocus.tolerance"]
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud_index:
