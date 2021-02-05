@@ -42,6 +42,7 @@ class weatherMonitor(QtCore.QThread):
 class Weather(object):
     # ... methods that can be called go here...
     def __init__(self):
+        self.state = dict()
         pass
 
 
@@ -78,12 +79,16 @@ class Weather(object):
 
 
     def getWeather(self):
+        print('weather daemon: getting weather')
         self.PTS_status = self.palomarWeather.PTS_status
+        
+        self.ok_to_observe = self.palomarWeather.ok_to_observe
+        
+        """
         self.status_p200 = self.PTS_status[0]
         self.status_p60 = self.PTS_status[1]
         self.status_p48 = self.PTS_status[2]
 
-        self.ok_to_observe = self.palomarWeather.ok_to_observe
         print(f'weatherd: ok to observe? {self.ok_to_observe}')
         default = self.config['default_value']
         self.P48_UTC                        = self.status_p48.get('P48_UTC', '1970-01-01 00:00:00.00')     # last query timestamp
@@ -108,9 +113,16 @@ class Weather(object):
         self.P48_Wetness_Num                = self.config['status_dict']['P48_Wetness'].get(self.P48_Wetness,  default) # wetness (0 or 1)
         self.P48_Weather_Status             = self.status_p48.get('P48_Weather_Status', 'UNKNOWN')
         self.P48_Weather_Status_Num         = self.config['status_dict']['P48_Weather_Status'].get(self.P48_Weather_Status, default) # ready? (1 if "READY", 0 if anything else)
-
-
-
+        """
+        
+        self.state.update({'PTS_status' : self.PTS_status})
+        self.state.update({'ok_to_observe' : self.ok_to_observe})
+        return self.state
+    def get_okay_to_observe(self):
+        self.getWeather()
+        return self.ok_to_observe
+    
+    
     def weather_safe(self):
         #return the most recent value of the weather since it was last updated
         self.weatherValue = self.weather.weatherValue

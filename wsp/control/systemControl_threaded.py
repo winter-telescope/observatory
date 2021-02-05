@@ -44,6 +44,7 @@ from schedule import schedule
 from schedule import ObsWriter
 from utils import utils
 from power import power
+from housekeeping import local_weather
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -84,6 +85,7 @@ class control(QtCore.QObject):
         #     self.logger.warning(f"control: could not load weather data: {e}")
         #     print(f"control: could not load weather data: {e}")
 
+        """
         #init the weather
         try:
             self.weather = Pyro5.client.Proxy("PYRONAME:weather")
@@ -91,8 +93,12 @@ class control(QtCore.QObject):
             self.logger.error('weather connect succesful')
         except Exception as e:
             self.logger.error('weather connect failed', exc_info=True )
+        """
         
-        print(f'control: is it okay to observe? [{self.weather.ok_to_observe}]')
+        # init the weather by creating a local object that interfaces with the remote object from the weather daemon
+        
+        self.weather = local_weather.Weather(self.base_directory, config = self.config, logger = self.logger)
+        
         
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
@@ -110,6 +116,8 @@ class control(QtCore.QObject):
                                                 telescope = self.telescope,
                                                 weather = self.weather,
                                                 schedule = self.schedule)
+        
+        print(f'control: is it okay to observe? val = {self.weather.ok_to_observe}')
 
 
         '''
