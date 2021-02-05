@@ -120,7 +120,9 @@ class palomarWeather(object):
 
     def getWeather(self,firsttime = False):
         #print(' Getting weather data...')
-
+        
+        self.ok_to_observe = int(np.round(np.random.rand(1),0)[0])
+        print(f'weather: ok to observe? {self.ok_to_observe}')
         #######################################################################
         # PTS: PALOMAR TELEMETRY SERVER
 

@@ -1,13 +1,19 @@
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import sys
 import os
 import Pyro5.core
 import Pyro5.server
 import random
+from datetime import datetime
 import time
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 
-from housekeeping import weather
+# add the wsp directory to the PATH
+#wsp_path = os.path.dirname(os.getcwd())
+#sys.path.insert(1, wsp_path)
+
+import weather
 from utils import utils
 from utils import logging_setup
 
@@ -77,7 +83,8 @@ class Weather(object):
         self.status_p60 = self.PTS_status[1]
         self.status_p48 = self.PTS_status[2]
 
-
+        self.ok_to_observe = self.palomarWeather.ok_to_observe
+        print(f'weatherd: ok to observe? {self.ok_to_observe}')
         default = self.config['default_value']
         self.P48_UTC                        = self.status_p48.get('P48_UTC', '1970-01-01 00:00:00.00')     # last query timestamp
         self.P48_UTC_datetime_obj           = datetime.strptime(self.P48_UTC, '%Y-%m-%d %H:%M:%S.%f')   # last query time string

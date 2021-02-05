@@ -38,7 +38,6 @@ from telescope import telescope
 from command import commandServer
 from command import wintercmd
 from command import commandParser
-from housekeeping import weatherd
 from housekeeping import housekeeping
 from dome import dome
 from schedule import schedule
@@ -73,7 +72,7 @@ class control(QtCore.QObject):
 
 
         # init the telescope
-        self.telescope = telescope.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
+        self.telescope = telescope.Telescope(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
 
         # # init the weather(Old way)
         # try:
@@ -92,7 +91,9 @@ class control(QtCore.QObject):
             self.logger.error('weather connect succesful')
         except Exception as e:
             self.logger.error('weather connect failed', exc_info=True )
-
+        
+        print(f'control: is it okay to observe? [{self.weather.ok_to_observe}]')
+        
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
         ## init the database writer
