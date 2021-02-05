@@ -24,6 +24,7 @@ import numpy as np
 import time
 import signal
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
+import Pyro5.client
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -37,7 +38,7 @@ from telescope import telescope
 from command import commandServer
 from command import wintercmd
 from command import commandParser
-from housekeeping import weather
+from housekeeping import weatherd
 from housekeeping import housekeeping
 from dome import dome
 from schedule import schedule
@@ -72,17 +73,26 @@ class control(QtCore.QObject):
 
 
         # init the telescope
-        self.telescope = pwi4.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
+        self.telescope = telescope.PWI4(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
 
-        # init the weather
+        # # init the weather(Old way)
+        # try:
+        #     self.logger.info('control: trying to load weather')
+        #     print('control: trying to load weather')
+        #     self.weather = weather.palomarWeather(self.base_directory,config = self.config, logger = self.logger)
+        # except Exception as e:
+        #     self.weather = None
+        #     self.logger.warning(f"control: could not load weather data: {e}")
+        #     print(f"control: could not load weather data: {e}")
+
+        #init the weather
         try:
-            self.logger.info('control: trying to load weather')
-            print('control: trying to load weather')
-            self.weather = weather.palomarWeather(self.base_directory,config = self.config, logger = self.logger)
+            self.weather = Pyro5.client.Proxy("PYRONAME:weather")
+            self.weather.startWeather(base_directory = self.base_directory)
+            self.logger.error('weather connect succesful')
         except Exception as e:
-            self.weather = None
-            self.logger.warning(f"control: could not load weather data: {e}")
-            print(f"control: could not load weather data: {e}")
+            self.logger.error('weather connect failed', exc_info=True )
+
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
         ## init the database writer

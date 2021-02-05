@@ -38,9 +38,8 @@ class weatherMonitor(QtCore.QThread):
 class Weather(object):
     # ... methods that can be called go here...
     def __init__(self):
-        self.weather = palomarWeather()
-        self.weatherThread = weatherMonitor(self.weather)
-        self.weatherValue = 0
+        self.PalomarWeather = palomarWeather()
+        self.weatherThread = weatherMonitor(self.PalomarWeather)
 
     def startWeather(self):
         # launch a thread which periodically updates the weather
@@ -49,6 +48,10 @@ class Weather(object):
     def shutdownWeather(self):
         #kill the weather thread
         self.weatherThread.stop()
+
+
+    def getWeather(self):
+            pass
 
     def weather_safe(self):
         #return the most recent value of the weather since it was last updated

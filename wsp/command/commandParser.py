@@ -117,12 +117,12 @@ class cmd_request(object):
     """
     A cmd_request object is generated each time a user tries to execute a
     command, either by typing into the local command prompt or externally from
-    a network connection. 
-    
-    The cmd_request object contains the specified command argument, which 
+    a network connection.
+
+    The cmd_request object contains the specified command argument, which
     should be one of the cmd entries in wintercmd if it is to be successful,
     the priority level of the command (set variously in the code depending on
-    who is the sender), as well as information about the requester, 
+    who is the sender), as well as information about the requester,
     namely their ip address, port.
     """
     def __init__(self, cmd, request_addr, request_port, priority = 'low'):
@@ -153,7 +153,7 @@ class cmd_prompt(QtCore.QThread):
     # define a signal which will emit when a new command is received
     #newcmd = QtCore.pyqtSignal(str)
     newcmd = QtCore.pyqtSignal(object) #not just a str, now has more info
-    
+
     def __init__(self,telescope,wintercmd):
         super().__init__()
 
@@ -181,7 +181,7 @@ class cmd_prompt(QtCore.QThread):
                 pass
             else:
                 # create a command request object
-                new_cmd_request = cmd_request(cmd = cmd, 
+                new_cmd_request = cmd_request(cmd = cmd,
                                               request_addr = 'localhost',
                                               request_port = 'terminal',
                                               priority = 'medium')
@@ -228,7 +228,7 @@ class cmd_executor(QtCore.QThread):
         self.logger.debug(f"adding cmd to queue: {cmd_request.cmd}, from user at {cmd_request.request_addr}|{cmd_request.request_port}")
         #self.queue.put((1,cmd))
         self.queue.put((cmd_request.priority_num, cmd_request.cmd))
-        
+
     def execute(self,cmd):
         """
         Execute the command in a worker thread
@@ -354,18 +354,25 @@ class schedule_executor(QtCore.QThread):
                 self.az_scheduled = self.current_field_az + dither_az
 
                 #self.newcmd.emit(f'mount_goto_alt_az {self.currentALT} {self.currentAZ}')
-                self.telescope.mount_goto_alt_az(alt_degs = self.alt_scheduled, az_degs = self.az_scheduled)
+                if self.state.ok_to_observe:
+                    self.telescope.mount_goto_alt_az(alt_degs = self.alt_scheduled, az_degs = self.az_scheduled)
                 # wait for the telescope to stop moving before returning
                 #while self.state['mount_is_slewing']:
                 #    time.sleep(self.config['cmd_status_dt'])
-                waittime = int(self.schedule.currentObs['visitTime'])
+                waittime = int(self.schedule.currentObs['visitTime'])/len(self.dither_alt)
+                ##TODO###
+                ## Step through current obs dictionairy and update the state dictionary to include it
+                ## append planned to the keys in the obs dictionary, to allow us to use the original names to record actual values.
+                ## for now we want to add actual waittime, and actual time.  
+                #####
                 # print(f' Taking a {waittime} second exposure...')
                 time.sleep(waittime)
 
-                imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
-                # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
-                data_to_write = {**self.schedule.getCurrentObs(), **self.state} ## can add other dictionaries here
-                self.writer.log_observation(data_to_write, imagename)
+                if self.state.ok_to_observe:
+                    imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
+                    # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
+                    data_to_write = {**self.schedule.getCurrentObs(), **self.state} ## can add other dictionaries here
+                    self.writer.log_observation(data_to_write, imagename)
 
             self.schedule.gotoNextObs()
 
