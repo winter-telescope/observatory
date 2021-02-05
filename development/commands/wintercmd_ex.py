@@ -48,6 +48,7 @@ import signal
 import logging
 import os
 import datetime
+import shlex
 
 def update_logger_path(logger, newpath):
     fmt = "%(asctime)s.%(msecs).03d [%(filename)s:%(lineno)s - %(funcName)s()] %(levelname)s: %(threadName)s: %(message)s"
@@ -258,15 +259,18 @@ class Wintercmd(object):
         
         # parse_args defaults to [1:] for args, but you need to
         # exclude the rest of the args too, or validation will fail
-        
+        print(f'argv = {argv}')
         if argv is None:
             self.argv = sys.argv[1:]
             if len(self.argv) < 1:
                    #self.argv = ['-h']
                    pass
         else:
-            self.argv = argv.split(' ')
-        
+            # don't do this:
+            #self.argv = argv.split(' ')
+            # instead parse the arguments the same way that sys.argv does:
+            self.argv = shlex.split(argv)
+        print(f'self.argv = {self.argv}')
         self.logger.debug(f'self.argv = {self.argv}')
             
         self.command = self.parser.parse_args(self.argv[0:1]).command
@@ -361,7 +365,18 @@ class Wintercmd(object):
             self.logger.info(f'   count = {i}')
             i+=1
             time.sleep(1)
-        
+    @cmd
+    def print_args(self):
+        self.defineCmdParser('print the argument')
+        self.cmdparser.add_argument('arg',
+                                    nargs = '+',
+                                    action = None,
+                                    help = 'argument to pring')
+        print(f'arglist = {self.arglist}')
+        self.getargs()
+        args = self.args.arg
+        for i in range(len(args)):
+            print(f'arg {i}: {args[i]}')
     @cmd
     def xyzzy(self):
         

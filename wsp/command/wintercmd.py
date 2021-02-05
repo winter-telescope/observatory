@@ -49,6 +49,7 @@ import logging
 import os
 import datetime
 import numpy as np
+import shlex
 
 #redefine the argument parser so it exits nicely and execptions are handled better
 
@@ -130,8 +131,9 @@ class Wintercmd(object):
                    #self.argv = ['-h']
                    pass
         else:
-            self.argv = argv.split(' ')
-
+            #self.argv = argv.split(' ')
+            # use the shlex module to split up the arguments intelligently, just like sys.argv does
+            self.argv = shlex.split(argv)
         self.logger.debug(f'self.argv = {self.argv}')
 
         self.command = self.parser.parse_args(self.argv[0:1]).command
@@ -331,7 +333,452 @@ class Wintercmd(object):
         time.sleep(self.config['cmd_status_dt'])
         self.mount_home()
 
+    @cmd
+    def mount_set_slew_time_constant(self):
+        """Usage: mount_set_slew_time_constant <tau>"""
+        self.defineCmdParser('set mount slew time constant')
+        self.cmdparser.add_argument('tau',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<tau_sec>')
+        self.getargs()
+        tau = self.args.tau[0]
+        self.telescope.mount_set_slew_time_constant(tau)
+        
+    @cmd
+    def mount_find_home(self):
+        """Usage: mount_find_home"""
+        self.defineCmdParser('find home')
+        self.telescope.mount_find_home()
+    
+    @cmd
+    def mount_goto_ra_dec_apparent(self):
+        """Usage: mount_goto_ra_dec_apparent <ra> <dec>"""
+        self.defineCmdParser('move telescope to specified apparent ra/dec')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<ra_hours> <dec_degs>')
+        self.getargs()
+        ra = self.args.position[0]
+        dec = self.args.position[1]
+        self.telescope.mount_goto_ra_dec_apparent(ra_hours = ra, dec_degs = dec)
+        # wait for the telescope to stop moving before returning
+        while self.state['mount_is_slewing']:
+            time.sleep(self.config['cmd_status_dt'])
+    
+    @cmd
+    def mount_goto_ra_dec_j2000(self):
+        """Usage: mount_goto_ra_dec_j2000 <ra> <dec>"""
+        self.defineCmdParser('move telescope to specified j2000 ra/dec in deg')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<ra_hours> <dec_degs>')
+        self.getargs()
+        ra = self.args.position[0]
+        dec = self.args.position[1]
+        self.telescope.mount_goto_ra_dec_j2000(ra_hours = ra, dec_degs = dec)
+        # wait for the telescope to stop moving before returning
+        while self.state['mount_is_slewing']:
+            time.sleep(self.config['cmd_status_dt'])
+        
+    @cmd
+    def mount_offset(self):
+        # this is a monster case structure because of how it's implemented in PWI4
+        # Created, NPL 2-2-21, 
+        #todo: THIS IS UNTESTED
+        """Usage: mount_offset <axis> <action> <value>"""
+        self.defineCmdParser('change mount offset for specified axis')
 
+        helptxt = '<axis> <action> <value> where \n'
+        helptxt += 'axis is one of [ra, dec, axis0/az, axis1/alt, path]\n'
+        helptxt += 'action is one of [reset, stop_rate, add_arcsec, set_rate (arcseconds per seconds)]\n'
+        helptxt += 'value is any float, but MUST be specified in all cases. does not matter for reset'
+        self.cmdparser.add_argument('offset',
+                                    nargs = 3,
+                                    action = None,
+                                    help = helptxt)
+        
+        self.getargs()
+        # all args are strings
+        axis = self.args.offset[0].lower()
+        action = self.args.offset[1].lower()
+        value = np.float(self.args.offset[2])
+        #print(f'axis = {axis}, action = {action}, value = {value}')
+        if axis == 'ra':
+            if action == 'reset':
+                self.telescope.mount_offset(ra_reset = value)
+            elif action == 'stop_rate':
+                self.telescope.mount_offset(ra_stop_rate = value)
+            elif action == 'add_arcsec':
+                self.telescope.mount_offset(ra_add_arcsec = value)
+            elif action == 'set_rate':
+                self.telescope.mount_offset(ra_set_rate_arcsec_per_sec = value)
+        elif axis == 'dec':
+            if action == 'reset':
+                self.telescope.mount_offset(dec_reset = value)
+            elif action == 'stop_rate':
+                self.telescope.mount_offset(dec_stop_rate = value)
+            elif action == 'add_arcsec':
+                self.telescope.mount_offset(dec_add_arcsec = value)
+            elif action == 'set_rate':
+                self.telescope.mount_offset(dec_set_rate_arcsec_per_sec = value)
+        elif axis in ['axis0','az']:
+            if action == 'reset':
+                self.telescope.mount_offset(axis0_reset = value)
+            elif action == 'stop_rate':
+                self.telescope.mount_offset(axis0_stop_rate = value)
+            elif action == 'add_arcsec':
+                self.telescope.mount_offset(axis0_add_arcsec = value)
+            elif action == 'set_rate':
+                self.telescope.mount_offset(axis0_set_rate_arcsec_per_sec = value)
+        elif axis in ['axis1','alt']:
+            if action == 'reset':
+                self.telescope.mount_offset(axis1_reset = value)
+            elif action == 'stop_rate':
+                self.telescope.mount_offset(axis1_stop_rate = value)
+            elif action == 'add_arcsec':
+                self.telescope.mount_offset(axis1_add_arcsec = value)
+            elif action == 'set_rate':
+                self.telescope.mount_offset(axis1_set_rate_arcsec_per_sec = value)
+        elif axis == 'path':
+            if action == 'reset':
+                self.telescope.mount_offset(path_reset = value)
+            elif action == 'stop_rate':
+                self.telescope.mount_offset(path_stop_rate = value)
+            elif action == 'add_arcsec':
+                self.telescope.mount_offset(path_add_arcsec = value)
+            elif action == 'set_rate':
+                self.telescope.mount_offset(path_set_rate_arcsec_per_sec = value)
+        elif axis == 'transverse':
+            if action == 'reset':
+                self.telescope.mount_offset(transverse_reset = value)
+            elif action == 'stop_rate':
+                self.telescope.mount_offset(transverse_stop_rate = value)
+            elif action == 'add_arcsec':
+                self.telescope.mount_offset(transverse_add_arcsec = value)
+            elif action == 'set_rate':
+                self.telescope.mount_offset(transverse_set_rate_arcsec_per_sec = value)
+    @cmd
+    def mount_goto_alt_az(self):
+        """Usage: mount_goto_alt_az <alt> <az>"""
+        self.defineCmdParser('move telescope to specified alt/az in deg')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<alt_deg> <az_deg>')
+        self.getargs()
+        alt = self.args.position[0]
+        az = self.args.position[1]
+        self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
+        # wait for the telescope to stop moving before returning
+        while self.state['mount_is_slewing']:
+            time.sleep(self.config['cmd_status_dt'])
+    
+    
+    @cmd
+    def mount_park(self):
+        """
+        Created: NPL 2-2-21
+        #todo: this is untested
+        """
+        self.defineCmdParser('park the telescope mount')
+        self.telescope.mount_park()
+        # wait for the telescope to stop moving before returning
+        while self.state['mount_is_slewing']:
+            time.sleep(self.config['cmd_status_dt'])
+        
+    @cmd
+    def mount_set_park_here(self):
+        """
+        Make the current alt/az the park position
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('set current alt/az to park position')
+        self.telescope.mount_set_park_here()
+        # wait for the telescope park position to match the request
+        # nevermind... that's not in the status dict
+    
+    @cmd
+    def mount_tracking_on(self):
+        """
+        Created: NPL 2-2-21
+        """
+        self.defineCmdParser('turn ON the mount sky tracking')
+        self.telescope.mount_tracking_on()
+    
+    @cmd
+    def mount_tracking_off(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('turn OFF the mount sky tracking')
+        self.telescope.mount_tracking_off()
+    
+    @cmd
+    def mount_follow_tle(self):
+        """
+        Created: NPL 2-4-21
+        #TODO: has not been tested
+        """
+        self.defineCmdParser('track a two line element (TLE) using the standard NORAD format ')
+        self.cmdparser.add_argument('tle',
+                                    nargs = '+',
+                                    action = None,
+                                    help = '<tle_line_1> <tle_line_2><tle_line_3> MUST USE QUOTES AROUND EACH LINE')
+        self.getargs()
+        tle_line_1 = self.args.tle[0]
+        tle_line_2 = self.args.tle[1]
+        tle_line_3 = self.args.tle[2]
+        
+        self.telescope.mount_follow_tle(tle_line_1, tle_line_2, tle_line_3)
+        #print(f'L1 = {tle_line_1}\nL2 = {tle_line_2}\nL3 = {tle_line_3}')
+    
+    
+    # Didn't port this stuff over yet:
+    """
+    def mount_radecpath_new(self):
+        return self.request_with_status("/mount/radecpath/new")
+
+    def mount_radecpath_add_point(self, jd, ra_j2000_hours, dec_j2000_degs):
+        return self.request_with_status("/mount/radecpath/add_point", jd=jd, ra_j2000_hours=ra_j2000_hours, dec_j2000_degs=dec_j2000_degs)
+
+    def mount_radecpath_apply(self):
+        return self.request_with_status("/mount/radecpath/apply")
+
+    def mount_custom_path_new(self, coord_type):
+        return self.request_with_status("/mount/custom_path/new", type=coord_type)
+        
+    def mount_custom_path_add_point_list(self, points):
+        lines = []
+        for (jd, ra, dec) in points:
+            line = "%.10f,%s,%s" % (jd, ra, dec)
+            lines.append(line)
+
+        data = "\n".join(lines).encode('utf-8')
+
+        postdata = urlencode({'data': data}).encode()
+
+        return self.request("/mount/custom_path/add_point_list", postdata=postdata)
+
+    def mount_custom_path_apply(self):
+        return self.request_with_status("/mount/custom_path/apply")
+    """
+    
+    # Pointing Model Stuff
+    @cmd
+    def mount_model_add_point(self):
+        """
+        NPL: written 2-4-21
+        #TODO: untested
+        """
+        self.defineCmdParser('add specified j2000 ra/dec position to pointing model')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<ra_hours> <dec_degs>')
+        self.getargs()
+        ra_j2000_hours = self.args.position[0]
+        dec_j2000_degs = self.args.position[1]
+
+        self.telescope.mount_model_add_point(ra_j2000_hours, dec_j2000_degs)
+
+    @cmd
+    def mount_model_clear_points(self):
+        """
+        NPL: written 2-4-21
+        #TODO: untested
+        """
+        self.defineCmdParser('clear all points from pointing model')
+        self.telescope.mount_model_clear_points()
+
+    @cmd
+    def mount_model_save_as_default(self):
+        """
+        NPL: written 2-4-21
+        #TODO: untested
+        """
+        self.defineCmdParser('save pointing model as default')
+        self.telescope.mount_model_save_as_default()
+    
+    @cmd
+    def mount_model_save(self):
+        """
+        Created: NPL 2-4-21
+        #TODO: untested
+        """
+        self.defineCmdParser('save the current pointing model to the specified file')
+        self.cmdparser.add_argument('filename',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<filepath>')
+        
+        self.getargs()
+        filename = self.args.filename[0]
+        self.telescope.mount_model_save(filename)
+
+    @cmd
+    def mount_model_load(self):
+        """
+        Created: NPL 2-4-21
+        #TODO: untested
+        """
+        self.defineCmdParser('load the current pointint model from the specified file')
+        self.cmdparser.add_argument('filename',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<filepath>')
+        
+        self.getargs()
+        filename = self.args.filename[0]
+        self.telescope.mount_model_load(filename)
+    
+    
+    # Telescope Focuser Stuff
+    @cmd
+    def m2_focuser_enable(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('enable the m2 focus motor')
+        self.telescope.focuser_enable()
+    
+    @cmd
+    def m2_focuser_disable(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('disable the m2 focus motor')
+        self.telescope.focuser_disable()
+    
+    @cmd
+    def m2_focuser_goto(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('send M2 focuser to specified position in steps')
+        self.cmdparser.add_argument('position',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<position_steps>')
+        
+        self.getargs()
+        target = self.args.position[0]
+        self.telescope.focuser_goto(target = target)
+    
+    @cmd
+    def m2_focuser_stop(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('stop the m2 focus motor')
+        self.telescope.focuser_stop()
+    
+    # Telescope Rotator Stuff
+    @cmd
+    def rotator_enable(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('enable the instrument rotator')
+        self.telescope.rotator_enable()
+    
+    @cmd
+    def rotator_disable(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('disable the instrument rotator')
+        self.telescope.rotator_disable()
+        
+    @cmd
+    def rotator_goto_mech(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('turn instrument rotator to specified mechanical position')
+        self.cmdparser.add_argument('position',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<target_degs>')
+        
+        self.getargs()
+        target = self.args.position[0]
+        self.telescope.rotator_goto_mech(target_degs = target)
+    
+    @cmd
+    def rotator_goto_field(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('turn instrument rotator to specified field angle')
+        self.cmdparser.add_argument('position',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<target_degs>')
+        
+        self.getargs()
+        target = self.args.position[0]
+        self.telescope.rotator_goto_field(target_degs = target)
+    
+    @cmd
+    def rotator_offset(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('set instrument rotator offset')
+        self.cmdparser.add_argument('position',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<target_degs>')
+        
+        self.getargs()
+        target = self.args.position[0]
+        self.telescope.rotator_offset(offset_degs = target)
+    
+    @cmd
+    def rotator_stop(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('STOP the instrument rotator')
+        self.telescope.rotator_stop()
+    
+    # M3 STUFF
+    @cmd
+    def m3_goto(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('set instrument rotator offset')
+        self.cmdparser.add_argument('position',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<target_port>')
+        
+        self.getargs()
+        target_port = self.args.position[0]
+        self.telescope.m3_goto(target_port = target_port)
+    
+    @cmd
+    def m3_stop(self):
+        """
+        Created: NPL 2-4-21
+        """
+        self.defineCmdParser('STOP the M3 rotator')
+        self.telescope.m3_stop()
+        
+        
+        
+        
+        
+    # General Shut Down
     @cmd
     def quit(self):
         """Quits out of Interactive Mode."""
@@ -350,22 +797,7 @@ class ManualCmd(Wintercmd):
         super().__init__(config, state, telescope, logger)
         self.prompt = 'wintercmd(M): '
         """
-    @cmd
-    def mount_goto_alt_az(self):
-        """Usage: goto_alt_az <alt> <az>"""
-        self.defineCmdParser('move telescope to specified alt/az in deg')
-        self.cmdparser.add_argument('position',
-                                    nargs = 2,
-                                    action = None,
-                                    type = float,
-                                    help = '<alt_deg> <az_deg>')
-        self.getargs()
-        alt = self.args.position[0]
-        az = self.args.position[1]
-        self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
-        # wait for the telescope to stop moving before returning
-        while self.state['mount_is_slewing']:
-            time.sleep(self.config['cmd_status_dt'])
+    
         
 
 
@@ -407,3 +839,4 @@ class ScheduleCmd(Wintercmd):
         self.defineCmdParser('interrupt scheduled observations')
         if self.scheduleThread:
             self.scheduleThread.stop()
+            

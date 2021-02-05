@@ -33,6 +33,8 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
     try:
         while True:
             data = sock.recv(2048).decode("utf-8")
+            #print(f'data = {data}')
+
             if end_char in data:
                 total_data.append(data[:data.find(end_char)] + end_char)
                 break
@@ -59,7 +61,7 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
     try:
         d = json.loads(reply)
     except Exception as e:
-        print(f'could not turn reply into json, {type(e)}: {e}')
+        #print(f'could not turn reply into json, {type(e)}: {e}')
         d = reply
     return d
     
@@ -89,6 +91,23 @@ try:
 except:       
         print('could not query telemetry server')
 
+#%%
+code = query_server('beginclose','192.168.1.12',9897, end_char = '\n',timeout = 1)
+
+if code == 0:
+    print("Open")
+elif code == 1:
+    print("Closed")
+elif code == 2:
+    print("Opening")
+elif code == 3:
+    print("Closing")
+elif code == 4:
+    print("Error")
+elif code == 5:
+    print("Partly open")
+else:
+    print("ERROR:", code)
 
 #%%
 """
