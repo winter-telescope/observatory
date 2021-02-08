@@ -1009,7 +1009,7 @@ fields:
         label: 'Status'
         units: None
         dtype: int64
-        rate: fast
+        rate: slow
         var: weather.ok_to_observe
     
     ### LABJACK STUFF###
