@@ -364,10 +364,13 @@ class schedule_executor(QtCore.QThread):
 
                 #self.newcmd.emit(f'mount_goto_alt_az {self.currentALT} {self.currentAZ}')
                 if self.state["ok_to_observe"]:
+                    print(f'Observing Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
                     self.telescope.mount_goto_alt_az(alt_degs = self.alt_scheduled, az_degs = self.az_scheduled)
-                # wait for the telescope to stop moving before returning
-                while self.state['mount_is_slewing']:
-                   time.sleep(self.config['cmd_status_dt'])
+                    # wait for the telescope to stop moving before returning
+                    while self.state['mount_is_slewing']:
+                       time.sleep(self.config['cmd_status_dt'])
+                else:
+                    print(f'Skipping Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
                 self.waittime = int(self.schedule.currentObs['visitTime'])/len(self.dither_alt)
                 ##TODO###
                 ## Step through current obs dictionairy and update the state dictionary to include it
