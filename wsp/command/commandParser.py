@@ -375,7 +375,7 @@ class schedule_executor(QtCore.QThread):
                 ## for now we want to add actual waittime, and actual time.
                 #####
                 # print(f' Taking a {waittime} second exposure...')
-                time.sleep(waittime)
+                time.sleep(self.waittime)
 
                 if self.state["ok_to_observe"]:
                     imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
