@@ -317,6 +317,15 @@ class schedule_executor(QtCore.QThread):
 
         self.schedulefile_name = schedulefile_name
 
+    def get_data_to_log(self):
+        data = {}
+        for key in self.schedule.currentObs:
+            if key in ("visitTime", "altitude", "azimuth"):
+                data.update({f'{key}Scheduled': self.schedule.currentObs[key]})
+            else:
+                data.update({key: self.schedule.currentObs[key]})
+        data.update({'visitTime': self.waittime, 'altitude': self.alt_scheduled, 'azimuth': self.az_scheduled})
+        return data
     #def observe(self):
 
 
@@ -359,11 +368,11 @@ class schedule_executor(QtCore.QThread):
                 # wait for the telescope to stop moving before returning
                 #while self.state['mount_is_slewing']:
                 #    time.sleep(self.config['cmd_status_dt'])
-                waittime = int(self.schedule.currentObs['visitTime'])/len(self.dither_alt)
+                self.waittime = int(self.schedule.currentObs['visitTime'])/len(self.dither_alt)
                 ##TODO###
                 ## Step through current obs dictionairy and update the state dictionary to include it
                 ## append planned to the keys in the obs dictionary, to allow us to use the original names to record actual values.
-                ## for now we want to add actual waittime, and actual time.  
+                ## for now we want to add actual waittime, and actual time.
                 #####
                 # print(f' Taking a {waittime} second exposure...')
                 time.sleep(waittime)
@@ -371,7 +380,10 @@ class schedule_executor(QtCore.QThread):
                 if self.state.ok_to_observe:
                     imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
                     # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
-                    data_to_write = {**self.schedule.getCurrentObs(), **self.state} ## can add other dictionaries here
+                    currentData = self.get_data_to_log()
+                    # self.state.update(currentData)
+                    # data_to_write = {**self.state}
+                    data_to_write = {**self.state, **currentData} ## can add other dictionaries here
                     self.writer.log_observation(data_to_write, imagename)
 
             self.schedule.gotoNextObs()

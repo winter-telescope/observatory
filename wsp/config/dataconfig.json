@@ -14,7 +14,13 @@
     "expMJD": {"type": "Real"},
     "subprogram": {"type": "Text"},
     "pathToFits": {"type": "Text"},
-    "time_utc_pcs": {"type": "Real"}
+    "time_utc_pcs": {"type": "Real"},
+    "ScheduledvisitTime": {"type": "Real"},
+    "Scheduledazimuth": {"type": "Real"},
+    "Scheduledaltitude": {"type": "Real"},
+    "azimuth": {"type": "Real"},
+    "altitude": {"type": "Real"},
+
   },
   "Field":{
     "fieldID": {"type": "Integer", "primaryKey": true},
