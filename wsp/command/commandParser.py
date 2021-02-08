@@ -366,8 +366,8 @@ class schedule_executor(QtCore.QThread):
                 if self.state["ok_to_observe"]:
                     self.telescope.mount_goto_alt_az(alt_degs = self.alt_scheduled, az_degs = self.az_scheduled)
                 # wait for the telescope to stop moving before returning
-                #while self.state['mount_is_slewing']:
-                #    time.sleep(self.config['cmd_status_dt'])
+                while self.state['mount_is_slewing']:
+                   time.sleep(self.config['cmd_status_dt'])
                 self.waittime = int(self.schedule.currentObs['visitTime'])/len(self.dither_alt)
                 ##TODO###
                 ## Step through current obs dictionairy and update the state dictionary to include it
