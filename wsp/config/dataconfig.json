@@ -19,8 +19,7 @@
     "Scheduledazimuth": {"type": "Real"},
     "Scheduledaltitude": {"type": "Real"},
     "azimuth": {"type": "Real"},
-    "altitude": {"type": "Real"},
-
+    "altitude": {"type": "Real"}
   },
   "Field":{
     "fieldID": {"type": "Integer", "primaryKey": true},
