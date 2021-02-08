@@ -363,7 +363,7 @@ class schedule_executor(QtCore.QThread):
                 self.az_scheduled = self.current_field_az + dither_az
 
                 #self.newcmd.emit(f'mount_goto_alt_az {self.currentALT} {self.currentAZ}')
-                if self.state.ok_to_observe:
+                if self.state["ok_to_observe"]:
                     self.telescope.mount_goto_alt_az(alt_degs = self.alt_scheduled, az_degs = self.az_scheduled)
                 # wait for the telescope to stop moving before returning
                 #while self.state['mount_is_slewing']:
@@ -377,7 +377,7 @@ class schedule_executor(QtCore.QThread):
                 # print(f' Taking a {waittime} second exposure...')
                 time.sleep(waittime)
 
-                if self.state.ok_to_observe:
+                if self.state["ok_to_observe"]:
                     imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
                     # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
                     currentData = self.get_data_to_log()
