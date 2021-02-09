@@ -75,13 +75,13 @@ sock.connect(server_address)
 
 #%%
 index = 0
-while True:
+while index == 0:
     print(f'query number: {index}')
     try:
         d = query_server('WEATHER_JSON', 
                          '198.202.125.214', 4698, 
                          end_char = '}]',
-                         timeout = 1)
+                         timeout = 2)
         # convert the string to dict using json loads
         
         
@@ -114,11 +114,12 @@ try:
     d = query_server('status?', 
                      '198.202.125.142', 62000, 
                      end_char = '}',
-                     timeout = 1)
+                     timeout = 2)
                      #badchars = '\\"')
     # convert the string to dict using json loads
     #d = d.replace('\\','')
     print(d)
+    
     #print(json.dumps(d,indent = 4))
     
     
@@ -130,6 +131,6 @@ try:
         print(f'{element} = {d[element]}')
     
     
-except:
-    print('could not query command server')
+except Exception as e:
+    print(f'could not query command server, error: {e}')
 
