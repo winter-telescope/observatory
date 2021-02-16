@@ -27,32 +27,35 @@ class ObsLogger(object):
         self.prev_obs = None
         self.mjd_tonight = None
         self.moon_illumination_tonight = None
-        
+
         # W
         now = datetime.now()
         now_str = now.strftime('%Y%m%d') # give the name a more readable date format
-        
+
         file_dir = output_path + 'schedules'
         file_path = file_dir + '/nightly_' + now_str + '.db'
         file_link_path = output_path + 'nightly_schedule.lnk'
-        
+
         # create the data directory if it doesn't exist already
         pathlib.Path(file_dir).mkdir(parents = True, exist_ok = True)
-        
+        print('sqlite:///'+os.path.join(file_path))
         self.engine = create_engine('sqlite:///'+os.path.join(file_path))
 
         self.conn = self.engine.connect()
         self.create_fields_table(clobber=clobber)
         self.create_pointing_log(clobber=clobber)
-        
+
         # W
         #history_path = '../../wsp/demoRelational.db'
         #self.historyengine = create_engine('sqlite:///'+os.path.join(history_path))
-        self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
-        self.history = pd.read_sql('Observation', self.historyengine)
-        
-        self.log_tonight = pd.read_sql('Summary', self.engine)
-        
+        # self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
+        print('sqlite:///'+os.path.join('/home/winter/data/',f'WINTER_ObsLog.db'))
+        self.historyEngine = create_engine(
+                'sqlite:///'+os.path.join('/home/winter/data/',f'WINTER_ObsLog.db'))
+        self.history = pd.read_sql('Observation', self.historyEngine)
+
+        # self.log_tonight = pd.read_sql('Summary', self.engine)
+
         # make a symbolic link (symlink) to the file
         print(f'trying to create link at {file_link_path} to {file_path}')
 
@@ -205,11 +208,11 @@ class ObsLogger(object):
             u.hourangle).value/24.*360.)
         record['altitude'] = altaz.alt.value
         record['azimuth'] = altaz.az.value
-        
+
         # W trying to get the simukations to run faster
         # Spending about 5 min per night recording moon and sun position
         # TODO: uncomment for production code
-        
+
         record['dist2Moon'] = 0.
         record['solarElong'] = 0.
         record['moonRA'] = 0.
@@ -219,7 +222,7 @@ class ObsLogger(object):
         record['moonPhase'] = 0.
         record['sunAlt'] = 0.
         record['sunAz'] = 0.
-        
+
         ''' sun = coord.get_sun(exposure_start)
         sun_altaz = skycoord_to_altaz(sun, exposure_start)
         moon = coord.get_moon(exposure_start, W_loc)
@@ -248,7 +251,7 @@ class ObsLogger(object):
 
         record['sunAlt'] = sun_altaz.alt.to(u.radian).value
         record['sunAz'] = sun_altaz.az.to(u.radian).value '''
-        
+
         if self.prev_obs is not None:
             sc_prev = coord.SkyCoord(self.prev_obs['fieldRA'] * u.radian,
                                      self.prev_obs['fieldDec'] * u.radian)
@@ -268,7 +271,9 @@ class ObsLogger(object):
 
         # append to our local history DataFrame
         # note that the index here will change when reloaded from the db
-        self.log_tonight = self.log_tonight.append(record_row, sort=False)
+        # self.log_tonight = self.log_tonight.append(record_row, sort=False)
+        self.history = self.history.append(record_row, sort=False)
+
 
         # write to the database
         record_row.to_sql('Summary', self.conn, index=False, if_exists='append')
@@ -324,7 +329,7 @@ class ObsLogger(object):
 
     def count_equivalent_obs_by_program(self, mjd_range = None):
         """Count of number of equivalent standard exposures by program."""
-        
+
 
         hist = self._mjd_filter_history(mjd_range)
 
@@ -364,7 +369,7 @@ class ObsLogger(object):
 
     def count_total_obs_by_subprogram(self, mjd_range = None):
         """Count of observations by program and subprogram.
-        
+
         Returns a dict with keys (program_id, subprogram_name)"""
 
         hist = _mjd_filter_history(mjd_range)
