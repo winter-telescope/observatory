@@ -48,7 +48,8 @@ class ObsLogger(object):
         # W
         #history_path = '../../wsp/demoRelational.db'
         #self.historyengine = create_engine('sqlite:///'+os.path.join(history_path))
-        self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
+        #self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
+        self.historyengine = create_engine('sqlite:///'+output_path+f'WINTER_ObsLog.db') #NPL did this change on 2-16-21
         self.history = pd.read_sql('Observation', self.historyengine)
         
         self.log_tonight = pd.read_sql('Summary', self.engine)
@@ -73,7 +74,7 @@ class ObsLogger(object):
                 pass
 
         # If the table doesn't exist, create it
-        if not self.engine.dialect.has_table(self.engine, 'Field'):
+        if not self.engine.dialect.has_table(self.engine, 'Field'): 
 
             self.conn.execute("""
             CREATE TABLE Field(
@@ -115,7 +116,7 @@ class ObsLogger(object):
                 pass
 
         # If the table doesn't exist, create it
-        if not self.engine.dialect.has_table(self.engine, 'Summary'):
+        if not self.engine.dialect.has_table(self.engine, 'Summary'): 
 
             # create table
             self.conn.execute("""
@@ -262,7 +263,7 @@ class ObsLogger(object):
         record['totalRequestsTonight'] = \
             request['target_total_requests_tonight']
         record['metricValue'] = request['target_metric_value']
-        record['subprogram'] = request['target_subprogram_name']
+        record['subprogram'] = request['target_subprogram_name'] 
 
         record_row = pd.DataFrame(record,index=[uuid.uuid1().hex])
 
@@ -299,8 +300,8 @@ class ObsLogger(object):
 
         if mjd_range is not None:
             assert mjd_range[0] <= mjd_range[1]
-            w = ((self.history['expMJD'] >= mjd_range[0]) &
-                  (self.history['expMJD'] <= mjd_range[1]))
+            w = ((self.history['expMJD'] >= mjd_range[0]) & 
+                  (self.history['expMJD'] <= mjd_range[1])) 
             hist = self.history[w]
         else:
             hist = self.history
@@ -380,11 +381,11 @@ class ObsLogger(object):
         return s
 
     def select_last_observed_time_by_field(self,
-            field_ids = None, filter_ids = None,
-            program_ids = None, subprogram_names = None,
+            field_ids = None, filter_ids = None, 
+            program_ids = None, subprogram_names = None, 
             mjd_range = None):
 
-        # start with "True"
+        # start with "True" 
         w = self.history['expMJD'] > 0
 
         if field_ids is not None:
@@ -392,33 +393,33 @@ class ObsLogger(object):
 
         if filter_ids is not None:
             filter_names = [FILTER_ID_TO_NAME[fi] for fi in filter_ids]
-            w &= self.history['filter'].apply(lambda x:
+            w &= self.history['filter'].apply(lambda x: 
                     x in filter_names)
 
         if program_ids is not None:
-            w &= self.history['propID'].apply(lambda x:
+            w &= self.history['propID'].apply(lambda x: 
                     x in program_ids)
 
         if subprogram_names is not None:
-            w &= self.history['subprogram'].apply(lambda x:
+            w &= self.history['subprogram'].apply(lambda x: 
                     x in subprogram_names)
 
         if mjd_range is not None:
             assert mjd_range[0] <= mjd_range[1]
-            w &= ((self.history['expMJD'] >= mjd_range[0]) &
-                  (self.history['expMJD'] <= mjd_range[1]))
+            w &= ((self.history['expMJD'] >= mjd_range[0]) & 
+                  (self.history['expMJD'] <= mjd_range[1])) 
 
-        # note that this only returns fields that have previously
+        # note that this only returns fields that have previously 
         # been observed under these constraints!
         return self.history.loc[
                 w,['fieldID','expMJD']].groupby('fieldID').agg(np.max)
 
     def select_n_obs_by_field(self,
-            field_ids = None, filter_ids = None,
-            program_ids = None, subprogram_names = None,
+            field_ids = None, filter_ids = None, 
+            program_ids = None, subprogram_names = None, 
             mjd_range = None):
 
-        # start with "True"
+        # start with "True" 
         w = self.history['expMJD'] > 0
 
         if field_ids is not None:
@@ -426,24 +427,24 @@ class ObsLogger(object):
 
         if filter_ids is not None:
             filter_names = [FILTER_ID_TO_NAME[fi] for fi in filter_ids]
-            w &= self.history['filter'].apply(lambda x:
+            w &= self.history['filter'].apply(lambda x: 
                     x in filter_names)
 
         if program_ids is not None:
-            w &= self.history['propID'].apply(lambda x:
+            w &= self.history['propID'].apply(lambda x: 
                     x in program_ids)
 
         if subprogram_names is not None:
-            w &= self.history['subprogram'].apply(lambda x:
+            w &= self.history['subprogram'].apply(lambda x: 
                     x in subprogram_names)
 
         if mjd_range is not None:
             assert mjd_range[0] <= mjd_range[1]
-            w &= ((self.history['expMJD'] >= mjd_range[0]) &
-                  (self.history['expMJD'] <= mjd_range[1]))
+            w &= ((self.history['expMJD'] >= mjd_range[0]) & 
+                  (self.history['expMJD'] <= mjd_range[1])) 
 
-        # note that this only returns fields that have previously
-        # been observed!
+        # note that this only returns fields that have previously 
+        # been observed!   
         grp =  self.history.loc[
                 w,['fieldID','expMJD']].groupby('fieldID')
         nobs = grp['expMJD'].agg(len)
@@ -455,9 +456,10 @@ class ObsLogger(object):
         """Return one night's observation history"""
 
         mjd_range = [np.floor(time.mjd), np.floor(time.mjd)+1.]
-        w = ((self.history['expMJD'] >= mjd_range[0]) &
-                  (self.history['expMJD'] <= mjd_range[1]))
-        return self.history.loc[w,
+        w = ((self.history['expMJD'] >= mjd_range[0]) & 
+                  (self.history['expMJD'] <= mjd_range[1])) 
+        return self.history.loc[w, 
                 ['propID', 'fieldID',
                     'fieldRA', 'fieldDec', 'filter', 'expMJD', 'visitExpTime',
                     'airmass', 'subprogram']]
+

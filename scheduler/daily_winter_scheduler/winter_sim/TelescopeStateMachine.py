@@ -146,8 +146,17 @@ class TelescopeStateMachine(Machine):
         for axis in ['ha', 'dec', 'domeaz']:
             dangle = np.abs(eval("target_{}".format(axis)) -
                             eval("self.current_{}".format(axis)))
-            angle = np.where(dangle < (360. * u.deg - dangle), dangle,
-                             360. * u.deg - dangle)
+
+            # Figure out the slew time:
+            # First: figure out how many degrees the dome has to slew. Gets the distance of shortest way (CW vs CCW)
+            # This is the old way:
+            #angle = np.where(dangle < (360. * u.deg - dangle), dangle, 360. * u.deg - dangle)
+            #NPL doing this as an if statement instead of np.where so that it returns a quantity instead of a np array
+            if dangle < (360. * u.deg - dangle):
+                angle = dangle
+            else:
+                angle = 360. * u.deg - dangle
+            
             axis_slew_times.append(slew_time(axis[:4], angle )) #* u.deg
 
         net_slew_time = np.max([st.value for st in axis_slew_times]) *\
