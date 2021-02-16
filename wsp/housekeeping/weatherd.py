@@ -10,8 +10,8 @@ import time
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 
 # add the wsp directory to the PATH
-#wsp_path = os.path.dirname(os.getcwd())
-#sys.path.insert(1, wsp_path)
+wsp_path = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(1, wsp_path)
 
 import weather
 from utils import utils
