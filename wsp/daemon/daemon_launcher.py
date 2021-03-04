@@ -44,6 +44,11 @@ at the moment this is working properly with just subprocess.Popen and no other a
 import os
 import sys
 import subprocess
+import signal
+import Pyro5.api
+import Pyro5.errors
+import Pyro5.core
+import time
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,26 +62,103 @@ sys.path.insert(1, wsp_path)
 from housekeeping import local_weather
 from utils import utils
 
-if __name__ == '__main__':
+class daemon_list():
+    def __init__(self):
+        self.entries = dict()
+    
+    def add_daemon(self,daemon_name, pid):
+        self.entries.update({daemon_name : pid})
+        
+    def kill_all(self):
+        for key in self.entries.keys():
+            print(f'> killing {key} process...')
+            os.kill(self.entries[key], signal.SIGKILL)
 
+
+def launch_test_daemon(daemon_list = None):
+    # run the test daemon
+    args = ["python", f"{wsp_path}/daemon/test_daemon.py"]
+    p_testd = subprocess.Popen(args, shell = False)
+    pid = p_testd.pid
+    print(f'Test Daemon Running in PID {pid}')
+    if not daemon_list is None:
+        daemon_list.add_daemon('test_daemon', pid)
+
+def launch_pyro_name_server(daemon_list = None):
     # Start the Pyro5 Name Server
     args = ["pyro5-ns"]
     print(f'daemon_launcher: launching Pyro5 name server daemon')
-    p_nameserver = subprocess.Popen(args,shell = True)
-    
+    p_nameserver = subprocess.Popen(args,shell = False)
+    pid = p_nameserver.pid
+    print(f'Pyro5 Name Server Running in PID {pid}')
+    if not daemon_list is None:
+        daemon_list.add_daemon('pyro_ns', pid)
+        
+def launch_weatherd(daemon_list = None):
     # Start the weather daemon
     print(f'daemon_launcher: launching weather daemon')
     args = ["python",f"{wsp_path}/housekeeping/weatherd.py"]
-    p_weatherd = subprocess.Popen(args,shell = True)
-    
-    # Initialize a local weather object
-    print(f'daemon_launcher: initializing local weather object')
-    config = utils.loadconfig(wsp_path + '/config/config.yaml')
-    night = utils.night()
-    logger = utils.setup_logger(wsp_path, night, logger_name = 'logtest')
+    p_weatherd = subprocess.Popen(args,shell = False)
+    pid = p_weatherd.pid
+    print(f'Weather Daemon Running in PID {pid}')
+    if not daemon_list is None:
+        daemon_list.add_daemon('weatherd', pid)
+        
+if __name__ == '__main__':
 
-    weather = local_weather.Weather(os.path.dirname(os.getcwd()),config = config, logger = logger)
-    args = []
+    dlist = daemon_list()
     
-    while True:
-        pass
+    try:
+        print()
+        launch_test_daemon(dlist)
+        print()
+        launch_pyro_name_server(dlist)
+        ns = Pyro5.core.locate_ns()
+        print()
+        launch_weatherd(dlist)    
+    
+        
+        
+        """
+        # Initialize a local weather object
+        print(f'daemon_launcher: initializing local weather object')
+        config = utils.loadconfig(wsp_path + '/config/config.yaml')
+        night = utils.night()
+        logger = utils.setup_logger(wsp_path, night, logger_name = 'logtest')
+        
+        while True:
+            try:
+                weather = local_weather.Weather(wsp_path,config = config, logger = logger)
+                print(f"Local weather object init'ed!")
+                break
+            except Exception as e:
+                print(f"Couldn't set up local weather due to {type(e)}: {e}, trying again...")
+        """
+    
+    
+        while True: #for i in range(100):
+            try:
+                #weather.getWeather()
+                #print(f'ok to observe = {weather.ok_to_observe}')
+                pass
+            except Exception as e:
+                print(e)
+
+            time.sleep(1)
+            pass
+        
+        dlist.kill_all()
+            
+    except KeyboardInterrupt:
+        dlist.kill_all()
+        
+    except Exception as e:
+        #traceback.print_exc()
+        
+        print('\n\n\n\n')
+        print("Pyro traceback:")
+        print("".join(Pyro5.errors.get_pyro_traceback()))
+        print('\n\n\n\n')
+        cmd = input('Shut it all down? (y/n): ')
+        if cmd.lower() in 'yes':
+            dlist.kill_all()

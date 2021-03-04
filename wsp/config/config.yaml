@@ -1,5 +1,12 @@
 # config file for WINTER
 
+########## SERIAL BUS DEVICES ##########
+# USB-Serial Devices
+usb_serial_dev:
+    chiller: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AQ00T8I9-if00-port0'
+    steppers: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AG0JG9J3-if00-port0'
+    
+
 ########## WINTERCMD COMMANDING ##########
 wintercmd_server_addr: 'localhost'
 wintercmd_server_port: 7000

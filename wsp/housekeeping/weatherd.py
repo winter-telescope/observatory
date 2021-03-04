@@ -26,6 +26,7 @@ class weatherMonitor(QtCore.QThread):
         self.running = False
         self.weather = weather
 
+
     def stop(self):
         self.running = False
 
@@ -79,7 +80,7 @@ class Weather(object):
 
 
     def getWeather(self):
-        print('weather daemon: getting weather')
+        #print('weather daemon: getting weather')
         self.PTS_status = self.palomarWeather.PTS_status
         
         self.ok_to_observe = self.palomarWeather.ok_to_observe
@@ -128,15 +129,25 @@ class Weather(object):
         self.weatherValue = self.weather.weatherValue
         return self.weatherValue
 
-if __name__ == '__main__':
+
+def main():
     #launch the daemon in a seperate thread. This allows this program to not block when daemon.requestLoop is called
     #We can now do other things in this program I guess
 
     # Big Question: How do we run a continuous process that the daemon is monitoring.
         #One way I guess could be to have a program that constantly checks weather and writes it down somewhere. The daemon just looks it up then
+    print('weatherd: weather daemon starting!')
     daemon = Pyro5.server.Daemon()
     ns = Pyro5.core.locate_ns()
     uri = daemon.register(Weather)
     ns.register("weather", uri)
-    print("weather daemon running")
+    print("weatherd: weather daemon running")
     daemon.requestLoop()
+
+#if __name__ == '__main__':
+"""
+while True:
+    pass
+"""
+
+main()

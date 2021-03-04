@@ -28,7 +28,7 @@ import Pyro5.core
 import Pyro5.server
 
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(__file__)
+wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
 
 from utils import utils

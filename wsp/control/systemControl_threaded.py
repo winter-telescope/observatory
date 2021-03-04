@@ -53,7 +53,8 @@ class control(QtCore.QObject):
     ## Initialize Class ##
     def __init__(self,mode,config,base_directory, logger, parent = None):
         super(control, self).__init__(parent)
-
+        
+        print(f'control: base_directory = {base_directory}')
 
 
         # pass in the config

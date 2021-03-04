@@ -25,8 +25,9 @@ from pathlib import Path
 
 
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(__file__)
+wsp_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(1, wsp_path)
+print(f'wsp: wsp_path = {wsp_path}')
 
 # winter modules
 from power import power
