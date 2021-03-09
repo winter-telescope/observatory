@@ -25,8 +25,10 @@ import pathlib
 from labjack import ljm
 
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(os.getcwd())
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
+
+print(f'housekeeping: wsp_path = {wsp_path}')
 
 # winter modules
 from housekeeping import easygetdata as egd
@@ -85,29 +87,46 @@ class housekeeping():
         
         # define the DAQ loops
         if mode.lower() in ['m','s']:
-            self.daq_telescope = data_handler.daq_loop(config = self.config,
-                                                       func = self.telescope.update_state, 
-                                                       rate = 'fast')
-            
-            self.daq_weather = data_handler.daq_loop(config = self.config,
-                                                     func = self.weather.getWeather,
-                                                     rate = 'slow')
+            self.daq_telescope = data_handler.daq_loop(func = self.telescope.update_state, 
+                                                       dt = self.config['daq_dt']['fast'],
+                                                       name = 'telescope_daqloop'
+                                                       )
+                                                       #rate = 'fast')
+        """                                           
+            self.daq_weather = data_handler.daq_loop(func = self.weather.getWeather,
+                                                     dt = self.config['daq_dt']['fast'],
+                                                     name = 'weather_daqloop'
+                                                     )
+                                                     #rate = 'slow')
+        """
         
-        
-        self.daq_labjacks = data_handler.daq_loop(config = self.config,
-                                                  func = self.labjacks.read_all_labjacks,
-                                                  rate = 'very_slow')
+        self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
+                                                  dt = self.config['daq_dt']['fast'],
+                                                  name = 'labjac_daqloop'
+                                                  )
+                                                  #rate = 'very_slow')
         
         #self.labjacks.read_all_labjacks()
         #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
         # define the status update loops
+        """
         self.fastloop = data_handler.fast_loop(config = self.config, 
                                                state = self.state, 
                                                curframe = self.curframe, 
                                                telescope = self.telescope)
+        
         self.slowloop = data_handler.slow_loop(config = self.config, 
                                                state = self.state, 
                                                curframe = self.curframe,
+                                               telescope = self.telescope,
+                                               weather = self.weather,
+                                               schedule = self.schedule,
+                                               labjacks = self.labjacks)
+        """
+        self.hk_loop = data_handler.hk_loop(config = self.config, 
+                                               state = self.state, 
+                                               curframe = self.curframe,
+                                               telescope = self.telescope,
                                                weather = self.weather,
                                                schedule = self.schedule,
                                                labjacks = self.labjacks)

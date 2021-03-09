@@ -1,11 +1,17 @@
-"""
-A simulated Winter Supervisor Program
-Receives a Schedule db and commands the psuedoWinter instrument
-Logs "data" returned by the instrument simulator
-"""
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+wsp: the WINTER Supervisor Program
 
+This file is part of wsp
+
+# PURPOSE #
+This program is the top-level control loop which runs operations for the
+WINTER instrument. 
+
+
+
+"""
 # system packages
 import sys
 import os
@@ -14,18 +20,16 @@ import time
 
 # add the wsp directory to the PATH
 wsp_path = os.getcwd()
-# sys.path.insert(1, wsp_path)
+sys.path.insert(1, wsp_path)
 
 # winter modules
-import pseudoWinter
+from power import power
+from telescope import pwi4
+from telescope import telescope
+from control import systemControl
+from command import commandServer_multiClient
 
-# from power import power
-# from telescope import pwi4
-# from telescope import telescope
-# from control import systemControl
-# from command import commandServer_multiClient
-
-# This is a test function to make sure commands are being parsed
+# This is a test function to make sure commands are being parsed 
 def printphrase(phrase = 'default phrase'):
     printed_phrase = f"I'm Printing the Phrase: {phrase}"
     print(printed_phrase)
@@ -34,25 +38,14 @@ def printphrase(phrase = 'default phrase'):
 def home_the_thing():
     winter.telescope_home()
 
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
+       
 #######################################################################
 # Captions and menu options for terminal interface
-linebreak = '\n \033[34m#######################################################################'+  '\033[32m'
-caption1 = '\n\t\033[32mWSP - A Pseudo WINTER Supervisor Program'+  '\033[32m'
-caption2 = '\n\t\033[32mPlease Select an Operating Mode:'+  '\033[32m'
+linebreak = '\n \033[34m#######################################################################'
+caption1 = '\n\t\033[32mWSP - The WINTER Supervisor Program'
+caption2 = '\n\t\033[32mPlease Select an Operating Mode:'
 captions = [caption1, caption2]
-main_opts= ['Test Schedule File Mode',\
+main_opts= ['Schedule File Mode',\
             'Get Ready and Wait',\
             'Manual Mode',\
             'Exit']
@@ -62,7 +55,7 @@ logo.append("\ \ /\ / / __| '_ \           | )/ )")
 logo.append(" \ V  V /\__ \ |_) |       \ /|//,' __")
 logo.append('  \_/\_/ |___/ .__/        (")(_)-=()))=-')
 logo.append("             | |              (\\\\")
-logo.append("             |_|  "+  '\033[32m')
+logo.append("             |_|  ")
 
 # Logo Credit: https://ascii.co.uk/art/wasp
 #########################################################################
@@ -97,24 +90,40 @@ try:
         opt = menu(captions,main_opts)
         if opt in ["0","1","2"]:
             if opt == "0":
-                print ("Entering test robotic schedule file mode!")
+                print ("Entering robotic schedule file mode!")
             elif opt == "1":
                 print("Initializing systems and waiting for further commands")
             elif opt == "2":
                 print("Entering fully manual mode and waiting for commands")
+                
+            winter = systemControl.control(mode = int(opt), config_file = '',base_directory = wsp_path)
 
-            winter = pseudoWinter.Controller(mode = int(opt), config_file = '',base_directory = wsp_path)
-            print(wsp_path)
             cmd = ''
-            cmd = input('Please Enter a Command: ')
-
+            while True:
+                try:
+                    cmd = input('Please Enter a Command: ')
+                    if cmd.lower() == 'menu':
+                        break #exits the inner while loop
+                    elif cmd.lower() == 'quit':
+                        break #exits the inner while loop
+                    eval(cmd)
+                    
+                except KeyboardInterrupt:
+                    break
+                except:
+                    print('Command did not work. Enter "quit" to exit, "menu" to return.')
+                    
             if cmd == 'quit':
-                print("Killing WSP..." +  '\033[0m')
+                print("Killing WSP...")
                 break # get out of the outer while loop
         elif opt == "3":
-            print("Killing WSP..." +  '\033[0m')
+            print("Killing WSP...")
             break
         else:
-            print("Please choose a valid option:")
+            print("Please choose a valid option:") 
 except KeyboardInterrupt:
     pass
+
+
+
+

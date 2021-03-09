@@ -14,11 +14,10 @@ import numpy as np
 import sys
 import Pyro5.core
 import Pyro5.server
-
+import time
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
-
 
 
 
@@ -47,17 +46,25 @@ class local_counter(object):
             self.logger.error('connection with remote object failed', exc_info = True)
     
     def get_remote_status(self, verbose = False):
-        self.msg = self.remote_object.getMsg()
-        self.count = self.remote_object.getCount()
+        try:
+            self.msg = self.remote_object.getMsg()
+            self.count = self.remote_object.getCount()
+        except Exception as e:
+            print(f'Could not update remote status: {e}')
         
         if verbose == True:
             self.print_status()
-            
+        
     def print_status(self):
         print(f'Local Object: {self.msg}')
 # Try it out
 if __name__ == '__main__':
 
 
-    counter = local_counter(os.path.dirname(os.getcwd()))
-    counter.get_remote_status(verbose = True)
+    while True:
+        try:
+            counter = local_counter(os.path.dirname(os.getcwd()))
+            counter.get_remote_status(verbose = True)
+            time.sleep(.5)
+        except KeyboardInterrupt:
+            break

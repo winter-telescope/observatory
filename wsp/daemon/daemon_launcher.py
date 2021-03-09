@@ -61,18 +61,8 @@ sys.path.insert(1, wsp_path)
 # import wsp packages
 from housekeeping import local_weather
 from utils import utils
+from daemon import daemon_utils
 
-class daemon_list():
-    def __init__(self):
-        self.entries = dict()
-    
-    def add_daemon(self,daemon_name, pid):
-        self.entries.update({daemon_name : pid})
-        
-    def kill_all(self):
-        for key in self.entries.keys():
-            print(f'> killing {key} process...')
-            os.kill(self.entries[key], signal.SIGKILL)
 
 
 def launch_test_daemon(daemon_list = None):
@@ -106,19 +96,24 @@ def launch_weatherd(daemon_list = None):
         
 if __name__ == '__main__':
 
-    dlist = daemon_list()
+    dlist = daemon_utils.daemon_list()
     
     try:
         print()
-        launch_test_daemon(dlist)
+        #launch_test_daemon(dlist)
         print()
-        launch_pyro_name_server(dlist)
-        ns = Pyro5.core.locate_ns()
+        #launch_pyro_name_server(dlist)
+        #ns = Pyro5.core.locate_ns()
         print()
-        launch_weatherd(dlist)    
-    
+        #launch_weatherd(dlist)    
         
+        nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = "pyro5-ns", python = False)
+        dlist.add_daemon(nameserverd)
+                
+        testd = daemon_utils.PyDaemon(name = 'test', filepath = f"{wsp_path}/daemon/test_daemon.py")
+        dlist.add_daemon(testd)
         
+        dlist.launch_all()
         """
         # Initialize a local weather object
         print(f'daemon_launcher: initializing local weather object')

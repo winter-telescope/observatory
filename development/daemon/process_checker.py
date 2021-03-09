@@ -21,7 +21,7 @@ daemon_launcher: initializing local wea
 
 import psutil, os
 
-main_program_name = 'daemon_launcher'
+main_program_name = 'wsp.py'
 
 py_processes = []
 main_process = None
@@ -29,15 +29,21 @@ child_processes = []
 bad = True
 for p in psutil.process_iter(['pid', 'name','cmdline']):
     #p = psutil.Process(pid)
-    if 'python' in p.name():
-        py_processes.append(p)
-        
+    try:
+        if 'python' in p.name():
+            py_processes.append(p)
+    except:
+        pass
 
 #%%
-main_program_name = 'daemon_launcher'
+main_program_name = 'wsp.py'
 for p in py_processes:
-    if main_program_name in p.cmdline()[1]:
-        main_process = p
+    #print(p.cmdline())
+    try:
+        if main_program_name in p.cmdline()[1]:
+            main_process = p
+    except:
+        pass
 if main_process is None:
     print(f'No {main_program_name} process running.')
 
@@ -61,3 +67,15 @@ else:
         print(f'\t parent  = \t {p.parent().cmdline()[1].split("/")[-1]}')
         print()
         
+#%% print all the process info
+printall = False
+if printall:
+    print("All info for currently running Python Processes")    
+    for p in py_processes:
+        try:
+            print(f'PID {p.pid}: \t{p.cmdline()}')
+            print(f'\t\t\tParent Process = {p.parent().cmdline()[1].split("/")[-1]}')
+            print()
+        except:
+            pass
+    

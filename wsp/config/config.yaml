@@ -39,6 +39,7 @@ cmd_status_dt: 0.25
 
 # define update times (ms)
 daq_dt:
+    hk: 500.0
     fast: 500.0
     slow: 500.0
     very_slow: 2000.0
