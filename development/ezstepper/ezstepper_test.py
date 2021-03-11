@@ -246,9 +246,21 @@ class EZstepper(object):
         self.state.update({'switch2'   : state_list[2]})
     
     ##### COMPLEX MOVE COMMANDS #####
-    def move_N_turns(self, N, monitor = True):
-        self.sendAndRead(f'P{N*self.uStepsPerTurn}R')
-    
+    def move_N_turns(self, N, direction = 'ccw',monitor = True):
+        
+        # get the direction
+        if direction.lower() == 'ccw':
+            dir_letter = 'P'
+        elif direction.lower() == 'cw':
+            dir_letter = 'D'
+        else:
+            print('improper direction. must be "ccw" or "cw"')
+            return
+        
+        steps2move = int(N*self.uStepsPerTurn)
+        print(f'Moving {direction.lower()} {steps2move} steps')
+        self.sendAndRead(f'{dir_letter}{steps2move}R')
+        time.sleep(0.5)
     
         while True:
             try:
@@ -302,7 +314,10 @@ class EZstepper(object):
         # start the move
         stop_condition = False
         
-        self.sendAndRead(f'{dir_letter}{max_move_steps}R')
+        steps2move = int(N*self.uStepsPerTurn)
+        print(f'Moving {direction.lower()} {steps2move} steps')
+        
+        self.sendAndRead(f'{dir_letter}{steps2move}R')
         time.sleep(0.5)
         # monitor the move until the switch condition is met
         while True:
@@ -346,7 +361,7 @@ class EZstepper(object):
         
         if not opto1 is None:
             checkState.update({'opto1' : bool(opto1)})
-
+            print('watching opto1')
         if not opto2 is None:
             checkState.update({'opto2' : bool(opto2)})
         
@@ -365,20 +380,89 @@ class EZstepper(object):
         
         # if all the list are true then return true, otherwise false
         state_matches = all(checkState_list)
+        if len(checkState_list) == 0:
+            print('len of states to check is zero')
+            state_matches = False
         # note this returns true if the checkState_list is empty
         
         return state_matches
+    
+    ##### COMMANDS THAT ARE SPECIFIC TO THE SETUP #####
+    def goHome(self):
+        '''
+        # This sends the tray to HOME position.
+        
+        State as of 3-11-21
+        At the moment this is the Left limit switch
+        
+        The whole track is 1.45 turns end to end
+        
+        here is the prescription:
+            no matter where we are, sending the tray 1.5 turns to the left
+            will hit the hard limit.
+            
+            going through the detent R-> L requires Imax >~ 65%
+            
+            at the left limit: opto1 = 0, opto2 = 1
+            
+        '''
+        # Set the move current
+        move_current = 80
+        self.setMoveCurrent(move_current)
+        
+        # set the hold current
+        hold_current = 0
+        self.setHoldCurrent(hold_current)
+        pass
+        
+        # set move speed
+        move_speed = 0.25 #rps
+        self.setSpeed(vel = move_speed, units ='rps')
+        
+    
+        # move until the sensors are at the config for the left limit
+        self.move_until_switch_state(1.5, 
+                                     direction='cw',
+                                     move_units = 'turns',
+                                     opto1=0, 
+                                     opto2=1, 
+                                     verbose=True)
+
         
     
     ##### SET COMMANDS #####
-    def setSpeed(self,vel):
-        '''self.write("/8v"+str(vel)+"R\r")
-        print("new speed is :" + str(vel))'''
+    def setSpeed(self,vel, units = 'rps'):
+        ''' set move speed. specify rps (rotn per sec) or usps (microsteps per sec) '''
+        if units.lower() == 'rps':
+            speed_usps = self.ConvertVelocity_RPS_to_USPS(vel, forceInteger = True)
+        elif units.lower == 'steps':
+            speed_usps = vel
+        else:
+            print('speed units invalid. must be "rps" or "steps"')
+        
+        print(f'setting move speed to {speed_usps} usps')
+        self.sendAndRead(f'V{speed_usps}R')
+        time.sleep(0.5)
+        
+    def setAcceleration(self, acceleration):
+        ''' set acceleration. UNITS MUST BE microsec/sec^2 '''
+        
+        print(f'acceleration set to {acceleration} usteps per sec^2')
+        self.sendAndRead(f'L{acceleration}R')
+        time.sleep(0.5)
+        
+    def setMoveCurrent(self,curPct):
+        ''' set move current '''
+        print("move current limited to " + str(curPct) + "% of max")
+        self.sendAndRead(f'm{curPct}R')
+        time.sleep(0.5)
         pass
     
-    def setTorque(self,curPct):
-        '''self.write("/8m"+str(curPct)+"R\r")
-        print("current limited to " + str(curPct) + "%")'''
+    def setHoldCurrent(self,curPct):
+        ''' set move current '''
+        print("hold current limited to " + str(curPct) + "% of max")
+        self.sendAndRead(f'h{curPct}R')
+        time.sleep(0.5)
         pass
     
 if __name__ == '__main__':
@@ -394,6 +478,10 @@ if __name__ == '__main__':
     
     step.setupSerial()
     
+    # Set up motor using default properties
+    step.setupMotor()
+    
+    """
     #step.getFirmwareVersion()
     #step.getStatus()
     step.getSwitchStates(verbose = False)
@@ -405,7 +493,7 @@ if __name__ == '__main__':
     step.setupMotor()
     
     # Calculate the speed we want to move
-    rps = 1.1
+    rps = 0.25#1.1
     V_usps = step.ConvertVelocity_RPS_to_USPS(rps, forceInteger = True)
     print(f'{rps} rps = {V_usps} uSteps-per-sec')
     
@@ -430,16 +518,35 @@ if __name__ == '__main__':
     a_to_send = int(a)
     step.sendAndRead(f'L{a_to_send}R')
     time.sleep(0.5)
-    
+    #
     # set "torque" ie max current percent
+    
+    Tpct = 80
     step.sendAndRead(f'm{Tpct}R')
     time.sleep(0.5)
     
     
+    # set the hold torque
+    step.sendAndRead(f'h0R')
+    """
+    #%%
     # Turn N Turns
-    N = 1
-    #step.move_N_turns(N)
+    step.setMoveCurrent(80)
+    step.setHoldCurrent(0)
+    N = 1.5
+    
+    #LEFT = CW, RIGHT = CCW
+    
+    
+    
+    step.move_N_turns(N, direction = 'cw')
     
     #%%
+    step.setMoveCurrent(80)
+    step.setHoldCurrent(0)
+    
     # Move until switch condition is met
-    step.move_until_switch_state(200, opto1 = 0, opto2 = 1, verbose = True)
+    #step.move_until_switch_state(200, opto1 = 0, opto2 = 1, verbose = True)
+    step.move_until_switch_state(2.0, opto1 = 0, opto2 = 1,direction = 'cw', verbose = True)
+    
+    
