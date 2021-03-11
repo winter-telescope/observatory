@@ -216,6 +216,38 @@ def create_socket(ipaddr, port, timeout = 0.01, logger = None, verbose = False):
         
     return sock
 
+
+
+
+def connect_to_server(addr,port, timeout = 1.5, logger = None, verbose = False):
+    """
+    this creates a socket and does so using the nicely formatted dict from
+    the config file.
+    
+    expects values like this:
+        ipaddr = 128.91.1.10
+        port = 777
+        timeout = 1.5
+    """    
+    
+    
+    
+    
+    # Connect to the server
+    if verbose:
+        msg = f'attempting to create new socket connection to server at {addr} port {port}'
+        if logger is None:
+            print(msg)
+        else:
+            logger.info(msg)
+    sock = create_socket(ipaddr = addr, port = port, timeout = timeout, logger = logger)
+
+    return sock
+
+
+'''
+# This is an old version that takes in a config. let's make it more generalizable
+# and require the address and port and timeout be passed in directly.
 def connect_to_server(config,servername,logger = None, verbose = False):
     """
     this creates a socket and does so using the nicely formatted dict from
@@ -243,7 +275,7 @@ def connect_to_server(config,servername,logger = None, verbose = False):
     sock = create_socket(ipaddr = ipaddr, port = port, timeout = timeout, logger = logger)
 
     return sock
-
+'''
 def plotFITS(filename):
     plt.close('all')
     image_file = filename

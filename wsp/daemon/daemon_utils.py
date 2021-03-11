@@ -86,6 +86,7 @@ class daemon_list():
                 os.kill(self.daemons[key].process.pid, signal.SIGKILL)
             except Exception as e:
                 print(f'could not kill {key} daemon, {e}')
+                
 class PyDaemon(object):
     """
     this is a general class for creating new instances of daemon python programs

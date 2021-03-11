@@ -32,6 +32,7 @@ import time
 from datetime import datetime
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import functools
+import threading
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -308,7 +309,7 @@ class fast_loop(QtCore.QThread):
         print("fastloop: ending?")
     """
 
-class daq_loop(QtCore.QThread):
+class daq_loop_old(QtCore.QThread):
     """
     This is a generic QThread which will execute the specified function
     at the specified cadence.
@@ -316,7 +317,7 @@ class daq_loop(QtCore.QThread):
     It is meant for polling different sensors or instruments or servers
     each in their own thread so they don't bog each other down.
     """
-    def __init__(self, func, dt, name = '', *args, **kwargs):
+    def __init__(self, func, dt, name = '', print_thread_name_in_update = False, *args, **kwargs):
         QtCore.QThread.__init__(self)
 
         self.index = 0
@@ -329,6 +330,8 @@ class daq_loop(QtCore.QThread):
 
         # describe the loop rate
         self.dt = dt
+        
+        self._print_thread_name_in_update_ = print_thread_name_in_update
     
         print(f'{self.name}: starting timed loop')
         self.timer = QtCore.QTimer()
@@ -345,6 +348,10 @@ class daq_loop(QtCore.QThread):
         ### POLL THE DATA ###
         try:
             self.func(*self.args, **self.kwargs)
+            
+            if self._print_thread_name_in_update_:
+                print(f'{self.name}: running func: {self.func.__name__} in thread {self.currentThread()}')
+            
         except Exception as e:
             '''
             do nothing, don't want to clog up the program with errors if there's
@@ -354,6 +361,83 @@ class daq_loop(QtCore.QThread):
             pass
 
         self.index += 1
+        
+        
+        
+class daq_loop(QtCore.QThread):
+    """
+    This version follows the approach here: https://stackoverflow.com/questions/52036021/qtimer-on-a-qthread
+    This makes sure that the QTimer belongs to *this* thread, not the thread that instantiated this QThread.
+    To do this it forces the update function and Qtimer to be in the namespace of the run function,
+    so that the timer is instantiated by the run (eg start) command
+    
+    This is a generic QThread which will execute the specified function
+    at the specified cadence.
+
+    It is meant for polling different sensors or instruments or servers
+    each in their own thread so they don't bog each other down.
+    """
+    def __init__(self, func, dt, name = '', print_thread_name_in_update = False, thread_numbering = 'PyQt', *args, **kwargs):
+        QtCore.QThread.__init__(self)
+
+        self.index = 0
+        self.name = name
+        
+        # define the function and options that will be run in this daq loop
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+        # describe the loop rate
+        self.dt = dt
+        
+        # keep this as an option to debug and print out the thread of each operation
+        self._print_thread_name_in_update_ = print_thread_name_in_update
+        # how do you want to display the thread? if either specify 'pyqt', or it will assume normal, eg threading.get_ident()
+        self._thread_numbering_ = thread_numbering.lower()
+        
+        # start the thread itself
+        self.start()
+    
+    
+    def run(self):
+        def update():
+            ### POLL THE DATA ###
+            try:
+                self.func(*self.args, **self.kwargs)
+                
+                if self._print_thread_name_in_update_:
+                    if self._thread_numbering_ == 'pyqt':
+                        print(f'{self.name}: running func: <{self.func.__name__}> in thread {self.currentThread()}')
+                    else:
+                        print(f'{self.name}: running func: <{self.func.__name__}> in thread {threading.get_ident()}')
+            except Exception as e:
+                '''
+                do nothing, don't want to clog up the program with errors if there's
+                a problem. let this get handled elsewhere.
+                '''
+                print(f'could not execute function <{self.func.__name__}> because of {type(e)}: {e}')
+                pass
+    
+            self.index += 1
+        
+        print(f'{self.name}: starting timed loop')
+        self.timer = QtCore.QTimer()
+        self.timer.setInterval(self.dt)
+        self.timer.timeout.connect(update)
+        self.timer.start()
+        self.exec()
+        if self._thread_numbering_ == 'pyqt':
+            print(f'{self.name}: running daqloop of func: {self.func.__name__} in thread {self.currentThread()}')
+        else:
+            print(f'{self.name}: running daqloop of func: {self.func.__name__} in thread {threading.get_ident()}')
+            
+            
+    def __del__(self):
+        self.wait()
+    
+    
+    
 
 '''
 # This is the old version that takes the conf. let's ditch this.

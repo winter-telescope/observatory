@@ -18,6 +18,7 @@ import numpy as np
 import sys
 import signal
 import queue
+import threading
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,7 +35,7 @@ from daemon import daemon_utils
 
 @Pyro5.server.expose
 class Counter(object):
-    def __init__(self, start = 0, step = 10, dt = 1000, name = 'counter'):
+    def __init__(self, start = 0, step = 10, dt = 1000, name = 'counter', verbose = False):
         self.name = name
         self.dt = dt
         self.start = start
@@ -42,8 +43,11 @@ class Counter(object):
         self.count = self.start
         self.msg = 'initial message'
         
-        self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name)
-    
+        if verbose:
+            self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name, print_thread_name_in_update = True, thread_numbering = 'norm')
+        else:
+            self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name)
+        
     def update(self):
         self.msg = f'{self.name}: {self.count}'
         self.count += self.step
@@ -65,8 +69,9 @@ class PyroGUI(QtCore.QObject):
                   
     def __init__(self, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
+        print(f'main: running in thread {threading.get_ident()}')
         
-        self.counter = Counter(start = 0, step = 1, dt = 1000, name = 'counter')
+        self.counter = Counter(start = 0, step = 1, dt = 1000, name = 'counter', verbose = True)
                 
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.counter, name = 'counter')
         self.pyro_thread.start()
