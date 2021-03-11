@@ -53,6 +53,35 @@ class EZstepper(object):
         self.ser.flushInput()
         self.ser.write(bytes(f"/{self.addr}{cmd}\r", 'utf-8'))
         
+    def setupMotor(self,
+                   gearRatio = 1,
+                   uStepsPerStep = 256,
+                   StepSize = 1.8,
+                   ):
+        '''
+        gearRatio=1 # :1
+        uStepsPerStep=256
+        StepSize=1.8 # deg
+        
+        uStepsPerTurn=int(gearRatio*uStepsPerStep * (360/StepSize))
+        turns=0.5
+        uSteps=int(turns*uStepsPerTurn)
+        
+        rps = 1.1
+        V_usps = int(rps * uStepsPerTurn)
+        '''
+        self.gearRatio = gearRatio
+        self.uStepsPerStep = uStepsPerStep
+        self.StepSize = StepSize
+        self.uStepsPerTurn = int(self.gearRatio*self.uStepsPerStep * (360/self.StepSize))
+   
+    def ConvertVelocity_RPS_to_USPS(self, Vrps, forceInteger = True):
+        V_usps = Vrps * self.uStepsPerTurn
+        
+        if forceInteger:
+            V_usps = int(V_usps)
+        
+        return V_usps
         
         
     def sendAndRead(self, cmd, parsed = True, verbose = False):
@@ -78,8 +107,12 @@ class EZstepper(object):
             reply.append(newbyte)
       
         if parsed:
-            reply, status = self.parseReply(reply, verbose = verbose)
-        
+            #TODO: this may not be the way we want to handle a bad response or one that takes too long
+            try:
+                reply, status = self.parseReply(reply, verbose = verbose)
+            except:
+                reply = 'No Response'
+                status = 'No Status'
         else:
             status = None
             
@@ -212,6 +245,131 @@ class EZstepper(object):
         self.state.update({'switch1'   : state_list[3]})
         self.state.update({'switch2'   : state_list[2]})
     
+    ##### COMPLEX MOVE COMMANDS #####
+    def move_N_turns(self, N, monitor = True):
+        self.sendAndRead(f'P{N*self.uStepsPerTurn}R')
+    
+    
+        while True:
+            try:
+                self.getSwitchStates(verbose = False)
+                print(f'Hall1 = {self.state["opto1"]}, Hall2 = {self.state["opto2"]}')
+                time.sleep(0.5)
+            
+            except KeyboardInterrupt:
+                self.sendAndRead("T")
+                break
+            
+            except:
+                time.sleep(0.5)
+                pass
+    
+    def move_until_switch_state(self, max_move = 10,
+                                direction = 'ccw',
+                                move_units = 'turns',
+                                opto1 = None, 
+                                opto2 = None, 
+                                switch1 = None, 
+                                switch2 = None,
+                                verbose = False):
+        
+        '''
+        Move the motor until the specified switch states are TRUE
+        The max_move limits the maximum move
+        The max move can be specified in move_units of either 'turns', or 'steps'
+        If any switch state is None it is ignored.
+        '''
+        
+        # set up the move
+        if move_units.lower() == 'turns':
+            max_move_steps = max_move*self.uStepsPerTurn
+        
+        elif move_units.lower() == 'steps':
+            max_move_steps = max_move
+        
+        else:
+            print('improper move units. must be "turns" or "steps"')
+            return
+        # get the direction
+        if direction.lower() == 'ccw':
+            dir_letter = 'P'
+        elif direction.lower() == 'cw':
+            dir_letter = 'D'
+        else:
+            print('improper direction. must be "ccw" or "cw"')
+            return
+        
+        # start the move
+        stop_condition = False
+        
+        self.sendAndRead(f'{dir_letter}{max_move_steps}R')
+        time.sleep(0.5)
+        # monitor the move until the switch condition is met
+        while True:
+            try:
+                self.getSwitchStates(verbose = False)
+                stop_condition = self.validate_switch_state(opto1 = opto1,
+                                           opto2 = opto2,
+                                           switch1 = switch1,
+                                           switch2 = switch2)
+                if verbose:
+                    print(f'Hall1 = {self.state["opto1"]}, Hall2 = {self.state["opto2"]}, stop_condition = {stop_condition}')
+                
+                if stop_condition == True:
+                    print('Stop Condition Met!')
+                    self.sendAndRead("T")
+                    break
+                
+                time.sleep(0.1)
+            
+            except KeyboardInterrupt:
+                self.sendAndRead("T")
+                break
+            
+            except:
+                time.sleep(0.5)
+                pass
+        
+    def validate_switch_state(self,
+                              opto1 = None, 
+                              opto2 = None, 
+                              switch1 = None, 
+                              switch2 = None,
+                              verbose = False):
+        '''
+        checks to see if the current switch state matches the specified state
+        and returns either True or False
+        any switch that is specified as None is ignored
+        '''
+        checkState = dict()
+        checkState_list = []
+        
+        if not opto1 is None:
+            checkState.update({'opto1' : bool(opto1)})
+
+        if not opto2 is None:
+            checkState.update({'opto2' : bool(opto2)})
+        
+        if not switch2 is None:
+            checkState.update({'switch1' : bool(switch1)})
+            
+        if not switch2 is None:
+            checkState.update({'switch2' : bool(switch2)})
+    
+        # check the state
+        for key in checkState.keys():
+            if self.state[key] == checkState[key]:
+                checkState_list.append(True)
+            else:
+                checkState_list.append(False)
+        
+        # if all the list are true then return true, otherwise false
+        state_matches = all(checkState_list)
+        # note this returns true if the checkState_list is empty
+        
+        return state_matches
+        
+    
     ##### SET COMMANDS #####
     def setSpeed(self,vel):
         '''self.write("/8v"+str(vel)+"R\r")
@@ -225,31 +383,30 @@ class EZstepper(object):
     
 if __name__ == '__main__':
     
-    port = "/dev/tty.SLAB_USBtoUART"
+    #port = "/dev/tty.SLAB_USBtoUART"
+    port_path = "/dev/serial/by-id/"
+    port = port_path + "usb-FTDI_FT232R_USB_UART_AG0JG9J3-if00-port0"
     addr = '1'
     
     step = EZstepper(port, addr)
+    
+    
     
     step.setupSerial()
     
     #step.getFirmwareVersion()
     #step.getStatus()
     step.getSwitchStates(verbose = False)
-    
+    time.sleep(0.5)
     
     print(f'switch states = {step.state}')
     
+    # Set up motor using default properties
+    step.setupMotor()
     
-    gearRatio=1 # :1
-    uStepsPerStep=256
-    StepSize=1.8 # deg
-    
-    uStepsPerTurn=int(gearRatio*uStepsPerStep * (360/StepSize))
-    turns=0.5
-    uSteps=int(turns*uStepsPerTurn)
-    
+    # Calculate the speed we want to move
     rps = 1.1
-    V_usps = int(rps * uStepsPerTurn)
+    V_usps = step.ConvertVelocity_RPS_to_USPS(rps, forceInteger = True)
     print(f'{rps} rps = {V_usps} uSteps-per-sec')
     
     Imax = 2.0
@@ -267,21 +424,22 @@ if __name__ == '__main__':
     # set speed
     step.sendAndRead(f'V{V_usps}R')
     time.sleep(0.5)
+    
+    # set acceleration
+    a = 1000
+    a_to_send = int(a)
+    step.sendAndRead(f'L{a_to_send}R')
+    time.sleep(0.5)
+    
     # set "torque" ie max current percent
     step.sendAndRead(f'm{Tpct}R')
     time.sleep(0.5)
+    
+    
     # Turn N Turns
-    N = 500
-    step.sendAndRead(f'P{N*uStepsPerTurn}R')
+    N = 1
+    #step.move_N_turns(N)
     
-    while True:
-        try:
-            step.getSwitchStates(verbose = False)
-            print(f'Hall1 = {step.state["opto1"]}, Hall2 = {step.state["opto2"]}')
-            time.sleep(0.5)
-            
-        except KeyboardInterrupt:
-            break
-        
-        
-    
+    #%%
+    # Move until switch condition is met
+    step.move_until_switch_state(200, opto1 = 0, opto2 = 1, verbose = True)
