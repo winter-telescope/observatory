@@ -26,6 +26,10 @@ class EZstepper(object):
         # set up the state dictionary
         self.state = dict()
         
+        # initialize with no memory of previous state
+        self.state.update({'last_location' : 0})
+        
+        
         ### define some characteristics ###
         # the start sequence on a reply is "/0". define the sequence as a list of hex bytes
         self.reply_start_sequence_str = ['/','0']
@@ -199,7 +203,50 @@ class EZstepper(object):
         reply = self.sendAndRead(cmd)
         print(f'Status: {reply}')
     
-    
+    def getLocation(self, verbose = False):
+        '''
+        This reads the switch states, and then assigns a numeric state
+        to the current position based on the switches.
+        
+        location:
+            0: in between defined locations
+            1: leftmost position. opto1 = 0, opto2 = 1
+            2: center position, opto1 = 0, opto2 = 0
+            3: rightmost position, opto1 = 1, opto2 = 0
+        '''
+        for i in range(5):
+            try:
+                self.getSwitchStates(verbose = False)
+                
+                
+                
+            
+                # get the location. if we're in a location, update last_location
+                if ((self.state['opto1'] == 0) & (self.state['opto2'] == 1)):
+                    location = 1
+                    self.state.update({'location' : location})
+                    self.state.update({'last_location' : location})
+                elif ((self.state['opto1'] == 0) & (self.state['opto2'] == 0)):
+                    location = 2
+                    self.state.update({'location' : location})
+                    self.state.update({'last_location' : location})
+                
+                elif ((self.state['opto1'] == 1) & (self.state['opto2'] == 0)):
+                    location = 3
+                    self.state.update({'location' : location})
+                    self.state.update({'last_location' : location})
+                    
+                else:
+                    location = 0
+                    self.state.update({'location' : location})
+                
+                if verbose:
+                    print(f'Location = {location}')
+                return
+            except:
+                time.sleep(0.5)
+            
+            print('unable to get location')
     
     def getSwitchStates(self, verbose = False):
         cmd = f'?4'
@@ -246,7 +293,7 @@ class EZstepper(object):
         self.state.update({'switch2'   : state_list[2]})
     
     ##### COMPLEX MOVE COMMANDS #####
-    def move_N_turns(self, N, direction = 'ccw',monitor = True):
+    def move_N_turns(self, N, direction = 'ccw', monitor = True, verbose = False):
         
         # get the direction
         if direction.lower() == 'ccw':
@@ -261,20 +308,51 @@ class EZstepper(object):
         print(f'Moving {direction.lower()} {steps2move} steps')
         self.sendAndRead(f'{dir_letter}{steps2move}R')
         time.sleep(0.5)
-    
-        while True:
-            try:
-                self.getSwitchStates(verbose = False)
-                print(f'Hall1 = {self.state["opto1"]}, Hall2 = {self.state["opto2"]}')
-                time.sleep(0.5)
-            
-            except KeyboardInterrupt:
-                self.sendAndRead("T")
-                break
-            
-            except:
-                time.sleep(0.5)
-                pass
+        
+        if monitor:
+            while True:
+                try:
+                    self.getLocation(verbose = False)
+                    #print(f'Hall1 = {self.state["opto1"]}, Hall2 = {self.state["opto2"]}')
+                    time.sleep(0.5)
+                
+                except KeyboardInterrupt:
+                    self.sendAndRead("T")
+                    break
+                
+                except:
+                    time.sleep(0.5)
+                    pass
+    def move_N_steps(self, N, direction = 'ccw', monitor = True, verbose = False):
+        
+        # get the direction
+        if direction.lower() == 'ccw':
+            dir_letter = 'P'
+        elif direction.lower() == 'cw':
+            dir_letter = 'D'
+        else:
+            print('improper direction. must be "ccw" or "cw"')
+            return
+        
+        steps2move = int(N)
+        print(f'Moving {direction.lower()} {steps2move} steps')
+        self.sendAndRead(f'{dir_letter}{steps2move}R')
+        time.sleep(0.5)
+        
+        if monitor:
+            while True:
+                try:
+                    self.getLocation(verbose = False)
+                    #print(f'Hall1 = {self.state["opto1"]}, Hall2 = {self.state["opto2"]}')
+                    time.sleep(0.5)
+                
+                except KeyboardInterrupt:
+                    self.sendAndRead("T")
+                    break
+                
+                except:
+                    time.sleep(0.5)
+                    pass
     
     def move_until_switch_state(self, max_move = 10,
                                 direction = 'ccw',
@@ -283,6 +361,8 @@ class EZstepper(object):
                                 opto2 = None, 
                                 switch1 = None, 
                                 switch2 = None,
+                                n_buffer_samples = 3,
+                                update_dt = 0.5,
                                 verbose = False):
         
         '''
@@ -311,10 +391,13 @@ class EZstepper(object):
             print('improper direction. must be "ccw" or "cw"')
             return
         
+        # create a buffer list to hold several samples over which the stop condition must be true
+        stop_condition_buffer = [False for i in range(n_buffer_samples)]
+        
         # start the move
         stop_condition = False
         
-        steps2move = int(N*self.uStepsPerTurn)
+        steps2move = int(max_move*self.uStepsPerTurn)
         print(f'Moving {direction.lower()} {steps2move} steps')
         
         self.sendAndRead(f'{dir_letter}{steps2move}R')
@@ -327,24 +410,29 @@ class EZstepper(object):
                                            opto2 = opto2,
                                            switch1 = switch1,
                                            switch2 = switch2)
+                # add the stop_condition to the buffer
+                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+                # now replace the last element
+                stop_condition_buffer[-1] = stop_condition
                 if verbose:
-                    print(f'Hall1 = {self.state["opto1"]}, Hall2 = {self.state["opto2"]}, stop_condition = {stop_condition}')
+                    print(f'Hall1 = {self.state["opto1"]}, Hall2 = {self.state["opto2"]}, stop_condition_buffer = {stop_condition_buffer}')
                 
-                if stop_condition == True:
+                if all(stop_condition_buffer) == True:
                     print('Stop Condition Met!')
                     self.sendAndRead("T")
                     break
                 
-                time.sleep(0.1)
+                time.sleep(update_dt)
             
             except KeyboardInterrupt:
                 self.sendAndRead("T")
                 break
             
             except:
-                time.sleep(0.5)
+                time.sleep(update_dt)
                 pass
-        
+    
     def validate_switch_state(self,
                               opto1 = None, 
                               opto2 = None, 
@@ -361,10 +449,10 @@ class EZstepper(object):
         
         if not opto1 is None:
             checkState.update({'opto1' : bool(opto1)})
-            print('watching opto1')
+            #print('watching opto1')
         if not opto2 is None:
             checkState.update({'opto2' : bool(opto2)})
-        
+            #print('watching opto2')
         if not switch2 is None:
             checkState.update({'switch1' : bool(switch1)})
             
@@ -388,7 +476,7 @@ class EZstepper(object):
         return state_matches
     
     ##### COMMANDS THAT ARE SPECIFIC TO THE SETUP #####
-    def goHome(self):
+    def goHome(self, force = False):
         '''
         # This sends the tray to HOME position.
         
@@ -406,8 +494,11 @@ class EZstepper(object):
             at the left limit: opto1 = 0, opto2 = 1
             
         '''
+        # Home switch states
+        home_state = dict({'opto1' : 0, 'opto2' : 1})
+        
         # Set the move current
-        move_current = 80
+        move_current = 65
         self.setMoveCurrent(move_current)
         
         # set the hold current
@@ -419,15 +510,183 @@ class EZstepper(object):
         move_speed = 0.25 #rps
         self.setSpeed(vel = move_speed, units ='rps')
         
+        if force == True:
+            # force the tray to move to the left limit
+            self.move_N_turns(1.5, direction = 'cw', monitor = False)
+        
+        else:
+            # move until the sensors are at the config for the left limit
+            # note : using dict.get(key, None) means that if there's nothing specified in home state it defaults to None
+            self.move_until_switch_state(max_move = 1.5,
+                                         direction = 'cw',
+                                         move_units = 'turns',
+                                         opto1 = home_state.get('opto1', None),
+                                         opto2 = home_state.get('opto2', None),
+                                         switch1 = home_state.get('switch1', None),
+                                         switch2 = home_state.get('switch2', None))
+            
+        # Check to see if it is in the right spot:
+        in_position = self.validate_switch_state(opto1 = home_state.get('opto1', None),
+                                         opto2 = home_state.get('opto2', None),
+                                         switch1 = home_state.get('switch1', None),
+                                         switch2 = home_state.get('switch2', None))
+        
+        if in_position:
+            print('Filter at home position!')
+            
+        else:
+            print(f'Filter NOT at home position. State = {step.state}')
     
-        # move until the sensors are at the config for the left limit
-        self.move_until_switch_state(1.5, 
-                                     direction='cw',
-                                     move_units = 'turns',
-                                     opto1=0, 
-                                     opto2=1, 
-                                     verbose=True)
-
+    def doHome(self,
+               move_speed = 0.25,
+               speed_units = 'rps',
+               move_current = 80,
+               hold_current = 0,
+               track_length_turns = 1.5):
+        '''
+        This is a little different than goHome. The idea is to fully exercies
+        the filter tray in the case that its location is totally unknown.
+        This isn't the prettiest, but ideally ensures that we pass by a limit
+        switch. This should bge improved over time.
+        
+        note: track length in turns is the number of turns of the motor to go end to end
+        '''
+        # Set the move current
+        #move_current = 80
+        self.setMoveCurrent(move_current)
+        
+        # set the hold current
+        #hold_current = 0
+        self.setHoldCurrent(hold_current)
+        pass
+        
+        # set move speed
+        #move_speed = 0.25 #rps
+        self.setSpeed(vel = move_speed, units = speed_units)#'rps')
+        
+        print('STARTING HOMING PROCEDURE')
+        
+        # go all the way to the right
+        print('Slewing to right limit')
+        self.move_N_turns(track_length_turns, direction = 'ccw', monitor = False)
+        # wait until we think its definitely done
+        #TODO: there must be a way to tell if it is moving
+        time.sleep(10)
+        
+        # now go all the way to the left
+        print('Slewing to left limit')
+        self.move_N_turns(track_length_turns, direction = 'cw', monitor = False)
+        # wait until we think its definitely done
+        #TODO: there must be a way to tell if it is moving
+        time.sleep(10)
+        self.getLocation()
+        
+    def goLocation(self, loc, 
+                   move_speed = 0.25,
+                   speed_units = 'rps',
+                   move_current = 65,
+                   hold_current = 0,
+                   verbose = False, n_buffer_samples = 3, update_dt = 0.5):
+        '''
+        Go to the specified location. 
+        This uses the memory of where we were, and the current location to 
+        decide which direction to go.
+        '''
+        # validate location
+        if loc in [1,2,3]:
+            print(f'Going to Location {loc}')
+        else:
+            print('Invalid location requested')
+            return
+        self.getLocation(verbose = verbose)
+        last_loc = self.state['last_location']
+        cur_loc = self.state['location']
+        
+        # create a buffer list to hold several samples over which the stop condition must be true
+        stop_condition_buffer = [False for i in range(n_buffer_samples)]
+        
+        # figure out the move direction
+        if ((last_loc == 0) & (cur_loc == 0)):
+            # we have no idea where we are. must home first
+            print('location unknown. homing...')
+            self.doHome()
+            
+            # if we home, don't forget to repoll the location and update the vars
+            self.getLocation(verbose = verbose)
+            last_loc = self.state['last_location']
+            cur_loc = self.state['location']
+        
+        if last_loc == 0:
+            # we tried to home and still have no idea where we are
+            print('after homing we are still lost! giving up :(')
+            return
+        
+        else:
+            if loc > last_loc:
+                direction = 'ccw'
+            elif loc < last_loc:
+                direction = 'cw'
+            else:
+                print('we are at specified location')
+                return
+        
+        if direction.lower() == 'ccw':
+            dir_letter = 'P'
+        elif direction.lower() == 'cw':
+            dir_letter = 'D'
+            
+        # now set up the move
+        # Set the move current
+        #move_current = 65
+        self.setMoveCurrent(move_current)
+        
+        # set the hold current
+        #hold_current = 0
+        self.setHoldCurrent(hold_current)
+        pass
+        
+        # set move speed
+        #move_speed = 0.25 #rps
+        self.setSpeed(vel = move_speed, units =speed_units)#'rps')
+        
+        # now do the move
+        N = 1.5 # should adjust this. this is at the moment enough to go end to end
+        # start the move
+        stop_condition = False
+        
+        steps2move = int(N*self.uStepsPerTurn)
+        print(f'Moving {direction} {steps2move} steps')
+        
+        self.sendAndRead(f'{dir_letter}{steps2move}R')
+        time.sleep(0.5)
+        # monitor the move until the switch condition is met
+        while True:
+            try:
+                self.getLocation(verbose = verbose)
+                
+                stop_condition = (self.state['location'] == loc)
+                # add the stop_condition to the buffer
+                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+                # now replace the last element
+                stop_condition_buffer[-1] = stop_condition
+                #if verbose:
+                   # print(f"Location = {self.state['location']}, stop_condition_buffer = {stop_condition_buffer}")
+                
+                if all(stop_condition_buffer) == True:
+                    print('Stop Condition Met!')
+                    self.sendAndRead("T")
+                    break
+                
+                time.sleep(update_dt)
+            
+            except KeyboardInterrupt:
+                self.sendAndRead("T")
+                break
+            
+            except:
+                time.sleep(update_dt)
+                pass
         
     
     ##### SET COMMANDS #####
@@ -466,32 +725,24 @@ class EZstepper(object):
         pass
     
 if __name__ == '__main__':
-    
+    # what is the name of the usb-serial port?
     #port = "/dev/tty.SLAB_USBtoUART"
     port_path = "/dev/serial/by-id/"
     port = port_path + "usb-FTDI_FT232R_USB_UART_AG0JG9J3-if00-port0"
+    
+    # specify the address of the ez stepper controller (set with the little rotary knob)
     addr = '1'
     
+    # instantiate the stepper motor
     step = EZstepper(port, addr)
     
-    
-    
+    # set up the serial port connection
     step.setupSerial()
     
     # Set up motor using default properties
     step.setupMotor()
     
     """
-    #step.getFirmwareVersion()
-    #step.getStatus()
-    step.getSwitchStates(verbose = False)
-    time.sleep(0.5)
-    
-    print(f'switch states = {step.state}')
-    
-    # Set up motor using default properties
-    step.setupMotor()
-    
     # Calculate the speed we want to move
     rps = 0.25#1.1
     V_usps = step.ConvertVelocity_RPS_to_USPS(rps, forceInteger = True)
@@ -509,44 +760,52 @@ if __name__ == '__main__':
     
     print(f'To get a Torque of {T:0.1f}, use a max current pct of {Tpct}% (gives {T:.1f} in-oz')
     
-    # set speed
-    step.sendAndRead(f'V{V_usps}R')
-    time.sleep(0.5)
+   """
     
-    # set acceleration
-    a = 1000
-    a_to_send = int(a)
-    step.sendAndRead(f'L{a_to_send}R')
-    time.sleep(0.5)
-    #
-    # set "torque" ie max current percent
-    
-    Tpct = 80
-    step.sendAndRead(f'm{Tpct}R')
-    time.sleep(0.5)
-    
-    
-    # set the hold torque
-    step.sendAndRead(f'h0R')
-    """
-    #%%
-    # Turn N Turns
-    step.setMoveCurrent(80)
-    step.setHoldCurrent(0)
-    N = 1.5
-    
+    #%% JUST FOR REFERENCE:
     #LEFT = CW, RIGHT = CCW
     
+    #%% Go to Home position
+    #step.goHome(force = False)
     
+    #%% Lost in space? Execute the homing routine
+    step.doHome()
     
-    step.move_N_turns(N, direction = 'cw')
-    
-    #%%
+    ''' 
+    you can be more explicit about this if you want, eg:
+        step.doHome(move_speed = 0.25,
+               speed_units = 'rps',
+               move_current = 80,
+               hold_current = 0,
+               track_length_turns = 1.5):
+    '''
+
+    #%% Move by some amount of turns
+    N = 0.1
+
     step.setMoveCurrent(80)
     step.setHoldCurrent(0)
+    step.move_N_turns(N, direction = 'ccw')
+        
+    #%% Move by some amount of steps
+    N = 5000
     
-    # Move until switch condition is met
-    #step.move_until_switch_state(200, opto1 = 0, opto2 = 1, verbose = True)
-    step.move_until_switch_state(2.0, opto1 = 0, opto2 = 1,direction = 'cw', verbose = True)
+    step.setMoveCurrent(80)
+    step.setHoldCurrent(0)
+    step.move_N_steps(N, direction = 'ccw')
+    #%% Go to specified location
     
+    step.goLocation(1, verbose = True)
+    
+    ''' 
+    you can be more explicit about the move also, eg:
+    step.goLocation(loc = 1, 
+                   move_speed = 0.25,
+                   speed_units = 'rps',
+                   move_current = 65,
+                   hold_current = 0,
+                   verbose = False, 
+                   n_buffer_samples = 3, 
+                   update_dt = 0.5):
+    '''
     
