@@ -795,7 +795,7 @@ if __name__ == '__main__':
     step.move_N_steps(N, direction = 'ccw')
     #%% Go to specified location
     
-    step.goLocation(1, verbose = True)
+    step.goLocation(2, verbose = True)
     
     ''' 
     you can be more explicit about the move also, eg:
