@@ -263,10 +263,10 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
     try:
         d = json.loads(reply)
     except Exception as e:
-        #print(f'could not turn reply into json, {type(e)}: {e}')
+        print(f'could not turn reply into json, {type(e)}: {e}')
         d = reply
     
-    print(f'Reply = {d}')
+    #print(f'Reply = {d}')
     return d
 
 def connect_to_server(addr,port, timeout = 1.5, logger = None, verbose = False):
