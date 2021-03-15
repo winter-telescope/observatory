@@ -219,7 +219,7 @@ class StatusMonitor(QtCore.QObject):
             self.increment_reconnect_timeout()
         
     def pollStatus(self):
-        print(f'StatusMonitor: Polling status from Thread {threading.get_ident()}')
+        #print(f'StatusMonitor: Polling status from Thread {threading.get_ident()}')
         # record the time that this loop runs
         self.timestamp = datetime.utcnow().timestamp()
         
@@ -231,7 +231,7 @@ class StatusMonitor(QtCore.QObject):
         # if the connection is live, ask for the dome status
         if self.connected:
             self.time_since_last_connection = 0.0
-            print(f'Connected! Querying Dome Status.')
+            #print(f'Connected! Querying Dome Status.')
             try:
                 dome_state = utils.query_socket(self.sock,
                              'status?', 
@@ -241,10 +241,10 @@ class StatusMonitor(QtCore.QObject):
                 self.updateDomeState(dome_state)
             
             except:
-                print(f'Query attempt failed.')
+                #print(f'Query attempt failed.')
                 self.connected = False
         else:
-            print(f'Dome Status Not Connected. ')
+            #print(f'Dome Status Not Connected. ')
             
             '''
             If we're not connected, then:
@@ -340,7 +340,7 @@ class Dome(QtCore.QObject):
         
         self.status = newStatus
         
-        print(f'Dome (Thread {threading.get_ident()}): got new status. status = {self.status}')
+        #print(f'Dome (Thread {threading.get_ident()}): got new status. status = {self.status}')
         
         
         
@@ -394,12 +394,9 @@ def sigint_handler( *args):
     print('CAUGHT SIGINT, KILLING PROGRAM')
     
     # explicitly kill each thread, otherwise sometimes they live on
-    #print('KILLING STATUS THREAD CONNECTION THREAD')
-    #main.dome.status_connThread.quit()
-    #main.dome.status_connThread.terminate()
-    print('KILLING STATUS THREAD')
-    #main.dome.statusThread.quit()
-    main.dome.statusThread.terminate()
+    #print('KILLING STATUS THREAD')
+    main.dome.statusThread.quit()
+    #main.dome.statusThread.terminate()
     print('KILLING APPLICATION')
     
     QtCore.QCoreApplication.quit()
@@ -410,9 +407,10 @@ if __name__ == "__main__":
     
     main = PyroGUI()
 
-    
-    #signal.signal(signal.SIGINT, sigint_handler)
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    # handle the sigint with above code
+    signal.signal(signal.SIGINT, sigint_handler)
+    # Murder the application (reference: https://stackoverflow.com/questions/4938723/what-is-the-correct-way-to-make-my-pyqt-application-quit-when-killed-from-the-co)
+    #signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
     # Run the interpreter every so often to catch SIGINT
