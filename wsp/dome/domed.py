@@ -179,12 +179,12 @@ class StatusMonitor(QtCore.QObject):
         When we receive a status update from the dome, add each element 
         to the state dictionary
         '''
-        print(f'(Thread: {threading.get_ident()}): recvd dome state: {domeState}')
+        #print(f'(Thread: {threading.get_ident()}): recvd dome state: {domeState}')
         if type(domeState) is dict:
             # make sure we don't get some garbage, and only attempt if this is actually a dictionary
             for key in domeState.keys():
                 try:
-                    self.state.update({key : domeState[key]})
+                    self.status.update({key : domeState[key]})
                 
                 except:
                     pass
