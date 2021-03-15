@@ -106,6 +106,7 @@ class StatusMonitor(QtCore.QObject):
         print('creating socket')
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.sock.settimeout(self.connection_timeout)
+        
     
     def old_connect_socket(self):
         if self.connected == False:
@@ -232,10 +233,9 @@ class StatusMonitor(QtCore.QObject):
             print(f'Connected! Querying Dome Status.')
             try:
                 dome_state = utils.query_socket(self.sock,
-                             'WEATHER_JSON', 
-                             #'198.202.125.214', 4698, 
-                             end_char = '}]',
-                             timeout = self.connection_timeout)
+                             'status?', 
+                             end_char = '}',
+                             timeout = 2)
                 
                 self.updateDomeState(dome_state)
             
