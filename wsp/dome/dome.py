@@ -16,3 +16,63 @@ with the telescope dome
 
 @author: nlourie
 """
+
+
+import os
+import numpy as np
+import sys
+import Pyro5.core
+import Pyro5.server
+import time
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(1, wsp_path)
+
+
+
+
+
+class local_dome(object):
+    
+    def __init__(self, base_directory):
+        self.base_directory = base_directory
+        
+        
+        
+        self.status = dict()
+        
+        self.init_remote_object()
+        self.get_remote_status()
+        
+        
+    def init_remote_object(self):
+        # init the remote object
+        try:
+            self.remote_object = Pyro5.client.Proxy("PYRONAME:dome")
+        
+        except Exception:
+            self.logger.error('connection with remote object failed', exc_info = True)
+    
+    def get_remote_status(self, verbose = False):
+        try:
+            self.status = self.remote_object.getStatus()
+        except Exception as e:
+            #print(f'Could not update remote status: {e}')
+            pass
+        
+        if verbose == True:
+            self.print_status()
+        
+    def print_status(self):
+        print(f'Local Object Status: {self.status}')
+# Try it out
+if __name__ == '__main__':
+
+
+    while True:
+        try:
+            dome = local_dome(wsp_path)
+            dome.get_remote_status(verbose = True)
+            time.sleep(.5)
+        except KeyboardInterrupt:
+            break

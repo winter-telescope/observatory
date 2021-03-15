@@ -12,7 +12,7 @@ from datetime import datetime
 import time
 
 
-def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001,badchars = None):
+def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001,badchars = None):
     """
     This is a utility to send a single command to a remote server,
     then wait a response. It tries to return a dictionary from the returned  
@@ -37,7 +37,7 @@ def query_server(cmd, ipaddr, port,line_ending = '\n', end_char = '', num_chars 
                 break
             total_data.append(data)
     except socket.timeout as e:
-        print(f'server query to {ipaddr} Port {port}: {e}')
+        print(f'server query: {e}')
         
         """
         if len(total_data)>1:
@@ -78,8 +78,9 @@ index = 0
 while index == 0:
     print(f'query number: {index}')
     try:
-        d = query_server('WEATHER_JSON', 
-                         '198.202.125.214', 4698, 
+        d = query_socket(sock,
+                         'WEATHER_JSON', 
+                         #'198.202.125.214', 4698, 
                          end_char = '}]',
                          timeout = 2)
         # convert the string to dict using json loads
@@ -107,12 +108,18 @@ while index == 0:
 # Send a command
 #sock.sendall(bytes('BYE\n',"utf-8"))
     
-sock.close()
+#sock.close()
 #%%
+# Connect to the server
+pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+pcs_sock.settimeout(0.5)
+server_address = ('198.202.125.142', 62000)
+pcs_sock.connect(server_address)
 
 try: 
-    d = query_server('status?', 
-                     '198.202.125.142', 62000, 
+    d = query_socket(pcs_sock,
+                     'status?', 
+                     #'198.202.125.142', 62000, 
                      end_char = '}',
                      timeout = 2)
                      #badchars = '\\"')
