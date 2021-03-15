@@ -173,7 +173,19 @@ class StatusMonitor(QtCore.QObject):
         self.reconnect_remaining_time = 0.0
         
         """
-        
+    def updateDomeState(self, domeState):
+        '''
+        When we receive a status update from the dome, add each element 
+        to the state dictionary
+        '''
+        if type(domeState) is dict:
+            # make sure we don't get some garbage, and only attempt if this is actually a dictionary
+            for key in domeState.keys():
+                try:
+                    self.state.update({key : domeState[key]})
+                
+                except:
+                    pass
         
         
     def connect_socket(self):
@@ -218,7 +230,18 @@ class StatusMonitor(QtCore.QObject):
         if self.connected:
             self.time_since_last_connection = 0.0
             print(f'Connected! Querying Dome Status.')
-        
+            try:
+                dome_state = utils.query_socket(self.sock,
+                             'WEATHER_JSON', 
+                             #'198.202.125.214', 4698, 
+                             end_char = '}]',
+                             timeout = self.connection_timeout)
+                
+                self.updateDomeState(dome_state)
+            
+            except:
+                print(f'Query attempt failed.')
+                self.connected = False
         else:
             print(f'Dome Status Not Connected. ')
             
