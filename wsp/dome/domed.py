@@ -411,7 +411,9 @@ if __name__ == "__main__":
     main = PyroGUI()
 
     
-    signal.signal(signal.SIGINT, sigint_handler)
+    #signal.signal(signal.SIGINT, sigint_handler)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
 
     # Run the interpreter every so often to catch SIGINT
     timer = QtCore.QTimer()
