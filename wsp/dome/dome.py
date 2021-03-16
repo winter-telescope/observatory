@@ -42,7 +42,7 @@ class local_dome(object):
         self.status = dict()
         
         self.init_remote_object()
-        self.get_remote_status()
+        self.GetStatus()
         
         
     def init_remote_object(self):
@@ -53,15 +53,22 @@ class local_dome(object):
         except Exception:
             self.logger.error('connection with remote object failed', exc_info = True)
     
-    def get_remote_status(self, verbose = False):
+    def GetStatus(self, verbose = False):
         try:
-            self.status = self.remote_object.getStatus()
+            self.status = self.remote_object.GetStatus()
         except Exception as e:
             #print(f'Could not update remote status: {e}')
             pass
         
         if verbose == True:
             self.print_status()
+    
+    def Home(self):
+        try:
+            self.remote_object.Home()
+        
+        except:
+            pass
         
     def print_status(self):
         print(f'Local Object Status: {self.status}')
@@ -72,7 +79,9 @@ if __name__ == '__main__':
     while True:
         try:
             dome = local_dome(wsp_path)
-            dome.get_remote_status(verbose = True)
+            dome.GetStatus(verbose = True)
             time.sleep(.5)
+            dome.Home()
+            time.sleep(0.5)
         except KeyboardInterrupt:
             break

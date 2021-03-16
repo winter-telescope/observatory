@@ -37,6 +37,7 @@ import queue
 import socket
 from datetime import datetime
 import threading
+import logging
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,7 +58,9 @@ class ReconnectHandler(object):
     '''
     def __init__(self, connection_timeout = 0):
         self.connection_timeout = connection_timeout
-        self.reconnect_timeouts = np.array([0.5, 1, 5, 10, 30, 60, 300, 600]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
+        # Note that the first one gets skipped
+        self.reconnect_timeouts = np.array([0, 0.5, 1, 5, 10, 30, 60, 300, 600]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
+        
         self.reconnect_timeout_level = 0 # the index of the currently active timeout
         self.reconnect_timeout = self.reconnect_timeouts[self.reconnect_timeout_level]
         
@@ -85,7 +88,7 @@ class ReconnectHandler(object):
         
         # if the current timeout level is greater than or equal to the number of levels, do nothing,
         # otherwise increment by one
-        if self.reconnect_timeout_level >= len(self.reconnect_timeouts):
+        if self.reconnect_timeout_level >= (len(self.reconnect_timeouts) - 1):
             pass
         else:
            self.reconnect_timeout_level += 1 
@@ -99,67 +102,80 @@ class ReconnectHandler(object):
         self.reconnect_remaining_time = self.reconnect_timeout - self.time_since_last_connection
 
 
+
+
+
 class StatusMonitor(QtCore.QObject):
     
     newStatus = QtCore.pyqtSignal(object)
-    def __init__(self, addr, port, connection_timeout = 0.5):
+    doReconnect = QtCore.pyqtSignal()
+    
+    
+    def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
         super(StatusMonitor, self).__init__()
         
-        self.status = dict()
+        self.state = dict()
         self.addr = addr # IP address
         self.port = port # port
+        self.logger = logger
         self.connection_timeout = connection_timeout # time to allow each connection attempt to take
-        
-        '''
-        self.reconnect_timeouts = np.array([0.5, 1, 5, 10, 30, 60, 300, 600]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
-        self.reconnect_timeout_level = 0 # the index of the currently active timeout
-        self.reconnect_timeout = self.reconnect_timeouts[self.reconnect_timeout_level]
-        '''
+        self.verbose = verbose
         self.timestamp = datetime.utcnow().timestamp()
         self.connected = False
         
-        #self.reset_last_recconnect_timestamp()
+        # have the doReconnect signal reattempt the connection
+        #self.doReconnect.connect(self.connect_socket)
         
         self.reconnector = ReconnectHandler()
         
         self.setup_connection()
-        
+    
+    def log(self, msg, level = logging.INFO):
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)    
+    
     def setup_connection(self):
         self.create_socket()
-    """    
-    def reset_last_reconnect_timestamp(self):
-        self.last_reconnect_timestamp = datetime.utcnow().timestamp()
-        self.reconnect_remaining_time = 0.0 
-
-        
-    def update_timeout(self):
-        '''Set the value of the current timeout'''
-        self.reconnect_timeout = self.reconnect_timeouts[self.reconnect_timeout_level]
-        #return current_timeout
     
-    def reset_reconnect_timeout(self):
-        self.reconnect_timeout_level = 0
-        self.update_timeout()
-    
-    def increment_reconnect_timeout(self):
-        ''' Increase the timeout level by one '''
-        
-        # if the current timeout level is greater than or equal to the number of levels, do nothing,
-        # otherwise increment by one
-        if self.reconnect_timeout_level >= len(self.reconnect_timeouts):
-            pass
-        else:
-           self.reconnect_timeout_level += 1 
- 
-        # now update the timeout
-        self.update_timeout()
-    """
     def create_socket(self):
-        print('creating socket')
+        if self.verbose:
+            self.log('(Thread {threading.get_ident()}) StatusMonitor: socket')
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.sock.settimeout(self.connection_timeout)
         
-    
+    def connect_socket(self):
+        if self.verbose:
+            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: Attempting to connect socket')
+        # record the time of this connection attempt
+        #self.reset_last_recconnect_timestamp()
+        self.reconnector.reset_last_reconnect_timestamp()
+        
+        # increment the reconnection timeout
+        self.reconnector.increment_reconnect_timeout()
+        
+        try:
+            
+            # try to reconnect the socket
+            self.sock.connect((self.addr, self.port))
+            
+            #print(f'(Thread {threading.get_ident()}) Connection attempt successful!')
+            
+            #if this works, then set connected to True
+            self.connected = True
+            
+            # since the connection is fine, reset all the timeouts
+            self.reconnector.reset_reconnect_timeout()
+            
+            
+        except:
+            
+            # the connection is broken. set connected to false
+            self.connected = False
+            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+            
+            
     
     def updateDomeState(self, domeState):
         '''
@@ -171,41 +187,11 @@ class StatusMonitor(QtCore.QObject):
             # make sure we don't get some garbage, and only attempt if this is actually a dictionary
             for key in domeState.keys():
                 try:
-                    self.status.update({key : domeState[key]})
+                    self.state.update({key : domeState[key]})
                 
                 except:
                     pass
         
-        
-    def connect_socket(self):
-        print(f'(Thread {threading.get_ident()}) Attempting to connect socket')
-        # record the time of this connection attempt
-        #self.reset_last_recconnect_timestamp()
-        self.reconnector.reset_last_reconnect_timestamp()
-        try:
-            
-            # try to reconnect the socket
-            self.sock.connect((self.addr, self.port))
-            
-            print(f'(Thread {threading.get_ident()}) Connection attempt successful!')
-            
-            #if this works, then set connected to True
-            self.connected = True
-            
-            # since the connection is fine, reset all the timeouts
-            #self.reset_reconnect_timeout()
-            self.reconnector.reset_reconnect_timeout()
-            
-            
-        except:
-            
-            # the connection is broken. set connected to false
-            self.connected = False
-            print(f'(Thread {threading.get_ident()}) connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
-            
-            # increment the reconnection timeout
-            #self.increment_reconnect_timeout()
-            self.reconnector.increment_reconnect_timeout()
         
     def pollStatus(self):
         #print(f'StatusMonitor: Polling status from Thread {threading.get_ident()}')
@@ -213,11 +199,10 @@ class StatusMonitor(QtCore.QObject):
         self.timestamp = datetime.utcnow().timestamp()
         
         # report back some useful stuff
-        self.status.update({'timestamp' : self.timestamp})
-        #self.status.update({'reconnect_remaining_time' : self.reconnect_remaining_time})
-        #self.status.update({'reconnect_timeout' : self.reconnect_timeout})
-        self.status.update({'reconnect_remaining_time' : self.reconnector.reconnect_remaining_time})
-        self.status.update({'reconnect_timeout' : self.reconnector.reconnect_timeout})
+        self.state.update({'timestamp' : self.timestamp})
+        self.state.update({'reconnect_remaining_time' : self.reconnector.reconnect_remaining_time})
+        self.state.update({'reconnect_timeout' : self.reconnector.reconnect_timeout})
+        self.state.update({'is_connected' : self.connected})
         
         # if the connection is live, ask for the dome status
         if self.connected:
@@ -243,45 +228,187 @@ class StatusMonitor(QtCore.QObject):
                 If we've waited the full reconnection timeout, then try to reconnect
                 If not, then just note the time and pass''
             '''
-            #self.time_since_last_connection = (self.timestamp - self.last_reconnect_timestamp)
-            #self.reconnect_remaining_time = self.reconnect_timeout - self.time_since_last_connection
             self.reconnector.get_time_since_last_connection()
             
             
             #if self.reconnect_remaining_time <= 0.0:
             if self.reconnector.reconnect_remaining_time <= 0.0:
-                print('Do a reconnect')
+                if self.verbose:
+                    self.log('StatusMonitor: Do a reconnect')
                 # we have waited the full reconnection timeout
+                self.doReconnect.emit()
                 self.connect_socket()
-            
+                
             else:
                 # we haven't waited long enough do nothing
                 pass
         
-        self.newStatus.emit(self.status)
+        self.newStatus.emit(self.state)
     
+class CommandHandler(QtCore.QObject):
+    newReply = QtCore.pyqtSignal(int)
+    newCommand = QtCore.pyqtSignal(str)
     
+    def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
+        super(CommandHandler, self).__init__()
+        
+        self.state = dict()
+        self.addr = addr # IP address
+        self.port = port # port
+        self.logger = logger
+        self.connection_timeout = connection_timeout # time to allow each connection attempt to take
+        self.verbose = verbose
+        # this reply is updated in the dome state dictionary when the connection is dead
+        self.disconnectedReply = -9
+        
+        #self.timestamp = datetime.utcnow().timestamp()
+        self.connected = False
+        
+        #self.reconnector = ReconnectHandler()
+        
+        self.setup_connection()
     
+    def log(self, msg, level = logging.INFO):
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)
     
+    def setup_connection(self):
+        self.create_socket()
+    
+    def create_socket(self):
+        if self.verbose:
+            self.log('(Thread {threading.get_ident()}) CommandHandler: Creating socket')
+        self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        self.sock.settimeout(self.connection_timeout)
+        
+    def connect_socket(self):
+        if self.verbose:
+            self.log(f'(Thread {threading.get_ident()}) CommandHandler: Attempting to connect socket')
+        # record the time of this connection attempt
+        #self.reset_last_recconnect_timestamp()
+        #self.reconnector.reset_last_reconnect_timestamp()
+        
+        try:
+            
+            # try to reconnect the socket
+            self.sock.connect((self.addr, self.port))
+            
+            if self.verbose:
+                self.log(f'(Thread {threading.get_ident()}) Connection attempt successful!')
+            
+            #if this works, then set connected to True
+            self.connected = True
+            
+            # since the connection is fine, reset all the timeouts
+            #self.reconnector.reset_reconnect_timeout()
+            
+            
+        except:
+            
+            # the connection is broken. set connected to false
+            self.connected = False
+            
+            if self.verbose:
+                print(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')   
+            
+            self.newReply.emit(self.disconnectedReply)
+            # increment the reconnection timeout
+            #self.reconnector.increment_reconnect_timeout()
+            
+    def sendCommand(self, cmd):
+        '''
+        This takes the command string and sends it directly to the dome.
+        It takes any received reply and triggers a new reply event
+        '''
+        
+        
+        if self.connected:
+            #self.time_since_last_connection = 0.0
+            #self.reconnector.time_since_last_connection = 0.0
+            #print(f'Connected! Querying Dome Status.')
+            
+            
+
+            try:
+                reply = utils.query_socket(self.sock,
+                             cmd, 
+                             end_char = '\n',
+                             timeout = self.connection_timeout)
+                
+                self.log(f'CommandHandler: Sent command {cmd} to dome. Received reply: {reply}')
+                self.newReply.emit(reply)
+            
+            except Exception as e:
+                #print(f'Query attempt failed.')
+                self.log(f'CommandHandler: Tried to send command {cmd} to dome, but rasied exception: {e}')
+                self.connected = False
+        else:
+            self.log(f'CommandHandler: Received command: {cmd}, but dome was disconnected. Reply = {self.disconnectedReply}')
+
+            # the dome is not connected. set the reply to something that represents this state
+            self.newReply.emit(self.disconnectedReply)
+            #print(f'Dome Status Not Connected. ')
+            pass
+
+class CommandThread(QtCore.QThread):
+    newReply = QtCore.pyqtSignal(int)
+    newCommand = QtCore.pyqtSignal(str)
+    doReconnect = QtCore.pyqtSignal()
+    
+    def __init__(self, addr, port, logger = None, connection_timeout = 0.5):
+        super(QtCore.QThread, self).__init__()
+        self.addr = addr
+        self.port = port
+        self.logger = logger
+        self.connection_timeout = connection_timeout
+    
+    def HandleCommand(self, cmd):
+        self.newCommand.emit(cmd)
+    
+    def DoReconnect(self):
+        #print(f'(Thread {threading.get_ident()}) Main: caught reconnect signal')
+        self.doReconnect.emit()
+    
+    def run(self):    
+        def SignalNewReply(reply):
+            self.newReply.emit(reply)
+        
+        self.commandHandler = CommandHandler(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout)
+        # if the newReply signal is caught, execute the sendCommand function
+        self.newCommand.connect(self.commandHandler.sendCommand)
+        self.commandHandler.newReply.connect(SignalNewReply)
+        
+        # if we recieve a doReconnect signal, trigger a reconnection
+        self.doReconnect.connect(self.commandHandler.connect_socket)
+        
+        self.exec_()
 
 class StatusThread(QtCore.QThread):
     """ I'm just going to setup the event loop and do
         nothing else..."""
     newStatus = QtCore.pyqtSignal(object)
-
-    def __init__(self, addr, port):
+    doReconnect = QtCore.pyqtSignal()
+    
+    def __init__(self, addr, port, logger = None, connection_timeout = 0.5):
         super(QtCore.QThread, self).__init__()
         self.addr = addr
         self.port = port
+        self.logger = logger
+        self.connection_timeout = connection_timeout
         
     def run(self):    
         def SignalNewStatus(newStatus):
             self.newStatus.emit(newStatus)
+        def SignalDoReconnect():
+            self.doReconnect.emit()
         
         self.timer= QtCore.QTimer()
-        self.statusMonitor = StatusMonitor(self.addr, self.port)
+        self.statusMonitor = StatusMonitor(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout)
         
         self.statusMonitor.newStatus.connect(SignalNewStatus)
+        self.statusMonitor.doReconnect.connect(SignalDoReconnect)
         
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.statusMonitor.pollStatus)
@@ -305,45 +432,112 @@ class Dome(QtCore.QObject):
     """
     
     #statusRequest = QtCore.pyqtSignal(object)
-    #commandRequest = QtCore.pyqtSignal(object)
+    commandRequest = QtCore.pyqtSignal(str)
     
-    def __init__(self, addr, port, connection_timeout = 1.5):
+    def __init__(self, addr, port, logger = None, connection_timeout = 1.5):
         super(Dome, self).__init__()
         # attributes describing the internet address of the dome server
         self.addr = addr
         self.port = port
+        self.logger = logger
         self.connection_timeout = connection_timeout
-        self.status = dict()
+        self.state = dict()
         
-        self.statusThread = StatusThread(self.addr, self.port)
+        self.statusThread = StatusThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout)
+        self.commandThread = CommandThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout)
         # connect the signals and slots
         
         self.statusThread.start()
+        self.commandThread.start()
+        
+        # if the status thread is request a reconnection, trigger the reconnection in the command thread too
+        self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
         
         self.statusThread.newStatus.connect(self.updateStatus)
+        self.commandRequest.connect(self.commandThread.HandleCommand)
+        self.commandThread.newReply.connect(self.updateCommandReply)
+        self.log(f'Dome: running in thread {threading.get_ident()}')
         
-        print(f'Dome: running in thread {threading.get_ident()}')
-        
-        
+    def log(self, msg, level = logging.INFO):
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)
+            
     def updateStatus(self, newStatus):
         '''
         Takes in a new status dictionary (eg, from the status thread),
         and updates the local copy of status
+        
+        we don't want to overwrite the whole dictionary!
+        
+        So do this element by element using update
         '''
+        if type(newStatus) is dict:
+            # make sure we don't get some garbage, and only attempt if this is actually a dictionary
+            for key in newStatus.keys():
+                try:
+                    self.state.update({key : newStatus[key]})
+                
+                except:
+                    pass
+                    
+                    
+        #print(f'Dome (Thread {threading.get_ident()}): got new status. status = {self.state}')
+    def updateCommandReply(self, reply):
+        '''
+        when we get a new reply back from the command thread, add it to the status dictionary
+        '''
+        try:
+            self.state.update({'command_reply' : reply})
+        except:
+            pass
         
-        self.status = newStatus
-        
-        #print(f'Dome (Thread {threading.get_ident()}): got new status. status = {self.status}')
-        
-        
+    ###### PUBLIC FUNCTIONS THAT CAN BE CALLED USING PYRO SERVER #####
+    
+    # Return the Current Status (the status is updated on its own)
+    @Pyro5.server.expose
+    def GetStatus(self):
+        return self.state
+    
+    # Commands which make the dome do things
+    @Pyro5.server.expose
+    def Home(self):
+        cmd = 'home'
+        self.commandRequest.emit(cmd)
+    
+    @Pyro5.server.expose
+    def Close(self):
+        cmd = 'close'
+        self.commandRequest.emit(cmd)
+    
+    @Pyro5.server.expose
+    def GoDome(self, az):
+        cmd = f'godome {az}'
+        self.commandRequest.emit(cmd)
+    
+    @Pyro5.server.expose
+    def Open(self):
+        cmd = 'open'
+        self.commandRequest.emit(cmd)
+    
+    @Pyro5.server.expose
+    def Stop(self):
+        cmd = 'stop'
+        self.commandRequest.emit(cmd)
         
     @Pyro5.server.expose
-    def getStatus(self):
-        return self.status
+    def TakeControl(self):
+        cmd = 'takecontrol'
+        self.commandRequest.emit(cmd)
     
+    @Pyro5.server.expose
+    def GiveControl(self):
+        cmd = 'givecontrol'
+        self.commandRequest.emit(cmd)
+        
     
-    
-
+        
         
 class PyroGUI(QtCore.QObject):   
     """
@@ -352,21 +546,18 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, parent=None ):            
+    def __init__(self, config, logger = None, verbose = False, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
-        
-        # set the wsp path as the base directory
-        self.base_directory = wsp_path
 
-        # load the config
-        config_file = self.base_directory + '/config/config.yaml'
-        self.config = utils.loadconfig(config_file)
-
-        # set up the logger
-        self.logger = logging_setup.setup_logger(self.base_directory, self.config)
+        self.config = config
+        self.logger = logger
         
-        # test out the logger
-        self.logger.info('Writing to the log')
+        msg = f'(Thread {threading.get_ident()}: Starting up Dome Daemon '
+        if logger is None:
+            print(msg)
+        else:
+            logger.info(msg)
+
         
         # set up the dome
         self.servername = 'command_server' # this is the key it uses to set up the server from the conf file
@@ -374,7 +565,10 @@ class PyroGUI(QtCore.QObject):
         self.dome_port                  = self.config[self.servername]['port']
         self.dome_connection_timeout    = self.config[self.servername]['timeout']
         
-        self.dome = Dome(addr = self.dome_addr, port = self.dome_port, connection_timeout = self.dome_connection_timeout)        
+        self.dome = Dome(addr = self.dome_addr, 
+                         port = self.dome_port, 
+                         logger = self.logger, 
+                         connection_timeout = self.dome_connection_timeout)        
         
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.dome, name = 'dome')
         self.pyro_thread.start()
@@ -390,18 +584,29 @@ def sigint_handler( *args):
     print('CAUGHT SIGINT, KILLING PROGRAM')
     
     # explicitly kill each thread, otherwise sometimes they live on
-    #print('KILLING STATUS THREAD')
     main.dome.statusThread.quit()
+    main.dome.commandThread.quit()
     #main.dome.statusThread.terminate()
-    print('KILLING APPLICATION')
+    #print('KILLING APPLICATION')
     
     QtCore.QCoreApplication.quit()
 
 if __name__ == "__main__":
     app = QtCore.QCoreApplication(sys.argv)
 
+    # set the wsp path as the base directory
+    base_directory = wsp_path
+
+    # load the config
+    config_file = base_directory + '/config/config.yaml'
+    config = utils.loadconfig(config_file)
     
-    main = PyroGUI()
+    # set up the logger
+    logger = logging_setup.setup_logger(base_directory, config)    
+    verbose = False
+    
+    
+    main = PyroGUI(config = config, logger = logger, verbose = verbose)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)

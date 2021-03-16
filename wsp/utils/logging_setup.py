@@ -99,6 +99,8 @@ def setup_logger(base_dir, config):
     That is okay. Running multiple scripts from a single console (eg spyder) will result in finding
     the already created handlers and will skip making a new one. This is good!
     '''
+    print(f'Found {len(logger.handlers)} FileHandlers')
+    print(f'FileHandlers = {logger.handlers}')
     if len(logger.handlers) == 0:
         print(f'No handlers. Adding one...')
         formatter = logging.Formatter(fmt,datefmt=datefmt)
