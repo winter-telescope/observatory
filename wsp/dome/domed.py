@@ -50,6 +50,55 @@ from utils import utils
 from utils import logging_setup
 
 
+class ReconnectHandler(object):
+    '''
+    This is a object to handle reconnections, keep track of how often we should
+    reconnect, track if we are connected, and reconnect if we need to.
+    '''
+    def __init__(self, connection_timeout = 0):
+        self.connection_timeout = connection_timeout
+        self.reconnect_timeouts = np.array([0.5, 1, 5, 10, 30, 60, 300, 600]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
+        self.reconnect_timeout_level = 0 # the index of the currently active timeout
+        self.reconnect_timeout = self.reconnect_timeouts[self.reconnect_timeout_level]
+        
+        self.reset_last_reconnect_timestamp()
+
+        
+        
+    def reset_last_reconnect_timestamp(self):
+        self.last_reconnect_timestamp = datetime.utcnow().timestamp()
+        self.reconnect_remaining_time = 0.0
+        self.time_since_last_connection = 0.0
+        
+    
+    def update_timeout(self):
+        '''Set the value of the current timeout'''
+        self.reconnect_timeout = self.reconnect_timeouts[self.reconnect_timeout_level]
+        #return current_timeout
+    
+    def reset_reconnect_timeout(self):
+        self.reconnect_timeout_level = 0
+        self.update_timeout()
+    
+    def increment_reconnect_timeout(self):
+        ''' Increase the timeout level by one '''
+        
+        # if the current timeout level is greater than or equal to the number of levels, do nothing,
+        # otherwise increment by one
+        if self.reconnect_timeout_level >= len(self.reconnect_timeouts):
+            pass
+        else:
+           self.reconnect_timeout_level += 1 
+ 
+        # now update the timeout
+        self.update_timeout()
+    
+    def get_time_since_last_connection(self):
+        timestamp = datetime.utcnow().timestamp()
+        self.time_since_last_connection = (timestamp - self.last_reconnect_timestamp)
+        self.reconnect_remaining_time = self.reconnect_timeout - self.time_since_last_connection
+
+
 class StatusMonitor(QtCore.QObject):
     
     newStatus = QtCore.pyqtSignal(object)
@@ -61,23 +110,26 @@ class StatusMonitor(QtCore.QObject):
         self.port = port # port
         self.connection_timeout = connection_timeout # time to allow each connection attempt to take
         
+        '''
         self.reconnect_timeouts = np.array([0.5, 1, 5, 10, 30, 60, 300, 600]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
         self.reconnect_timeout_level = 0 # the index of the currently active timeout
         self.reconnect_timeout = self.reconnect_timeouts[self.reconnect_timeout_level]
-        
+        '''
         self.timestamp = datetime.utcnow().timestamp()
         self.connected = False
         
-        self.reset_last_recconnect_timestamp()
+        #self.reset_last_recconnect_timestamp()
+        
+        self.reconnector = ReconnectHandler()
+        
         self.setup_connection()
         
-    def reset_last_recconnect_timestamp(self):
-        self.last_reconnect_timestamp = datetime.utcnow().timestamp()
-        self.reconnect_remaining_time = 0.0
-    
     def setup_connection(self):
         self.create_socket()
-    
+    """    
+    def reset_last_reconnect_timestamp(self):
+        self.last_reconnect_timestamp = datetime.utcnow().timestamp()
+        self.reconnect_remaining_time = 0.0 
 
         
     def update_timeout(self):
@@ -101,79 +153,14 @@ class StatusMonitor(QtCore.QObject):
  
         # now update the timeout
         self.update_timeout()
-    
+    """
     def create_socket(self):
         print('creating socket')
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.sock.settimeout(self.connection_timeout)
         
     
-    def old_connect_socket(self):
-        if self.connected == False:
-            try:
-                
-                # try to reconnect the socket
-                self.sock.connect((self.addr, self.port))
-                
-                #if this works, then set connected to True
-                self.connected = True
-                
-                
-            except:
-                
-                # the connection is broken. set connected to false
-                self.connected = False
-                
-                print(f'connthread: connection unsuccessful. waiting {self.current_timeout} until next reconnection')
-                
-                #self.run_timer()
-                
-                # set up a counter to count time until the reconnection timeout
-                conn_attempt_t0 = datetime.utcnow().timestamp()
-                conn_attempt_dt = 0.0
-                
-                
-                # now tick off time until we've hit the timeout, then loop back to attempt reconnection
-                while conn_attempt_dt < self.current_timeout:
-                    print(f'time remaining: {self.reconnection_timeout:.0f} s (thread = {threading.get_ident()}')
-                    # wait a hot second
-                    #QtCore.QThread.sleep(1)
-                    self.sleep(1)
-                    
-                    # update the delta
-                    conn_attempt_dt = datetime.utcnow().timestamp() - conn_attempt_t0
-                    
-                    # update the time until the next reconnection so it's visible outside
-                    self.reconnection_timeout = self.current_timeout - conn_attempt_dt
-                
-                print('timeout complete. incrementing timeout:')
-                # once we're out of the timeout loop, update the timeout and prepare to try connection again
-                # increment the timeout
-                self.increment_reconnect_timeout()
-                print(f'after incrementing, timeout is now {self.current_timeout:.0f}')
-            
-            print(f'connthread: running in thread {threading.get_ident()}')
-        
-            
-            # make an attribute to keep track of if the connection is connected
-            self.connected = False
-            self.waiting_for_reconnect = False
-        """
-                self.reconnect_timeouts = np.array([0.5, 1, 5, 10, 30, 60, 300, 600]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
-        self.reconnect_timeout_level = 0 # the index of the currently active timeout
-        self.reconnect_timeout = self.reconnect_timeouts[self.reconnect_timeout_level]
-        
-        self.timestamp = datetime.utcnow().timestamp()
-        self.connected = False
-        
-        self.reset_last_recconnect_timestamp()
-        self.setup_connection()
-        
-    def reset_last_recconnect_timestamp(self):
-        self.last_reconnect_timestamp = datetime.utcnow().timestamp()
-        self.reconnect_remaining_time = 0.0
-        
-        """
+    
     def updateDomeState(self, domeState):
         '''
         When we receive a status update from the dome, add each element 
@@ -193,7 +180,8 @@ class StatusMonitor(QtCore.QObject):
     def connect_socket(self):
         print(f'(Thread {threading.get_ident()}) Attempting to connect socket')
         # record the time of this connection attempt
-        self.reset_last_recconnect_timestamp()
+        #self.reset_last_recconnect_timestamp()
+        self.reconnector.reset_last_reconnect_timestamp()
         try:
             
             # try to reconnect the socket
@@ -205,18 +193,19 @@ class StatusMonitor(QtCore.QObject):
             self.connected = True
             
             # since the connection is fine, reset all the timeouts
-            self.reset_reconnect_timeout()
-            
+            #self.reset_reconnect_timeout()
+            self.reconnector.reset_reconnect_timeout()
             
             
         except:
             
             # the connection is broken. set connected to false
             self.connected = False
-            print(f'(Thread {threading.get_ident()}) connection unsuccessful. waiting {self.reconnect_timeout} until next reconnection')   
+            print(f'(Thread {threading.get_ident()}) connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             # increment the reconnection timeout
-            self.increment_reconnect_timeout()
+            #self.increment_reconnect_timeout()
+            self.reconnector.increment_reconnect_timeout()
         
     def pollStatus(self):
         #print(f'StatusMonitor: Polling status from Thread {threading.get_ident()}')
@@ -225,12 +214,15 @@ class StatusMonitor(QtCore.QObject):
         
         # report back some useful stuff
         self.status.update({'timestamp' : self.timestamp})
-        self.status.update({'reconnect_remaining_time' : self.reconnect_remaining_time})
-        self.status.update({'reconnect_timeout' : self.reconnect_timeout})
+        #self.status.update({'reconnect_remaining_time' : self.reconnect_remaining_time})
+        #self.status.update({'reconnect_timeout' : self.reconnect_timeout})
+        self.status.update({'reconnect_remaining_time' : self.reconnector.reconnect_remaining_time})
+        self.status.update({'reconnect_timeout' : self.reconnector.reconnect_timeout})
         
         # if the connection is live, ask for the dome status
         if self.connected:
-            self.time_since_last_connection = 0.0
+            #self.time_since_last_connection = 0.0
+            self.reconnector.time_since_last_connection = 0.0
             #print(f'Connected! Querying Dome Status.')
             try:
                 dome_state = utils.query_socket(self.sock,
@@ -251,12 +243,13 @@ class StatusMonitor(QtCore.QObject):
                 If we've waited the full reconnection timeout, then try to reconnect
                 If not, then just note the time and pass''
             '''
-            self.time_since_last_connection = (self.timestamp - self.last_reconnect_timestamp)
-            self.reconnect_remaining_time = self.reconnect_timeout - self.time_since_last_connection
+            #self.time_since_last_connection = (self.timestamp - self.last_reconnect_timestamp)
+            #self.reconnect_remaining_time = self.reconnect_timeout - self.time_since_last_connection
+            self.reconnector.get_time_since_last_connection()
             
             
-            
-            if self.reconnect_remaining_time <= 0.0:
+            #if self.reconnect_remaining_time <= 0.0:
+            if self.reconnector.reconnect_remaining_time <= 0.0:
                 print('Do a reconnect')
                 # we have waited the full reconnection timeout
                 self.connect_socket()
@@ -371,6 +364,9 @@ class PyroGUI(QtCore.QObject):
 
         # set up the logger
         self.logger = logging_setup.setup_logger(self.base_directory, self.config)
+        
+        # test out the logger
+        self.logger.info('Writing to the log')
         
         # set up the dome
         self.servername = 'command_server' # this is the key it uses to set up the server from the conf file

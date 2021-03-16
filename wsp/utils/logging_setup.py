@@ -23,10 +23,17 @@ import pathlib
 from labjack import ljm
 import logging
 import pathlib
-
+"""
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
 sys.path.insert(1, wsp_path)
+"""
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, wsp_path)
+if __name__ == '__main__':
+    print(f'wsp_path = {wsp_path}')
+
 
 # winter modules
 from utils import utils
@@ -82,22 +89,46 @@ def setup_logger(base_dir, config):
     fmt = "%(asctime)s.%(msecs).03d [%(filename)s:%(lineno)s - %(funcName)s()] %(levelname)s: %(threadName)s: %(message)s"
     datefmt = "%Y-%m-%d  %H:%M:%S"
     print(f'logger: setting up log at {logpath}')
+    
     logger = logging.getLogger(logname)
-    formatter = logging.Formatter(fmt,datefmt=datefmt)
-    formatter.converter = time.gmtime
-
-    fileHandler = logging.FileHandler(logpath, mode='a')
-    fileHandler.setFormatter(formatter)
-
-    #console = logging.StreamHandler()
-    #console.setFormatter(formatter)
-    #console.setLevel(logging.INFO)
     
-    # add a separate logger for the terminal (don't display debug-level messages)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(fileHandler)
-    #logger.addHandler(console)
+    # if there are no handlers, then add one, otherwise leave it alone!
+    '''
+    creating tons of handlers will result in each one making a redundant log entry
+    running this from different python consoles will result in new handlers for each consol.
+    That is okay. Running multiple scripts from a single console (eg spyder) will result in finding
+    the already created handlers and will skip making a new one. This is good!
+    '''
+    if len(logger.handlers) == 0:
+        print(f'No handlers. Adding one...')
+        formatter = logging.Formatter(fmt,datefmt=datefmt)
+        formatter.converter = time.gmtime
     
+        fileHandler = logging.FileHandler(logpath, mode='a')
+        fileHandler.setFormatter(formatter)
+        fileHandler.setLevel(logging.DEBUG)
+        # add a separate logger for the terminal (don't display debug-level messages)
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(fileHandler)
+    
+   
+
     return logger
 
 
+if __name__ == '__main__':
+    # test out the logger setup
+    # load the config
+    base_directory = wsp_path
+    config_file = base_directory + '/config/config.yaml'
+    config = utils.loadconfig(config_file)
+    logger = setup_logger(base_directory, config)
+    
+    logger.info('Testing out the logger')
+                          
+                          
+                          
+                          
+                          
+                          
+                          
