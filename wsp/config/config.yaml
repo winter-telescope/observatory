@@ -887,7 +887,7 @@ fields:
         dtype: float64
         rate: slow
         var: 'dome.state["Outside_Dewpoint_Threshold"]'
-    windspeed_average_threshold:
+    windspeed_average_threshold_pcs:
         ftype: raw
         label: 'speed'
         units: 'mps'
@@ -915,7 +915,7 @@ fields:
         dtype: float64
         rate: slow
         var: 'dome.state["Outside_Dewpoint"]'
-    windspeed_average:
+    windspeed_average_pcs:
         ftype: raw
         label: 'speed'
         units: 'mps'
