@@ -115,8 +115,9 @@ class local_dome(QtCore.QObject):
         self.state.update({'Dome_Azimuth'               : self.remote_state.get('Dome_Azimuth',                     self.default)})
         
         Dome_Status = self.remote_state.get('Dome_Status', 'FAULT')               # status of observatory dome
+        print(f'Dome_Status = {Dome_Status}')
         self.state.update({'Dome_Status_Num'            : self.config['status_dict']['Dome_Status'].get(Dome_Status,       self.default) })
-        
+        print(f'self.state["Dome_Status_Num"] = {self.state["Dome_Status_Num"]}')
         Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
         self.state.update({'Shutter_Status_Num'         : self.config['status_dict']['Shutter_Status'].get(Shutter_Status, self.default) })
         
@@ -236,7 +237,7 @@ class local_dome(QtCore.QObject):
 if __name__ == '__main__':
 
     config = utils.loadconfig(wsp_path + '/config/config.yaml')
-
+    """
     while True:
         try:
             dome = local_dome(wsp_path, config)
@@ -246,3 +247,8 @@ if __name__ == '__main__':
             time.sleep(0.5)
         except KeyboardInterrupt:
             break
+    """
+    
+    dome = local_dome(wsp_path, config)
+    dome.remote_state.update({'Dome_Status' : 'UNKNOWN'})
+    
