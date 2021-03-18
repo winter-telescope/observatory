@@ -814,6 +814,13 @@ fields:
         dtype: int64
         rate: slow
         var: 'dome.state["reconnect_timeout"]'
+    dome_last_command_reply:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["last_command_reply"]'
     dome_query_time:
         ftype: raw
         label: 'time'
@@ -835,7 +842,6 @@ fields:
         dtype: float64
         rate: slow
         var: 'dome.state["Dome_Azimuth"]'
-    # Below here not yet fixed
     dome_status:
         ftype: raw
         label: 'status'
@@ -907,7 +913,6 @@ fields:
         rate: slow
         var: 'dome.["Weather_Hold_time"]'
     
-    # Above here dome stuff not yet fixed
     
     # Palomar telemetry server: P48
     p48_is_online:
