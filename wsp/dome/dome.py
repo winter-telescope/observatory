@@ -95,16 +95,16 @@ class local_dome(QtCore.QObject):
                 pass
     
     
-    def parse_state(self, verbose = False):
+    def parse_state(self, ):
         '''
         Do any conditioning we need to properly handle and parse the state dictionary
         '''
         # things that have to do with querying server
-        self.state.update({'last_command_reply' : self.remote_state.get('command_reply', self.default)})
-        self.state.update({'query_timestamp' : self.remote_state.get('timestamp', self.default)})
-        self.state.update({'reconnect_remaining_time' : self.remote_state.get('reconnect_remaining_time', self.default)})
-        self.state.update({'reconnect_timeout' : self.remote_state.get('reconnect_timeout', self.default)})
-        self.state.update({'is_connected' : bool(self.remote_state.get('is_connected', self.default))})
+        self.state.update({'last_command_reply'             :   self.remote_state.get('command_reply', self.default)})
+        self.state.update({'query_timestamp'                :   self.remote_state.get('timestamp', self.default)})
+        self.state.update({'reconnect_remaining_time'       :   self.remote_state.get('reconnect_remaining_time', self.default)})
+        self.state.update({'reconnect_timeout'              :   self.remote_state.get('reconnect_timeout', self.default)})
+        self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
         
         
         utc = self.remote_state.get('UTC', '1970-01-01 00:00:00.00') # last query timestamp
@@ -112,43 +112,30 @@ class local_dome(QtCore.QObject):
         timestamp = utc_datetime_obj.timestamp()
         self.state.update({'UTC_timestamp' : timestamp})
         
-        self.state.update({'Dome_Azimuth'               : self.remote_state.get('Dome_Azimuth',                     self.default)})
+        self.state.update({'Dome_Azimuth'                   :   self.remote_state.get('Dome_Azimuth',                     self.default)})
         
         Dome_Status = self.remote_state.get('Dome_Status', 'FAULT')               # status of observatory dome
-        self.state.update({'Dome_Status_Num'            : self.config['status_dict']['Dome_Status'].get(Dome_Status,       self.default) })
-        if verbose:
-            print(f'Dome_Status = {Dome_Status}')
-            print(f'self.state["Dome_Status_Num"] = {self.state["Dome_Status_Num"]}')
+        self.state.update({'Dome_Status_Num'                :   self.config['status_dict']['Dome_Status'].get(Dome_Status,       self.default) })
         
         Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
-        self.state.update({'Shutter_Status_Num'         : self.config['status_dict']['Shutter_Status'].get(Shutter_Status, self.default) })
-        if verbose:
-            print(f'Shutter_Status = {Shutter_Status}')
-            print(f'self.state["Shutter_Status_Num"] = {self.state["Shutter_Status_Num"]}')
+        self.state.update({'Shutter_Status_Num'             :   self.config['status_dict']['Shutter_Status'].get(Shutter_Status, self.default) })
         
         Control_Status = self.remote_state.get('Control_Status','FAULT')
-        self.state.update({'Control_Status_Num'         : self.config['status_dict']['Control_Status'].get(Control_Status, self.default) })
-        if verbose:
-            print(f'Control_Status = {Control_Status}')
-            print(f'self.state["Control_Status_Num"] = {self.state["Control_Status_Num"]}')
+        self.state.update({'Control_Status_Num'             :   self.config['status_dict']['Control_Status'].get(Control_Status, self.default) })
         
         Close_Status = self.remote_state.get('Close_Status','FAULT')
-        self.state.update({'Close_Status_Num'           : self.config['status_dict']['Close_Status'].get(Close_Status,     self.default) })
-        if verbose:
-            print(f'Close_Status = {Close_Status}')
-            print(f'self.state["Close_Status_Num"] = {self.state["Close_Status_Num"]}')
+        self.state.update({'Close_Status_Num'               :   self.config['status_dict']['Close_Status'].get(Close_Status,     self.default) })
         
         Weather_Status = self.remote_state.get('Weather_Status','FAULT')
-        self.state.update({'Weather_Status_Num'         : self.config['status_dict']['Weather_Status'].get(Weather_Status, self.default) })
-        if verbose:
-            print(f'Weather_Status = {Weather_Status}')
-            print(f'self.state["Weather_Status_Num"] = {self.state["Weather_Status_Num"]}')
-        
-        self.state.update({'Outside_Dewpoint_Threshold' :   self.remote_state.get('Outside_Dewpoint_Threshold',     self.default)})
-        self.state.update({'Outside_Temp'               :   self.remote_state.get('Outside_Temp',                   self.default)})
-        self.state.update({'Outside_RH'                 :   self.remote_state.get('Outside_RH',                     self.default)})
-        self.state.update({'Outside_Dewpoint'           :   self.remote_state.get('Outside_Dewpoint',               self.default)})
-        self.state.update({'Weather_Hold_time'          :   self.remote_state.get('Weather_Hold_time',              self.default)})
+        self.state.update({'Weather_Status_Num'             :   self.config['status_dict']['Weather_Status'].get(Weather_Status, self.default) })
+
+        self.state.update({'Outside_Dewpoint_Threshold'     :   self.remote_state.get('Outside_Dewpoint_Threshold',     self.default)})
+        self.state.update({'Average_Wind_Speed_Threshold'   :   self.remote_state.get('Average_Wind_Speed_Threshold',   self.default)})
+        self.state.update({'Outside_Temp'                   :   self.remote_state.get('Outside_Temp',                   self.default)})
+        self.state.update({'Outside_RH'                     :   self.remote_state.get('Outside_RH',                     self.default)})
+        self.state.update({'Outside_Dewpoint'               :   self.remote_state.get('Outside_Dewpoint',               self.default)})
+        self.state.update({'Average_Wind_Speed'             :   self.remote_state.get('Average_Wind_Speed',               self.default)})
+        self.state.update({'Weather_Hold_time'              :   self.remote_state.get('Weather_Hold_time',              self.default)})
         
         
         

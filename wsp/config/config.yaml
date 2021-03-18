@@ -877,7 +877,9 @@ fields:
         units: None
         dtype: int64
         rate: slow
-        var: 'dome.["Weather_Status_Num"]'
+        var: 'dome.state["Weather_Status_Num"]'
+        
+    # Weather info from dome
     Tdp_outside_threshold_pcs:
         ftype: raw
         label: 'DewPoint'
@@ -885,6 +887,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'dome.state["Outside_Dewpoint_Threshold"]'
+    windspeed_average_threshold:
+        ftype: raw
+        label: 'speed'
+        units: 'mps'
+        dtype: float64
+        rate: slow
+        var: 'dome.state["Average_Wind_Speed_Threshold"]'
     T_outside_pcs:
         ftype: raw
         label: 'T'
@@ -906,6 +915,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'dome.state["Outside_Dewpoint"]'
+    windspeed_average:
+        ftype: raw
+        label: 'speed'
+        units: 'mps'
+        dtype: float64
+        rate: slow
+        var: 'dome.state["Average_Wind_Speed"]'
     time_remaining_hold_pcs:
         ftype: raw
         label: 'time'
