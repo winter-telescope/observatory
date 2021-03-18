@@ -856,21 +856,21 @@ fields:
         units: None
         dtype: int64
         rate: slow
-        var: 'dome.["Shutter_Status_Num"]'
+        var: 'dome.state["Shutter_Status_Num"]'
     dome_control_status:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'dome.["Control_Status_Num"]'
+        var: 'dome.state["Control_Status_Num"]'
     dome_close_status:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'dome.["Close_Status_Num"]'
+        var: 'dome.state["Close_Status_Num"]'
     dome_weather_status:
         ftype: raw
         label: 'status'
@@ -884,35 +884,35 @@ fields:
         units: 'C'
         dtype: float64
         rate: slow
-        var: 'dome.["Outside_Dewpoint_Threshold"]'
+        var: 'dome.state["Outside_Dewpoint_Threshold"]'
     T_outside_pcs:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
-        var: 'dome.["Outside_Temp"]'
+        var: 'dome.state["Outside_Temp"]'
     rh_outside_pcs:
         ftype: raw
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
-        var: 'dome.["Outside_RH"]'
+        var: 'dome.state["Outside_RH"]'
     Tdp_outside_pcs:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
-        var: 'dome.["Outside_Dewpoint"]'
+        var: 'dome.state["Outside_Dewpoint"]'
     time_remaining_hold_pcs:
         ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
-        var: 'dome.["Weather_Hold_time"]'
+        var: 'dome.state["Weather_Hold_time"]'
     
     
     # Palomar telemetry server: P48
