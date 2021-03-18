@@ -95,7 +95,7 @@ class local_dome(QtCore.QObject):
                 pass
     
     
-    def parse_state(self):
+    def parse_state(self, verbose = False):
         '''
         Do any conditioning we need to properly handle and parse the state dictionary
         '''
@@ -115,20 +115,34 @@ class local_dome(QtCore.QObject):
         self.state.update({'Dome_Azimuth'               : self.remote_state.get('Dome_Azimuth',                     self.default)})
         
         Dome_Status = self.remote_state.get('Dome_Status', 'FAULT')               # status of observatory dome
-        print(f'Dome_Status = {Dome_Status}')
         self.state.update({'Dome_Status_Num'            : self.config['status_dict']['Dome_Status'].get(Dome_Status,       self.default) })
-        print(f'self.state["Dome_Status_Num"] = {self.state["Dome_Status_Num"]}')
+        if verbose:
+            print(f'Dome_Status = {Dome_Status}')
+            print(f'self.state["Dome_Status_Num"] = {self.state["Dome_Status_Num"]}')
+        
         Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
         self.state.update({'Shutter_Status_Num'         : self.config['status_dict']['Shutter_Status'].get(Shutter_Status, self.default) })
+        if verbose:
+            print(f'Shutter_Status = {Shutter_Status}')
+            print(f'self.state["Shutter_Status_Num"] = {self.state["Shutter_Status_Num"]}')
         
         Control_Status = self.remote_state.get('Control_Status','FAULT')
         self.state.update({'Control_Status_Num'         : self.config['status_dict']['Control_Status'].get(Control_Status, self.default) })
+        if verbose:
+            print(f'Control_Status = {Control_Status}')
+            print(f'self.state["Control_Status_Num"] = {self.state["Control_Status_Num"]}')
         
         Close_Status = self.remote_state.get('Close_Status','FAULT')
         self.state.update({'Close_Status_Num'           : self.config['status_dict']['Close_Status'].get(Close_Status,     self.default) })
+        if verbose:
+            print(f'Close_Status = {Close_Status}')
+            print(f'self.state["Close_Status_Num"] = {self.state["Close_Status_Num"]}')
         
         Weather_Status = self.remote_state.get('Weather_Status','FAULT')
         self.state.update({'Weather_Status_Num'         : self.config['status_dict']['Weather_Status'].get(Weather_Status, self.default) })
+        if verbose:
+            print(f'Weather_Status = {Weather_Status}')
+            print(f'self.state["Weather_Status_Num"] = {self.state["Weather_Status_Num"]}')
         
         self.state.update({'Outside_Dewpoint_Threshold' :   self.remote_state.get('Outside_Dewpoint_Threshold',     self.default)})
         self.state.update({'Outside_Temp'               :   self.remote_state.get('Outside_Temp',                   self.default)})
@@ -250,5 +264,11 @@ if __name__ == '__main__':
     """
     
     dome = local_dome(wsp_path, config)
-    dome.remote_state.update({'Dome_Status' : 'UNKNOWN'})
+    dome.remote_state.update({'Dome_Status' : 'UNKNOWN',
+                              'Shutter_Status' : 'STOPPED',
+                              'Control_Status' : 'CONSOLE',
+                              'Close_Status' : 'READY',
+                              'Weather_Status' : 'READY'})
+    
+    dome.parse_state()
     
