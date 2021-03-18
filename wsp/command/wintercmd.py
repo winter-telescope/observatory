@@ -809,6 +809,15 @@ class Wintercmd(object):
         self.dome.newCommand.emit(sigcmd)
         
     @cmd
+    def dome_open(self):
+        """
+        created: NPL 3-18-21
+        """
+        self.defineCmdParser('Open the dome')
+        sigcmd = signalCmd('Open')
+        self.dome.newCommand.emit(sigcmd)
+        
+    @cmd
     def dome_stop(self):
         """
         created: NPL 3-18-21
@@ -818,7 +827,7 @@ class Wintercmd(object):
         self.dome.newCommand.emit(sigcmd)
     
     @cmd
-    def dome_take_control(self):
+    def dome_takecontrol(self):
         """
         created: NPL 3-18-21
         """
@@ -827,7 +836,7 @@ class Wintercmd(object):
         self.dome.newCommand.emit(sigcmd)
     
     @cmd
-    def dome_give_control(self):
+    def dome_givecontrol(self):
         """
         created: NPL 3-18-21
         """
