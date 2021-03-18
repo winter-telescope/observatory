@@ -49,7 +49,7 @@ class Counter(object):
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name)
         
     def update(self):
-        self.msg = f'{self.name}: {self.count}'
+        #self.msg = f'{self.name}: {self.count}'
         self.count += self.step
         
         #print(self.msg)
@@ -71,7 +71,7 @@ class PyroGUI(QtCore.QObject):
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
-        self.counter = Counter(start = 0, step = 1, dt = 1000, name = 'counter', verbose = True)
+        self.counter = Counter(start = 0, step = 1, dt = 1000, name = 'counter', verbose = False)
                 
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.counter, name = 'counter')
         self.pyro_thread.start()
@@ -90,6 +90,7 @@ def sigint_handler( *args):
     """Handler for the SIGINT signal."""
     sys.stderr.write('\r')
     
+    main.counter.daqloop.quit()
     
     QtCore.QCoreApplication.quit()
 

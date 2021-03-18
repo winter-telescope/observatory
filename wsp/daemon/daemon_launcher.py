@@ -107,8 +107,8 @@ if __name__ == '__main__':
         print()
         #launch_weatherd(dlist)    
         
-        nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = "pyro5-ns", python = False)
-        dlist.add_daemon(nameserverd)
+        #nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = "pyro5-ns", python = False)
+        #dlist.add_daemon(nameserverd)
                 
         testd = daemon_utils.PyDaemon(name = 'test', filepath = f"{wsp_path}/daemon/test_daemon.py")
         dlist.add_daemon(testd)

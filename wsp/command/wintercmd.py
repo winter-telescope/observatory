@@ -100,11 +100,21 @@ def cmd(func):
             pass
     return wrapper_cmd
 
+class signalCmd(object):
+    '''
+    this is an object which can pass commands and args via a signal/slot to
+    other threads, ideally for daemons
+    '''
+    def __init__(self, cmd, *args, **kwargs):
+        self.cmd = cmd
+        self.argdict = dict()
+        self.args = args
+        self.kwargs = kwargs
 
 class Wintercmd(object):
 
 
-    def __init__(self, config, state, telescope, logger):
+    def __init__(self, config, state, daemonlist, telescope, dome, logger):
         # init the parent class
         super().__init__()
 
@@ -112,10 +122,12 @@ class Wintercmd(object):
         self.intro = 'Welcome to wintercmd, the WINTER Command Interface'
         self.prompt = 'wintercmd: '
 
-        # subclass some useful inputs
+        # grab some useful inputs
         self.state = state
+        self.daemonlist = daemonlist
         self.telescope = telescope
-
+        self.dome = dome
+        
         self.config = config
         self.logger = logger
         self.defineParser()
@@ -773,11 +785,74 @@ class Wintercmd(object):
         """
         self.defineCmdParser('STOP the M3 rotator')
         self.telescope.m3_stop()
+    
+    # Dome Commands
+    @cmd
+    def dome_home(self):
+        """
+        Created: NPL 3-18-21
+        """
         
+        self.defineCmdParser('Home the dome')
         
+        sigcmd = signalCmd('Home')
         
+        self.dome.newCommand.emit(sigcmd)
+    
+    @cmd
+    def dome_close(self):
+        """
+        created: NPL 3-18-21
+        """
+        self.defineCmdParser('Close the dome')
+        sigcmd = signalCmd('Close')
+        self.dome.newCommand.emit(sigcmd)
         
+    @cmd
+    def dome_stop(self):
+        """
+        created: NPL 3-18-21
+        """
+        self.defineCmdParser('Stop the dome')
+        sigcmd = signalCmd('Stop')
+        self.dome.newCommand.emit(sigcmd)
+    
+    @cmd
+    def dome_take_control(self):
+        """
+        created: NPL 3-18-21
+        """
+        self.defineCmdParser('Take Remote Control of the Dome')
+        sigcmd = signalCmd('TakeControl')
+        self.dome.newCommand.emit(sigcmd)
+    
+    @cmd
+    def dome_give_control(self):
+        """
+        created: NPL 3-18-21
+        """
+        self.defineCmdParser('Give up remote control of the dome')
+        sigcmd = signalCmd('GiveControl')
+        self.dome.newCommand.emit(sigcmd)
+    
+    
+    @cmd
+    def dome_goto(self):
+        """
+        created: NPL 3-18-21
+        """
+        self.defineCmdParser('send dome to specified azimuth')
+        self.cmdparser.add_argument('azimuth',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<azimuth_degs>')
         
+        self.getargs()
+        az = self.args.azimuth[0]
+        sigcmd = signalCmd('GoTo', az)
+        self.dome.newCommand.emit(sigcmd)
+    
+    
     # General Shut Down
     @cmd
     def quit(self):
@@ -788,8 +863,13 @@ class Wintercmd(object):
             self.promptThread.stop()
             self.execThread.stop()
 
-        sys.exit()#sigint_handler()
-
+        #sys.exit()#sigint_handler()
+        
+        # kill all the daemons
+        self.daemonlist.kill_all()
+        
+        # kill the program
+        QtCore.QCoreApplication.quit()
         """
 class ManualCmd(Wintercmd):
 

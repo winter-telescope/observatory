@@ -47,7 +47,7 @@ from telescope import pwi4
 
 class hk_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, telescope,weather,schedule,labjacks):
+    def __init__(self,config, state, curframe, telescope,weather,schedule,labjacks, counter, dome, verbose = False):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -58,7 +58,9 @@ class hk_loop(QtCore.QThread):
         self.weather = weather
         self.schedule = schedule
         self.labjacks = labjacks
-
+        self.counter = counter
+        self.dome = dome
+        
         # pass the config to the thread
         self.config = config
 
@@ -114,7 +116,8 @@ class hk_loop(QtCore.QThread):
                 or with the config for that field. either way log it and
                 just keep moving
                 """
-                #print(f'could not update field [{field}] due to {e.__class__}: {e}')
+                if self.verbose:
+                    print(f'datahandler: could not update field [{field}] due to {e.__class__}: {e}')
                 pass
             
 

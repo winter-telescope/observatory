@@ -19,7 +19,14 @@ daemon_launcher: initializing local wea
 
 """
 
+
+
 import psutil, os
+import signal
+import daemon_utils
+#%%
+
+
 
 main_program_name = 'wsp.py'
 
@@ -60,15 +67,17 @@ else:
         print()
     print(f'Child Processes:')
     for p in child_processes:
-    
-        print(f'\t pid     = \t {p.pid}')
-        print(f'\t name    = \t {p.name()}')
-        print(f'\t program = \t {p.cmdline()[1].split("/")[-1]}')
-        print(f'\t parent  = \t {p.parent().cmdline()[1].split("/")[-1]}')
-        print()
-        
+        try:
+            print(f'\t pid     = \t {p.pid}')
+            print(f'\t name    = \t {p.name()}')
+            print(f'\t program = \t {p.cmdline()[1].split("/")[-1]}')
+            print(f'\t parent  = \t {p.parent().cmdline()[1].split("/")[-1]}')
+            print()
+        except Exception as e:
+            print(f'Could not parse process with PID = {p.pid}, {e}')
 #%% print all the process info
 printall = False
+print()
 if printall:
     print("All info for currently running Python Processes")    
     for p in py_processes:
@@ -78,4 +87,10 @@ if printall:
             print()
         except:
             pass
-    
+
+#%% cleanup old wsp daemons
+cleanup = False
+if cleanup:
+    daemons_to_kill = ['domed.py', 'test_daemon.py', 'pyro5-ns']
+    daemon_utils.cleanup(daemons_to_kill)
+

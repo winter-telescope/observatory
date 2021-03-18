@@ -32,9 +32,10 @@ class local_counter(object):
         
         self.msg = 'local initial value'
         self.count = None
+        self.state = dict()
         
         self.init_remote_object()
-        self.get_remote_status()
+        self.update_state()
         
         
     def init_remote_object(self):
@@ -45,26 +46,31 @@ class local_counter(object):
         except Exception as e:
             self.logger.error('connection with remote object failed', exc_info = True)
     
-    def get_remote_status(self, verbose = False):
+    def update_state(self):
         try:
             self.msg = self.remote_object.getMsg()
             self.count = self.remote_object.getCount()
+            self.state.update({'count' : self.count})
+            #print(f'state = {self.state}')
+
         except Exception as e:
             print(f'Could not update remote status: {e}')
+
         
-        if verbose == True:
-            self.print_status()
+    def print_state(self):
+        #self.update_state()
+        #print(f'Local Object: {self.msg}')
+        print(f'state = {self.state}')
         
-    def print_status(self):
-        print(f'Local Object: {self.msg}')
 # Try it out
 if __name__ == '__main__':
 
-
     while True:
         try:
-            counter = local_counter(os.path.dirname(os.getcwd()))
-            counter.get_remote_status(verbose = True)
+            counter = local_counter(wsp_path)
+            #counter.get_remote_status()
+            #counter.print_status()
+            print(f'count = {counter.state["count"]}')
             time.sleep(.5)
         except KeyboardInterrupt:
             break

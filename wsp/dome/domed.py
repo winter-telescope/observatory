@@ -357,12 +357,13 @@ class CommandThread(QtCore.QThread):
     newCommand = QtCore.pyqtSignal(str)
     doReconnect = QtCore.pyqtSignal()
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 0.5):
+    def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
         super(QtCore.QThread, self).__init__()
         self.addr = addr
         self.port = port
         self.logger = logger
         self.connection_timeout = connection_timeout
+        self.verbose = verbose
     
     def HandleCommand(self, cmd):
         self.newCommand.emit(cmd)
@@ -375,7 +376,7 @@ class CommandThread(QtCore.QThread):
         def SignalNewReply(reply):
             self.newReply.emit(reply)
         
-        self.commandHandler = CommandHandler(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout)
+        self.commandHandler = CommandHandler(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
         # if the newReply signal is caught, execute the sendCommand function
         self.newCommand.connect(self.commandHandler.sendCommand)
         self.commandHandler.newReply.connect(SignalNewReply)
@@ -391,12 +392,13 @@ class StatusThread(QtCore.QThread):
     newStatus = QtCore.pyqtSignal(object)
     doReconnect = QtCore.pyqtSignal()
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 0.5):
+    def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
         super(QtCore.QThread, self).__init__()
         self.addr = addr
         self.port = port
         self.logger = logger
         self.connection_timeout = connection_timeout
+        self.verbose = verbose
         
     def run(self):    
         def SignalNewStatus(newStatus):
@@ -405,14 +407,14 @@ class StatusThread(QtCore.QThread):
             self.doReconnect.emit()
         
         self.timer= QtCore.QTimer()
-        self.statusMonitor = StatusMonitor(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout)
+        self.statusMonitor = StatusMonitor(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
         
         self.statusMonitor.newStatus.connect(SignalNewStatus)
         self.statusMonitor.doReconnect.connect(SignalDoReconnect)
         
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.statusMonitor.pollStatus)
-        self.timer.start(1000)
+        self.timer.start(200)
         self.exec_()
         
         
@@ -434,7 +436,7 @@ class Dome(QtCore.QObject):
     #statusRequest = QtCore.pyqtSignal(object)
     commandRequest = QtCore.pyqtSignal(str)
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 1.5):
+    def __init__(self, addr, port, logger = None, connection_timeout = 1.5, verbose = False):
         super(Dome, self).__init__()
         # attributes describing the internet address of the dome server
         self.addr = addr
@@ -442,9 +444,10 @@ class Dome(QtCore.QObject):
         self.logger = logger
         self.connection_timeout = connection_timeout
         self.state = dict()
+        self.verbose = verbose
         
-        self.statusThread = StatusThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout)
-        self.commandThread = CommandThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout)
+        self.statusThread = StatusThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
+        self.commandThread = CommandThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
         # connect the signals and slots
         
         self.statusThread.start()
@@ -551,6 +554,7 @@ class PyroGUI(QtCore.QObject):
 
         self.config = config
         self.logger = logger
+        self.verbose = verbose
         
         msg = f'(Thread {threading.get_ident()}: Starting up Dome Daemon '
         if logger is None:
@@ -568,7 +572,8 @@ class PyroGUI(QtCore.QObject):
         self.dome = Dome(addr = self.dome_addr, 
                          port = self.dome_port, 
                          logger = self.logger, 
-                         connection_timeout = self.dome_connection_timeout)        
+                         connection_timeout = self.dome_connection_timeout,
+                         verbose = self.verbose)        
         
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.dome, name = 'dome')
         self.pyro_thread.start()
@@ -592,6 +597,51 @@ def sigint_handler( *args):
     QtCore.QCoreApplication.quit()
 
 if __name__ == "__main__":
+    
+    #### GET ANY COMMAND LINE ARGUMENTS #####
+    
+    args = sys.argv[1:]
+    
+    
+    modes = dict()
+    modes.update({'-v' : "Running in VERBOSE mode"})
+    modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
+    
+    # set the defaults
+    verbose = False
+    doLogging = True
+    
+    #print(f'args = {args}')
+    
+    if len(args)<1:
+        pass
+    
+    else:
+        for arg in args:
+            
+            if arg in modes.keys():
+                
+                # remove the dash when passing the option
+                opt = arg.replace('-','')
+                if opt == 'v':
+                    print(modes[arg])
+                    verbose = True
+                    
+                elif opt == 'p':
+                    print(modes[arg])
+                    doLogging = False
+                
+                
+            else:
+                print(f'Invalid mode {arg}')
+    
+
+
+    
+    
+    
+    
+    ##### RUN THE APP #####
     app = QtCore.QCoreApplication(sys.argv)
 
     # set the wsp path as the base directory
@@ -602,10 +652,12 @@ if __name__ == "__main__":
     config = utils.loadconfig(config_file)
     
     # set up the logger
-    logger = logging_setup.setup_logger(base_directory, config)    
-    verbose = False
+    if doLogging:
+        logger = logging_setup.setup_logger(base_directory, config)    
+    else:
+        logger = None
     
-    
+    # set up the main app. note that verbose is set above
     main = PyroGUI(config = config, logger = logger, verbose = verbose)
 
     # handle the sigint with above code

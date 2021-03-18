@@ -27,6 +27,7 @@ import numpy as np
 import sys
 import signal
 import subprocess
+import psutil
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -75,9 +76,12 @@ class daemon_list():
     
     def launch_all(self):
         for key in self.daemons.keys():
-            self.daemons[key].launch()
-            print(f'launching {key} daemon in system PID {self.daemons[key].process.pid}')
-    
+            try:
+                self.daemons[key].launch()
+                print(f'launching {key} daemon in system PID {self.daemons[key].process.pid}')
+            except Exception as e:
+                print(f'could not launch {key} daemon due to error: {e}')
+                
     def kill_all(self):
         for key in self.daemons.keys():
             try:
@@ -123,3 +127,26 @@ class PyDaemon(object):
         # adds the daemon to the specified list
         daemonlist.add_daemon(self)"""
 
+
+def cleanup(daemons_to_kill = list(), logger = None):
+    py_processes = list()
+    
+    for p in psutil.process_iter(['pid', 'name','cmdline']):
+        #p = psutil.Process(pid)
+        try:
+            if 'python' in p.name():
+                py_processes.append(p)
+        except:
+            pass
+    
+    for p in py_processes:
+        try:
+            if any(daemon_to_kill in p.cmdline()[1] for daemon_to_kill in daemons_to_kill):
+                msg = f'killing process with PID {p.pid}'
+                if logger is None:
+                    print(msg)
+                else:
+                    logger.info(msg)
+                os.kill(p.pid, signal.SIGKILL)
+        except:
+            pass

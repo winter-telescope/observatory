@@ -38,7 +38,7 @@ from housekeeping import labjacks
 # the main housekeeping class it lives in the namespace of the control class
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, telescope = None, weather = None, schedule = None):            
+    def __init__(self, config, base_directory, mode = None, telescope = None, dome = None, weather = None, schedule = None, counter = None):            
         
         
         # store the config
@@ -50,8 +50,10 @@ class housekeeping():
         
         # redefine the methods passed in: ie the hardware systems
         self.telescope = telescope
+        self.dome = dome
         self.weather = weather
         self.schedule = schedule
+        self.counter = counter
         
         # setup any labjacks that are in the config
         '''
@@ -85,13 +87,25 @@ class housekeeping():
         # create the dirfile
         self.create_dirfile()
         
+        # create the housekeeping poll list
+        self.housekeeping_poll_functions = list()
+        
+        
         # define the DAQ loops
         if mode.lower() in ['m','s']:
             self.daq_telescope = data_handler.daq_loop(func = self.telescope.update_state, 
-                                                       dt = self.config['daq_dt']['fast'],
+                                                       dt = self.config['daq_dt']['hk'],
                                                        name = 'telescope_daqloop'
                                                        )
                                                        #rate = 'fast')
+           
+        """
+            self.daq_dome = data_handler.daq_loop(func = self.dome.update_state, 
+                                                  dt = self.config['daq_dt']['hk'], 
+                                                  name = 'dome_daqloop'
+                                                  )
+        """
+           
         """                                           
             self.daq_weather = data_handler.daq_loop(func = self.weather.getWeather,
                                                      dt = self.config['daq_dt']['fast'],
@@ -101,11 +115,23 @@ class housekeeping():
         """
         
         self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
-                                                  dt = self.config['daq_dt']['fast'],
-                                                  name = 'labjac_daqloop'
+                                                  dt = self.config['daq_dt']['hk'],
+                                                  name = 'labjack_daqloop'
                                                   )
                                                   #rate = 'very_slow')
         
+        """
+        self.daq_counter = data_handler.daq_loop(func = self.counter.update_state,
+                                                  dt = self.config['daq_dt']['hk'],
+                                                  name = 'counter_daqloop'
+                                                  )
+        """
+        # add the counter to the housekeeping poll list
+        self.housekeeping_poll_functions.append(self.counter.update_state)
+        self.housekeeping_poll_functions.append(self.dome.update_state)
+        
+        
+        #self.housekeeping_poll_functions.append(self.counter.print_state)
         #self.labjacks.read_all_labjacks()
         #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
         # define the status update loops
@@ -129,17 +155,33 @@ class housekeeping():
                                                telescope = self.telescope,
                                                weather = self.weather,
                                                schedule = self.schedule,
-                                               labjacks = self.labjacks)
+                                               labjacks = self.labjacks,
+                                               counter = self.counter,
+                                               dome = self.dome)
         
         #print(f"housekeeping: lj0 AIN1 = {self.labjacks.labjacks['lj0'].state['AIN1']}")
         
         # define the dirfile write loop
         self.writethread = data_handler.write_thread(config = config, dirfile = self.df, state = self.state, curframe = self.curframe)
         
+        # start the housekeeping poll FROM THE MAIN EVENT LOOP
+        self.start_housekeeping_poll_loop()
         print("Done init'ing housekeeping")
         
         
-    
+    def poll_housekeeping(self):
+        """
+        execute all the functions in the housekeeping_poll_functions
+        """
+        for func in self.housekeeping_poll_functions:
+            # do the function
+            func()
+            
+    def start_housekeeping_poll_loop(self):
+        self.timer = QtCore.QTimer()
+        self.timer.setInterval(self.config['daq_dt']['hk'])
+        self.timer.timeout.connect(self.poll_housekeeping)
+        self.timer.start()
                 
     def create_dirfile(self):
         """

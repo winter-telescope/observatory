@@ -218,6 +218,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'timestamp'
+    testcount:
+        ftype: raw
+        label: 'count'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: 'counter.state["count"]'
 #schedule
     az_scheduled:
         ftype: raw
@@ -786,97 +793,122 @@ fields:
         rate: slow
         var: 'weather.CLOUD_MAX'
     # Palomar Command Server: PCS
-    pcs_is_online:
+    dome_is_connected:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Online'
-    time_utc_pcs:
+        var: 'dome.state["is_connected"]'
+    dome_reconnect_remaining_time:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["reconnect_remaining_time"]'
+    dome_reconnect_timeout:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["reconnect_timeout"]'
+    dome_query_time:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: 'dome.state["query_timestamp"]'
+    dome_time_utc:
         ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
-        var: 'weather.PCS_UTC_timestamp'
+        var: 'dome.state["UTC_timestamp"]'
     dome_az_deg:
         ftype: raw
         label: 'Az'
         units: 'deg'
         dtype: float64
         rate: slow
-        var: 'weather.PCS_Dome_Azimuth'
+        var: 'dome.state["Dome_Azimuth"]'
+    # Below here not yet fixed
     dome_status:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Dome_Status_Num'
+        var: 'dome.state["Dome_Status_Num"]'
     dome_shutter_Status:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Shutter_Status_Num'
+        var: 'dome.["Shutter_Status_Num"]'
     dome_control_status:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Control_Status_Num'
+        var: 'dome.["Control_Status_Num"]'
     dome_close_status:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Close_Status_Num'
+        var: 'dome.["Close_Status_Num"]'
     dome_weather_status:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'weather.PCS_Weather_Status_Num'
+        var: 'dome.["Weather_Status_Num"]'
     Tdp_outside_threshold_pcs:
         ftype: raw
         label: 'DewPoint'
         units: 'C'
         dtype: float64
         rate: slow
-        var: 'weather.PCS_Outside_Dewpoint_Threshold'
+        var: 'dome.["Outside_Dewpoint_Threshold"]'
     T_outside_pcs:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
-        var: 'weather.PCS_Outside_Temp'
+        var: 'dome.["Outside_Temp"]'
     rh_outside_pcs:
         ftype: raw
         label: 'RH'
         units: 'pct'
         dtype: float64
         rate: slow
-        var: 'weather.PCS_Outside_RH'
+        var: 'dome.["Outside_RH"]'
     Tdp_outside_pcs:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: slow
-        var: 'weather.PCS_Outside_Dewpoint'
+        var: 'dome.["Outside_Dewpoint"]'
     time_remaining_hold_pcs:
         ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
-        var: 'weather.PCS_Weather_Hold_time'
+        var: 'dome.["Weather_Hold_time"]'
+    
+    # Above here dome stuff not yet fixed
+    
     # Palomar telemetry server: P48
     p48_is_online:
         ftype: raw

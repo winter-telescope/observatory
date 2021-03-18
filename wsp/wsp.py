@@ -84,14 +84,14 @@ big_r.append('88888  T8888b')
 big_r.append('88888   T8888b')
 
 big_i = []
-big_i.append('888888888 ')
-big_i.append('888888888   ')
-big_i.append('  88888   ')
-big_i.append('  88888   ')
-big_i.append('  88888   ')
-big_i.append('  88888   ')
-big_i.append('888888888 ')
-big_i.append('888888888')
+big_i.append('8888888888888 ')
+big_i.append('8888888888888 ')
+big_i.append('    88888     ')
+big_i.append('    88888     ')
+big_i.append('    88888     ')
+big_i.append('    88888     ')
+big_i.append('8888888888888 ')
+big_i.append('8888888888888 ')
 
 big_letter = dict({'m' : big_m, 'r' : big_r, 'i':big_i})
 #########################################################################
