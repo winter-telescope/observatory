@@ -58,17 +58,6 @@ log_link_directory: 'data'
 log_link_name: 'winter.log'
 
 
-# define housekeeping catagories to load in each mode
-mode:
-    instrument:
-        -instrument
-    telescope:
-        -telescope
-    observatory:
-        -weather
-        -telescope
-        -site
-
 # define telescope home position
 telescope_home:
     alt_degs: 16.0

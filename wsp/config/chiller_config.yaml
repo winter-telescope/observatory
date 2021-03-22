@@ -1,0 +1,96 @@
+# Chiller configuration
+
+serial_params:
+    port: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AQ00T8I9-if00-port0'
+    method: 'rtu'
+    baudrate: 9600
+    timeout: 0.5
+    parity: 'E'
+    stopbits: 1
+    bytesize: 8
+
+# time in between sequential register polls
+modbus_query_dt: 0.5
+
+# offset between datasheet registers and registers to send
+modbus_register_offset: -1
+
+# how often should we poll the status? 
+status_poll_dt_seconds: 5.0
+
+# where to put the log. base directory is home
+# THIS SHOULD MATCH THE WSP CONFIG OTHERWISE THEY WILL LOG DIFFERENTLY!
+log_directory: 'data/log'
+log_link_directory: 'data'
+log_link_name: 'winter.log'
+
+
+
+
+
+
+# MASTER LIST OF REGISTERS
+# addr: the register number from the datasheet
+# scaling: multiplicative factor used to rescale based on datasheet units since modbus only passes integers
+    # eg, temp format = XXX.Y means divide number by 10
+# mode: one of 'r', 'w', or 'rw'
+    # this specifies whether this register will just be read (r), just be written to (w), or both (rw).
+
+
+
+registers:
+    SystemDisplayValueStatus:
+        addr: 8992
+        scale: 0.1
+        mode: 'rw'
+    UserSetpoint:
+        addr: 16384
+        scale: 0.1
+        mode: 'rw'
+    UserRange:
+        addr: 16386
+        scale: 0.1
+        mode: 'rw'
+    UserRemoteStartStop: 
+        addr: 16385
+        scale: 1.0
+        mode: 'rw'
+    StatusDutyCycleStatus:
+        addr: 8971
+        scale: 1.0
+        mode: 'r'
+    AlarmSysFaultStatus: 
+        addr: 8967
+        scale: 1.0
+        mode: 'r'
+    WarnGeneralStatus:
+        addr: 9004
+        scale: 1.0
+        mode: 'r'
+    SystemHeatEnable:
+        addr: 16394
+        scale: 1.0
+        mode: 'r'
+    SystemHeatOnStatus:
+        addr: 8994
+        scale: 1.0
+        mode: 'r'
+    StatusFanspeed:
+        addr: 8972
+        scale: 1.0
+        mode: 'r'
+    WarnLowWaterStatus:
+        addr: 9005
+        scale: 1.0
+        mode: 'r'
+    AlarmPumpFaultStatus:
+        addr: 8965
+        scale: 1.0
+        mode: 'r'
+    AlarmCompFaultStatus:
+        addr: 8960
+        scale: 1.0
+        mode: 'r'
+
+    
+        

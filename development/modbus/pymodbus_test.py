@@ -21,7 +21,11 @@ client = ModbusSerialClient(
 )
 
 
-def read_register(client,regnum,count = 1, unit = 1):
+MODBUS_OFFSET = -1
+
+def read_register(client,regnum,count = 1, unit = 1, modbus_offset = -1):
+    
+    regnum = regnum + modbus_offset
 
     if client.connect():  # Trying for connect to Modbus Server/Slave
         '''Reading from a holding register with the below content.'''
@@ -50,8 +54,12 @@ if __name__ == '__main__':
         
         regnum = int(args[0])
         print(f'reading register {regnum}')
-    
-        reply = read_register(client, regnum)
+        
+        if len(args)>1:
+            count = int(args[1])
+        else:
+            count = 1
+        reply = read_register(client, regnum, count, modbus_offset = MODBUS_OFFSET)
     
         print(f'reply = {reply}')
     
