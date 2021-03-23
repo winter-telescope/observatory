@@ -181,6 +181,8 @@ class CommandHandler(QtCore.QObject):
         addr = register_request.addr
         value = register_request.value
         
+        #print(f'CommandHandler: caught newRequest signal to set {addr} to {value}')
+        
         if self.connected:
             #self.time_since_last_connection = 0.0
             #self.reconnector.time_since_last_connection = 0.0
@@ -193,12 +195,12 @@ class CommandHandler(QtCore.QObject):
                 
                 reply = self.sock.write_register(address = addr, value = value, unit = 1)
                 if not reply.isError():
-                    print(f'CommandHandler: Command sent successfully! reply = {reply}')
+                    self.log(f'CommandHandler: Command sent successfully! reply = {reply}')
                 else:
-                    print(f'CommandHandler: bad command response, reply: {reply}')
+                    self.log(f'CommandHandler: bad command response, reply: {reply}')
                 #reply = -9
                 
-                self.log(f'CommandHandler: Wrote value {value} to chiller register {addr} dome. ')
+                #self.log(f'CommandHandler: Wrote value {value} to chiller register {addr} dome. ')
                 #self.newReply.emit(reply)
             
             except Exception as e:
@@ -206,7 +208,7 @@ class CommandHandler(QtCore.QObject):
                 self.log(f'CommandHandler: Tried to write {value} to chiller register {addr} dome.: {e}')
                 self.connected = False
         else:
-            self.log(f'CommandHandler: Received command to write {value} to register {addr} but chiller was disconnected. Reply = {self.disconnectedReply}')
+            self.log(f'CommandHandler: Received command to write {value} to register {addr} but chiller was disconnected. ')
 
             # the dome is not connected. set the reply to something that represents this state
             #self.newReply.emit(self.disconnectedReply)
@@ -341,6 +343,23 @@ class StatusMonitor(QtCore.QObject):
                 except:
                     pass
         
+    def update_all_last_poll_dt(self):
+        """
+        Loops through all the state variables, and updates the dt since they
+        were last updated. The state last_poll_time is updated only in self.pollStatus,
+        but this can be used to more regularly update how long its been since each
+        field was updated with fresh information from the chiller
+        """
+        for reg in self.config['registers']:
+            try:
+                # Update all the dt times
+                # calculate the time since the last successfull pol
+                timestamp = datetime.utcnow().timestamp()
+                time_since_last_poll = timestamp - self.state['last_poll_time'][reg]
+                self.state['last_poll_dt'].update({reg : time_since_last_poll})
+            except Exception as e:
+                print(f'Could not update dt for {reg}, error: {e}')
+                pass
         
     def pollStatus(self):
         """
@@ -389,17 +408,22 @@ class StatusMonitor(QtCore.QObject):
                                     # update the state with the register value
                                     self.state.update({reg : val})
                                     
+                                    
                                     # calculate the time since the last successfull pol
                                     timestamp = datetime.utcnow().timestamp()
-                                    time_since_last_poll = timestamp - self.state['last_poll_time'].get(reg, 0.0)
-                                    self.state['last_poll_dt'].update({reg : time_since_last_poll})
                                     
-                                    # log the timestamp of this poll for future calculation of dt
+                                    # log the timestamp of this poll for THIS REGISTER ONLY for future calculation of dt
                                     self.state['last_poll_time'].update({reg : timestamp})
+                                    
                             else:
                                 if self.verbose:
                                     self.log(f'chiller: could not get {reg}: {reply}')
                                 pass
+                            
+                            # update the dt since last update for ALL fields
+                            #self.update_all_last_poll_dt()
+                            
+                            
                         
                         except Exception as e:
                             pass
@@ -590,12 +614,30 @@ class Chiller(QtCore.QObject):
             for key in newStatus.keys():
                 try:
                     self.state.update({key : newStatus[key]})
-                
+
                 except:
                     pass
                     
                     
         #print(f'Dome (Thread {threading.get_ident()}): got new status. status = {self.state}')
+    def update_all_last_poll_dt(self):
+        """
+        Loops through all the state variables, and updates the dt since they
+        were last updated. The state last_poll_time is updated only in self.pollStatus,
+        but this can be used to more regularly update how long its been since each
+        field was updated with fresh information from the chiller
+        """
+        for reg in self.config['registers']:
+            try:
+                # Update all the dt times
+                # calculate the time since the last successfull pol
+                timestamp = datetime.utcnow().timestamp()
+                time_since_last_poll = timestamp - self.state['last_poll_time'][reg]
+                self.state['last_poll_dt'].update({reg : time_since_last_poll})
+            except Exception as e:
+                #print(f'Could not update dt for {reg}, error: {e}')
+                pass
+            
     def updateCommandReply(self, reply):
         '''
         when we get a new reply back from the command thread, add it to the status dictionary
@@ -612,18 +654,25 @@ class Chiller(QtCore.QObject):
     def GetStatus(self):
         # make a note of the time that the status was requested
         self.state.update({'request_timestamp' : datetime.utcnow().timestamp()})
+        
+        # update all the dt since last updated
+        self.update_all_last_poll_dt()
+        
         return self.state
     
     @Pyro5.server.expose
     def WriteRegister(self, register, value):
-        
+        self.log(f'chiller: got request to set {register} to {value}')
         # make sure the register is in the list
         if register in self.config['registers']:
             if 'w' in self.config['registers'][register]['mode']:
                 
-                
+                #self.log(f'chiller: register request is on write-approved list')
                 addr = self.config['registers'][register]['addr'] + self.config['modbus_register_offset']
-                scaled_value = int(value/self.config['registers'][register]['scale'])
+                scale = self.config['registers'][register]['scale']
+                raw_scaled_value =  value/scale
+                scaled_value = int(np.round(raw_scaled_value,0)) # can't just do int, that doesn't actually round, just truncates
+                #print(f'chiller: value = {value}, scale = {scale}, raw_scaled_value = {raw_scaled_value}, scaled_value = {scaled_value}')
                 
                 # write the value to the specified register
                 request = RegisterRequest(addr = addr, value = scaled_value)
@@ -631,11 +680,11 @@ class Chiller(QtCore.QObject):
                 
             else:
                 # the register is not on the write-allowed list
-                self.log('chiller: ignored request to set register {register} which is set to read-only in config file')
+                self.log(f'chiller: ignored request to set register {register} which is set to read-only in config file')
                 return
         else:
             # the register is not on the list
-            self.log('chiller: ignored request to set register {register} which is not included in the config file')
+            self.log(f'chiller: ignored request to set register {register} which is not included in the config file')
 
             return
         
@@ -724,10 +773,12 @@ if __name__ == "__main__":
     modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
     
     # set the defaults
-    #verbose = False
-    #doLogging = True
-    verbose = True
-    doLogging = False
+    verbose = False
+    doLogging = True
+    
+    # Debugging mode
+    #verbose = True
+    #doLogging = False
     
     #print(f'args = {args}')
     

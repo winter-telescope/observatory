@@ -1197,7 +1197,23 @@ fields:
         dtype: float64
         rate: slow
         var: labjacks.labjacks['lj0'].state['FIO3']
-
+    
+    # CHILLER STUFF
+    chiller_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['UserSetpoint']
+    chiller_setpoint_last_update_dt:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['last_poll_dt']['UserSetpoint']
+        
 derived_fields:
     # note the base directory for the LUT is the wsp directory
     T_LJ0:

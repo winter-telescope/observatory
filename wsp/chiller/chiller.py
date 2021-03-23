@@ -29,9 +29,9 @@ from PyQt5 import QtCore
 import time
 import json
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(os.path.dirname(__file__))
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
-
+print(f'chiller: wsp_path = {wsp_path}')
 from utils import utils
 
 
@@ -58,13 +58,30 @@ class local_chiller(QtCore.QObject):
         self.default = self.config['default_value']
         
         # connect the signals and slots
-        #self.newCommand.connect(self.doCommand)
+        self.newCommand.connect(self.doCommand)
         
         # Startup
         self.init_remote_object()
         self.update_state()
         
+    def doCommand(self, cmd_obj):
+        """
+        This is connected to the newCommand signal. It parses the command and
+        then executes the corresponding command from the list below
+
+        using this as a reference: (source: https://stackoverflow.com/questions/6321940/how-to-launch-getattr-function-in-python-with-additional-parameters)     
         
+        """
+        cmd = cmd_obj.cmd
+        args = cmd_obj.args
+        kwargs = cmd_obj.kwargs
+        
+        #print(f'chiller: caught doCommand signal: {cmd}, args = {args}, kwargs = {kwargs}')
+
+        try:
+            getattr(self, cmd)(*args, **kwargs)
+        except:
+            pass
         
     def init_remote_object(self):
         # init the remote object
@@ -93,7 +110,7 @@ class local_chiller(QtCore.QObject):
                 
                 
             except Exception as e:
-                print(f'dome: could not update remote state: {e}')
+                #print(f'chiller: could not update remote state: {e}')
                 pass
     
     def parse_state(self):
@@ -118,7 +135,8 @@ class local_chiller(QtCore.QObject):
         print(f'state = {json.dumps(chiller.state, indent = 2)}')
 
     def setSetpoint(self, temperature):
-        self.remote_object.set_setpoint(temperature)
+        #print(f'chiller: trying to set the set point to {temperature}')
+        self.remote_object.setSetpoint(temperature)
     
     def TurnOn(self):
         self.remote_object.TurnOn()
@@ -152,7 +170,7 @@ if __name__ == '__main__':
     chiller.print_state()
     
     #%%
-    chiller.WriteRegister('UserSetpoint', 18.1)
-    
+    #chiller.WriteRegister('UserSetpoint', 18.1)
+    chiller.setSetpoint(17.9)
     
     

@@ -38,7 +38,7 @@ from housekeeping import labjacks
 # the main housekeeping class it lives in the namespace of the control class
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, telescope = None, dome = None, weather = None, schedule = None, counter = None):            
+    def __init__(self, config, base_directory, mode = None, telescope = None, dome = None, weather = None, chiller = None, schedule = None, counter = None):            
         
         
         # store the config
@@ -52,6 +52,7 @@ class housekeeping():
         self.telescope = telescope
         self.dome = dome
         self.weather = weather
+        self.chiller = chiller
         self.schedule = schedule
         self.counter = counter
         
@@ -129,7 +130,7 @@ class housekeeping():
         # add the counter to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
         self.housekeeping_poll_functions.append(self.dome.update_state)
-        
+        self.housekeeping_poll_functions.append(self.chiller.update_state)
         
         #self.housekeeping_poll_functions.append(self.counter.print_state)
         #self.labjacks.read_all_labjacks()
@@ -157,7 +158,8 @@ class housekeeping():
                                                schedule = self.schedule,
                                                labjacks = self.labjacks,
                                                counter = self.counter,
-                                               dome = self.dome)
+                                               dome = self.dome,
+                                               chiller = self.chiller)
         
         #print(f"housekeeping: lj0 AIN1 = {self.labjacks.labjacks['lj0'].state['AIN1']}")
         

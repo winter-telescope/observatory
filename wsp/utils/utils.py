@@ -242,7 +242,8 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
                 break
             total_data.append(data)
     except socket.timeout as e:
-        print(f'server query: {e}')
+        #print(f'server query: {e}')
+        pass
         
         """
         if len(total_data)>1:

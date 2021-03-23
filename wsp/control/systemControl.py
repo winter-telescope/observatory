@@ -49,6 +49,7 @@ from housekeeping import local_weather
 from daemon import daemon_utils
 from daemon import test_daemon_local
 from dome import dome
+from chiller import chiller
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -74,7 +75,7 @@ class control(QtCore.QObject):
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['domed.py', 'test_daemon.py', 'pyro5-ns']
+        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'test_daemon.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -99,7 +100,11 @@ class control(QtCore.QObject):
             # test daemon
             self.testd = daemon_utils.PyDaemon(name = 'test', filepath = f"{wsp_path}/daemon/test_daemon.py")
             self.daemonlist.add_daemon(self.testd)
-        
+            
+            # chiller daemon
+            self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
+            self.daemonlist.add_daemon(self.chillerd)
+            
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
             
@@ -131,9 +136,10 @@ class control(QtCore.QObject):
 
         
         # init the dome
-        self.dome = dome.local_dome(base_directory = self.base_directory,config = self.config)
+        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config)
 
-
+        # init the chiller
+        self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
         
         
         
@@ -158,6 +164,7 @@ class control(QtCore.QObject):
                                                 telescope = self.telescope,
                                                 dome = self.dome,
                                                 weather = self.weather,
+                                                chiller = self.chiller,
                                                 schedule = self.schedule,
                                                 counter = self.counter)
         
@@ -167,7 +174,7 @@ class control(QtCore.QObject):
         In this section we set up the appropriate command interface and executors for the chosen mode
         '''
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, logger = self.logger)
+        self.wintercmd = wintercmd.Wintercmd(self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, logger = self.logger)
         
         if mode in ['r','m']:
             #init the schedule executor
