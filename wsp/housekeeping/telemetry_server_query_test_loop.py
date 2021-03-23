@@ -10,7 +10,7 @@ import socket
 import json
 from datetime import datetime
 import time
-
+import yaml
 
 def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001,badchars = None):
     """
@@ -37,7 +37,7 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
                 break
             total_data.append(data)
     except socket.timeout as e:
-        print(f'server query: {e}')
+        #print(f'server query: {e}')
         
         """
         if len(total_data)>1:
@@ -56,7 +56,8 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
         for char in badchars:
             reply = reply.replace(char,'')
     try:
-        d = json.loads(reply)
+        #d = json.loads(reply)
+        d = yaml.load(reply, Loader = yaml.FullLoader)
     except Exception as e:
         print(f'could not turn reply into json, {type(e)}: {e}')
         d = reply
@@ -65,7 +66,7 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
     
     
 #%%
-    
+""" 
 # Connect to the server
 sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 sock.settimeout(0.5)
@@ -109,6 +110,7 @@ while index == 0:
 #sock.sendall(bytes('BYE\n',"utf-8"))
     
 #sock.close()
+"""
 #%%
 # Connect to the server
 pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)

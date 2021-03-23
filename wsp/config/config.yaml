@@ -1213,6 +1213,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: chiller.state['last_poll_dt']['UserSetpoint']
+    chiller_temperature:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['SystemDisplayValueStatus']
+    chiller_is_running:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['UserRemoteStartStop']
         
 derived_fields:
     # note the base directory for the LUT is the wsp directory

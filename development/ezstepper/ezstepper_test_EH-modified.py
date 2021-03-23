@@ -808,4 +808,16 @@ if __name__ == '__main__':
                    n_buffer_samples = 3, 
                    update_dt = 0.5):
     '''
+    #%%
+    # set encoder type to 2, encoder with index
+    step.sendAndRead('N2', verbose = True)
+    
+    while True:
+        try:
+            # read the encoder postion
+            step.sendAndRead('?8', verbose = True,)
+            time.sleep(0.5)
+            print()
+        except KeyboardInterrupt:
+            break
     

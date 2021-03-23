@@ -238,13 +238,14 @@ class local_dome(QtCore.QObject):
 if __name__ == '__main__':
 
     config = utils.loadconfig(wsp_path + '/config/config.yaml')
-    """
+    
+    dome = local_dome(wsp_path, config)
+
     while True:
         try:
-            dome = local_dome(wsp_path, config)
             dome.print_state()
             time.sleep(.5)
-            dome.Home()
+            #dome.Home()
             time.sleep(0.5)
         except KeyboardInterrupt:
             break
@@ -258,4 +259,4 @@ if __name__ == '__main__':
                               'Weather_Status' : 'READY'})
     
     dome.parse_state()
-    
+    """

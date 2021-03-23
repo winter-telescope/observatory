@@ -896,6 +896,23 @@ class Wintercmd(object):
         sigcmd = signalCmd('WriteRegister', register = regname, value = val)
         self.chiller.newCommand.emit(sigcmd)
     
+    @cmd
+    def chiller_stop(self):
+        """
+        created: NPL 3-22-21
+        """
+        self.defineCmdParser('stop the chiller')
+        sigcmd = signalCmd('TurnOff')
+        self.chiller.newCommand.emit(sigcmd)
+        
+    @cmd
+    def chiller_start(self):
+        """
+        created: NPL 3-22-21
+        """
+        self.defineCmdParser('start the chiller')
+        sigcmd = signalCmd('TurnOn')
+        self.chiller.newCommand.emit(sigcmd)
     
     # General Shut Down
     @cmd
