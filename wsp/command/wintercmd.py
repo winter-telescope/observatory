@@ -114,7 +114,7 @@ class signalCmd(object):
 class Wintercmd(object):
 
 
-    def __init__(self, config, state, daemonlist, telescope, dome, logger):
+    def __init__(self, config, state, daemonlist, telescope, dome, chiller, logger):
         # init the parent class
         super().__init__()
 
@@ -127,6 +127,7 @@ class Wintercmd(object):
         self.daemonlist = daemonlist
         self.telescope = telescope
         self.dome = dome
+        self.chiller = chiller
         
         self.config = config
         self.logger = logger
@@ -861,6 +862,57 @@ class Wintercmd(object):
         sigcmd = signalCmd('GoTo', az)
         self.dome.newCommand.emit(sigcmd)
     
+    @cmd
+    def chiller_set_setpoint(self):
+        """
+        created: NPL 3-22-21
+        """
+        self.defineCmdParser('set the chiller setpoint')
+        self.cmdparser.add_argument('temperature',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<setpoint_celsius>')
+        
+        self.getargs()
+        temp = np.float(self.args.temperature[0]) # remember the args come in as strings!!
+        sigcmd = signalCmd('setSetpoint', temp)
+        self.chiller.newCommand.emit(sigcmd)
+    
+    @cmd
+    def chiller_write_register(self):
+        """
+        created: NPL 3-32-21
+        allows you to send any value to a register on the approved write list from
+        the chiller config
+        """
+        self.defineCmdParser('write value to register')
+        self.cmdparser.add_argument('request',
+                                    nargs = 2,
+                                    action = None,
+                                    help = "<regname> <value>")
+        self.getargs()
+        regname = self.args.request[0]
+        val = np.float(self.args.request[1])
+        sigcmd = signalCmd('WriteRegister', register = regname, value = val)
+        self.chiller.newCommand.emit(sigcmd)
+    
+    @cmd
+    def chiller_stop(self):
+        """
+        created: NPL 3-22-21
+        """
+        self.defineCmdParser('stop the chiller')
+        sigcmd = signalCmd('TurnOff')
+        self.chiller.newCommand.emit(sigcmd)
+        
+    @cmd
+    def chiller_start(self):
+        """
+        created: NPL 3-22-21
+        """
+        self.defineCmdParser('start the chiller')
+        sigcmd = signalCmd('TurnOn')
+        self.chiller.newCommand.emit(sigcmd)
     
     # General Shut Down
     @cmd

@@ -38,6 +38,7 @@ import socket
 from datetime import datetime
 import threading
 import logging
+import json
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -214,7 +215,7 @@ class StatusMonitor(QtCore.QObject):
                              'status?', 
                              end_char = '}',
                              timeout = 2)
-                
+                #print(f'dome state = {json.dumps(dome_state, indent = 2)}')
                 self.updateDomeState(dome_state)
             
             except:

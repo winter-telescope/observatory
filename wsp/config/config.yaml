@@ -58,17 +58,6 @@ log_link_directory: 'data'
 log_link_name: 'winter.log'
 
 
-# define housekeeping catagories to load in each mode
-mode:
-    instrument:
-        -instrument
-    telescope:
-        -telescope
-    observatory:
-        -weather
-        -telescope
-        -site
-
 # define telescope home position
 telescope_home:
     alt_degs: 16.0
@@ -1208,7 +1197,37 @@ fields:
         dtype: float64
         rate: slow
         var: labjacks.labjacks['lj0'].state['FIO3']
-
+    
+    # CHILLER STUFF
+    chiller_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['UserSetpoint']
+    chiller_setpoint_last_update_dt:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['last_poll_dt']['UserSetpoint']
+    chiller_temperature:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['SystemDisplayValueStatus']
+    chiller_is_running:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['UserRemoteStartStop']
+        
 derived_fields:
     # note the base directory for the LUT is the wsp directory
     T_LJ0:

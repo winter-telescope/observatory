@@ -210,9 +210,9 @@ class EZstepper(object):
         
         location:
             0: in between defined locations
-            1: leftmost position. opto1 = 0, opto2 = 1
+            3 leftmost position. opto1 = 0, opto2 = 1
             2: center position, opto1 = 0, opto2 = 0
-            3: rightmost position, opto1 = 1, opto2 = 0
+            1: rightmost position, opto1 = 1, opto2 = 0
         '''
         for i in range(5):
             try:
@@ -354,15 +354,15 @@ class EZstepper(object):
                     time.sleep(0.5)
                     pass
     
-    def move_until_switch_state(self, max_move = 10,
+    def move_until_switch_state(self, max_move = 2,
                                 direction = 'ccw',
                                 move_units = 'turns',
                                 opto1 = None, 
                                 opto2 = None, 
                                 switch1 = None, 
                                 switch2 = None,
-                                n_buffer_samples = 3,
-                                update_dt = 0.5,
+                                n_buffer_samples = 1,
+                                update_dt = 0.1,
                                 verbose = False):
         
         '''
@@ -480,25 +480,25 @@ class EZstepper(object):
         '''
         # This sends the tray to HOME position.
         
-        State as of 3-11-21
-        At the moment this is the Left limit switch
+        State as of 3-19-21
+        At the moment this is the right limit switch
         
-        The whole track is 1.45 turns end to end
+        The whole track is 1.75? turns end to end
         
         here is the prescription:
-            no matter where we are, sending the tray 1.5 turns to the left
+            no matter where we are, sending the tray 1.5 turns to the right
             will hit the hard limit.
             
             going through the detent R-> L requires Imax >~ 65%
             
-            at the left limit: opto1 = 0, opto2 = 1
+            at the right limit: opto1 = 1, opto2 = 0
             
         '''
         # Home switch states
-        home_state = dict({'opto1' : 0, 'opto2' : 1})
+        home_state = dict({'opto1' : 1, 'opto2' : 0})
         
         # Set the move current
-        move_current = 65
+        move_current = 95
         self.setMoveCurrent(move_current)
         
         # set the hold current
@@ -512,13 +512,13 @@ class EZstepper(object):
         
         if force == True:
             # force the tray to move to the left limit
-            self.move_N_turns(1.5, direction = 'cw', monitor = False)
+            self.move_N_turns(1.5, direction = 'ccw', monitor = False)
         
         else:
             # move until the sensors are at the config for the left limit
             # note : using dict.get(key, None) means that if there's nothing specified in home state it defaults to None
             self.move_until_switch_state(max_move = 1.5,
-                                         direction = 'cw',
+                                         direction = 'ccw',
                                          move_units = 'turns',
                                          opto1 = home_state.get('opto1', None),
                                          opto2 = home_state.get('opto2', None),
@@ -540,7 +540,7 @@ class EZstepper(object):
     def doHome(self,
                move_speed = 0.25,
                speed_units = 'rps',
-               move_current = 80,
+               move_current = 95,
                hold_current = 0,
                track_length_turns = 1.5):
         '''
@@ -584,9 +584,9 @@ class EZstepper(object):
     def goLocation(self, loc, 
                    move_speed = 0.25,
                    speed_units = 'rps',
-                   move_current = 65,
+                   move_current = 95,
                    hold_current = 0,
-                   verbose = False, n_buffer_samples = 3, update_dt = 0.5):
+                   verbose = False, n_buffer_samples = 1, update_dt = 0.02):
         '''
         Go to the specified location. 
         This uses the memory of where we were, and the current location to 
@@ -623,9 +623,9 @@ class EZstepper(object):
         
         else:
             if loc > last_loc:
-                direction = 'ccw'
-            elif loc < last_loc:
                 direction = 'cw'
+            elif loc < last_loc:
+                direction = 'ccw'
             else:
                 print('we are at specified location')
                 return
@@ -650,7 +650,7 @@ class EZstepper(object):
         self.setSpeed(vel = move_speed, units =speed_units)#'rps')
         
         # now do the move
-        N = 1.5 # should adjust this. this is at the moment enough to go end to end
+        N = 1.75 # should adjust this. this is at the moment enough to go end to end
         # start the move
         stop_condition = False
         
@@ -808,4 +808,16 @@ if __name__ == '__main__':
                    n_buffer_samples = 3, 
                    update_dt = 0.5):
     '''
+    #%%
+    # set encoder type to 2, encoder with index
+    step.sendAndRead('N2', verbose = True)
+    
+    while True:
+        try:
+            # read the encoder postion
+            step.sendAndRead('?8', verbose = True,)
+            time.sleep(0.5)
+            print()
+        except KeyboardInterrupt:
+            break
     

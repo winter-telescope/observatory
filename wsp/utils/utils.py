@@ -242,7 +242,8 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
                 break
             total_data.append(data)
     except socket.timeout as e:
-        print(f'server query: {e}')
+        #print(f'server query: {e}')
+        pass
         
         """
         if len(total_data)>1:
@@ -261,7 +262,9 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
         for char in badchars:
             reply = reply.replace(char,'')
     try:
-        d = json.loads(reply)
+        #NPL 3-23-21 switched to yaml which handles bad keys better (ie, keys/values missing quotes)
+        #d = json.loads(reply)
+        d = yaml.load(reply, Loader = yaml.FullLoader)
     except Exception as e:
         #print(f'could not turn reply into json, {type(e)}: {e}')
         d = reply
