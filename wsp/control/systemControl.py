@@ -146,7 +146,7 @@ class control(QtCore.QObject):
         # init the weather by creating a local object that interfaces with the remote object from the weather daemon
         
         #self.weather = local_weather.Weather(self.base_directory, config = self.config, logger = self.logger)
-        self.weather = 'fart'
+        self.weather = 'placeholder'
         
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
@@ -255,43 +255,10 @@ class control(QtCore.QObject):
 
 
 
-        ### START UP THE OBSERVATION SEQUENCE ###
-        """
-        # Startup the Telescope
-        try:
-            print("control: trying to init telescope")
-            self.telescope_connect()
-            self.telescope_axes_enable()
-            #self.telescope_home()
-            random_alt = np.random.randint(16,89)
-            random_az = np.random.randint(1,359)
-            self.telescope_mount.mount_goto_alt_az(random_alt, random_az)
-        except Exception as e:
-            self.telescope_mount = None
-            print("control: could not connect to telescope mount: ")
-
-        """
+       
 
 
 
 
 
 
-    """
-    # commands that are useful
-    def telescope_startup(self):
-        telescope.telescope_startup(self.telescope_mount)
-    def telescope_home(self):
-        telescope.home(self.telescope_mount)
-    def telescope_axes_enable(self):
-        telescope.axes_enable(self.telescope_mount)
-    def telescope_connect(self):
-        telescope.connect(self.telescope_mount)
-    def telescope_disconnect(self):
-        telescope.disconnect(self.telescope_mount)
-    def telescope_axes_disable(self):
-        telescope.axes_disable(self.telescope_mount)
-    def telescope_shutdown(self):
-        telescope.shutdown(self.telescope_mount)
-
-    """

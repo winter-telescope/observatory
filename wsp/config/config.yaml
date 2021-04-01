@@ -96,9 +96,9 @@ Dome_Status_Dict:
         'STOPPED': 1
         'STOWED': 2
         'GO_TO': 3
-        'UNKNOWN': -10
-        'FAULT': -20
-        'HOMING' : -30
+        'UNKNOWN': -1
+        'FAULT': -2
+        'HOMING' : 4
     Home_Status:
         'READY': 1
         'NOT_READY' : 0
@@ -109,7 +109,7 @@ Dome_Status_Dict:
         'CLOSED': -1
         'CLOSING': -5
         'STOPPED': 0
-        'FAULT': -20
+        'FAULT': -10
 
     Control_Status:
         'AVAILABLE': 0

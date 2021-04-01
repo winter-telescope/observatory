@@ -285,7 +285,11 @@ class CommandHandler(QtCore.QObject):
         #self.sock.settimeout(self.connection_timeout)
         
         # give it a long timeout so it can wait for slow replies
-        self.sock.settimeout(10000)
+        # palomar uses 100 s fora shutter open/close
+        # a 360 deg homing cycle takes 360deg/(2.5 deg/s) = 144 s
+        # so let's use 150 seconds just to be safe
+        #TODO: make the timeout update dynamically based on realistic estimates of the return time!
+        self.sock.settimeout(150)
         
     def connect_socket(self):
         if self.verbose:
