@@ -560,7 +560,7 @@ class EZstepper(object):
         self.setHoldCurrent(hold_current)
         pass
         
-        # set move speed
+        # set move speedfs
         #move_speed = 0.25 #rps
         self.setSpeed(vel = move_speed, units = speed_units)#'rps')
         

@@ -82,15 +82,14 @@ command_server:
 # dictionaries to interpret the status from the weather servers
 # *NOTE*: it's best to use keys in quoatations to avoid the yaml loader converting them
 #   for example, yaml loads key = YES as a boolean True value, but "YES" as a string
-##P48
-status_dict:
-    P48_Wetness:
-        'YES': 1
-        'NO': 0
-    P48_Weather_Status:
-        'READY': 1
-        'UNKNOWN': 0
-
+#P48_Status_Dict:
+#    P48_Wetness:
+#            'YES': 1
+#            'NO': 0
+#        P48_Weather_Status:
+#            'READY': 1
+#            'UNKNOWN': 0
+Dome_Status_Dict:
     ## Palomar Command Server
     Dome_Status:
         'OFF': 0
@@ -99,9 +98,13 @@ status_dict:
         'GO_TO': 3
         'UNKNOWN': -10
         'FAULT': -20
-
+        'HOMING' : -30
+    Home_Status:
+        'READY': 1
+        'NOT_READY' : 0
+    
     Shutter_Status:
-        'OPENED': 1
+        'OPEN': 1
         'OPENING': 5
         'CLOSED': -1
         'CLOSING': -5
@@ -121,8 +124,52 @@ status_dict:
     Weather_Status:
         'READY': 1
         'NOT_READY': 0
-
-
+        
+    Sunlight_Status:
+        'READY': 1
+        'NOT_READY': 0
+        
+    Wetness_Status:
+        'READY': 1
+        'NOT_READY': 0
+        
+    Faults:
+        0x1:
+            msg: 'Dome Drive Communication Lost'
+            field : 'Fault_Dome_Drive_Comm'
+        0x2: 
+            msg: 'PLC Communication Lost'
+            field: 'Fault_PLC_Comm'
+        0x4: 
+            msg: 'Weather Communication Lost'
+            field: 'Fault_Weather_Comm'
+        0x8: 
+            msg: 'Fire Alarm'
+            field: 'Fault_Fire_Alarm'
+        0x10: 
+            msg: 'Door Open'
+            field: 'Fault_Door_Open'
+        0x20: 
+            msg: 'ESTOP'
+            field: 'Fault_ESTOP'
+        0x40: 
+            msg: 'Drive Over Temp'
+            field: 'Fault_Over_Temp'
+        0x80:
+            msg: 'Drive Internal Voltage'
+            field: 'Fault_Drive_Internal_Voltage'
+        0x100: 
+            msg: 'Drive Over Voltage'
+            field: 'Fault_Drive_Over_Voltage'
+        0x200: 
+            msg: 'Drive Over Current'
+            field: 'Fault_Drive_Over_Current'
+        0x400: 
+            msg: 'Drive Motor Open Winding'
+            field: 'Fault_Drive_Motor_Open_Winding'
+        0x800: 
+            msg: 'Drive Bad Encoder'
+            field: 'Fault_Drive_Bad_Encoder'
 
 # weather limits
 weather_limits:
@@ -825,6 +872,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'dome.state["UTC_timestamp"]'
+    dome_telescope_power:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Telescope_Power"]'
     dome_az_deg:
         ftype: raw
         label: 'Az'
@@ -839,7 +893,14 @@ fields:
         dtype: int64
         rate: slow
         var: 'dome.state["Dome_Status_Num"]'
-    dome_shutter_Status:
+    dome_home_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Home_Status_Num"]'
+    dome_shutter_status:
         ftype: raw
         label: 'status'
         units: None
@@ -867,7 +928,22 @@ fields:
         dtype: int64
         rate: slow
         var: 'dome.state["Weather_Status_Num"]'
-        
+    dome_sunlight_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Sunlight_Status_Num"]'
+    dome_wetness_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Wetness_Status_Num"]'
+    
+    
     # Weather info from dome
     Tdp_outside_threshold_pcs:
         ftype: raw
@@ -904,6 +980,20 @@ fields:
         dtype: float64
         rate: slow
         var: 'dome.state["Outside_Dewpoint"]'
+    pressure_pcs:
+        ftype: raw
+        label: 'speed'
+        units: 'mps'
+        dtype: float64
+        rate: slow
+        var: 'dome.state["Pressure"]'
+    wind_direction_pcs:
+        ftype: raw
+        label: 'direction'
+        units: 'deg'
+        dtype: float64
+        rate: slow
+        var: 'dome.state["Wind_Direction"]'
     windspeed_average_pcs:
         ftype: raw
         label: 'speed'
@@ -919,7 +1009,92 @@ fields:
         rate: slow
         var: 'dome.state["Weather_Hold_time"]'
     
-    
+    # Dome Faults
+    Dome_Fault_Dome_Drive_Comm:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Dome_Drive_Comm"]'
+    Dome_Fault_PLC_Comm:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_PLC_Comm"]'
+    Dome_Fault_Weather_Comm:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Weather_Comm"]'
+    Dome_Fault_Fire_Alarm:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Fire_Alarm"]'
+    Dome_Fault_Door_Open:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Door_Open"]'
+    Dome_Fault_ESTOP:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_ESTOP"]'
+    Dome_Fault_Over_Temp:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Over_Temp"]'
+    Dome_Fault_Drive_Internal_Voltage:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Drive_Internal_Voltage"]'
+    Dome_Fault_Drive_Over_Voltage:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Drive_Over_Voltage"]'
+    Dome_Fault_Drive_Over_Current:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Drive_Over_Current"]'
+    Dome_Fault_Drive_Motor_Open_Winding:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Drive_Motor_Open_Winding"]'
+    Dome_Fault_Drive_Bad_Encoder:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'dome.state["Fault_Drive_Bad_Encoder"]'
+        
     # Palomar telemetry server: P48
     p48_is_online:
         ftype: raw

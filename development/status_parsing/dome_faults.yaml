@@ -1,39 +1,81 @@
 #Dome Fault Conf
+Dome_Status_Dict:
+    ## Palomar Command Server
+    Dome_Status:
+        'OFF': 0
+        'STOPPED': 1
+        'STOWED': 2
+        'GO_TO': 3
+        'UNKNOWN': -10
+        'FAULT': -20
+    Home_Status:
+        'READY': 1
+        'NOT_READY' : 0
+    
+    Shutter_Status:
+        'OPENED': 1
+        'OPENING': 5
+        'CLOSED': -1
+        'CLOSING': -5
+        'STOPPED': 0
+        'FAULT': -20
 
-dome_faults:
-    0x1:
-        msg: 'Dome Drive Communication Lost'
-        field : 'Fault_Dome_Drive_Comm'
-    0x2: 
-        msg: 'PLC Communication Lost',
-        field: 'Fault_PLC_Comm'
-    0x4: 
-        msg: 'Weather Communication Lost'
-        field: 'Fault_Weather_Comm'
-    0x8: 
-        msg: 'Fire Alarm',
-        field: 'Fault_Fire_Alarm'
-    0x10: 
-        msg: 'Door Open'
-        field: 'Fault_Door_Open'
-    0x20: 
-        msg: 'ESTOP'
-        field: 'Fault_ESTOP'
-    0x40: 
-        msg: 'Drive Over Temp'
-        field: 'Fault_Over_Temp'
-    0x80:
-        msg: 'Drive Internal Voltage'
-        field: 'Fault_Drive_Internal_Voltage'
-    0x100: 
-        msg: 'Drive Over Voltage'
-        field: 'Fault_Drive_Over_Voltage'
-    0x200: 
-        msg: 'Drive Over Current'
-        field: 'Fault_Drive_Over_Current'
-    0x400: 
-        msg: 'Drive Motor Open Winding'
-        field: 'Fault_Drive_Motor_Open_Winding'
-    0x800: 
-        msg: 'Drive Bad Encoder'
-        field: 'Fault_Drive_Bad_Encoder'
+    Control_Status:
+        'AVAILABLE': 0
+        'REMOTE': 1
+        'CONSOLE': 2
+        'MANUAL': 3
+
+    Close_Status:
+        'READY': 1
+        'NOT_READY': 0
+
+    Weather_Status:
+        'READY': 1
+        'NOT_READY': 0
+        
+    Sunlight_Status:
+        'READY': 1
+        'NOT_READY': 0
+        
+    Wetness:
+        'READY': 1
+        'NOT_READY': 0
+        
+    Faults:
+        0x1:
+            msg: 'Dome Drive Communication Lost'
+            field : 'Fault_Dome_Drive_Comm'
+        0x2: 
+            msg: 'PLC Communication Lost'
+            field: 'Fault_PLC_Comm'
+        0x4: 
+            msg: 'Weather Communication Lost'
+            field: 'Fault_Weather_Comm'
+        0x8: 
+            msg: 'Fire Alarm'
+            field: 'Fault_Fire_Alarm'
+        0x10: 
+            msg: 'Door Open'
+            field: 'Fault_Door_Open'
+        0x20: 
+            msg: 'ESTOP'
+            field: 'Fault_ESTOP'
+        0x40: 
+            msg: 'Drive Over Temp'
+            field: 'Fault_Over_Temp'
+        0x80:
+            msg: 'Drive Internal Voltage'
+            field: 'Fault_Drive_Internal_Voltage'
+        0x100: 
+            msg: 'Drive Over Voltage'
+            field: 'Fault_Drive_Over_Voltage'
+        0x200: 
+            msg: 'Drive Over Current'
+            field: 'Fault_Drive_Over_Current'
+        0x400: 
+            msg: 'Drive Motor Open Winding'
+            field: 'Fault_Drive_Motor_Open_Winding'
+        0x800: 
+            msg: 'Drive Bad Encoder'
+            field: 'Fault_Drive_Bad_Encoder'

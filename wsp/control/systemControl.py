@@ -110,7 +110,7 @@ class control(QtCore.QObject):
             
             ###### DAEMONS #####
             # Dome Daemon
-            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py")
+            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.domed)
         
         

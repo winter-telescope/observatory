@@ -112,60 +112,60 @@ class local_dome(QtCore.QObject):
         timestamp = utc_datetime_obj.timestamp()
         self.state.update({'UTC_timestamp' : timestamp})
         
+        self.state.update({'Telescope_Power'                :   self.remote_state.get('Telescope_Power',                  self.default)})
         self.state.update({'Dome_Azimuth'                   :   self.remote_state.get('Dome_Azimuth',                     self.default)})
         
         Dome_Status = self.remote_state.get('Dome_Status', 'FAULT')               # status of observatory dome
-        self.state.update({'Dome_Status_Num'                :   self.config['status_dict']['Dome_Status'].get(Dome_Status,       self.default) })
+        self.state.update({'Dome_Status_Num'                :   self.config['Dome_Status_Dict']['Dome_Status'].get(Dome_Status,       self.default) })
+        
+        Home_Status = self.remote_state.get('Home_Status', 'NOT_READY')               # status of whether dome needs to be homed
+        self.state.update({'Home_Status_Num'                :   self.config['Dome_Status_Dict']['Home_Status'].get(Home_Status,       self.default) })
         
         Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
-        self.state.update({'Shutter_Status_Num'             :   self.config['status_dict']['Shutter_Status'].get(Shutter_Status, self.default) })
+        self.state.update({'Shutter_Status_Num'             :   self.config['Dome_Status_Dict']['Shutter_Status'].get(Shutter_Status, self.default) })
         
         Control_Status = self.remote_state.get('Control_Status','FAULT')
-        self.state.update({'Control_Status_Num'             :   self.config['status_dict']['Control_Status'].get(Control_Status, self.default) })
+        self.state.update({'Control_Status_Num'             :   self.config['Dome_Status_Dict']['Control_Status'].get(Control_Status, self.default) })
         
         Close_Status = self.remote_state.get('Close_Status','FAULT')
-        self.state.update({'Close_Status_Num'               :   self.config['status_dict']['Close_Status'].get(Close_Status,     self.default) })
+        self.state.update({'Close_Status_Num'               :   self.config['Dome_Status_Dict']['Close_Status'].get(Close_Status,     self.default) })
         
         Weather_Status = self.remote_state.get('Weather_Status','FAULT')
-        self.state.update({'Weather_Status_Num'             :   self.config['status_dict']['Weather_Status'].get(Weather_Status, self.default) })
+        self.state.update({'Weather_Status_Num'             :   self.config['Dome_Status_Dict']['Weather_Status'].get(Weather_Status, self.default) })
 
+        Sunlight_Status = self.remote_state.get('Sunlight_Status','NOT_READY')
+        self.state.update({'Sunlight_Status_Num'             :   self.config['Dome_Status_Dict']['Sunlight_Status'].get(Sunlight_Status, self.default) })
+        
+        Wetness_Status = self.remote_state.get('Wetness','NOT_READY')
+        self.state.update({'Wetness_Status_Num'             :   self.config['Dome_Status_Dict']['Wetness_Status'].get(Wetness_Status, self.default) })
+        
         self.state.update({'Outside_Dewpoint_Threshold'     :   self.remote_state.get('Outside_Dewpoint_Threshold',     self.default)})
         self.state.update({'Average_Wind_Speed_Threshold'   :   self.remote_state.get('Average_Wind_Speed_Threshold',   self.default)})
         self.state.update({'Outside_Temp'                   :   self.remote_state.get('Outside_Temp',                   self.default)})
         self.state.update({'Outside_RH'                     :   self.remote_state.get('Outside_RH',                     self.default)})
         self.state.update({'Outside_Dewpoint'               :   self.remote_state.get('Outside_Dewpoint',               self.default)})
-        self.state.update({'Average_Wind_Speed'             :   self.remote_state.get('Average_Wind_Speed',               self.default)})
+        self.state.update({'Pressure'                       :   self.remote_state.get('Pressure',                       self.default)})
+        self.state.update({'Wind_Direction'                 :   self.remote_state.get('Wind_Direction',                 self.default)})
+        self.state.update({'Average_Wind_Speed'             :   self.remote_state.get('Average_Wind_Speed',             self.default)})
         self.state.update({'Weather_Hold_time'              :   self.remote_state.get('Weather_Hold_time',              self.default)})
         
+        # Handle the fault code. This uses the Dome_Status_Dict from the config file
+        Faults = self.remote_state.get('Faults', 0)
+        for fault_code in self.config['Dome_Status_Dict']['Faults']:
+            if Faults & fault_code:
+                
+                # print the message (ie log it)
+                #print(self.config['Dome_Status_Dict']['Faults'][fault_code]['msg'])
+                    
+                # assign the variable to true
+                self.state.update({self.config['Dome_Status_Dict']['Faults'][fault_code]['field'] : 1})
+            else:
+                # assign the variable to false
+                self.state.update({self.config['Dome_Status_Dict']['Faults'][fault_code]['field'] : 0})
         
         
         
-        """
-        self.PCS_UTC                        = self.status_PCS.get('UTC', '1970-01-01 00:00:00.00') # last query timestamp
-        self.PCS_UTC_datetime_obj           = datetime.strptime(self.PCS_UTC, '%Y-%m-%d %H:%M:%S.%f')        # last query time string
-        self.PCS_UTC_timestamp              = self.PCS_UTC_datetime_obj.timestamp()                          # last read timestamp
-        self.PCS_Dome_Azimuth               = self.status_PCS.get('Dome_Azimuth', default)                                # azimuth of observatory dome
-        self.PCS_Dome_Status                = self.status_PCS.get('Dome_Status', 'FAULT')               # status of observatory dome
-        self.PCS_Dome_Status_Num            = self.config['status_dict']['Dome_Status'].get(self.PCS_Dome_Status, default)
-        self.PCS_Shutter_Status             = self.status_PCS.get('Shutter_Status','FAULT')
-        self.PCS_Shutter_Status_Num         = self.config['status_dict']['Shutter_Status'].get(self.PCS_Shutter_Status, default)
-        
-        self.PCS_Control_Status             = self.status_PCS.get('Control_Status','FAULT')
-        self.PCS_Control_Status_Num         = self.config['status_dict']['Control_Status'].get(self.PCS_Control_Status, default)
-        
-        self.PCS_Close_Status               = self.status_PCS.get('Close_Status','FAULT')
-        self.PCS_Close_Status_Num           = self.config['status_dict']['Close_Status'].get(self.PCS_Close_Status, default)
-        
-        self.PCS_Weather_Status             = self.status_PCS.get('Weather_Status','FAULT')
-        self.PCS_Weather_Status_Num         = self.config['status_dict']['Weather_Status'].get(self.PCS_Weather_Status, default)
-        
-        self.PCS_Outside_Dewpoint_Threshold = self.status_PCS.get('Outside_Dewpoint_Threshold',default)
-        self.PCS_Outside_Temp               = self.status_PCS.get('Outside_Temp', default)
-        self.PCS_Outside_RH                 = self.status_PCS.get('Outside_RH', default)
-        self.PCS_Outside_Dewpoint           = self.status_PCS.get('Outside_Dewpoint', default)
-        self.PCS_Weather_Hold_time          = self.status_PCS.get('Weather_Hold_time', default)
-    
-        """
+
     
     def doCommand(self, cmd_obj):
         """
@@ -186,19 +186,21 @@ class local_dome(QtCore.QObject):
             pass
     
     def Home(self):
-        #print(f'dome: tryin to Home dome')
+        #print(f'dome: trying to HOME dome')
         try:
             self.remote_object.Home()
         except:
             pass
     
     def Close(self):
+        #print(f'dome: trying to CLOSE dome')
         try:
             self.remote_object.Close()
         except:
             pass
     
     def Open(self):
+        #print(f'dome: trying to OPEN dome')
         try:
             self.remote_object.Open()
         except:
@@ -211,12 +213,15 @@ class local_dome(QtCore.QObject):
             pass
     
     def TakeControl(self):
+        #print(f'dome: trying to TAKE control')
         try:
             self.remote_object.TakeControl()
         except:
             pass
     
     def GiveControl(self):
+        #print(f'dome: trying to GIVE control')
+
         try:
             self.remote_object.GiveControl()
         except:

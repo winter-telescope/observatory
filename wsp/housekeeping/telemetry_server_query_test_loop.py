@@ -127,18 +127,19 @@ try:
                      #badchars = '\\"')
     # convert the string to dict using json loads
     #d = d.replace('\\','')
-    print(d)
+    #print(d)
     
-    #print(json.dumps(d,indent = 4))
+    print(json.dumps(d,indent = 4))
     
     
     # try to grab a single element
+    """
     print('Grabbing element from dict:')
     elements = ['Shutter_Status']
     for element in elements:
         
         print(f'{element} = {d[element]}')
-    
+    """
     
 except Exception as e:
     print(f'could not query command server, error: {e}')

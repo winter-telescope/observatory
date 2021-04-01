@@ -282,7 +282,10 @@ class CommandHandler(QtCore.QObject):
         if self.verbose:
             self.log('(Thread {threading.get_ident()}) CommandHandler: Creating socket')
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        self.sock.settimeout(self.connection_timeout)
+        #self.sock.settimeout(self.connection_timeout)
+        
+        # give it a long timeout so it can wait for slow replies
+        self.sock.settimeout(10000)
         
     def connect_socket(self):
         if self.verbose:
@@ -335,8 +338,9 @@ class CommandHandler(QtCore.QObject):
             try:
                 reply = utils.query_socket(self.sock,
                              cmd, 
-                             end_char = '\n',
-                             timeout = self.connection_timeout)
+                             end_char = '\n')
+                             #timeout = self.connection_timeout)
+                             #timeout = 10000)
                 
                 self.log(f'CommandHandler: Sent command {cmd} to dome. Received reply: {reply}')
                 self.newReply.emit(reply)
