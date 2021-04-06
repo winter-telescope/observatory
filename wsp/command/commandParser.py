@@ -142,7 +142,7 @@ class cmd_request(object):
                 print(f'invalid command request {cmd} (priority {priority} from user at [{request_addr} : {request_port}]')
                 #TODO log it
             except:
-                print('invalud command request!')
+                print('invalid command request!')
                 #TODO log it
 
 class cmd_prompt(QtCore.QThread):
@@ -222,18 +222,35 @@ class cmd_executor(QtCore.QThread):
         # start the thread
         self.start()
 
+   
+    
+   
 
 
-    def add_to_queue(self,cmd_request):
-        self.logger.debug(f"adding cmd to queue: {cmd_request.cmd}, from user at {cmd_request.request_addr}|{cmd_request.request_port}")
+    def add_cmd_request_to_queue(self,cmdrequest):
+        # adds a command request object directly to the queue
+        
+        self.logger.debug(f"adding cmd to queue: {cmdrequest.cmd}, from user at {cmdrequest.request_addr}|{cmdrequest.request_port}")
         #self.queue.put((1,cmd))
-        self.queue.put((cmd_request.priority_num, cmd_request.cmd))
-
-    def execute(self,cmd):
-        """
-        Execute the command in a worker thread
-        """
-        self.logger.debug(f'executing command {cmd}')
+        self.queue.put((cmdrequest.priority_num, cmdrequest.cmd))
+        
+    def add_cmd_to_queue(self, cmd, request_addr = 'localhost', request_port = 'control', priority = 'medium'):
+        # adds a command to the queue by creating a command object.
+        # cmd is either the actual string, eg 'dome_close', or a list of command strings (eg a routine)
+        cmdrequest = cmd_request(cmd = cmd,
+                              request_addr = request_addr,
+                              request_port = request_port,
+                              priority = priority)
+        
+        if (type(cmd) is list) or (type(cmd) is np.ndarray):
+            # the cmd is a list
+            self.logger.info(f"adding cmd list from user at {cmdrequest.request_addr}|{cmdrequest.request_port}")
+        else:
+            self.logger.info(f"adding cmd to queue: {cmdrequest.cmd}, from user at {cmdrequest.request_addr}|{cmdrequest.request_port}")
+        
+        self.queue.put((cmdrequest.priority_num, cmdrequest.cmd))
+    
+    def dispatch_single_command(self, cmd):
         try:
             worker = Worker(self.wintercmd.parse,cmd)
             #self.wintercmd.onecmd(cmd)
@@ -243,6 +260,31 @@ class cmd_executor(QtCore.QThread):
             self.threadpool.start(worker)
         except Exception as e:
             print(f'could not execute {cmd}: {e}')
+    
+    
+    
+    def dispatch_command_list(self, cmd):
+        # if cmd is a list of commands, then we do them one at a time in a single worker thread
+        try:
+            worker = Worker(self.wintercmd.parse_list,cmd)
+            
+            self.threadpool.start(worker)
+        except Exception as e:
+            print(f'could not execute {cmd}: {e}')
+            
+    
+    def execute(self,cmd):
+        """
+        Execute the command in a worker thread
+        """
+        self.logger.debug(f'executing command {cmd}')
+        
+        if (type(cmd) is list) or (type(cmd) is np.ndarray):
+            # the cmd is a list. execute the list sequentially in a single worker thread
+            self.dispatch_command_list(self, cmd)
+        else:
+            # the cmd is a singleton. exceture it in its own worker thread
+            self.dispatch_single_command(cmd)
 
     def stop(self):
         self.running = False

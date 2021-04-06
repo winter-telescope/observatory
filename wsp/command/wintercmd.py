@@ -153,7 +153,7 @@ class Wintercmd(object):
         #print(f'cmdarg = {cmdarg}')
         self.arglist = self.argv[1:]
         #self.command = cmdarg.command
-        self.logger.debug(f'command = {self.command}')
+        #self.logger.debug(f'command = {self.command}')
 
         if not hasattr(self, self.command):
             if self.command == '':
@@ -171,7 +171,17 @@ class Wintercmd(object):
             except Exception as e:
                 self.logger.warning(f'Could not execute command {self.command}')
                 self.logger.debug(e)
-
+    
+    def parse_list(self, cmdlist):
+        # assumes each item in the list is a well-formed wintercmd
+        try:
+            for cmd in cmdlist:
+                self.parse(cmd)
+        
+        except Exception as e:
+            self.logger.warning(f'Could not execute command list. Died at {cmd}, Error: {e}')
+        
+    
     def getargs(self):
         '''
         this just runs the cmdparser and returns the arguments'
@@ -326,24 +336,24 @@ class Wintercmd(object):
 
         self.defineCmdParser('shut down the mount safely')
         self.mount_home()
-        time.sleep(self.config['cmd_status_dt'])
+        #time.sleep(self.config['cmd_status_dt'])
         self.mount_az_off()
-        time.sleep(self.config['cmd_status_dt'])
+        #time.sleep(self.config['cmd_status_dt'])
         self.mount_alt_off()
-        time.sleep(self.config['cmd_status_dt'])
+        #time.sleep(self.config['cmd_status_dt'])
         self.mount_disconnect()
-        time.sleep(self.config['cmd_status_dt'])
+        #time.sleep(self.config['cmd_status_dt'])
 
 
     @cmd
     def mount_startup(self):
         self.defineCmdParser('connect and home the mount')
         self.mount_connect()
-        time.sleep(self.config['cmd_status_dt'])
+        #time.sleep(self.config['cmd_status_dt'])
         self.mount_az_on()
-        time.sleep(self.config['cmd_status_dt'])
+        #time.sleep(self.config['cmd_status_dt'])
         self.mount_alt_on()
-        time.sleep(self.config['cmd_status_dt'])
+        #time.sleep(self.config['cmd_status_dt'])
         self.mount_home()
 
     @cmd

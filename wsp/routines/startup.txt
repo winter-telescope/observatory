@@ -1,0 +1,9 @@
+# startup routine
+
+# startup telescope
+mount_connect
+mount_az_on
+mount_alt_on
+mount_home
+
+mount_goto_alt_az 35.5 35.9

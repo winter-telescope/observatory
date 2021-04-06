@@ -1,0 +1,28 @@
+# Alert config.yaml
+
+# Convert phone numbers to email addresses
+# Source: https://resources.voyant.com/en/articles/3107728-sending-emails-to-sms-or-mms
+carrier_emails:
+    verizon:
+        domain: 'vzwpix.com'
+    att:
+        domain: 'mms.att.net'
+    tmobile:
+        domain: 'tmomail.net'
+    sprint:
+        domain: 'pm.sprint.com'
+    metropcs:
+        domain: 'mymetropcs.com'
+    cricket:
+        domain: 'mms.cricketwireless.net'
+    google:
+        domain: 'msg.fi.google.com'
+        
+alert_levels:
+    info:
+        prefix: 'Notice: '
+    warning:
+        prefix: 'Warning: '
+    danger:
+        prefix: 'DANGER: '
+    

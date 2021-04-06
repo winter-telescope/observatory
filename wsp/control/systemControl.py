@@ -190,20 +190,25 @@ class control(QtCore.QObject):
         self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)        
         
         # connect the new command signal to the command executor
-        self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
+        self.cmdprompt.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
         
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
-            self.scheduleExec.newcmd.connect(self.cmdexecutor.add_to_queue)
+            self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
         
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
-        self.commandServer.newcmd.connect(self.cmdexecutor.add_to_queue)
+        self.commandServer.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
         
         ##### START SCHEDULE EXECUTOR #####
         if mode in ['r','m']:
             self.scheduleExec.start()
+            
+            # Now execute a list of commands
+            cmdlist = ['mount_connect', 'mount_az_on', 'mount_alt_on', 'mount_home']
+            self.logger.info(f'control: trying to add a list of commands to the cmd executor')
+            self.cmdexecutor.add_command_to_queue(cmdlist)
 
 
 
