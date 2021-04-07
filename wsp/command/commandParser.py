@@ -234,7 +234,7 @@ class cmd_executor(QtCore.QThread):
         #self.queue.put((1,cmd))
         self.queue.put((cmdrequest.priority_num, cmdrequest.cmd))
         
-    def add_cmd_to_queue(self, cmd, request_addr = 'localhost', request_port = 'control', priority = 'medium'):
+    def add_cmd_to_queue(self, cmd, request_addr = 'localhost', request_port = 'robo', priority = 'medium'):
         # adds a command to the queue by creating a command object.
         # cmd is either the actual string, eg 'dome_close', or a list of command strings (eg a routine)
         cmdrequest = cmd_request(cmd = cmd,
@@ -281,7 +281,7 @@ class cmd_executor(QtCore.QThread):
         
         if (type(cmd) is list) or (type(cmd) is np.ndarray):
             # the cmd is a list. execute the list sequentially in a single worker thread
-            self.dispatch_command_list(self, cmd)
+            self.dispatch_command_list(cmd)
         else:
             # the cmd is a singleton. exceture it in its own worker thread
             self.dispatch_single_command(cmd)

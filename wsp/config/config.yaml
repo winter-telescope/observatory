@@ -32,7 +32,8 @@ telescope:
 
 # commanding (seconds)
 cmd_timeout: 10.0
-cmd_status_dt: 0.25
+cmd_status_dt: 0.25 # time between checks to see if status is verified
+cmd_satisfied_N_samples: 3 # number of samples to make sure that status is verified
 
 ########### HOUSEKEEPING ##########
 

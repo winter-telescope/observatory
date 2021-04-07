@@ -54,7 +54,10 @@ from chiller import chiller
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
 class control(QtCore.QObject):
-
+    
+    newcmd = QtCore.pyqtSignal(object)
+    newcmdRequest = QtCore.pyqtSignal(object)
+    
     ## Initialize Class ##
     def __init__(self,mode,config,base_directory, logger, parent = None):
         super(control, self).__init__(parent)
@@ -191,6 +194,11 @@ class control(QtCore.QObject):
         
         # connect the new command signal to the command executor
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
+        # signal for if main wants to execute a raw cmd (same format as terminal). 
+        self.newcmd.connect(self.cmdexecutor.add_cmd_to_queue)
+        # signal for if main wants to execute a command request
+        self.newcmdRequest.connect(self.cmdexecutor.add_cmd_request_to_queue)
+        
         
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
@@ -206,9 +214,9 @@ class control(QtCore.QObject):
             self.scheduleExec.start()
             
             # Now execute a list of commands
-            cmdlist = ['mount_connect', 'mount_az_on', 'mount_alt_on', 'mount_home']
+            cmdlist = ['mount_connect', 'mount_az_on', 'mount_alt_on', 'mount_home','mount_goto_alt_az 35 38.5']
             self.logger.info(f'control: trying to add a list of commands to the cmd executor')
-            self.cmdexecutor.add_command_to_queue(cmdlist)
+            self.newcmd.emit(cmdlist)
 
 
 

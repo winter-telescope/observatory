@@ -276,6 +276,8 @@ class Wintercmd(object):
     def mount_connect(self):
         self.defineCmdParser('connect to telescope mount')
         self.telescope.mount_connect()
+        
+        time.sleep(self.config.get('cmd_waittime', 1.0))
         while not self.state['mount_is_connected']:
             time.sleep(self.config['cmd_status_dt'])
 
@@ -283,6 +285,8 @@ class Wintercmd(object):
     def mount_disconnect(self):
         self.defineCmdParser('disconnect from telescope mount')
         self.telescope.mount_disconnect()
+        
+        time.sleep(self.config.get('cmd_waittime', 1.0))
         while self.state['mount_is_connected']:
             time.sleep(self.config['cmd_status_dt'])
 
@@ -290,6 +294,8 @@ class Wintercmd(object):
     def mount_az_on(self):
         self.defineCmdParser('turn on az motor')
         self.telescope.mount_enable(0)
+        
+        time.sleep(self.config.get('cmd_waittime', 1.0))
         while not self.state['mount_az_is_enabled']:
             time.sleep(self.config['cmd_status_dt'])
 
@@ -297,6 +303,8 @@ class Wintercmd(object):
     def mount_az_off(self):
         self.defineCmdParser('turn off az motor')
         self.telescope.mount_disable(0)
+        
+        time.sleep(self.config.get('cmd_waittime', 1.0))
         while self.state['mount_az_is_enabled']:
             time.sleep(self.config['cmd_status_dt'])
 
@@ -304,6 +312,7 @@ class Wintercmd(object):
     def mount_alt_on(self):
         self.defineCmdParser('turn on alt motor')
         self.telescope.mount_enable(1)
+        time.sleep(self.config.get('cmd_waittime', 1.0))
         while not self.state['mount_az_is_enabled']:
             time.sleep(self.config['cmd_status_dt'])
         
@@ -312,6 +321,7 @@ class Wintercmd(object):
     def mount_alt_off(self):
         self.defineCmdParser('turn off alt motor')
         self.telescope.mount_disable(1)
+        time.sleep(self.config.get('cmd_waittime', 1.0))
         while self.state['mount_alt_is_enabled']:
             time.sleep(self.config['cmd_status_dt'])
         
@@ -328,10 +338,26 @@ class Wintercmd(object):
         az_degs = self.config['telescope_home']['az_degs']
         self.logger.info(f'slewing to home: ALT = {alt_degs}, AZ = {az_degs}')
         self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
+        
         # wait for the telescope to stop moving before returning
-        while self.state['mount_is_slewing']:
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [True for i in range(n_buffer_samples)]
+        
+        while True:
+            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
             time.sleep(self.config['cmd_status_dt'])
-
+            stop_condition = self.state['mount_is_slewing']
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == False for entry in stop_condition_buffer):
+                break
+       
+        self.logger.info(f'Telescope Homing complete')
+        
     @cmd
     def mount_shutdown(self):
 
@@ -390,9 +416,23 @@ class Wintercmd(object):
         dec = self.args.position[1]
         self.telescope.mount_goto_ra_dec_apparent(ra_hours = ra, dec_degs = dec)
         # wait for the telescope to stop moving before returning
-        while self.state['mount_is_slewing']:
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [True for i in range(n_buffer_samples)]
+        
+        while True:
+            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
             time.sleep(self.config['cmd_status_dt'])
-    
+            stop_condition = self.state['mount_is_slewing']
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == False for entry in stop_condition_buffer):
+                break
+       
+        self.logger.info(f'Telescope Move complete')
     @cmd
     def mount_goto_ra_dec_j2000(self):
         """Usage: mount_goto_ra_dec_j2000 <ra> <dec>"""
@@ -407,8 +447,23 @@ class Wintercmd(object):
         dec = self.args.position[1]
         self.telescope.mount_goto_ra_dec_j2000(ra_hours = ra, dec_degs = dec)
         # wait for the telescope to stop moving before returning
-        while self.state['mount_is_slewing']:
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [True for i in range(n_buffer_samples)]
+        
+        while True:
+            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
             time.sleep(self.config['cmd_status_dt'])
+            stop_condition = self.state['mount_is_slewing']
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == False for entry in stop_condition_buffer):
+                break
+       
+        self.logger.info(f'Telescope Move complete')
         
     @cmd
     def mount_offset(self):
@@ -501,8 +556,23 @@ class Wintercmd(object):
         az = self.args.position[1]
         self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
         # wait for the telescope to stop moving before returning
-        while self.state['mount_is_slewing']:
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [True for i in range(n_buffer_samples)]
+        
+        while True:
+            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
             time.sleep(self.config['cmd_status_dt'])
+            stop_condition = self.state['mount_is_slewing']
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == False for entry in stop_condition_buffer):
+                break
+       
+        self.logger.info(f'Telescope Move complete')
     
     
     @cmd
@@ -514,6 +584,7 @@ class Wintercmd(object):
         self.defineCmdParser('park the telescope mount')
         self.telescope.mount_park()
         # wait for the telescope to stop moving before returning
+        time.sleep(self.config.get('cmd_waittime', 1.0))
         while self.state['mount_is_slewing']:
             time.sleep(self.config['cmd_status_dt'])
         
