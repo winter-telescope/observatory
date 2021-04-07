@@ -51,6 +51,17 @@ import datetime
 import numpy as np
 import shlex
 
+
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, wsp_path)
+
+print(f'wintercmd: wsp_path = {wsp_path}')
+
+# winter modules
+from commands import commandParser
+
+
 #redefine the argument parser so it exits nicely and execptions are handled better
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -111,13 +122,24 @@ class signalCmd(object):
         self.args = args
         self.kwargs = kwargs
 
-class Wintercmd(object):
+#class Wintercmd(object):
+class Wintercmd(QtCore.QObject):    
+    '''
+    Using a QObject so that it can signals. To execute commands 
+    from outside this thread let's try using the signal/slot approach.
+    '''
+    
+    # a signal which will be used to signal that cmdParser should execute a new routine
+    newRoutine = QtCore.pyqtSignal(object)        
 
-
+    # a signal which will be used to send a commandRequest directly back to command executor
+    newCmdRequest = QtCore.pyqtSignal(object)
+    
     def __init__(self, base_directory, config, state, daemonlist, telescope, dome, chiller, logger):
         # init the parent class
-        super().__init__()
-
+        #super().__init__()
+        super(Wintercmd, self).__init__()
+        
         # things that define the command line prompt
         self.intro = 'Welcome to wintercmd, the WINTER Command Interface'
         self.prompt = 'wintercmd: '
@@ -1012,6 +1034,7 @@ class Wintercmd(object):
                                     action = None,
                                     help = "<filename>")
         
+        # ADD AN OPTIONAL PATH COMMAND. 
         self.cmdparser.add_argument('--path',
                                     nargs = 1,
                                     action = None,
@@ -1020,15 +1043,37 @@ class Wintercmd(object):
         self.getargs()
         filename = self.args.filename[0]
         
+        # check for the optional --path flag
+        # note that I'm following this example from the documentation:
+            # see "Introducing Optional Arguments": https://docs.python.org/3/howto/argparse.html
         if self.args.path:
-            location = self.args.path[0]
+            location = self.args.path[0] + '/'
         else:
             location = self.base_directory + '/routines/'
         
         filepath = location + filename
         
-        print(f'If this was working, it would try to run routine from: {filepath}')
-    
+        self.logger.info(f'Attempting to execute routine from: {filepath}')
+        
+        # Load in the file
+        routine = np.loadtxt(filepath,
+                     delimiter = '\n',
+                     comments = '#',
+                     dtype = str)
+        
+        # Convert the routine from a numpy array to a list (ie a list of commands)
+        cmd_list = list(routine)
+        
+        # Create a cmd Request object
+        cmdrequest = commandParser.cmd_request(cmd = cmd_list,
+                                               request_addr = 'dunno address',
+                                               request_port = 'not sure of port!',
+                                               priority = 'low')
+        
+        # Now signal that we should execute the list of commands
+        #self.newRoutine.emit(cmd_list)
+        self.newCmdRequest.emit(cmdrequest)
+        
     # General Shut Down
     @cmd
     def quit(self):

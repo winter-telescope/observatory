@@ -208,6 +208,9 @@ class control(QtCore.QObject):
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
         self.commandServer.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
+        # connect the wintercmd newRequest signal to the cmd executor
+        self.wintercmd.newRequest.connect(self.cmdexecutor.add_cmd_request_to_queue)
+        
         
         ##### START SCHEDULE EXECUTOR #####
         if mode in ['r','m']:
