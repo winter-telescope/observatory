@@ -209,7 +209,7 @@ class control(QtCore.QObject):
         # connect the command server to the command executor
         self.commandServer.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
         # connect the wintercmd newRequest signal to the cmd executor
-        self.wintercmd.newRequest.connect(self.cmdexecutor.add_cmd_request_to_queue)
+        self.wintercmd.newCmdRequest.connect(self.cmdexecutor.add_cmd_request_to_queue)
         
         
         ##### START SCHEDULE EXECUTOR #####
@@ -217,9 +217,9 @@ class control(QtCore.QObject):
             self.scheduleExec.start()
             
             # Now execute a list of commands
-            cmdlist = ['mount_connect', 'mount_az_on', 'mount_alt_on', 'mount_home','mount_goto_alt_az 35 38.5']
+            """cmdlist = ['mount_connect', 'mount_az_on', 'mount_alt_on', 'mount_home','mount_goto_alt_az 35 38.5']
             self.logger.info(f'control: trying to add a list of commands to the cmd executor')
-            self.newcmd.emit(cmdlist)
+            self.newcmd.emit(cmdlist)"""
 
 
 

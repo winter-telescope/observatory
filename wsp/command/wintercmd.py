@@ -59,7 +59,7 @@ sys.path.insert(1, wsp_path)
 print(f'wintercmd: wsp_path = {wsp_path}')
 
 # winter modules
-from commands import commandParser
+from command import commandParser
 
 
 #redefine the argument parser so it exits nicely and execptions are handled better
