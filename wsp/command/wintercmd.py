@@ -114,21 +114,22 @@ class signalCmd(object):
 class Wintercmd(object):
 
 
-    def __init__(self, config, state, daemonlist, telescope, dome, chiller, logger):
+    def __init__(self, base_directory, config, state, daemonlist, telescope, dome, chiller, logger):
         # init the parent class
         super().__init__()
 
         # things that define the command line prompt
         self.intro = 'Welcome to wintercmd, the WINTER Command Interface'
         self.prompt = 'wintercmd: '
-
+        
         # grab some useful inputs
         self.state = state
         self.daemonlist = daemonlist
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
-        
+    
+        self.base_directory = base_directory
         self.config = config
         self.logger = logger
         self.defineParser()
@@ -923,6 +924,39 @@ class Wintercmd(object):
         self.defineCmdParser('start the chiller')
         sigcmd = signalCmd('TurnOn')
         self.chiller.newCommand.emit(sigcmd)
+    
+    @cmd
+    def do_routine(self):
+        """
+        created: NPL 4-7-21
+        
+        load a txt file that has a list of commands from this file to execute.
+        each command should be written the same way as it would be using the terminal,
+        and each command should be on its own line.
+        
+        """
+        self.defineCmdParser('execute routine from specified text file. default path is wsp/routines')
+        self.cmdparser.add_argument('filename',
+                                    nargs = 1,
+                                    action = None,
+                                    help = "<filename>")
+        
+        self.cmdparser.add_argument('--path',
+                                    nargs = 1,
+                                    action = None,
+                                    help = "<filepath>")
+        
+        self.getargs()
+        filename = self.args.filename[0]
+        
+        if self.args.path:
+            location = self.args.path[0]
+        else:
+            location = self.base_directory + '/routines/'
+        
+        filepath = location + filename
+        
+        print(f'If this was working, it would try to run routine from: {filepath}')
     
     # General Shut Down
     @cmd

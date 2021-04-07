@@ -20,3 +20,4 @@ routine = np.loadtxt('startup.txt',
 
 for cmd in routine:
     print(f'Executing command: {cmd}')
+    
