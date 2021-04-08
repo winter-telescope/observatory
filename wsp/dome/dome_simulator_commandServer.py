@@ -32,6 +32,7 @@ import time
 import traceback
 import signal
 import time
+import threading
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -169,15 +170,22 @@ class command_thread(QtCore.QThread):
     testSignal = QtCore.pyqtSignal(int)
     newcmd_from_client = QtCore.pyqtSignal(object)
     
-    def __init__(self, server_socket, logger, config):
+    updateStateSignal = QtCore.pyqtSignal(str)
+    
+    def __init__(self, server_socket, logger, config, state):
         QtCore.QThread.__init__(self)
         
         # subclass the server stuff
         self.server_socket = server_socket
         self.logger = logger
         self.config = config
-        self.start()
+        self.state = state
+        #self.start()
         
+    def updateState(self, state):
+        print(f'command thread {threading.get_ident()}: caught new state signal')
+        self.state = state
+    
     def run(self):    
         # start a counter to watch loop execution
         self.index = 0
@@ -188,6 +196,10 @@ class command_thread(QtCore.QThread):
         self.timer.start()
 
         """
+        self.updateStateSignal.connect(self.updateState)
+        print(f'commandThread: created new thread {threading.get_ident()} to wait for connections')
+        
+        
         self.listen_for_connection()
         
         """
@@ -199,10 +211,9 @@ class command_thread(QtCore.QThread):
         new_connection event which passes the command to the main thread.
         
         """
-        self.index = 0
-        # get the thread ID?
-        self.thread = self.currentThread()
-        print(f'commandThread: thread ID = {self.thread}')
+        
+        # Do we want this??? IDK. NPL 4-8-21
+        self.exec_()
         
         
         
@@ -215,12 +226,14 @@ class command_thread(QtCore.QThread):
         self.index += 1
         print(f'commandThread: emitting test signal {self.index}')
         self.testSignal.emit(self.index)
-        
+    
+
+    
     def listen_for_connection(self):
         
         
         # sit and wait for incoming connection: THIS BLOCKS THE THREAD
-        print('commandThread: waiting for new incoming connection...')
+        print(f'commandThread {threading.get_ident()}: waiting for new incoming connection...')
         """
         self.index += 1
         #print(f'commandThread: emitting test signal {self.index}')
@@ -252,11 +265,16 @@ class command_thread(QtCore.QThread):
         self.listen_for_command()
     
     def listen_for_command(self):
+        
+        
+        
         # receive the data in small chunks and retransmit it
         while True:
             cmd = self.client_socket.recv(1024)
             #print(f'cmdServer: received command {cmd.decode("utf-8")}')
-            cmd_txt = cmd.decode("utf-8")
+            cmd_txt = cmd.decode("utf-8").rstrip() #rstrip removes all kinds of trailing whitespace
+            
+
             
             # Generate a new command request object (commandParser.cmd_request) which will be passed out to commandParser
             new_cmd_request = commandParser.cmd_request(cmd = cmd_txt, 
@@ -268,8 +286,16 @@ class command_thread(QtCore.QThread):
             if cmd:
                 # send a note back to the client that the command was received.
                 try:
-                    reply = f'command [{cmd_txt}] received by server. To stop client session enter "quit"'
-                    self.client_socket.send(bytes(reply,"utf-8"))
+                    #print(f'command thread {threading.get_ident()}: command text = {cmd_txt}')
+                    
+                    if cmd_txt == 'status?':
+                        
+                        reply = f'command thread {threading.get_ident()}: ' + self.state
+                    else:
+                        #print(f"{cmd_txt} == 'status?': {cmd_txt == 'status?'}")
+                        #reply = f'command [{cmd_txt}] received by server. To stop client session enter "quit"'
+                        reply = 0
+                    self.client_socket.send(bytes(str(reply),"utf-8"))
                 except:
                     msg = f'could not send reply to client at {self.client_addr} | {self.client.port}'
                     if not self.logger is None:
@@ -292,25 +318,29 @@ class command_thread(QtCore.QThread):
 class server_thread(QtCore.QThread):
     
     newcmd = QtCore.pyqtSignal(object)  
+    # triggers all the threads to update the current state of the dome
+    updateStateSignal = QtCore.pyqtSignal(str)
     
-    def __init__(self, addr, port, logger, config):
+    def __init__(self, addr, port, logger, config, state):
         QtCore.QThread.__init__(self)
         
         self.server_addr = addr
         self.server_port = port
         self.logger = logger
         self.config = config
+        self.state = state
         
         # the thread needs to be started otherwise it doesn't instatiate a new thread
-        self.start()
+        #self.start()
     
-        self.thread = self.currentThread()
-        print(f'cmdServer: thread ID = {self.thread}')
+        #self.thread = self.currentThread()
         
+    
+    
         
     
     def run(self):
-        
+        print(f'cmdServer: thread ID = {threading.get_ident()}')
         
         # start up the command server
         self.start_command_server()
@@ -318,12 +348,18 @@ class server_thread(QtCore.QThread):
         
         # create initial command thread
         print(f'cmdServer: initing new command thread')
-        self.new_comm_thread = command_thread(server_socket = self.server_socket, logger = self.logger, config = self.config)
+        self.new_comm_thread = command_thread(server_socket = self.server_socket, logger = self.logger, config = self.config, state = self.state)
+        self.updateStateSignal.connect(self.new_comm_thread.updateState)
+        self.new_comm_thread.start()
+        
         #self.new_comm_thread = command_thread(server_socket = '')
         # connect the signal for the intial thread
         self.new_comm_thread.new_client_conn.connect(self.new_client_detected)
         self.new_comm_thread.client_disconnected.connect(self.client_disconnected)
         self.new_comm_thread.newcmd_from_client.connect(self.received_command)
+        self.exec_()
+        
+        
         
     def start_command_server(self):
         """
@@ -384,10 +420,15 @@ class server_thread(QtCore.QThread):
         """
         # create a new command thread
         print(f'main: initing new command thread')
-        self.new_comm_thread = command_thread(server_socket = self.server_socket,logger = self.logger, config = self.config)
+        self.new_comm_thread = command_thread(server_socket = self.server_socket,logger = self.logger, config = self.config, state = self.state)
+        self.updateStateSignal.connect(self.new_comm_thread.updateState)
+        self.new_comm_thread.start()
+        
         self.new_comm_thread.new_client_conn.connect(self.new_client_detected)
         self.new_comm_thread.client_disconnected.connect(self.client_disconnected)
         self.new_comm_thread.newcmd_from_client.connect(self.received_command)
+        
+        
         
     def print_client_list(self):
         # print out the client list to the terminal

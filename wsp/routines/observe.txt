@@ -1,6 +1,5 @@
-# startup routine
+# routine followed for every observation
 
-# startup telescope
 
 mount_az_off
 mount_alt_off

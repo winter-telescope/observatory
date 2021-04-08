@@ -113,34 +113,48 @@ while index == 0:
 """
 #%%
 # Connect to the server
-pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-pcs_sock.settimeout(0.5)
-server_address = ('198.202.125.142', 62000)
-pcs_sock.connect(server_address)
+try:
+    pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    pcs_sock.settimeout(0.5)
+    #server_address = ('198.202.125.142', 62000)
+    server_address = ('localhost', 62000)
+    pcs_sock.connect(server_address)
+except:
+    pass
 
-try: 
-    d = query_socket(pcs_sock,
-                     'status?', 
-                     #'198.202.125.142', 62000, 
-                     end_char = '}',
-                     timeout = 2)
-                     #badchars = '\\"')
-    # convert the string to dict using json loads
-    #d = d.replace('\\','')
-    #print(d)
-    
-    print(json.dumps(d,indent = 4))
-    
-    
-    # try to grab a single element
-    """
-    print('Grabbing element from dict:')
-    elements = ['Shutter_Status']
-    for element in elements:
+while True:
+    time.sleep(0.5)
+    try: 
+        d = query_socket(pcs_sock,
+                         'status?',
+                         end_char = '}',
+                         timeout = 2)
+                         #badchars = '\\"')
+        # convert the string to dict using json loads
+        #d = d.replace('\\','')
+        #print(d)
         
-        print(f'{element} = {d[element]}')
-    """
+        print(json.dumps(d,indent = 4))
+        
+        #time.sleep(0.5)
+        # try to grab a single element
+        """
+        print('Grabbing element from dict:')
+        elements = ['Shutter_Status']
+        for element in elements:
+            
+            print(f'{element} = {d[element]}')
+        """
+    except KeyboardInterrupt:
+        break
     
-except Exception as e:
-    print(f'could not query command server, error: {e}')
-
+    except Exception as e:
+        print(f'could not query command server, error: {e}')
+        try:
+            pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            pcs_sock.settimeout(0.5)
+            #server_address = ('198.202.125.142', 62000)
+            server_address = ('localhost', 62000)
+            pcs_sock.connect(server_address)
+        except:
+            pass
