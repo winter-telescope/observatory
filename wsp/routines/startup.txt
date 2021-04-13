@@ -2,9 +2,9 @@
 
 # startup telescope
 
-mount_az_off
-mount_alt_off
-mount_disconnect
+#mount_az_off
+#mount_alt_off
+#mount_disconnect
 
 mount_connect
 mount_az_on
@@ -12,5 +12,12 @@ mount_alt_on
 mount_home
 
 mount_goto_alt_az 50 50
+
+mount_goto_alt_az 25 290
+
+mount_goto_alt_az 45 80
+
+mount_goto_alt_az 80 180
+
 
 

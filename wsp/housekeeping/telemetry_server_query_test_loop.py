@@ -116,8 +116,8 @@ while index == 0:
 try:
     pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     pcs_sock.settimeout(0.5)
-    #server_address = ('198.202.125.142', 62000)
-    server_address = ('localhost', 62000)
+    server_address = ('198.202.125.142', 62000)
+    #server_address = ('localhost', 62000)
     pcs_sock.connect(server_address)
 except:
     pass

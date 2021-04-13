@@ -33,8 +33,8 @@
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_extrema": false,
-                    "_format": "",
-                    "_source": "",
+                    "_format": "%B %d, %Y: %H:%M:%S",
+                    "_source": "ftime",
                     "type": "PTDI"
                 },
                 {
@@ -50,10 +50,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 75,
-            "geometryWidth": 225,
-            "geometryX": 15,
-            "geometryY": 75
+            "geometryHeight": 85,
+            "geometryWidth": 255,
+            "geometryX": 17,
+            "geometryY": 85
         },
         {
             "PObject": {
@@ -115,10 +115,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 135,
-            "geometryWidth": 225,
-            "geometryX": 15,
-            "geometryY": 165
+            "geometryHeight": 153,
+            "geometryWidth": 255,
+            "geometryX": 17,
+            "geometryY": 187
         },
         {
             "PObject": {
@@ -304,10 +304,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 285,
-            "geometryWidth": 225,
-            "geometryX": 510,
-            "geometryY": 15
+            "geometryHeight": 323,
+            "geometryWidth": 255,
+            "geometryX": 578,
+            "geometryY": 17
         },
         {
             "PObject": {
@@ -321,10 +321,10 @@
             "cellY": 1,
             "dataItems": [
             ],
-            "geometryHeight": 45,
-            "geometryWidth": 135,
-            "geometryX": 15,
-            "geometryY": 15
+            "geometryHeight": 51,
+            "geometryWidth": 153,
+            "geometryX": 17,
+            "geometryY": 17
         },
         {
             "PObject": {
@@ -398,10 +398,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 135,
-            "geometryWidth": 240,
-            "geometryX": 255,
-            "geometryY": 15
+            "geometryHeight": 153,
+            "geometryWidth": 272,
+            "geometryX": 289,
+            "geometryY": 17
         },
         {
             "PObject": {
@@ -458,27 +458,82 @@
                     "type": "PTDI"
                 }
             ],
-            "geometryHeight": 240,
-            "geometryWidth": 225,
-            "geometryX": 15,
-            "geometryY": 315
+            "geometryHeight": 272,
+            "geometryWidth": 255,
+            "geometryX": 17,
+            "geometryY": 357
         },
         {
             "PObject": {
                 "_id": "1547920506"
             },
-            "_boxTitle": "Sensors",
+            "_boxTitle": "Chiller",
             "_style": "(P370577652)",
-            "cellHeight": 9,
+            "cellHeight": 6,
             "cellWidth": 16,
             "cellX": 17,
             "cellY": 11,
             "dataItems": [
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "2126777107"
+                        },
+                        "_map": {
+                            "0": "No[style=high (P1913941534)]",
+                            "1": "Yes[style=low (P2017040817)]"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "1985553904"
+                    },
+                    "_caption": "Online",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "chiller_is_running",
+                    "type": "PMDI"
+                },
+                {
+                    "PObject": {
+                        "_id": "1409994735"
+                    },
+                    "_caption": "Setpoint ",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_extrema": false,
+                    "_format": "%0.1f C",
+                    "_source": "chiller_setpoint",
+                    "type": "PNDI"
+                },
+                {
+                    "PObject": {
+                        "_id": "1228458457"
+                    },
+                    "_caption": "Proc. Temp",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_extrema": false,
+                    "_format": "%0.1f C",
+                    "_source": "chiller_temperature",
+                    "type": "PNDI"
+                },
+                {
+                    "PObject": {
+                        "_id": "808195525"
+                    },
+                    "_caption": "Block Temp         ",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_extrema": false,
+                    "_format": "%0.1f C",
+                    "_source": "T_LJ0_AIN0",
+                    "type": "PNDI"
+                }
             ],
-            "geometryHeight": 135,
-            "geometryWidth": 240,
-            "geometryX": 255,
-            "geometryY": 165
+            "geometryHeight": 103,
+            "geometryWidth": 273,
+            "geometryX": 289,
+            "geometryY": 187
         },
         {
             "PObject": {
@@ -507,7 +562,7 @@
                     "_caption": "Online",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
-                    "_source": "pcs_is_online",
+                    "_source": "dome_is_connected",
                     "type": "PMDI"
                 },
                 {
@@ -519,7 +574,7 @@
                     "_defaultStyle": "noStyle",
                     "_extrema": false,
                     "_format": "%B %d, %Y",
-                    "_source": "time_utc_pcs",
+                    "_source": "dome_time_utc",
                     "type": "PTDI"
                 },
                 {
@@ -531,7 +586,7 @@
                     "_defaultStyle": "noStyle",
                     "_extrema": false,
                     "_format": "%H:%M:%S",
-                    "_source": "time_utc_pcs",
+                    "_source": "dome_time_utc",
                     "type": "PTDI"
                 },
                 {
@@ -578,7 +633,7 @@
                     "_caption": "Shutter Status  ",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
-                    "_source": "dome_shutter_Status",
+                    "_source": "dome_shutter_status",
                     "type": "PMDI"
                 },
                 {
@@ -692,10 +747,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 240,
-            "geometryWidth": 240,
-            "geometryX": 255,
-            "geometryY": 315
+            "geometryHeight": 272,
+            "geometryWidth": 272,
+            "geometryX": 289,
+            "geometryY": 357
         },
         {
             "PObject": {
@@ -709,10 +764,10 @@
             "cellY": 21,
             "dataItems": [
             ],
-            "geometryHeight": 240,
-            "geometryWidth": 225,
-            "geometryX": 510,
-            "geometryY": 315
+            "geometryHeight": 272,
+            "geometryWidth": 255,
+            "geometryX": 578,
+            "geometryY": 357
         }
     ],
     "extremas": [
@@ -1014,9 +1069,9 @@
             "cellWidth": 5,
             "cellX": 11,
             "cellY": 0,
-            "geometryHeight": 105,
-            "geometryWidth": 75,
-            "geometryX": 165,
+            "geometryHeight": 119,
+            "geometryWidth": 85,
+            "geometryX": 187,
             "geometryY": 0
         }
     ],
@@ -1276,8 +1331,8 @@
         }
     ],
     "webPort": "\u0000",
-    "windowCellHeight": 42,
-    "windowCellWidth": 52,
-    "windowHeight": 639,
-    "windowWidth": 778
+    "windowCellHeight": 39,
+    "windowCellWidth": 51,
+    "windowHeight": 664,
+    "windowWidth": 862
 }

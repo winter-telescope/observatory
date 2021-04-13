@@ -540,7 +540,7 @@ class EZstepper(object):
     def doHome(self,
                move_speed = 0.25,
                speed_units = 'rps',
-               move_current = 80,
+               move_current = 40,
                hold_current = 0,
                track_length_turns = 1.5):
         '''
@@ -584,7 +584,7 @@ class EZstepper(object):
     def goLocation(self, loc, 
                    move_speed = 0.25,
                    speed_units = 'rps',
-                   move_current = 65,
+                   move_current = 40,
                    hold_current = 0,
                    verbose = False, n_buffer_samples = 3, update_dt = 0.5):
         '''
@@ -781,10 +781,11 @@ if __name__ == '__main__':
     '''
 
     #%% Move by some amount of turns
-    N = 0.1
+    N = 5
 
-    step.setMoveCurrent(80)
+    step.setMoveCurrent(30)
     step.setHoldCurrent(0)
+    step.setSpeed(2, units = 'rps')
     step.move_N_turns(N, direction = 'ccw')
         
     #%% Move by some amount of steps
