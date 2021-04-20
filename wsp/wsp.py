@@ -158,7 +158,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, sigint_handler)
     app = QtCore.QCoreApplication(sys.argv)
     
-    opt = None
+    mode = None
     
 
     # GET ANY COMMAND LINE ARGUMENTS
@@ -168,33 +168,40 @@ if __name__ == "__main__":
     modes.update({'-i' : "Entering [I]nstrument mode: initializing instrument subsystems and waiting for commands"})
     modes.update({'-m' : "Entering fully [M]anual mode: initializing all subsystems and waiting for commands"})
     
+    
+    
+    
     #print(f'args = {args}')
     
     if len(args)<1:
         pass
     
-    elif len(args) == 1:
+    # parse the mode
+    elif len(args) >= 1:
        
-        arg = args[0]
+        mode_arg = args[0]
+        opts = args[1:]
         
-        if arg in modes.keys():
+        if mode_arg in modes.keys():
             # remove the dash when passing the option
-            opt = arg.replace('-','')
+            mode = mode_arg.replace('-','')
             printlogo()
             print()
-            if opt == 'm':
-                for line in big_letter[opt]:
+            if mode == 'm':
+                for line in big_letter[mode]:
                     print('\t\t\t\t',line)
-            print('\033[32m >>>> ', modes[arg])
+            print('\033[32m >>>> ', modes[mode_arg])
             print()
             print(linebreak)
             print('\033[32m')
             
         else:
-            print(f'Invalid mode {arg}')
-    
-    else:
-        print('Too many options specified.')
+            print(f'Invalid mode {mode_arg}')
+        
+        
+        
+    """else:
+        print('Too many options specified.')"""
     
     # load the config
     config_file = wsp_path + '/config/config.yaml'
@@ -205,8 +212,8 @@ if __name__ == "__main__":
     # START UP THE CONTROL SYSTEM
     
     # If an option was specified from the command line, then use that
-    if not opt is None:
-        winter = systemControl.control(mode = opt, config = config, base_directory = wsp_path, logger = logger)
+    if not mode is None:
+        winter = systemControl.control(mode = mode, config = config, base_directory = wsp_path, logger = logger, opts = opts)
 
     # If no option was specified, then start up the text user interface
     else:

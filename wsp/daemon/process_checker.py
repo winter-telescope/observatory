@@ -91,6 +91,6 @@ if printall:
 #%% cleanup old wsp daemons
 cleanup = False
 if cleanup:
-    daemons_to_kill = ['domed.py', 'chillerd.py','test_daemon.py', 'pyro5-ns']
+    daemons_to_kill = ['domed.py', 'chillerd.py','test_daemon.py', 'pyro5-ns','dome_simulator_gui.py']
     daemon_utils.cleanup(daemons_to_kill)
 

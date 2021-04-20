@@ -558,7 +558,7 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, config, logger = None, verbose = False, parent=None ):            
+    def __init__(self, config, logger = None, verbose = False, parent=None, domesim = False):            
         super(PyroGUI, self).__init__(parent)   
 
         self.config = config
@@ -574,7 +574,10 @@ class PyroGUI(QtCore.QObject):
         
         # set up the dome
         self.servername = 'command_server' # this is the key it uses to set up the server from the conf file
-        self.dome_addr                  = self.config[self.servername]['addr']
+        if domesim == True:
+            self.dome_addr = 'localhost'
+        else:
+            self.dome_addr                  = self.config[self.servername]['addr']
         self.dome_port                  = self.config[self.servername]['port']
         self.dome_connection_timeout    = self.config[self.servername]['timeout']
         
@@ -615,10 +618,13 @@ if __name__ == "__main__":
     modes = dict()
     modes.update({'-v' : "Running in VERBOSE mode"})
     modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
+    modes.update({'--domesim' : "Running in SIMULATED DOME mode" })
     
     # set the defaults
     verbose = False
     doLogging = True
+    domesim = False
+    domesim = True
     
     #print(f'args = {args}')
     
@@ -640,7 +646,9 @@ if __name__ == "__main__":
                     print(modes[arg])
                     doLogging = False
                 
-                
+                elif opt == 'domesim':
+                    print(modes[arg])
+                    domesim = True
             else:
                 print(f'Invalid mode {arg}')
     
@@ -660,6 +668,7 @@ if __name__ == "__main__":
     config_file = base_directory + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
+    
     # set up the logger
     if doLogging:
         logger = logging_setup.setup_logger(base_directory, config)    
@@ -667,7 +676,7 @@ if __name__ == "__main__":
         logger = None
     
     # set up the main app. note that verbose is set above
-    main = PyroGUI(config = config, logger = logger, verbose = verbose)
+    main = PyroGUI(config = config, logger = logger, verbose = verbose, domesim = domesim)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)

@@ -22,16 +22,11 @@ import time
 import numpy as np
 import traceback
 import yaml
-import logging
 
-# add the wsp directory to the PATH
-wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(1, wsp_path)
-print(f'dome_simulator: wsp_path = {wsp_path}')
 
-import dome_simulator_commandServer
-from utils import logging_setup
-#from utils import utils
+
+import dome_simulator_commandServer_standalone as dome_simulator_commandServer
+
 
 
 class WorkerSignals(QtCore.QObject):
@@ -127,20 +122,18 @@ class MainWindow(QtWidgets.QMainWindow):
     
     newState = QtCore.pyqtSignal(str)
     
-    def __init__(self, logger = None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         """
         Initializes the main window
         """
 
         super(MainWindow, self).__init__(*args, **kwargs)
-        uic.loadUi(wsp_path + '/dome/' + 'dome_simulator.ui', self)  # Load the .ui file
+        uic.loadUi('dome_simulator.ui', self)  # Load the .ui file
         
         self.threadpool = QtCore.QThreadPool()
         
-        self.logger = logger
-        
-        self.log(f'main thread {threading.get_ident()}: setting up simulated dome')
+        print(f'main thread {threading.get_ident()}: setting up simulated dome')
         
         # Set up the dome state dictionary
         
@@ -150,9 +143,9 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.logger = logger
         
         # NEED TO SET UP A TEST LOGGER AND CONFIG OTHERWISE THIS WON'T RUN
-        self.config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
+        self.config = yaml.load(open('config.yaml'), Loader = yaml.FullLoader)
 
-       
+        self.logger = None
         
         # Set up the status box
         self.statusbox = self.findChild(QtWidgets.QTextBrowser, "current_status_box")
@@ -188,18 +181,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.server_thread.start()
         
         # Dome Characteristics
-        self.az_speed = 3.5 #360/180 # speed in deg/sec
-        self.open_time = 90 # time to open the shutter
-        self.close_time = 90 # time to close the shutter
+        self.az_speed = 3#360/180 # speed in deg/sec
+        self.open_time = 20 # time to open the shutter
+        self.close_time = 20 # time to close the shutter
         self.allowed_error = 0.1
         self.movedir = 1.0 # is either +1 or -1 depending on which direction its going to move
         self.ok = False
         
-    def log(self, msg, level = logging.INFO):
-        if self.logger is None:
-                print(msg)
-        else:
-            self.logger.log(level = level, msg = msg)
+        
         
     def init_state(self):
         utc = datetime.utcnow()
@@ -357,7 +346,7 @@ class MainWindow(QtWidgets.QMainWindow):
             t_elapsed += dt
             t_remaining = seconds - t_elapsed
             progress_callback.emit(t_remaining)
-            self.log(f'Shutter Move Remaining Time: {t_remaining}')
+            print(f'Shutter Move Remaining Time: {t_remaining}')
             
     
     def godome(self, az):
@@ -396,7 +385,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # round the az to one decimal place
         az = np.round(az, 1)
         
-        self.log(f'Updating dome Az to {az}')
+        print(f'Updating dome Az to {az}')
         self.state.update({'Dome_Azimuth' : az})
         self.update_state()
         
@@ -414,14 +403,14 @@ class MainWindow(QtWidgets.QMainWindow):
     
     
     
-    def move_fake_az(self, az_goal, progress_callback, numsteps = 25, verbose = False):
+    def move_fake_az(self, az_goal, progress_callback, numsteps = 25, verbose = True):
         # put the requested azimuth on a 0-360 range
         az = self.state['Dome_Azimuth']
         
         # tell the dome to move over the server
         az_goal = np.mod(az_goal,360.0)
         # standin function to simulate movement
-        self.log(f" Requested dome move from Az = {az} to {az_goal}")
+        print(f" Requested dome move from Az = {az} to {az_goal}")
 
         try:
             if np.abs(az_goal - az)>=self.allowed_error:
@@ -443,7 +432,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 drivetime = np.abs(dist_to_go)/self.az_speed # total time to move
                 # now start "moving the dome" it stays moving for an amount of time
                     # based on the dome speed and distance to move
-                self.log(f' Estimated Drivetime = {drivetime} s')
+                print(' Estimated Drivetime = ',drivetime,' s')
                 dt = drivetime/numsteps #0.1 #increment time for updating position
                 #N_steps = drivetime/dt
                 #daz = delta/N_steps
@@ -452,7 +441,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         dirtxt = '[-]'
                     else:
                         dirtxt = '[+]'
-                    self.log(f"Rotating Dome {dist_to_go} deg in {dirtxt} direction from Az = {az} to Az = {az_goal}")
+                    print(f" Rotating Dome {dist_to_go} deg in {dirtxt} direction from Az = {az} to Az = {az_goal}")
                 
                 while np.abs(az_goal - az) > self.allowed_error:
                     self.ismoving = True
@@ -461,21 +450,21 @@ class MainWindow(QtWidgets.QMainWindow):
                     # MAKE SURE THAT AZ ALWAYS STAYS IN 0-360 RANGE
                     az = np.mod(az + movedir*self.az_speed*dt,360.0)
                     if verbose:
-                        self.log(f"Dome Az = {az}, Dist to Go = {np.abs(az_goal-az)} deg")# %(az, np.abs(az_goal-az)))
+                        print("     Dome Az = %0.3f, Dist to Go = %0.3f deg" %(az, np.abs(az_goal-az)))
                         progress_callback.emit(az)
                         #print(f" Still Moving? {self.ismoving}")
                 self.ismoving = False
                 if verbose:
                     if not self.ismoving:
-                        self.log(f" Completed Dome Move.")
+                        print(f" Completed Dome Move.")
                     else:
-                        self.log(" Moving error... move not complete?")
+                        print(" Moving error... move not complete?")
                 
                 # For now the error isn't interesting. Just force the postion to be the goal
                 progress_callback.emit(az_goal)
                 
             else:
-                self.log(f" Not moving. Dome Az within allowed error: {self.allowed_error} deg")
+                print(f" Not moving. Dome Az within allowed error: {self.allowed_error} deg")
         except KeyboardInterrupt:
             print(f" User interrupted dome move. Stopping!")
             return
@@ -489,7 +478,7 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def thread_complete(self):
         # this is triggered when the worker emits the finished signal
-        self.log("domesim: WORKER THREAD COMPLETE!")
+        print("WORKER THREAD COMPLETE!")
         
     def handle_cmd_request(self, cmd_request):
         
@@ -505,24 +494,24 @@ class MainWindow(QtWidgets.QMainWindow):
             cmd = cmdstr
             args = []
         
-        msg = f'domesim: Got new command request: {cmd}, args = {args} from user at {cmd_request.request_addr} | {cmd_request.request_port}'
+        msg = f'Got new command request: {cmd}, args = {args} from user at {cmd_request.request_addr} | {cmd_request.request_port}'
         
         # try to do the command
         try:
             if cmd == 'takecontrol':
-                #print(msg)
+                print(msg)
                 self.takecontrol()
             
             elif cmd == 'givecontrol':
-                #print(msg)
+                print(msg)
                 self.givecontrol()
             
             elif cmd == 'home':
-                #print(msg)
+                print(msg)
                 self.home()
             
             elif cmd == 'godome':
-                #print(msg)
+                print(msg)
                 az = float(args[0])
                 self.godome(az = az)
             
@@ -530,34 +519,25 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.update_state()
             
             elif cmd == 'open':
-                #print(msg)
+                print(msg)
                 self.open_shutter()
             
             elif cmd == 'close':
-                #print(msg)
+                print(msg)
                 self.close_shutter()
             
             else:
-                #print(f'SimDome: Did not recognize command {cmd}, args = {args} from user at {cmd_request.request_addr} | {cmd_request.request_port}')
                 pass
         
         except Exception as e:
-            #print(f'SimDome: Could not execute command {cmd}, args = {args}, error: {e}')
-            pass
+            print(f'SimDome: Could not execute command {cmd}, args = {args}, error: {e}')
+    
         
         
 if __name__ == '__main__':
-    
-    doLogging = True
-    config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
-    # set up the logger
-    if doLogging:
-        logger = logging_setup.setup_logger(wsp_path, config)    
-    else:
-        logger = None
-    
     app = QtWidgets.QApplication(sys.argv)
-    window = MainWindow(logger = logger)
+    window = MainWindow()
 
+    print('opening app')
     window.show()
     app.exec_()

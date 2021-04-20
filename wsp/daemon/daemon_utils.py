@@ -142,7 +142,7 @@ def cleanup(daemons_to_kill = list(), logger = None):
     for p in py_processes:
         try:
             if any(daemon_to_kill in p.cmdline()[1] for daemon_to_kill in daemons_to_kill):
-                msg = f'killing process with PID {p.pid}'
+                msg = f'killing {p.cmdline()[1]} process with PID {p.pid}'
                 if logger is None:
                     print(msg)
                 else:

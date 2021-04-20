@@ -26,6 +26,7 @@ import Pyro5.server
 from datetime import datetime
 from PyQt5 import QtCore
 import time
+import json
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
@@ -228,6 +229,7 @@ class local_dome(QtCore.QObject):
             pass
     
     def GoTo(self, az):
+        #print(f'dome: trying to move dome to AZ = {az}')
         try:
             self.remote_object.GoDome(az)
         except:
@@ -236,7 +238,7 @@ class local_dome(QtCore.QObject):
     
     def print_state(self):
         self.update_state()
-        print(f'Local Object Status: {self.state}')
+        print(f'Local Object Status: {json.dumps(self.state, indent = 2)}')
         
         
 # Try it out

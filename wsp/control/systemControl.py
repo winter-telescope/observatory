@@ -59,12 +59,12 @@ class control(QtCore.QObject):
     newcmdRequest = QtCore.pyqtSignal(object)
     
     ## Initialize Class ##
-    def __init__(self,mode,config,base_directory, logger, parent = None):
+    def __init__(self,mode,config,base_directory, logger, opts = None, parent = None):
         super(control, self).__init__(parent)
         
         print(f'control: base_directory = {base_directory}')
-
-
+        self.opts = opts
+    
         # pass in the config
         self.config = config
         # pass in the logger
@@ -78,7 +78,7 @@ class control(QtCore.QObject):
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'test_daemon.py']
+        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'test_daemon.py','dome_simulator_gui.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -113,8 +113,13 @@ class control(QtCore.QObject):
             
             ###### DAEMONS #####
             # Dome Daemon
-            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py")#, args = ['-v'])
+            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py", args = opts)
             self.daemonlist.add_daemon(self.domed)
+            
+            if '--domesim' in opts:
+                # start up the fake dome as a daemon
+                self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
+                self.daemonlist.add_daemon(self.domesim)
         
         
         

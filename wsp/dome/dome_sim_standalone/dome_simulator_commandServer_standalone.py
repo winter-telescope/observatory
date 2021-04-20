@@ -37,10 +37,40 @@ import time
 import threading
 
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(os.getcwd())
-sys.path.insert(1, wsp_path)
+#wsp_path = os.path.dirname(os.getcwd())
+#sys.path.insert(1, wsp_path)
 
-from command import commandParser
+class cmd_request(object):
+    """
+    A cmd_request object is generated each time a user tries to execute a
+    command, either by typing into the local command prompt or externally from
+    a network connection.
+
+    The cmd_request object contains the specified command argument, which
+    should be one of the cmd entries in wintercmd if it is to be successful,
+    the priority level of the command (set variously in the code depending on
+    who is the sender), as well as information about the requester,
+    namely their ip address, port.
+    """
+    def __init__(self, cmd, request_addr, request_port, priority = 'low'):
+        try:
+            self.cmd = cmd
+            self.request_addr = request_addr
+            self.request_port = request_port
+            self._priority_dict_ = dict({'low'      : 4,
+                                         'med'      : 3,
+                                         'medium'   : 3,
+                                         'high'     : 2,
+                                         'sudo'     : 1})
+            self.priority = priority
+            self.priority_num = self._priority_dict_.get(self.priority,4)
+        except:
+            try:
+                print(f'invalid command request {cmd} (priority {priority} from user at [{request_addr} : {request_port}]')
+                #TODO log it
+            except:
+                print('invalid command request!')
+                #TODO log it
 
 class WorkerSignals(QtCore.QObject):
     '''
@@ -172,7 +202,7 @@ class command_thread(QtCore.QThread):
     
     updateStateSignal = QtCore.pyqtSignal(str)
     
-    def __init__(self, server_socket, logger, config, state, verbose = False):
+    def __init__(self, server_socket, logger, config, state):
         QtCore.QThread.__init__(self)
         
         # subclass the server stuff
@@ -180,12 +210,10 @@ class command_thread(QtCore.QThread):
         self.logger = logger
         self.config = config
         self.state = state
-        self.verbose = False
         #self.start()
         
     def updateState(self, state):
-        if self.verbose:
-            print(f'command thread {threading.get_ident()}: caught new state signal')
+        print(f'command thread {threading.get_ident()}: caught new state signal')
         self.state = state
     
     def run(self):    
@@ -273,14 +301,13 @@ class command_thread(QtCore.QThread):
         # receive the data in small chunks and retransmit it
         while True:
             cmd = self.client_socket.recv(1024)
-            
+            #print(f'cmdServer: received command {cmd.decode("utf-8")}')
             cmd_txt = cmd.decode("utf-8").rstrip() #rstrip removes all kinds of trailing whitespace
             
-            """if not cmd_txt == 'status?':
-                print(f'domesim_cmdServer: received command {cmd_txt}')"""
+
             
             # Generate a new command request object (commandParser.cmd_request) which will be passed out to commandParser
-            new_cmd_request = commandParser.cmd_request(cmd = cmd_txt, 
+            new_cmd_request = cmd_request(cmd = cmd_txt, 
                                                         request_addr = self.client_addr, 
                                                         request_port = self.client_port, 
                                                         priority = 'low')
@@ -294,11 +321,10 @@ class command_thread(QtCore.QThread):
                     if cmd_txt == 'status?':
                         
                         reply = f'command thread {threading.get_ident()}: ' + self.state
-                        reply = self.state
                     else:
                         #print(f"{cmd_txt} == 'status?': {cmd_txt == 'status?'}")
                         #reply = f'command [{cmd_txt}] received by server. To stop client session enter "quit"'
-                        reply = '0\n'
+                        reply = 0
                     self.client_socket.send(bytes(str(reply),"utf-8"))
                 except:
                     msg = f'could not send reply to client at {self.client_addr} | {self.client.port}'
@@ -566,7 +592,7 @@ class main(QtCore.QObject):
         self.timer.start()
         
         # NEED TO SET UP A TEST LOGGER AND CONFIG OTHERWISE THIS WON'T RUN
-        config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
+        config = yaml.load(open('config.yaml'), Loader = yaml.FullLoader)
         #night = datetime.utcnow().strftime('%Y%m%d')
         #logger = utils.setup_logger(wsp_path, night, logger_name = 'logtest')
         logger = None
