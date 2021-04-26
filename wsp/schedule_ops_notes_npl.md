@@ -35,7 +35,9 @@ This method closes the table (`self.result.close()`) and the connection to the d
 * **4/26/21: updated logging** Now it handles logging like all the other modules rather than writing to its own `pseudoLog.log` log file. In this case logger is passed in during the class instance definition. If this is cumbersome it could also be changed so that it finds the logger on its own, similar to the daemons.
 
 ### To Do:
-- [ ] replace `currentTime` with `startingTime` and make it actually refer to a time, and add a `startingRow` argument which replaces the previous functionality. That is, when loading the Summary table, load all rows where `expMJD` is >= `startingTime` (if specified) and where obsHistID is >= `startingRow` (if specified).
+- [ ] Replace `currentTime` with `startingTime` and make it actually refer to a time, and add a `startingRow` argument which replaces the previous functionality. That is, when loading the Summary table, load all rows where `expMJD` is >= `startingTime` (if specified) and where obsHistID is >= `startingRow` (if specified).
+- [ ] Add some more sophisticated logic to `gotoNextObs`. Ideally we want to step through observations line by line, but this should check to make sure that the timing hasn't gotten way out of whack. The way to do this is probably to make sure that expMJD from the current observation is within some time window (eg 30 minutes) of its scheduled time. If the observation is *not* within this grace period, it should re-run `loadSchedule` passing it the current time and the last observation ID. That will make sure it gets resynced so things get observed near their optimal time, and ensures that nothing gets re-observed during these resyncronizations. 
+- [ ] Add some sort of observation evaluator which makes sure the observation is acceptable. This should calculate the current Az/Alt of the target based on the field RA/DEC using astropy. If the expected RA/DEC is outside of allowed limits, it should throw an error and skip the observation. Could add other conditions to check too.
 
 ## Schedule Files
 The schedule files are written outside of `wsp` by the WINTER scheduler code. 
