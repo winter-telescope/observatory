@@ -39,6 +39,32 @@ This method closes the table (`self.result.close()`) and the connection to the d
 - [ ] Add some more sophisticated logic to `gotoNextObs`. Ideally we want to step through observations line by line, but this should check to make sure that the timing hasn't gotten way out of whack. The way to do this is probably to make sure that expMJD from the current observation is within some time window (eg 30 minutes) of its scheduled time. If the observation is *not* within this grace period, it should re-run `loadSchedule` passing it the current time and the last observation ID. That will make sure it gets resynced so things get observed near their optimal time, and ensures that nothing gets re-observed during these resyncronizations. 
 - [ ] Add some sort of observation evaluator which makes sure the observation is acceptable. This should calculate the current Az/Alt of the target based on the field RA/DEC using astropy. If the expected RA/DEC is outside of allowed limits, it should throw an error and skip the observation. Could add other conditions to check too.
 
+## ObsWriter
+This class handles the connection to the observation log which contains the record of all observations.
+### init
+This method sets up a database connection to the observation log database, with the name `log_name` by using sqlalchemy's `create_engine` function to create an engine for the file at 'sqlite:///' + f'/home/winter/data/{self.log_name}.db'. After creating the database engine, it initializes the database structure based on the config file in config/dataconfig.json. This dataconfig is read in using `json.load` and stored in the instance attribute `self.dbStructure`.
+
+### generateDBCommands
+This function supports `create_tables` by creating a dictionary of commands saved as `self.sqlCommands`. In this dictionary, each key is the name of one of the tables in the dataconfig.json file (eg 'Observation', 'Field', 'Night'). The value for each key in `self.sqlCommands` is a string which can be handled by `execute` method of the `sqlalchemy.Connection` object `self.conn` and creates the corresponding table in the SQLite database.
+
+### setUpDatabase
+This is called by `schedule_executor` at the beginning of the observing loop. It creates a sqlalchemy Connection object which is stored in `self.conn`, the same approach used when loading the schedule database. After init'ing the connection, it calls `self.create_tables()`.
+
+### create_tables
+This method supports `setUpDatabase`. This method uses the connection created in init to access the database and create the necessary tables to setup the database. This function calls `self.generateDBCommands`. Then for each table (ie each key in `self.sqlCommands`) it looks to see if the table **already** exists in the database (by checking if `self.engine.dialect.has_table(self.engine, table)`). If the table does not exist, then the corresponding command from `self.sqlCommands` is executed to set up that table in the observation log database. The end result of running this method is that the observation log database has all the necessary tables to be able to properly log an observation. This design allows the database structure to be changed without having to create a new database file. 
+
+If the `clobber` option is set to True when `self.create_tables` is called, it will delete (`DROP` in SQL language) the Observation, Field, and Night tables before recreating them. This can be useful for clearing out an old file if desired.
+
+### log_observation
+This writes a new entry into the observation log database. It is called from within the `run` method of `schedule_executor` after each observation. It takes in two arguments
+* *data*: a dictionary or SQLite rowProxy object containing the data which will be written to the database. This data can contain extra entries. `log_observation` will go through the data and grab all key:value pairs with keys that correspond to keys in `self.dbStructure` (ie those from dataconfig.json). Any missing keys in `self.dbStructure` will have their values set to None. This function uses `self.separate_data_dict(data)` to 
+
+### To Do:
+- [ ] Get rid of hard-coded paths, and add the paths to the config. This includes the database structure configuration (in <wsp_path>/config/dataconfig.json), and maybe the 1_night_test.db reference in `populateFieldsTable`?
+
+### Change log
+* **4/26/21 added config and logger as arguments** when instantiating an `ObsWriter` object, so now it uses the same log file as the rest of the code (instead of pseudoLog.log), and has access to the config if we want.
+
 ## Schedule Files
 The schedule files are written outside of `wsp` by the WINTER scheduler code. 
 
