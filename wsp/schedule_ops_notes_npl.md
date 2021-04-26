@@ -3,7 +3,7 @@
 ### Taking notes on Allan's scheduler code, to get up to speed and document changes
 Note that these are notes made by Nate based on Allan's code. Also used Allan's notes here as a reference: [dataLogTest.md](https://magellomar-gitlab.mit.edu/WINTER/code/blob/master/wsp/dataLogTest.md)
 
-## Overview of scheduling architecture (as of 4-23-21)
+## Overview of scheduling architecture (April 2021)
 On startup, `wsp` initializes a `systemControl.control` object. This object initializes all the subsystems. In the `__init__` of the `systemControl.control` object, three important classes are initialized which handle the scheduling: 
 1. `self.schedule`, an instance of `schedule.Schedule`, which handles the connection and queries to the schedule file SQLite database
 2. `self.writer`, an instance of `ObsWriter.ObsWriter`, which handles the setup and connection to the observation log SQLite database
@@ -20,9 +20,10 @@ In the init method, the schedule class connects to the logger, and sets up sever
 `loadSchedule`:
 
 
+
 ### Changelog:
 * **4/26/21: updated logging** Now it handles logging like all the other modules rather than writing to its own `pseudoLog.log` log file. In this case logger is passed in during the class instance definition. If this is cumbersome it could also be changed so that it finds the logger on its own, similar to the daemons.
-
+* **4/26/21: updated schedule paths in the config file** to match documentation above
  
 
 ## Schedule Files
