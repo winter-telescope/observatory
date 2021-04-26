@@ -57,7 +57,11 @@ If the `clobber` option is set to True when `self.create_tables` is called, it w
 
 ### log_observation
 This writes a new entry into the observation log database. It is called from within the `run` method of `schedule_executor` after each observation. It takes in two arguments
-* *data*: a dictionary or SQLite rowProxy object containing the data which will be written to the database. This data can contain extra entries. `log_observation` will go through the data and grab all key:value pairs with keys that correspond to keys in `self.dbStructure` (ie those from dataconfig.json). Any missing keys in `self.dbStructure` will have their values set to None. This function uses `self.separate_data_dict(data)` to 
+* *data*: a dictionary or SQLite rowProxy object containing the data which will be written to the database. This data can contain extra entries. `log_observation` will go through the data and grab all key:value pairs with keys that correspond to keys in `self.dbStructure` (ie those from dataconfig.json). Any missing keys in `self.dbStructure` will have their values set to None. This function uses `self.separate_data_dict(data)` to convert the data dictionary to the format it needs to write it out to the database. 
+
+### separate_data_dict
+This method supports log_observation. It takes in the big data dictionary (`dataDict`) of status fields received by log_observation (eg, the state dictionary from `wsp`, the image filename, etc) and converts it into a new dictionary `separatedData` that matches the format of the `self.dbStructure` dictionary. It loops through all the entries in dataDict and matches them against the entries in `self.dbStructure`. If an entry in dbStructure is not found in dataDict, the value for the entry will be set to the default value specified in `self.dbStructure` (ie and dataconfig.json) or just to None if no default is specified.  
+
 
 ### To Do:
 - [ ] Get rid of hard-coded paths, and add the paths to the config. This includes the database structure configuration (in <wsp_path>/config/dataconfig.json), and maybe the 1_night_test.db reference in `populateFieldsTable`?
