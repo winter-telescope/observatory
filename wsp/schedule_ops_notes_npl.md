@@ -14,20 +14,22 @@ These three objects are only initialized when `wsp` is started in `manual` or `r
 ## Schedule
 The schedule object implements `init`, `loadSchedule`, `getCurrentObs`, `gotoNextObs`, and `closeConnection`. These functions handle loading and connecting to the nightly (or otherwise specified) scheule file, and manage all the communications with it. It does *not* know anything about what has or has not been observed. It simply queries the database. The details of these functions are described here.
 
-`__init__`:
-
+### init:
 In the init method, the schedule class connects to the logger, and sets up several attributes which are used to hold schedule information, including: `self.scheduleFile_directory` which is loaded from `self.config['scheduleFile_directory']`, and `self.scheduleType` which is init'd to `None`. 
 
-`loadSchedule`:
+### loadSchedule:
+This method handles the connection to the database. It takes in a `schedulefile_name` argument which is used to load the schedule file itself. This schedule file name can take either a filename (of a file which must be in the `self.scheduleFile_directory`) or the keyword `nightly` which signals the function to load the nightly schedule (see Schedule section below). It also takes a `currentTime` argument which defaults to zero. At present, this "time" is a misnomer, and actually is handled as the obsHistID number. 
 
-This method handles the connection to the database. It takes in a `schedulefile_name` argument which is used to load the schedule file itself. This schedule file name can take either a filename (of a file which must be in the `self.scheduleFile_directory`) or the keyword `nightly` which signals the function to load the nightly schedule (see Schedule section below). It also takes a `currentTime` argument which defaults to zero. At present, this "time" is a misnomer, and actually is handled as the obsHistID number. After determiniming the database file to load and storing it to the `self.schedulefile` attribute, it uses the `sqlalchemy` `create_engine` function to create a database engine which is then used to connect to the database. The database connection object is initialized using the engine's `connect` method and the `sqlalchemy.Connection` object is stored as `self.conn`. After creating the database connection, `loadSchedule` creates a `sqlalchemy.Table` object from the 'Summary' field in the schedule file. It then grabs the elements of this table (ie all of the observations from the file) which have an `obsHistID` >= `currentTime`. This table is stored in `self.result`. Once this list of observations to do is loaded, the first row of the table is grabbed using `sqlalchemy.Table.fetchone()` and stored in `self.currentObs`.
+After determiniming the database file to load and storing it to the `self.schedulefile` attribute, it uses the `sqlalchemy` `create_engine` function to create a database engine which is then used to connect to the database. The database connection object is initialized using the engine's `connect` method and the `sqlalchemy.Connection` object is stored as `self.conn`. After creating the database connection, `loadSchedule` creates a `sqlalchemy.Table` object from the 'Summary' field in the schedule file. It then grabs the elements of this table (ie all of the observations from the file) which have an `obsHistID` >= `currentTime`. This table is stored in `self.result`. Once this list of observations to do is loaded, the first row of the table is grabbed (as a sqlalchmey RowProxy object) using `sqlalchemy.Table.fetchone()` and stored in `self.currentObs`.
 
-
-
+### getCurrentObs
+This method now simply returns `self.currentObs`, which is a sqlalchemy RowProxy object which acts largely like a python dictionary, and can easily be converted into one.
 
 ### Changelog:
 * **4/26/21: updated logging** Now it handles logging like all the other modules rather than writing to its own `pseudoLog.log` log file. In this case logger is passed in during the class instance definition. If this is cumbersome it could also be changed so that it finds the logger on its own, similar to the daemons.
- 
+
+### To Do:
+- [ ] replace `currentTime` with `startingTime` and make it actually refer to a time, and add a `startingRow` argument which replaces the previous functionality. That is, when loading the Summary table, load all rows where `expMJD` is >= `startingTime` (if specified) and where obsHistID is >= `startingRow` (if specified).
 
 ## Schedule Files
 The schedule files are written outside of `wsp` by the WINTER scheduler code. 
