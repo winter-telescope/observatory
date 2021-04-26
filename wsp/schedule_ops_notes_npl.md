@@ -57,10 +57,17 @@ If the `clobber` option is set to True when `self.create_tables` is called, it w
 
 ### log_observation
 This writes a new entry into the observation log database. It is called from within the `run` method of `schedule_executor` after each observation. It takes in two arguments
-* *data*: a dictionary or SQLite rowProxy object containing the data which will be written to the database. This data can contain extra entries. `log_observation` will go through the data and grab all key:value pairs with keys that correspond to keys in `self.dbStructure` (ie those from dataconfig.json). Any missing keys in `self.dbStructure` will have their values set to None. This function uses `self.separate_data_dict(data)` to convert the data dictionary to the format it needs to write it out to the database. 
+* *data*: a dictionary or SQLite rowProxy object containing the data which will be written to the database. This data can contain extra entries. `log_observation` will go through the data and grab all key:value pairs with keys that correspond to keys in `self.dbStructure` (ie those from dataconfig.json). Any missing keys in `self.dbStructure` will have their values set to None. 
+* *image*: this is the filepath to the saved image, which is added as an entry with the key 'pathToFits' to the data dictionary.
+
+This function uses `self.separate_data_dict(data)` to convert the data dictionary to the format it needs to write it out to the database. After getting the separated data dictionary (`separatedData`), the method iterates through each table in `separatedData` (eg Observation, Field, Night) and queries the database to see if an entry with the primary key for each table matches an entry in the database. Any duplicates are not re-written.
+
+For example, the primary key of Observation is obsHistID, which should be a unique identifier of every observation. If there is already an entry in the Observation table in the database that has the same obsHistID as the observation to log, this entry is not re-written. 
+
+In practice, Observation entries should not be attempted to be re-written unless there is an error with the schedule setup. However, each field will be observed multiple times, so this means only unobserved fields are added to the database. It also means that a new Night entry is only created once per night.
 
 ### separate_data_dict
-This method supports log_observation. It takes in the big data dictionary (`dataDict`) of status fields received by log_observation (eg, the state dictionary from `wsp`, the image filename, etc) and converts it into a new dictionary `separatedData` that matches the format of the `self.dbStructure` dictionary. It loops through all the entries in dataDict and matches them against the entries in `self.dbStructure`. If an entry in dbStructure is not found in dataDict, the value for the entry will be set to the default value specified in `self.dbStructure` (ie and dataconfig.json) or just to None if no default is specified.  
+This method supports log_observation. It takes in the big data dictionary (`dataDict`) of status fields received by log_observation (eg, the state dictionary from `wsp`, the image filename, etc) and converts it into a new dictionary `separatedData` that matches the format of the `self.dbStructure` dictionary. It loops through all the entries in dataDict and matches them against the entries in `self.dbStructure`. If an entry in dbStructure is not found in dataDict, the value for the entry will be set to the default value specified in `self.dbStructure` (ie and dataconfig.json) or just to None if no default is specified.
 
 
 ### To Do:
