@@ -56,6 +56,9 @@ class local_dome(QtCore.QObject):
         self.connected = False
         self.default = self.config['default_value']
         
+        # initialize a home azimuth
+        self.home_az = self.config['telescope_home']['az_degs']
+        
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)
         
@@ -235,7 +238,18 @@ class local_dome(QtCore.QObject):
         except:
             pass
 
-    
+    def SetHome(self, az):
+        try:
+            self.home_az = az
+        except:
+            pass
+        
+    """def GoHome(self):
+        try:
+            self.remote_object.GoDome(self.home_az)
+        except:
+            pass"""
+
     def print_state(self):
         self.update_state()
         print(f'Local Object Status: {json.dumps(self.state, indent = 2)}')

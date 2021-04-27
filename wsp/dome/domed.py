@@ -60,7 +60,9 @@ class ReconnectHandler(object):
     def __init__(self, connection_timeout = 0):
         self.connection_timeout = connection_timeout
         # Note that the first one gets skipped
-        self.reconnect_timeouts = np.array([0, 0.5, 1, 5, 10, 30, 60, 300, 600]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
+        #self.reconnect_timeouts = np.array([0, 0.5, 1, 5, 10, 30, 60, 300, 600]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
+        self.reconnect_timeouts = np.array([0, 0.5, 1, 5]) + self.connection_timeout #all the allowed timeouts between reconnection attempts CAN'T BE LESS THAN CONN TIMEOUT
+
         
         self.reconnect_timeout_level = 0 # the index of the currently active timeout
         self.reconnect_timeout = self.reconnect_timeouts[self.reconnect_timeout_level]
@@ -158,6 +160,8 @@ class StatusMonitor(QtCore.QObject):
         
         try:
             
+            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: trying to connection to ({self.addr} | {self.port})')
+            
             # try to reconnect the socket
             self.sock.connect((self.addr, self.port))
             
@@ -170,11 +174,11 @@ class StatusMonitor(QtCore.QObject):
             self.reconnector.reset_reconnect_timeout()
             
             
-        except:
+        except Exception as e:
             
             # the connection is broken. set connected to false
             self.connected = False
-            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful: {e}, waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             
     

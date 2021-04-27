@@ -157,9 +157,9 @@ class control(QtCore.QObject):
         self.weather = 'placeholder'
         
         #init the scheduler
-        self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, date = 'today')
+        self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger, date = 'today')
         ## init the database writer
-        self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory) #the ObsWriter initialization
+        self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
 
 
         ### SET UP THE HOUSEKEEPING ###

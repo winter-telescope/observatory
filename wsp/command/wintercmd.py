@@ -60,7 +60,15 @@ print(f'wintercmd: wsp_path = {wsp_path}')
 
 # winter modules
 from command import commandParser
+from utils import logging_setup
+from utils import utils
 
+# GLOBAL VARS
+
+# load the config
+CONFIG_FILE = wsp_path + '/config/config.yaml'
+CONFIG = utils.loadconfig(CONFIG_FILE)
+LOGGER = logging_setup.setup_logger(wsp_path, CONFIG)
 
 #redefine the argument parser so it exits nicely and execptions are handled better
 
@@ -106,8 +114,10 @@ def cmd(func):
             Exceptions are already handled by the argument parser
             so do nothing here.
             """
-            print('Could not execute command: ', e)
-
+            msg = (f'wintercmd: Could not execute command {func.__name__}: {e}')
+            LOGGER.info(msg)
+            
+            
             pass
     return wrapper_cmd
 
@@ -903,7 +913,24 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('Home')
         
         self.dome.newCommand.emit(sigcmd)
-    
+        
+            
+        # wait until the dome is homed.
+        #TODO add a timeout
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [True for i in range(n_buffer_samples)]
+        while True:
+            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
+            time.sleep(self.config['cmd_status_dt'])
+            stop_condition = (self.state['dome_home_status'] == 0)
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == False for entry in stop_condition_buffer):
+                break
+            
     @cmd
     def dome_close(self):
         """
@@ -961,9 +988,99 @@ class Wintercmd(QtCore.QObject):
                                     action = None,
                                     help = '<azimuth_degs>')
         
+        
+        
+        self.getargs()
+            # this is what happens when called from the cmd line. otherwise include az so it can be called internally
+        az = np.float(self.args.azimuth[0])
+        sigcmd = signalCmd('GoTo', az)
+        self.dome.newCommand.emit(sigcmd)
+        
+        print(f'self.state["dome_az_deg"] = {self.state["dome_az_deg"]}, type = {type(self.state["dome_az_deg"])}')
+        print(f'az = {az}, type = {type(az)}')
+        
+        
+        # wait until the dome is homed.
+        #TODO add a timeout
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [True for i in range(n_buffer_samples)]
+        while True:
+            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
+            time.sleep(self.config['cmd_status_dt'])
+            stop_condition = ( (self.state['dome_status'] == self.config['Dome_Status_Dict']['Dome_Status']['STOPPED']) and (np.abs(self.state['dome_az_deg'] - az ) < 0.5 ) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == True for entry in stop_condition_buffer):
+                break
+        
+        
+    @cmd 
+    def dome_go_home(self):
+        """
+        Created: NPL 4-22-21
+        try to slew to the home position.
+        if the dome doesn't know where it is, then home the dome first.
+        then slew to home position
+        """
+        self.defineCmdParser('send dome to home azimuth')
+        
+        # check if the dome is homed
+        if self.state['dome_home_status'] == 1:
+            self.logger.info('dome is already homed')
+            pass
+            
+        elif self.state['dome_home_status'] == 0:
+            self.logger.info('dome needs to be homed')
+            # the dome needs to be homed. home it:
+            self.dome_home()
+            
+        # the dome is homed. now slew it:
+        az = self.dome.home_az
+        sigcmd = signalCmd('GoTo', az)
+        self.dome.newCommand.emit(sigcmd)
+        
+        # wait until the dome is homed.
+        #TODO add a timeout
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [True for i in range(n_buffer_samples)]
+        
+        while True:
+            #self.logger.info(f'wintercmd: dome_go_home  STOP CONDITION BUFFER = {stop_condition_buffer}')
+            time.sleep(self.config['cmd_status_dt'])
+            stop_condition = ( (self.state['dome_status'] == self.config['Dome_Status_Dict']['Dome_Status']['STOPPED']) and (np.abs(self.state['dome_az_deg'] - az ) < 0.5 ) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == True for entry in stop_condition_buffer):
+                break
+    
+        self.logger.info('wintercmd: dome_go_home complete')
+        
+        
+    @cmd
+    def dome_set_home(self):
+        """ Created: NPL 4-22-21
+        
+        change the wsp value for the dome home position.
+        
+        this doesn't communicate anything to the dome, it just updates
+        the value of dome.home_az
+        """
+        
+        self.defineCmdParser('update dome home azimuth position')
+        self.cmdparser.add_argument('azimuth',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<azimuth_degs>')
+        
         self.getargs()
         az = self.args.azimuth[0]
-        sigcmd = signalCmd('GoTo', az)
+        sigcmd = signalCmd('SetHome', az)
         self.dome.newCommand.emit(sigcmd)
     
     @cmd

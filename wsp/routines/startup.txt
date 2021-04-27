@@ -2,22 +2,19 @@
 
 # startup telescope
 
-#mount_az_off
-#mount_alt_off
-#mount_disconnect
 
 mount_connect
 mount_az_on
 mount_alt_on
+
 mount_home
 
-mount_goto_alt_az 50 50
+dome_takecontrol
 
-mount_goto_alt_az 25 290
+dome_go_home
 
-mount_goto_alt_az 45 80
+dome_open
 
-mount_goto_alt_az 80 180
 
 
 

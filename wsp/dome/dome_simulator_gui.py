@@ -284,16 +284,55 @@ class MainWindow(QtWidgets.QMainWindow):
             self.update_state()
             
     def home(self):
+        self.log('domesim: homing dome')
         if self.state['Control_Status'] in ['REMOTE']:
             
+            # set the home status to not ready
+            self.state.update({'Home_Status' : 'NOT_READY'})
+            # set the dropdown to match the new value
+            index = self.home_status_button.findText("NOT_READY", QtCore.Qt.MatchFixedString)
+            self.home_status_button.setCurrentIndex(index)
+            # update the state
+            self.update_state()
+            
+            self.state.update({'Dome_Status' : 'HOMING'})
+            # set the dropdown to match the new value
+            index = self.dome_status_button.findText("HOMING", QtCore.Qt.MatchFixedString)
+            self.dome_status_button.setCurrentIndex(index)
+            # update the state
+            self.update_state()
+            
+            
+            # do some big moves
+            # Now start the fake "move" in a separate thread which keeps track of time
+            worker1 = Worker(self.move_fake_az, az_goal = 180)
+            worker2 = Worker(self.move_fake_az, az_goal = 0.0)
+            self.threadpool.start(worker1)
+            # Connect the signals to slots
+            worker1.signals.finished.connect(self.thread_complete)
+            worker1.signals.finished.connect(worker1.start)
+            worker1.signals.finished.connect(self.report_dome_move_complete)
+            worker1.signals.progress.connect(self.update_az_state)
+            worker2.signals.progress.connect(self.update_az_state)
+            worker2.signals.finished.connect(self.report_dome_move_complete)
+            worker2.signals.finished.connect(self.show_home_complete)
+            
+    def show_home_complete(self):
             self.state.update({'Home_Status' : 'READY'})
             # set the dropdown to match the new value
             index = self.home_status_button.findText("READY", QtCore.Qt.MatchFixedString)
             self.home_status_button.setCurrentIndex(index)
-            
             # update the displayed status
             #self.newState.emit(self.state_json)
             self.update_state()
+            
+            self.state.update({'Dome_Status' : 'STOPPED'})
+            # set the dropdown to match the new value
+            index = self.dome_status_button.findText("STOPPED", QtCore.Qt.MatchFixedString)
+            self.dome_status_button.setCurrentIndex(index)
+            # update the state
+            self.update_state()
+            
     
     def open_shutter(self):
         if (self.state['Control_Status'] in ['REMOTE']) & (self.state['Shutter_Status'] == 'CLOSED'):
@@ -360,24 +399,23 @@ class MainWindow(QtWidgets.QMainWindow):
             self.log(f'Shutter Move Remaining Time: {t_remaining}')
             
     
-    def godome(self, az):
+    def godome(self, az, homing = False):
+        self.log(f'domesim: moving fake dome to az = {az} deg')
         if self.state['Control_Status'] in ['REMOTE']:
-            
-            # First indicate that the dome is moving
-            self.state.update({'Dome_Status' : 'MOVING'})
-            # set the dropdown to match the new value
-            index = self.dome_status_button.findText("MOVING", QtCore.Qt.MatchFixedString)
-            self.dome_status_button.setCurrentIndex(index)
-            self.update_state()
+            if homing != True:
+                # First indicate that the dome is moving
+                self.state.update({'Dome_Status' : 'MOVING'})
+                # set the dropdown to match the new value
+                index = self.dome_status_button.findText("MOVING", QtCore.Qt.MatchFixedString)
+                self.dome_status_button.setCurrentIndex(index)
+                self.update_state()
             
             # Now start the fake "move" in a separate thread which keeps track of time
             worker = Worker(self.move_fake_az, az_goal = az)
             self.threadpool.start(worker)
             # Connect the signals to slots
-            #worker.signals.result.connect(self.printWord)
             worker.signals.finished.connect(self.thread_complete)
             worker.signals.finished.connect(self.report_dome_move_complete)
-            #worker.signals.progress.connect(self.progress_fn)
             worker.signals.progress.connect(self.update_az_state)
     
     def report_dome_move_complete(self):
@@ -396,7 +434,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # round the az to one decimal place
         az = np.round(az, 1)
         
-        self.log(f'Updating dome Az to {az}')
+        #self.log(f'Updating dome Az to {az}')
         self.state.update({'Dome_Azimuth' : az})
         self.update_state()
         
@@ -462,8 +500,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     az = np.mod(az + movedir*self.az_speed*dt,360.0)
                     if verbose:
                         self.log(f"Dome Az = {az}, Dist to Go = {np.abs(az_goal-az)} deg")# %(az, np.abs(az_goal-az)))
-                        progress_callback.emit(az)
                         #print(f" Still Moving? {self.ismoving}")
+                    # report back the azimuth as we go
+                    progress_callback.emit(az)
+                        
                 self.ismoving = False
                 if verbose:
                     if not self.ismoving:

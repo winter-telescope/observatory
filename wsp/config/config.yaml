@@ -20,7 +20,10 @@ wintercmd_trusted_hosts:
 ########## SCHEDULING ##########
 # location of the schedule files (base directory + this directory)
 scheduleFile_directory: 'schedule/scheduleFiles'
-scheduleFile_nightly_prefix: 'WINTER_NightlySchedule_'
+#scheduleFile_nightly_prefix: 'WINTER_NightlySchedule_'
+scheduleFile_nightly_prefix: 'nightly_'
+scheduleFile_nightly_link_directory: 'data'
+scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 
 # dither table
 dither_file: 'config/dither_list.conf'

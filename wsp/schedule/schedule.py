@@ -111,7 +111,7 @@ class Schedule(object):
     #     except:
     #         print("Unable to make an observing plan for tonight!")
 
-    def __init__(self, base_directory, config, date = 'today'):
+    def __init__(self, base_directory, config, logger, date = 'today'):
         """
         sets up logging and opens connection to the database. Does
         not actually access any data yet.
@@ -120,12 +120,7 @@ class Schedule(object):
         self.config = config
             
         #set up logging
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        fh = logging.FileHandler('pseudoLog.log', mode='a')
-        format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh.setFormatter(format)
-        self.logger.addHandler(fh)
+        self.logger = logger
 
         self.base_directory = base_directory
         self.scheduleFile_directory = self.config['scheduleFile_directory']
