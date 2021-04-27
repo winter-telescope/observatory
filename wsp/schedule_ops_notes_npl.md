@@ -1,7 +1,7 @@
 # Notes on schedule execution
 
 ### Taking notes on Allan's scheduler code, to get up to speed and document changes
-Note that these are notes made by Nate based on Allan's code. Also used Allan's notes here as a reference: [dataLogTest.md](https://magellomar-gitlab.mit.edu/WINTER/code/blob/master/wsp/dataLogTest.md)
+Note that these are notes made by Nate based on Allan's code. Also used Allan's notes here as a reference: [dataLogTest.md](https://magellomar-gitlab.mit.edu/WINTER/code/blob/master/wsp/dataLogTest.md) My goal with this document is to go through all of Allan's code carefully to understand all of its parts, figure out what's happening where, and see what needs updating. In general the database code has been demonstrated and works great. The main improvements that need to be made are in the observing sequence, adding more fields to be logged, and making the process of getting the current observation a bit more sophisticated.
 
 ## Overview of scheduling architecture (April 2021)
 On startup, `wsp` initializes a `systemControl.control` object. This object initializes all the subsystems. In the `__init__` of the `systemControl.control` object, three important classes are initialized which handle the scheduling: 
@@ -72,6 +72,8 @@ This method supports log_observation. It takes in the big data dictionary (`data
 
 ### To Do:
 - [ ] Get rid of hard-coded paths, and add the paths to the config. This includes the database structure configuration (in <wsp_path>/config/dataconfig.json), and maybe the 1_night_test.db reference in `populateFieldsTable`?
+- [ ] Add more relevant entries to dataconfig.json that have all the things we want to record in the FITS header.
+
 
 ### Change log
 * **4/26/21 added config and logger as arguments** when instantiating an `ObsWriter` object, so now it uses the same log file as the rest of the code (instead of pseudoLog.log), and has access to the config if we want.
@@ -89,3 +91,22 @@ These must correspond to the naming convention used by the WINTER scheduler. The
 
 ### Changelog:
 * **4/26/21: updated schedule paths in the config file** to match documentation above
+
+
+## Schedule Executor
+The schedule executor, the `self.scheduleExec` attribute of the `systemControl.control` object inherits from QThread, and runs a dedicated thread which handles loading the schedule, making observations, and logging them. 
+
+There are two `pyqtSignals` assiciated with the schedule executor:
+* **changeSchedule: ** This signal is connected to `self.setup_new_schedule` in the init method. It is emitted any time `wsp` gets a command to change to a new schedule. This can happen when the wintercmds `load_target_schedule` or `load_nightly_schedule` commands are requested.
+
+### init
+The init method 
+
+### To Do:
+- [ ] Pass all the relevant information needed for logging each observation to the ObsWriter. The main thing that needs to happen is that all the fields from the schedule file need to get ported to scheduled entries in the data dictionary passed to `log_observation`. For example, the `azimuth` field from the current observation should get turned into something like `azimuth_scheduled` and added to the data dictionary. This could be done by looping through all the entries in `schedule.currentObs` and making a new `scheduled` dictionary that appends `_scheduled` to each key.
+
+
+
+
+
+
