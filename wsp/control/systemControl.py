@@ -50,6 +50,8 @@ from daemon import daemon_utils
 from daemon import test_daemon_local
 from dome import dome
 from chiller import chiller
+from routines import schedule_executor
+from control import roboOperator
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -186,13 +188,15 @@ class control(QtCore.QObject):
         
         if mode in ['r','m']:
             #init the schedule executor
-            self.scheduleExec = commandParser.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
+            self.scheduleExec = schedule_executor.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
+        """
+        #NPL 4-27-21: commenting out this listener stuff. I don't think it's used anymore
             listener = self.scheduleExec
         else:
             listener = None
-        
+        """
         # init the command executor
-        self.cmdexecutor = commandParser.cmd_executor(telescope = self.telescope, wintercmd = self.wintercmd, logger = self.logger, listener = listener)
+        self.cmdexecutor = commandParser.cmd_executor(telescope = self.telescope, wintercmd = self.wintercmd, logger = self.logger)#, listener = listener)
         
         # init the command prompt
         self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)        
@@ -207,8 +211,8 @@ class control(QtCore.QObject):
         
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
-            self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-        
+            #self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
+            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, state = self.hk.state, wintercmd = self.wintercmd, telescope = self.telescope, dome = self.dome, chiller = self.chiller, logger = self.logger)
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
@@ -219,8 +223,8 @@ class control(QtCore.QObject):
         
         ##### START SCHEDULE EXECUTOR #####
         if mode in ['r','m']:
-            self.scheduleExec.start()
-            
+            #self.scheduleExec.start()
+            self.roboThread.start()
             # Now execute a list of commands
             """cmdlist = ['mount_connect', 'mount_az_on', 'mount_alt_on', 'mount_home','mount_goto_alt_az 35 38.5']
             self.logger.info(f'control: trying to add a list of commands to the cmd executor')

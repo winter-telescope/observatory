@@ -119,29 +119,29 @@ class local_dome(QtCore.QObject):
         self.state.update({'Telescope_Power'                :   self.remote_state.get('Telescope_Power',                  self.default)})
         self.state.update({'Dome_Azimuth'                   :   self.remote_state.get('Dome_Azimuth',                     self.default)})
         
-        Dome_Status = self.remote_state.get('Dome_Status', 'FAULT')               # status of observatory dome
-        self.state.update({'Dome_Status_Num'                :   self.config['Dome_Status_Dict']['Dome_Status'].get(Dome_Status,       self.default) })
+        self.Dome_Status = self.remote_state.get('Dome_Status', 'FAULT')               # status of observatory dome
+        self.state.update({'Dome_Status_Num'                :   self.config['Dome_Status_Dict']['Dome_Status'].get(self.Dome_Status,       self.default) })
         
-        Home_Status = self.remote_state.get('Home_Status', 'NOT_READY')               # status of whether dome needs to be homed
-        self.state.update({'Home_Status_Num'                :   self.config['Dome_Status_Dict']['Home_Status'].get(Home_Status,       self.default) })
+        self.Home_Status = self.remote_state.get('Home_Status', 'NOT_READY')               # status of whether dome needs to be homed
+        self.state.update({'Home_Status_Num'                :   self.config['Dome_Status_Dict']['Home_Status'].get(self.Home_Status,       self.default) })
         
-        Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
-        self.state.update({'Shutter_Status_Num'             :   self.config['Dome_Status_Dict']['Shutter_Status'].get(Shutter_Status, self.default) })
+        self.Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
+        self.state.update({'Shutter_Status_Num'             :   self.config['Dome_Status_Dict']['Shutter_Status'].get(self.Shutter_Status, self.default) })
         
-        Control_Status = self.remote_state.get('Control_Status','FAULT')
-        self.state.update({'Control_Status_Num'             :   self.config['Dome_Status_Dict']['Control_Status'].get(Control_Status, self.default) })
+        self.Control_Status = self.remote_state.get('Control_Status','FAULT')
+        self.state.update({'Control_Status_Num'             :   self.config['Dome_Status_Dict']['Control_Status'].get(self.Control_Status, self.default) })
         
-        Close_Status = self.remote_state.get('Close_Status','FAULT')
-        self.state.update({'Close_Status_Num'               :   self.config['Dome_Status_Dict']['Close_Status'].get(Close_Status,     self.default) })
+        self.Close_Status = self.remote_state.get('Close_Status','FAULT')
+        self.state.update({'Close_Status_Num'               :   self.config['Dome_Status_Dict']['Close_Status'].get(self.Close_Status,     self.default) })
         
-        Weather_Status = self.remote_state.get('Weather_Status','FAULT')
-        self.state.update({'Weather_Status_Num'             :   self.config['Dome_Status_Dict']['Weather_Status'].get(Weather_Status, self.default) })
+        self.Weather_Status = self.remote_state.get('Weather_Status','FAULT')
+        self.state.update({'Weather_Status_Num'             :   self.config['Dome_Status_Dict']['Weather_Status'].get(self.Weather_Status, self.default) })
 
-        Sunlight_Status = self.remote_state.get('Sunlight_Status','NOT_READY')
-        self.state.update({'Sunlight_Status_Num'             :   self.config['Dome_Status_Dict']['Sunlight_Status'].get(Sunlight_Status, self.default) })
+        self.Sunlight_Status = self.remote_state.get('Sunlight_Status','NOT_READY')
+        self.state.update({'Sunlight_Status_Num'             :   self.config['Dome_Status_Dict']['Sunlight_Status'].get(self.Sunlight_Status, self.default) })
         
-        Wetness_Status = self.remote_state.get('Wetness','NOT_READY')
-        self.state.update({'Wetness_Status_Num'             :   self.config['Dome_Status_Dict']['Wetness_Status'].get(Wetness_Status, self.default) })
+        self.Wetness_Status = self.remote_state.get('Wetness','NOT_READY')
+        self.state.update({'Wetness_Status_Num'             :   self.config['Dome_Status_Dict']['Wetness_Status'].get(self.Wetness_Status, self.default) })
         
         self.state.update({'Outside_Dewpoint_Threshold'     :   self.remote_state.get('Outside_Dewpoint_Threshold',     self.default)})
         self.state.update({'Average_Wind_Speed_Threshold'   :   self.remote_state.get('Average_Wind_Speed_Threshold',   self.default)})
@@ -154,9 +154,9 @@ class local_dome(QtCore.QObject):
         self.state.update({'Weather_Hold_time'              :   self.remote_state.get('Weather_Hold_time',              self.default)})
         
         # Handle the fault code. This uses the Dome_Status_Dict from the config file
-        Faults = self.remote_state.get('Faults', 0)
+        self.Faults = self.remote_state.get('Faults', 0)
         for fault_code in self.config['Dome_Status_Dict']['Faults']:
-            if Faults & fault_code:
+            if self.Faults & fault_code:
                 
                 # print the message (ie log it)
                 #print(self.config['Dome_Status_Dict']['Faults'][fault_code]['msg'])
@@ -167,9 +167,15 @@ class local_dome(QtCore.QObject):
                 # assign the variable to false
                 self.state.update({self.config['Dome_Status_Dict']['Faults'][fault_code]['field'] : 0})
         
+        self.dome_ok = (self.Dome_Status != 'UNKNOWN') & (self.Home_Status == 'READY') & (self.Shutter_Status != 'UNKNOWN') & (self.Control_Status == 'REMOTE') & (self.Close_Status == 'READY')
+        self.state.update({'dome_ok' : self.dome_ok})
+        self.weather_ok =  (self.Weather_Status == 'READY') & (self.Sunlight_Status == 'READY') & (self.Wetness_Status == 'READY')
+        self.state.update({'weather_ok' : self.weather_ok})
+        self.faults_ok = (self.Faults == 0)
+        self.state.update({'faults_ok' : self.faults_ok})
         
-        
-
+        self.ok_to_open = self.dome_ok & self.weather_ok & self.faults_ok
+        self.state.update({'ok_to_open' : self.ok_to_open})
     
     def doCommand(self, cmd_obj):
         """

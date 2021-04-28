@@ -25,7 +25,7 @@ import logging
 import os
 import datetime
 import numpy as np
-
+import threading
 
 
 class WorkerSignals(QtCore.QObject):
@@ -78,12 +78,24 @@ class Worker(QtCore.QRunnable):
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
-
+        
+        # check if the logger got passed in. if it's not, then the get returns None
+        if 'logger' in kwargs:
+            self.logger = kwargs.get('logger')
+            # we don't want to pass logger to wintercmd.parse though, so pull it out:
+            self.kwargs.pop('logger')
+        else:
+            self.logger = None
+        
         # This is a new bit: subclass an instance of the WorkerSignals class:
         self.signals = WorkerSignals()
 
 
-
+    def log(self, msg, level = logging.INFO):
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg) 
 
 
     @QtCore.pyqtSlot()
@@ -103,8 +115,10 @@ class Worker(QtCore.QRunnable):
             result = self.fn(
                 *self.args, **self.kwargs
             )
-        except:
-            traceback.print_exc()
+        except Exception as e:
+            #traceback.print_exc()
+            msg = f"wintercmd Worker running {self.fn.__name__}: {e.__class__.__name__}, {e}"
+            self.log(msg)
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
@@ -113,8 +127,13 @@ class Worker(QtCore.QRunnable):
             self.signals.finished.emit()  # Done
 
 
+
+        
+    
+
+
 class cmd_request(object):
-    """
+    '''
     A cmd_request object is generated each time a user tries to execute a
     command, either by typing into the local command prompt or externally from
     a network connection.
@@ -124,7 +143,7 @@ class cmd_request(object):
     the priority level of the command (set variously in the code depending on
     who is the sender), as well as information about the requester,
     namely their ip address, port.
-    """
+    '''
     def __init__(self, cmd, request_addr, request_port, priority = 'low'):
         try:
             self.cmd = cmd
@@ -252,7 +271,7 @@ class cmd_executor(QtCore.QThread):
     
     def dispatch_single_command(self, cmd):
         try:
-            worker = Worker(self.wintercmd.parse,cmd)
+            worker = Worker(self.wintercmd.parse,cmd, logger = self.logger)
             #self.wintercmd.onecmd(cmd)
             ## for the moment the following lines commented, since we are not interrupting for commands without pausing schedule
             # if self.listener:
@@ -266,7 +285,7 @@ class cmd_executor(QtCore.QThread):
     def dispatch_command_list(self, cmd):
         # if cmd is a list of commands, then we do them one at a time in a single worker thread
         try:
-            worker = Worker(self.wintercmd.parse_list,cmd)
+            worker = Worker(self.wintercmd.parse_list,cmd, logger = self.logger)
             
             self.threadpool.start(worker)
         except Exception as e:
@@ -299,7 +318,7 @@ class cmd_executor(QtCore.QThread):
            if not self.queue.empty():
                priority, cmd = self.queue.get()
                self.execute(cmd)
-
+'''
 class schedule_executor(QtCore.QThread):
     """
     This is a thread which handles the tracking and execution of the scheduled observations for the robotic execution
@@ -372,10 +391,10 @@ class schedule_executor(QtCore.QThread):
 
 
     def run(self):
-        '''
+        """
         This function must contain all of the database manipulation code to remain threadsafe and prevent
         exceptions from being raised during operation
-        '''
+        """
         self.running = True
         #print(f'scheduleExecutor: running scheduleExec in thread {self.currentThread()}')
 
@@ -437,3 +456,4 @@ class schedule_executor(QtCore.QThread):
             ## TODO: Code to close connections to the databases.
             self.schedule.closeConnection()
             self.writer.closeConnection()
+'''

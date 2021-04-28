@@ -384,23 +384,32 @@ def readcsv(filename,skiprows=0):
 
 def tonight():
     # a similar version of the minerva function by NPL
-    today = datetime.utcnow()
+    # NPL: 4/27/21 changing the conventions. 
+    # Want the night of a given day to be defined from 8a that day, to 7:59 the next day LOCAL TIME so it's easy to keep track of.
+    # All the images will be stored with UTC dates, so this is just for labeling logs and telemetry data. THis way it's in a sensible format
+    
+    # Get the current LOCAL time in California
     calitz = pytz.timezone('America/Los_Angeles')
-    today_cali = datetime.now(calitz)
+    now_cali = datetime.now(calitz)
     
-    # if the UTC time is between 10a and 4p, ie cali time between 2a and 8a
-    if datetime.now().hour >= 10 and datetime.now().hour <= 16:
-        today = today + timedelta(days=1)
-    return today.strftime('%Y%m%d')    
+    # if the local time is between midnight and 8am (ie, >=0 and <8) then subtract off a day
+    if now_cali.hour >= 0 and now_cali.hour < 8:
+        now_cali = now_cali - timedelta(days=1)
+        
+    tonight_string = now_cali.strftime('%Y%m%d') 
+    return tonight_string    
 
-    
+"""
 def night():
+    # DEPRECATED. This if from Minerva
     # was called night in minerva, but tonight is a little more transparent
     today = datetime.utcnow()
     # if the UTC time is between 10a and 4p, ie cali time between 2a and 8a
     if datetime.now().hour >= 10 and datetime.now().hour <= 16:
         today = today + timedelta(days=1)
     return today.strftime('%Y%m%d')    
+"""
+
 
 # BELOW FUNCTIONS LOOK HELPFUL BUT HAVE NOT BEEN TESTED FOR COMPATIBILITY
 # converts a sexigesimal string to a float

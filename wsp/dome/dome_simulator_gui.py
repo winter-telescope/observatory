@@ -305,14 +305,15 @@ class MainWindow(QtWidgets.QMainWindow):
             
             # do some big moves
             # Now start the fake "move" in a separate thread which keeps track of time
-            worker1 = Worker(self.move_fake_az, az_goal = 180)
-            worker2 = Worker(self.move_fake_az, az_goal = 0.0)
-            self.threadpool.start(worker1)
+            #worker1 = Worker(self.move_fake_az, az_goal = 180)
+            worker2 = Worker(self.move_fake_az, az_goal = 180.0)
+            self.threadpool.start(worker2)
             # Connect the signals to slots
-            worker1.signals.finished.connect(self.thread_complete)
-            worker1.signals.finished.connect(worker1.start)
-            worker1.signals.finished.connect(self.report_dome_move_complete)
-            worker1.signals.progress.connect(self.update_az_state)
+            #worker1.signals.finished.connect(self.thread_complete)
+            #worker1.signals.finished.connect(worker1.start)
+            #worker1.signals.finished.connect(self.report_dome_move_complete)
+            #worker1.signals.progress.connect(self.update_az_state)
+            
             worker2.signals.progress.connect(self.update_az_state)
             worker2.signals.finished.connect(self.report_dome_move_complete)
             worker2.signals.finished.connect(self.show_home_complete)

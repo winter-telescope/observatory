@@ -25,29 +25,6 @@ import traceback, sys
 from datetime import datetime
 import threading
 
-class WorkerSignals(QtCore.QObject):
-    '''
-    Defines the signals available from a running worker thread.
-
-    Supported signals are:
-
-    finished
-        No data
-    
-    error
-        `tuple` (exctype, value, traceback.format_exc() )
-    
-    result
-        `object` data returned from processing, anything
-
-    progress
-        `int` indicating % progress 
-
-    '''
-    finished = QtCore.pyqtSignal()
-    error = QtCore.pyqtSignal(tuple)
-    result = QtCore.pyqtSignal(object)
-    progress = QtCore.pyqtSignal(int)
 
 
 class TimerThread(QtCore.QThread):
@@ -63,9 +40,6 @@ class TimerThread(QtCore.QThread):
         print('created a timer thread')
         # Set up the timeout. Convert seconds to ms
         self.timeout = timeout*1000.0
-        
-        # Record the start time
-        #self.start_timestamp = datetime.utcnow().timestamp()
     
         
     def run(self):
@@ -98,6 +72,17 @@ class WorkerQThread(QtCore.QThread):
     error    = QtCore.pyqtSignal(tuple)
     result   = QtCore.pyqtSignal(object)
     progress = QtCore.pyqtSignal(int)
+    '''
+    error
+        `tuple` (exctype, value, traceback.format_exc() )
+    
+    result
+        `object` data returned from processing, anything
+
+    progress
+        `int` indicating % progress 
+    '''
+    
     
     def __init__(self, fn, timeout = 2, *args, **kwargs):
         super(WorkerQThread, self).__init__()
@@ -110,7 +95,6 @@ class WorkerQThread(QtCore.QThread):
         self.timeout = timeout
         
         self.kwargs = kwargs
-        #self.signals = WorkerSignals()    
 
         # Add the callback to our kwargs
         self.kwargs['progress_callback'] = self.progress        
@@ -202,9 +186,6 @@ class MainWindow(QtWidgets.QMainWindow):
     
         self.show()
 
-        #self.threadpool = QThreadPool()
-        #print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
-
         self.timer = QtCore.QTimer()
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.recurring_timer)
@@ -232,9 +213,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def print_output(self, s):
         print(s)
         
-    def thread_complete(self):
-        print("THREAD COMPLETE!")
-    
+
     def worker_thread_finished(self):
         print("WORKER THREAD FINISHED\n")
  
@@ -245,8 +224,6 @@ class MainWindow(QtWidgets.QMainWindow):
         worker = WorkerQThread(self.execute_this_fn, timeout = 3.0)
         worker.start() # this has to happen before the signal connections otherwise it all crashes!
         worker.result.connect(self.print_output)
-        #worker.signals.finished.connect(self.thread_complete)
-        #worker.signals.finished.connect(worker.quit)
         worker.progress.connect(self.progress_fn)
         worker.finished.connect(self.worker_thread_finished)
         

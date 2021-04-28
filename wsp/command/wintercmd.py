@@ -47,7 +47,7 @@ import traceback
 import signal
 import logging
 import os
-import datetime
+from datetime import datetime
 import numpy as np
 import shlex
 
@@ -109,13 +109,18 @@ def cmd(func):
     def wrapper_cmd(*args, **kwargs):
         try:
             func(*args, **kwargs)
+        
+        except TimeoutError as e:
+            raise TimeoutError(e)
+        
         except Exception as e:
-            """
+            '''
             Exceptions are already handled by the argument parser
             so do nothing here.
-            """
+            '''
             msg = (f'wintercmd: Could not execute command {func.__name__}: {e}')
             LOGGER.info(msg)
+            
             
             
             pass
@@ -165,7 +170,12 @@ class Wintercmd(QtCore.QObject):
         self.config = config
         self.logger = logger
         self.defineParser()
-
+    
+    def throwTimeoutError(self):
+        msg = "command took too long to execute!"
+        self.logger.warning(msg)
+        raise TimeoutError(msg)
+    
     def parse(self,argv = None):
 
         # parse_args defaults to [1:] for args, but you need to
@@ -199,11 +209,16 @@ class Wintercmd(QtCore.QObject):
                 pass
         # use dispatch pattern to invoke method with same name
         else:
-            try:
+            #### EXECUTE THE FUNCTION ####
+            """try:
                 getattr(self, self.command)()
             except Exception as e:
-                self.logger.warning(f'Could not execute command {self.command}')
-                self.logger.debug(e)
+                self.logger.warning(f'Could not execute command {self.command}, {e}')
+                self.logger.debug(e)"""
+                
+            # try it without the try/except block. don't want too many otherwise the error handling gets lost
+            getattr(self, self.command)()
+            
     
     def parse_list(self, cmdlist):
         # assumes each item in the list is a well-formed wintercmd
@@ -252,8 +267,39 @@ class Wintercmd(QtCore.QObject):
         passed to whtaever the command is
         '''
         self.cmdparser = ArgumentParser(logger = self.logger, description = description)
-
-
+    
+    
+    def waitForCondition(self, expression, condition, timeout = 100.0):
+        
+        print(f'waiting for expression: {expression} to equal condition {condition}...')
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+        
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        print(f'start_timestamp = {start_timestamp}')
+        while True:
+            #print('entering loop')
+            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = self.state['mount_is_slewing']
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+    
+    
     @cmd
     def commit(self):
         self.defineCmdParser(description='Record changes to the repository')
@@ -262,7 +308,10 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         self.logger.info('Running git commit, amend=%s' % self.args.amend)
 
-
+    @cmd
+    def raise_timeout(self):
+        self.defineCmdParser(description = "Raise a TimeoutError")
+        self.throwTimeoutError()
 
     @cmd
     def count(self):
@@ -308,55 +357,230 @@ class Wintercmd(QtCore.QObject):
     def mount_connect(self):
         self.defineCmdParser('connect to telescope mount')
         self.telescope.mount_connect()
-        
+
+        """        
         time.sleep(self.config.get('cmd_waittime', 1.0))
         while not self.state['mount_is_connected']:
             time.sleep(self.config['cmd_status_dt'])
+        
+        """
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
 
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_connected'] == True)
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+        
     @cmd
     def mount_disconnect(self):
         self.defineCmdParser('disconnect from telescope mount')
         self.telescope.mount_disconnect()
-        
+        """
         time.sleep(self.config.get('cmd_waittime', 1.0))
         while self.state['mount_is_connected']:
             time.sleep(self.config['cmd_status_dt'])
+            
+        """
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_connected'] == False)
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
 
     @cmd
     def mount_az_on(self):
         self.defineCmdParser('turn on az motor')
         self.telescope.mount_enable(0)
         
+        """
         time.sleep(self.config.get('cmd_waittime', 1.0))
         while not self.state['mount_az_is_enabled']:
             time.sleep(self.config['cmd_status_dt'])
+        """
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
 
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_az_is_enabled'])
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+        
+        
     @cmd
     def mount_az_off(self):
         self.defineCmdParser('turn off az motor')
         self.telescope.mount_disable(0)
         
+        """
         time.sleep(self.config.get('cmd_waittime', 1.0))
         while self.state['mount_az_is_enabled']:
             time.sleep(self.config['cmd_status_dt'])
+        """
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
 
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_az_is_enabled'] == False)
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break   
+        
+            
     @cmd
     def mount_alt_on(self):
         self.defineCmdParser('turn on alt motor')
         self.telescope.mount_enable(1)
+        """
         time.sleep(self.config.get('cmd_waittime', 1.0))
         while not self.state['mount_az_is_enabled']:
             time.sleep(self.config['cmd_status_dt'])
-        
+        """
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_alt_is_enabled'] == True)
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break   
 
     @cmd
     def mount_alt_off(self):
         self.defineCmdParser('turn off alt motor')
         self.telescope.mount_disable(1)
+        """
         time.sleep(self.config.get('cmd_waittime', 1.0))
         while self.state['mount_alt_is_enabled']:
             time.sleep(self.config['cmd_status_dt'])
-        
+        """
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_alt_is_enabled'] == False)
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break 
 
     @cmd
     def mount_stop(self):
@@ -372,21 +596,33 @@ class Wintercmd(QtCore.QObject):
         self.telescope.mount_goto_alt_az(alt_degs = alt_degs, az_degs = az_degs)
         
         # wait for the telescope to stop moving before returning
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 15
+        # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [True for i in range(n_buffer_samples)]
-        
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
         while True:
-            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
+            #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
-            stop_condition = self.state['mount_is_slewing']
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_slewing'] == False)
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
             stop_condition_buffer[-1] = stop_condition
             
-            if all(entry == False for entry in stop_condition_buffer):
-                break
+            if all(entry == condition for entry in stop_condition_buffer):
+                break 
        
         self.logger.info(f'Telescope Homing complete')
         
@@ -447,24 +683,38 @@ class Wintercmd(QtCore.QObject):
         ra = self.args.position[0]
         dec = self.args.position[1]
         self.telescope.mount_goto_ra_dec_apparent(ra_hours = ra, dec_degs = dec)
+        
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 20
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [True for i in range(n_buffer_samples)]
-        
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
         while True:
-            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
+            #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
-            stop_condition = self.state['mount_is_slewing']
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_slewing'])
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
             stop_condition_buffer[-1] = stop_condition
             
-            if all(entry == False for entry in stop_condition_buffer):
-                break
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
        
         self.logger.info(f'Telescope Move complete')
+        
     @cmd
     def mount_goto_ra_dec_j2000(self):
         """Usage: mount_goto_ra_dec_j2000 <ra> <dec>"""
@@ -478,23 +728,34 @@ class Wintercmd(QtCore.QObject):
         ra = self.args.position[0]
         dec = self.args.position[1]
         self.telescope.mount_goto_ra_dec_j2000(ra_hours = ra, dec_degs = dec)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 20
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [True for i in range(n_buffer_samples)]
-        
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
         while True:
-            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
+            #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
-            stop_condition = self.state['mount_is_slewing']
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_slewing'])
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
             stop_condition_buffer[-1] = stop_condition
             
-            if all(entry == False for entry in stop_condition_buffer):
-                break
-       
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
         self.logger.info(f'Telescope Move complete')
         
     @cmd
@@ -587,22 +848,34 @@ class Wintercmd(QtCore.QObject):
         alt = self.args.position[0]
         az = self.args.position[1]
         self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 20.0
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [True for i in range(n_buffer_samples)]
-        
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
         while True:
-            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
+            #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
-            stop_condition = self.state['mount_is_slewing']
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_slewing'])
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
             stop_condition_buffer[-1] = stop_condition
             
-            if all(entry == False for entry in stop_condition_buffer):
-                break
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
        
         self.logger.info(f'Telescope Move complete')
     
@@ -615,10 +888,34 @@ class Wintercmd(QtCore.QObject):
         """
         self.defineCmdParser('park the telescope mount')
         self.telescope.mount_park()
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
         # wait for the telescope to stop moving before returning
-        time.sleep(self.config.get('cmd_waittime', 1.0))
-        while self.state['mount_is_slewing']:
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_slewing'])
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
         
     @cmd
     def mount_set_park_here(self):
@@ -914,23 +1211,36 @@ class Wintercmd(QtCore.QObject):
         
         self.dome.newCommand.emit(sigcmd)
         
-            
-        # wait until the dome is homed.
-        #TODO add a timeout
+
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 100.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [True for i in range(n_buffer_samples)]
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
         while True:
-            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
+            #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
-            stop_condition = (self.state['dome_home_status'] == 0)
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.dome.Home_Status == 'READY') & (self.dome.Dome_Status == 'STOPPED')
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
             stop_condition_buffer[-1] = stop_condition
             
-            if all(entry == False for entry in stop_condition_buffer):
-                break
-            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+        
+        
     @cmd
     def dome_close(self):
         """
@@ -940,6 +1250,35 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('Close')
         self.dome.newCommand.emit(sigcmd)
         
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 100.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.dome.Shutter_Status == 'CLOSED')
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break 
+        
+        
     @cmd
     def dome_open(self):
         """
@@ -948,6 +1287,36 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('Open the dome')
         sigcmd = signalCmd('Open')
         self.dome.newCommand.emit(sigcmd)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 100.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.dome.Shutter_Status == 'OPEN')
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break 
+        
+        
         
     @cmd
     def dome_stop(self):
@@ -966,7 +1335,33 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('Take Remote Control of the Dome')
         sigcmd = signalCmd('TakeControl')
         self.dome.newCommand.emit(sigcmd)
-    
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.dome.Control_Status == 'REMOTE')
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break 
+        
     @cmd
     def dome_givecontrol(self):
         """
@@ -975,7 +1370,32 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('Give up remote control of the dome')
         sigcmd = signalCmd('GiveControl')
         self.dome.newCommand.emit(sigcmd)
-    
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 5.0
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.dome.Control_Status == 'AVAILABLE')
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break 
     
     @cmd
     def dome_goto(self):

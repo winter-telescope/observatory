@@ -56,7 +56,7 @@ def setup_logger(base_dir, config):
     ## create the log directory
     log_dir = os.getenv("HOME") + '/' + config['log_directory']
     
-    night = utils.night()
+    night = utils.tonight()
     
     logname = night + '.log'
     logpath = log_dir + '/' + logname
