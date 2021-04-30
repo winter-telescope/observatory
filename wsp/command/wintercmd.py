@@ -850,9 +850,13 @@ class Wintercmd(QtCore.QObject):
         az = self.args.position[1]
         self.telescope.mount_goto_alt_az(alt_degs = alt, az_degs = az)
         
+        # estimate timeout
+        delta_az_degs = self.state['mount_az_dist_to_target']/3600.0
+        delta_alt_degs = self.state['mount_alt_dist_to_target']/3600.0
+        
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 20.0
+        timeout = 2000.0
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
@@ -869,7 +873,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
-            stop_condition = (self.state['mount_is_slewing'])
+            stop_condition = ( (not self.state['mount_is_slewing']) & (self.state['mount_az_dist_to_target'] < 0.1) & (self.state['mount_alt_dist_to_target'] < 0.1))
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -1240,7 +1244,7 @@ class Wintercmd(QtCore.QObject):
             
             if all(entry == condition for entry in stop_condition_buffer):
                 break    
-        
+        self.logger.info('wintercmd: finished homing dome')
         
     @cmd
     def dome_close(self):
@@ -1417,11 +1421,35 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('GoTo', az)
         self.dome.newCommand.emit(sigcmd)
         
-        print(f'self.state["dome_az_deg"] = {self.state["dome_az_deg"]}, type = {type(self.state["dome_az_deg"])}')
-        print(f'az = {az}, type = {type(az)}')
+        self.logger.info(f'self.state["dome_az_deg"] = {self.state["dome_az_deg"]}, type = {type(self.state["dome_az_deg"])}')
+        self.logger.info(f'az = {az}, type = {type(az)}')
         
-        
-        # wait until the dome is homed.
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 100
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = ( (self.state['dome_status'] == self.config['Dome_Status_Dict']['Dome_Status']['STOPPED']) and (np.abs(self.state['dome_az_deg'] - az ) < 0.5 ) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break 
+        """# wait until the dome is homed.
         #TODO add a timeout
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [True for i in range(n_buffer_samples)]
@@ -1436,7 +1464,7 @@ class Wintercmd(QtCore.QObject):
             
             if all(entry == True for entry in stop_condition_buffer):
                 break
-        
+        self.logger.info('wintercmd: dome homing complete')"""
         
     @cmd 
     def dome_go_home(self):
@@ -1463,7 +1491,7 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('GoTo', az)
         self.dome.newCommand.emit(sigcmd)
         
-        # wait until the dome is homed.
+        """# wait until the dome is homed.
         #TODO add a timeout
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [True for i in range(n_buffer_samples)]
@@ -1479,7 +1507,7 @@ class Wintercmd(QtCore.QObject):
             
             if all(entry == True for entry in stop_condition_buffer):
                 break
-    
+        """
         self.logger.info('wintercmd: dome_go_home complete')
         
         

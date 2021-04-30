@@ -40,7 +40,7 @@ from housekeeping import labjacks
 # the main housekeeping class it lives in the namespace of the control class
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, telescope = None, dome = None, weather = None, chiller = None, schedule = None, counter = None, ephem = None):            
+    def __init__(self, config, base_directory, mode = None, telescope = None, dome = None, weather = None, chiller = None, counter = None, ephem = None):            
         
         
         # store the config
@@ -55,7 +55,7 @@ class housekeeping():
         self.dome = dome
         self.weather = weather
         self.chiller = chiller
-        self.schedule = schedule
+        
         self.counter = counter
         self.ephem = ephem
         
@@ -123,7 +123,7 @@ class housekeeping():
                                                curframe = self.curframe,
                                                telescope = self.telescope,
                                                weather = self.weather,
-                                               schedule = self.schedule,
+                                               #schedule = self.schedule,
                                                labjacks = self.labjacks,
                                                counter = self.counter,
                                                dome = self.dome,

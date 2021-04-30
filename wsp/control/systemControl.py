@@ -188,7 +188,6 @@ class control(QtCore.QObject):
                                                 dome = self.dome,
                                                 weather = self.weather,
                                                 chiller = self.chiller,
-                                                schedule = self.schedule,
                                                 counter = self.counter,
                                                 ephem = self.ephem)
         
@@ -227,7 +226,7 @@ class control(QtCore.QObject):
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
             #self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem)
+            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, housekeeping = self.hk, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem)
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor

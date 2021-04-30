@@ -68,7 +68,7 @@ class RoboOperatorThread(QtCore.QThread):
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, telescope, dome, chiller, ephem):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, housekeeping, telescope, dome, chiller, ephem):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -77,6 +77,8 @@ class RoboOperatorThread(QtCore.QThread):
         self.state = state
         self.wintercmd = wintercmd
         self.wintercmd.roboThread = self
+        self.housekeeping = housekeeping
+        self.housekeeping.roboThread = self
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
@@ -149,12 +151,16 @@ class RoboOperator(QtCore.QObject):
         self.dome = dome
         self.chiller = chiller
         self.logger = logger
+        self.ephem = ephem
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
         
         # set attribute to indicate if robo operator is running
         self.running = True
+        # set an attribute to indicate if we are okay to observe
+        ## ie, if startup is complete, the calibration is complete, and the weather/dome is okay
+        self.ok_to_observe = False
     
         # init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
@@ -168,11 +174,21 @@ class RoboOperator(QtCore.QObject):
         self.dither_alt *= (1/3600.0)
         self.dither_az  *= (1/3600.0)
         
+        # create exposure timer to wait for exposure to finish
+        self.exptimer = QtCore.QTimer()
+        self.exptimer.setSingleShot(True)
+        self.exptimer.timeout.connect(self.log_timer_finished)
+        self.exptimer.timeout.connect(self.log_observation_and_gotoNext)
+        
+
         
         ### CONNECT SIGNALS AND SLOTS ###
         self.startRoboSignal.connect(self.restart_robo)
-        self.stopRoboSignal.connect(self.stop_robo)
-        self.changeSchedule.connect(self.setup_new_schedule)
+        self.stopRoboSignal.connect(self.stop)
+        #TODO: is this right (above)? NPL 4-30-21
+        
+        # change schedule. for now commenting out bc i think its handled in the robo Thread def
+        #self.changeSchedule.connect(self.change_schedule)
         
         ## overrides
         # override the dome.ok_to_open flag
@@ -192,7 +208,9 @@ class RoboOperator(QtCore.QObject):
         ## in manual mode, the schedule file is set to None
         else:
             self.schedulefile_name = None
+            
         # set up the schedule
+        ## after this point we should have something in self.schedule.currentObs
         self.setup_schedule()
         
         
@@ -225,70 +243,90 @@ class RoboOperator(QtCore.QObject):
                 if not self.calibration_complete:
                     return
                     #break
-                
-            # if the sun is below the horizon, or if the sun_override is active, then we want to open the dome
-            if self.ephem.sun_below_horizon or self.sun_override:
-                
-                # make a note of why we want to open the dome
-                if self.ephem.sun_below_horizon:
-                    self.logger.info(f'robo: the sun is below the horizon, I want to open the dome.')
-                elif self.sun_override:
-                    self.logger.warning(f"robo: the SUN IS ABOVE THE HORIZON, but sun_override is active so I want to open the dome")
-                else:
-                    # shouldn't ever be here
-                    self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with sun handling")
-                    return
-                    #break
-                
-                # if we can open up the dome, then do it!
-                if (self.dome.ok_to_open or self.dome_override):
-                    
-                    # make a note of why we're going ahead with opening the dome
-                    if self.dome.ok_to_open:
-                        self.logger.info(f'robo: the dome says it is okay to open. sending open command.')
-                    elif self.dome_override:
-                        self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
-                    else:
-                        # shouldn't ever be here
-                        self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with dome handling")
-                        return
-                        #break
-                    
-                    # SEND THE DOME OPEN COMMAND
-                    self.doTry('dome_open', context = 'startup', system = 'dome')
-                    
-                    # Check if the dome is open:
-                    if self.dome.Shutter_Status == 'OPEN':
-                        self.logger.info(f'robo: shutter was opened successfully')
-                        
-                        #####
-                        # We're good to observe
-                        self.okay_to_observe = True
-                        break
-                        #####
-                        
-                    else:
-                        self.logger.info(f'robo: error opening dome.')
-                        return
-                        
-                else:
-                    # there is an issue with the dome
-                    
-                    pass
-                        
-                
+            
+            self.check_ok_to_observe()
+            if self.ok_to_observe:
+                break
             else:
-                # the sun is up
-                pass
-            time.sleep(0.5)
+                time.sleep(0.5)
             
         # we escaped the loop!
-        # do the first observation!
-        if self.okay_to_observe:
-            self.do_currentObs()
+        # if it's okay to observe, then do the first observation!
+        self.do_currentObs()
         return
         
-
+    def check_ok_to_observe(self):
+        # if the sun is below the horizon, or if the sun_override is active, then we want to open the dome
+        if self.ephem.sun_below_horizon or self.sun_override:
+            
+            # make a note of why we want to open the dome
+            if self.ephem.sun_below_horizon:
+                #self.logger.info(f'robo: the sun is below the horizon, I want to open the dome.')
+                pass
+            elif self.sun_override:
+                self.logger.warning(f"robo: the SUN IS ABOVE THE HORIZON, but sun_override is active so I want to open the dome")
+            else:
+                # shouldn't ever be here
+                self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with sun handling")
+                self.ok_to_observe = False
+                #return
+                #break
+            
+            # if we can open up the dome, then do it!
+            if (self.dome.ok_to_open or self.dome_override):
+                
+                # make a note of why we're going ahead with opening the dome
+                if self.dome.ok_to_open:
+                    #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
+                    pass
+                elif self.dome_override:
+                    self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
+                else:
+                    # shouldn't ever be here
+                    self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with dome handling")
+                    self.ok_to_observe = False
+                    #return
+                    #break
+                
+               
+                
+                # Check if the dome is open:
+                if self.dome.Shutter_Status == 'OPEN':
+                    self.logger.info(f'robo: okay to observe check passed')
+                    
+                    #####
+                    # We're good to observe
+                    self.ok_to_observe = True
+                    #break
+                    #####
+                
+                else:
+                    # dome is closed.
+                    """
+                    #TODO: this is weird. This function should either be just a status poll
+                    that is executed regularly, or it should be only run rarely.
+                    having the open command in here makes it kind of a weird in-between
+                    
+                    """
+                    self.logger.info(f'robo: shutter is closed. attempting to open...')
+                     # SEND THE DOME OPEN COMMAND
+                    self.doTry('dome_open', context = 'startup', system = 'dome')
+                    self.logger.info(f'robo: error opening dome.')
+                    self.ok_to_observe = False
+                    
+            else:
+                # there is an issue with the dome
+                
+                self.ok_to_observe = False
+                    
+            
+        else:
+            # the sun is up
+            self.ok_to_observe = False
+        
+        
+            
+            
     
     def setup_schedule(self):
         
@@ -395,13 +433,16 @@ class RoboOperator(QtCore.QObject):
         
         ### DOME SET UP ###
         system = 'dome'
+        self.logger.info('robo: starting dome startup...')
         try:
             # take control of dome        
             self.do('dome_takecontrol')
     
             # home the dome
             self.do('dome_home')
-        
+            
+            # signal we're complete
+            self.logger.info(f'robo: dome startup complete')
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
@@ -411,6 +452,7 @@ class RoboOperator(QtCore.QObject):
         
         ### MOUNT SETUP ###
         system = 'telescope'
+        self.logger.info('robo: starting telescope startup...')
         try:
             # connect the telescope
             self.do('mount_startup')
@@ -445,7 +487,6 @@ class RoboOperator(QtCore.QObject):
         
         then create the dictionary that will be used to log to the database, and create the fits header
             --> this uses self.writer.separate_data_dict
-            
         then command the camerat to take an image and send it the fits header information
         
         then it starts the image wait QTimer, and returns
@@ -470,10 +511,94 @@ class RoboOperator(QtCore.QObject):
                         3. emit a restartRobo signal so it gets kicked back to the top of the tree
         
         """
-        pass
+        self.check_ok_to_observe()
+        if self.running & self.ok_to_observe:
+            
+            # grab some fields from the currentObs
+            self.lastSeen = self.schedule.currentObs['obsHistID']
+            self.alt_scheduled = float(self.schedule.currentObs['altitude'])
+            self.az_scheduled = float(self.schedule.currentObs['azimuth'])
+            
+            self.logger.info(f'robo: executing observation of obsHistID = {self.lastSeen} at (alt, az) = ({self.alt_scheduled:0.2f}, {self.az_scheduled:0.2f})')
+            
+            # 1: point the telescope
+            #TODO: change this to RA/DEC pointing instead of AZ/EL
+            context = 'do_currentObs'
+            system = 'telescope'
+            try:
+                
+                # slew the telscope
+                self.do(f'mount_goto_alt_az {self.alt_scheduled} {self.az_scheduled}')
+            except Exception as e:
+                msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                return
+            
+            system = 'dome'
+            try:
+                self.do(f'dome_goto {self.az_scheduled}')
+            except Exception as e:
+                msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                return
+            # 2: create the log dictionary & FITS header. save log dict to self.lastObs_record
+            # 3: trigger image acquisition
+            # 4: start exposure timer
+            self.logger.info('robo: starting timer to wait for exposure to finish')
+            self.waittime = float(self.schedule.currentObs['visitTime'])#/len(self.dither_alt)
+            self.waittime_padding = 2.0 # pad the waittime a few seconds just to be sure it's done
+            self.exptimer.start((self.waittime + self.waittime_padding)*1000.0) # start the timer with waittime in ms as a timeout
+            # 5: exit
+        else:
+            # if it's not okay to observe, then restart the robo loop to wait for conditions to change
+            self.restart_robo()
         
-        
-        
+    def log_observation_and_gotoNext(self):
+        #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
+        self.check_ok_to_observe()
+        if not self.ok_to_observe:
+            # if it's not okay to observe, then restart the robo loop to wait for conditions to change
+            self.restart_robo()
+            return
+            
+        if self.schedule.currentObs is not None and self.running:
+            self.logger.info('robo: logging observation')
+            
+            """
+            if self.state["ok_to_observe"]:
+                    imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
+                    # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
+                    currentData = self.get_data_to_log()
+                    # self.state.update(currentData)
+                    # data_to_write = {**self.state}
+                    data_to_write = {**self.state, **currentData} ## can add other dictionaries here
+                    self.writer.log_observation(data_to_write, imagename)
+            """
+            # get the next observation
+            self.logger.info('robo: getting next observation from schedule database')
+            self.schedule.gotoNextObs()
+            
+            # do the next observation and continue the cycle
+            self.do_currentObs()
+            
+        else:  
+            if self.schedule.currentObs is None:
+                self.logger.info('robo: in log and goto next, but either there is no observation to log.')
+            elif self.running == False:
+                self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
+            
+            if not self.schedulefile_name is None:
+                self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
+                ## TODO: Code to close connections to the databases.
+                self.schedule.closeConnection()
+                self.writer.closeConnection()
+    
+    def log_timer_finished(self):
+        self.logger.info('robo: exposure timer finished.')
         
     def old_do_observing(self):
         '''

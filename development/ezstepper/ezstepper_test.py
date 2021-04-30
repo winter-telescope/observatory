@@ -781,12 +781,12 @@ if __name__ == '__main__':
     '''
 
     #%% Move by some amount of turns
-    N = 5
+    N = 1
 
-    step.setMoveCurrent(30)
-    step.setHoldCurrent(0)
-    step.setSpeed(2, units = 'rps')
-    step.move_N_turns(N, direction = 'ccw')
+    step.setMoveCurrent(50)
+    step.setHoldCurrent(10)
+    step.setSpeed(1, units = 'rps')
+    step.move_N_turns(N, direction = 'cw')
         
     #%% Move by some amount of steps
     N = 5000

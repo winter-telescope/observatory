@@ -172,13 +172,15 @@ class Schedule(object):
                 self.schedulefile_name = schedulefile_name
                 self.scheduleType = 'target'
             
-        self.schedulefile = self.base_directory + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
+        #self.schedulefile = self.base_directory + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
+        self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
         
+        self.logger.info(f'scheduler: creating sql engine to schedule file at {self.schedulefile}')
         self.engine = db.create_engine('sqlite:///' + self.schedulefile)
         #TODO: NPL: what happens if this file doesn't exist?
 
         self.conn = self.engine.connect()
-        self.logger.error('successfully connected to db')
+        self.logger.error('scheduler: successfully connected to db')
         metadata = db.MetaData()
         summary = db.Table('Summary', metadata, autoload=True, autoload_with=self.engine)
 

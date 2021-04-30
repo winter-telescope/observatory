@@ -29,8 +29,8 @@ wintercmd_trusted_hosts:
     -192.168.1.11
 
 ########## SCHEDULING ##########
-# location of the schedule files (base directory + this directory)
-scheduleFile_directory: 'schedule/scheduleFiles'
+# location of the schedule files (home + this directory)
+scheduleFile_directory: 'data/schedules'
 #scheduleFile_nightly_prefix: 'WINTER_NightlySchedule_'
 scheduleFile_nightly_prefix: 'nightly_'
 scheduleFile_nightly_link_directory: 'data'
@@ -288,7 +288,7 @@ fields:
         units: deg
         dtype: float64
         rate: slow
-        var: "schedule.scheduleExec.az_scheduled"
+        var: "roboThread.robo.az_scheduled"
     alt_scheduled:
         ftype: raw
         label: 'Alt'
