@@ -1,5 +1,16 @@
 # config file for WINTER
 
+########## SITE PARAMETERS ##########
+site:
+    # lat/lon. expects a format that can be read with astropy.coordinates.Angle()
+    lat: '33d21m21.6s'
+    lon: '-116d51m46.8s'
+    # height (site altitude). height is a number, units are something that can be parsed with astropy.units.Unit()
+    height: 1706
+    height_units: 'm'
+
+
+
 ########## SERIAL BUS DEVICES ##########
 # USB-Serial Devices
 usb_serial_dev:
@@ -230,29 +241,15 @@ labjacks:
 # Note: each rate must have a corresponding "daq_rate" as given above
 fields:
 #general:
-    fcount:
-        ftype: raw
-        label: 'count'
-        units: None
-        dtype: float64
-        rate: fast
-        var: 'index'
-    ftime:
-        ftype: raw
-        label: 'time'
-        units: ctime
-        dtype: float64
-        rate: fast
-        var: 'timestamp'
 
-    scount:
+    count:
         ftype: raw
         label: 'count'
         units: None
         dtype: float64
         rate: slow
         var: 'index'
-    stime:
+    timestamp:
         ftype: raw
         label: 'time'
         units: ctime
@@ -266,6 +263,24 @@ fields:
         dtype: float64
         rate: 'hk'
         var: 'counter.state["count"]'
+#ephemeris
+    ephem_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'ephem.state["timestamp"]'
+    sun_alt:
+        ftype: raw
+        label: 'Alt'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['sunalt']"
+    
+    
+    
 #schedule
     az_scheduled:
         ftype: raw
@@ -869,13 +884,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: 'dome.state["query_timestamp"]'
-    dome_time_utc:
+    dome_timestamp:
         ftype: raw
         label: 'time'
         units: 's'
         dtype: float64
         rate: slow
-        var: 'dome.state["UTC_timestamp"]'
+        var: 'dome.state["timestamp"]'
     dome_telescope_power:
         ftype: raw
         label: 'status'

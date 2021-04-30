@@ -23,6 +23,8 @@ from datetime import datetime
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import pathlib
 from labjack import ljm
+import astropy.coordinates
+import astropy.units as u
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,7 +40,7 @@ from housekeeping import labjacks
 # the main housekeeping class it lives in the namespace of the control class
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, telescope = None, dome = None, weather = None, chiller = None, schedule = None, counter = None):            
+    def __init__(self, config, base_directory, mode = None, telescope = None, dome = None, weather = None, chiller = None, schedule = None, counter = None, ephem = None):            
         
         
         # store the config
@@ -55,6 +57,7 @@ class housekeeping():
         self.chiller = chiller
         self.schedule = schedule
         self.counter = counter
+        self.ephem = ephem
         
         # setup any labjacks that are in the config
         '''
@@ -93,27 +96,15 @@ class housekeeping():
         
         
         # define the DAQ loops
-        if mode.lower() in ['m','s']:
+        if mode.lower() in ['m','r']:
             self.daq_telescope = data_handler.daq_loop(func = self.telescope.update_state, 
                                                        dt = self.config['daq_dt']['hk'],
                                                        name = 'telescope_daqloop'
                                                        )
                                                        #rate = 'fast')
-           
-        """
-            self.daq_dome = data_handler.daq_loop(func = self.dome.update_state, 
-                                                  dt = self.config['daq_dt']['hk'], 
-                                                  name = 'dome_daqloop'
-                                                  )
-        """
-           
-        """                                           
-            self.daq_weather = data_handler.daq_loop(func = self.weather.getWeather,
-                                                     dt = self.config['daq_dt']['fast'],
-                                                     name = 'weather_daqloop'
-                                                     )
-                                                     #rate = 'slow')
-        """
+            # add NON INSTRUMENT status polls to housekeeping
+            self.housekeeping_poll_functions.append(self.dome.update_state)
+            self.housekeeping_poll_functions.append(self.ephem.update_state)
         
         self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
                                                   dt = self.config['daq_dt']['hk'],
@@ -121,35 +112,12 @@ class housekeeping():
                                                   )
                                                   #rate = 'very_slow')
         
-        """
-        self.daq_counter = data_handler.daq_loop(func = self.counter.update_state,
-                                                  dt = self.config['daq_dt']['hk'],
-                                                  name = 'counter_daqloop'
-                                                  )
-        """
-        # add the counter to the housekeeping poll list
+        
+        # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
-        self.housekeeping_poll_functions.append(self.dome.update_state)
         self.housekeeping_poll_functions.append(self.chiller.update_state)
         
-        #self.housekeeping_poll_functions.append(self.counter.print_state)
-        #self.labjacks.read_all_labjacks()
-        #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
-        # define the status update loops
-        """
-        self.fastloop = data_handler.fast_loop(config = self.config, 
-                                               state = self.state, 
-                                               curframe = self.curframe, 
-                                               telescope = self.telescope)
-        
-        self.slowloop = data_handler.slow_loop(config = self.config, 
-                                               state = self.state, 
-                                               curframe = self.curframe,
-                                               telescope = self.telescope,
-                                               weather = self.weather,
-                                               schedule = self.schedule,
-                                               labjacks = self.labjacks)
-        """
+
         self.hk_loop = data_handler.hk_loop(config = self.config, 
                                                state = self.state, 
                                                curframe = self.curframe,
@@ -159,9 +127,9 @@ class housekeeping():
                                                labjacks = self.labjacks,
                                                counter = self.counter,
                                                dome = self.dome,
-                                               chiller = self.chiller)
-        
-        #print(f"housekeeping: lj0 AIN1 = {self.labjacks.labjacks['lj0'].state['AIN1']}")
+                                               chiller = self.chiller,
+                                               ephem = self.ephem)
+
         
         # define the dirfile write loop
         self.writethread = data_handler.write_thread(config = config, dirfile = self.df, state = self.state, curframe = self.curframe)
@@ -170,7 +138,8 @@ class housekeeping():
         self.start_housekeeping_poll_loop()
         print("Done init'ing housekeeping")
         
-        
+    
+    
     def poll_housekeeping(self):
         """
         execute all the functions in the housekeeping_poll_functions
@@ -281,5 +250,30 @@ class housekeeping():
 
 
         
+    def get_sun_alt(self, time = 'now', time_format = 'datetime'):
         
+        if time == 'now':
+            now_datetime = datetime.utcnow()
+            
+        time = astropy.time.Time(time, format = time_format)
+        
+        
+        lat = astropy.coordinates.Angle(self.config['site']['lat'])
+        lon = astropy.coordinates.Angle(self.config['site']['lon'])
+        height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
+                                        
+        palomar = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
+        # this gives the same result as using the of_site('Palomar') definition
+        
+        
+        
+        
+        frame = astropy.coordinates.AltAz(obstime = time, location = palomar)
+        
+        sunloc = astropy.coordinates.get_sun(time)
+        
+        sun_coords = sunloc.transform_to(frame)
+        
+        sunalt = sun_coords.alt.value
+        self.sunalt = sunalt
         

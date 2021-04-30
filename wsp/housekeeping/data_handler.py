@@ -47,7 +47,7 @@ from telescope import pwi4
 
 class hk_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, telescope,weather,schedule,labjacks, counter, dome, chiller, verbose = False):
+    def __init__(self,config, state, curframe, telescope,weather,schedule,labjacks, counter, dome, chiller, ephem, verbose = False):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -61,6 +61,7 @@ class hk_loop(QtCore.QThread):
         self.counter = counter
         self.dome = dome
         self.chiller = chiller
+        self.ephem = ephem
         
         # pass the config to the thread
         self.config = config
@@ -93,8 +94,12 @@ class hk_loop(QtCore.QThread):
 
     def update_status(self, default_value = -999):
         self.index +=1
+        
+        # THIS IS USED TO ADD A TIMESTAMP TO THE STATE DICTIONARY
         self.timestamp = datetime.utcnow().timestamp()
-
+        self.state.update({'timestamp' : self.timestamp})
+        
+        
         # is it faster to put the labjack poll here?
         #self.labjacks.read_all_labjacks()
 
@@ -431,12 +436,16 @@ class daq_loop(QtCore.QThread):
         self.timer.timeout.connect(update)
         self.timer.start()
         self.exec()
+        
+        #NPL: 4-28-21, I'm not sure why this is here. It only prints after the daqloop is quit since it's hiding after the exec. 
+        #TODO: delete this. just commenting out now to check operation
+        """
         if self._thread_numbering_ == 'pyqt':
             print(f'{self.name}: running daqloop of func: {self.func.__name__} in thread {self.currentThread()}')
         else:
             print(f'{self.name}: running daqloop of func: {self.func.__name__} in thread {threading.get_ident()}')
             
-            
+         """   
     def __del__(self):
         self.wait()
     

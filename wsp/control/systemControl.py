@@ -33,7 +33,7 @@ print(f'control: wsp_path = {wsp_path}')
 
 # winter modules
 from power import power
-from telescope import pwi4
+#from telescope import pwi4
 from telescope import telescope
 #from command import commandServer_multiClient
 from command import commandServer
@@ -41,17 +41,18 @@ from command import wintercmd
 from command import commandParser
 from housekeeping import housekeeping
 from dome import dome
-from schedule import schedule
-from schedule import ObsWriter
-from utils import utils
-from power import power
-from housekeeping import local_weather
+#from schedule import schedule
+#from schedule import ObsWriter
+#from utils import utils
+#from power import power
+#from housekeeping import local_weather
 from daemon import daemon_utils
 from daemon import test_daemon_local
-from dome import dome
+#from dome import dome
 from chiller import chiller
-from routines import schedule_executor
+#from routines import schedule_executor
 from control import roboOperator
+from ephem import ephem
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -80,7 +81,7 @@ class control(QtCore.QObject):
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'test_daemon.py','dome_simulator_gui.py']
+        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'test_daemon.py','dome_simulator_gui.py','ephemd.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -110,6 +111,7 @@ class control(QtCore.QObject):
             self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.chillerd)
             
+            
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
             
@@ -123,14 +125,22 @@ class control(QtCore.QObject):
                 self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
                 self.daemonlist.add_daemon(self.domesim)
         
-        
-        
+            # ephemeris daemon
+            #TODO: pass opts? ignore for now. don't need it running in verbose mode
+            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py")
+            self.daemonlist.add_daemon(self.ephemd)
+            
+            
+            
         # Launch all hardware daemons
         self.daemonlist.launch_all()
         
         
         
         ### SET UP THE HARDWARE ###
+        # note we always want to set this all up. we just won't try to update the state later on if we're not running certain daemons
+        # we'll run into trouble down the line if some of these attributes don't exist
+        
         # init the network power supply
         try:
             self.pdu1 = power.PDU('pdu1.ini',base_directory = self.base_directory)
@@ -151,18 +161,21 @@ class control(QtCore.QObject):
         # init the chiller
         self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
         
-        
+        # init the ephemeris
+        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config)
         
         # init the weather by creating a local object that interfaces with the remote object from the weather daemon
         
         #self.weather = local_weather.Weather(self.base_directory, config = self.config, logger = self.logger)
         self.weather = 'placeholder'
         
+        """
+        # NPL: 4-29-21: moving the schedule stuff over to the roboOperator.
         #init the scheduler
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger, date = 'today')
         ## init the database writer
         self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
-
+        """
 
         ### SET UP THE HOUSEKEEPING ###
 
@@ -176,7 +189,8 @@ class control(QtCore.QObject):
                                                 weather = self.weather,
                                                 chiller = self.chiller,
                                                 schedule = self.schedule,
-                                                counter = self.counter)
+                                                counter = self.counter,
+                                                ephem = self.ephem)
         
         
 
@@ -188,7 +202,8 @@ class control(QtCore.QObject):
         
         if mode in ['r','m']:
             #init the schedule executor
-            self.scheduleExec = schedule_executor.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
+            #self.scheduleExec = schedule_executor.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
+            pass
         """
         #NPL 4-27-21: commenting out this listener stuff. I don't think it's used anymore
             listener = self.scheduleExec
@@ -212,7 +227,7 @@ class control(QtCore.QObject):
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
             #self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, state = self.hk.state, wintercmd = self.wintercmd, telescope = self.telescope, dome = self.dome, chiller = self.chiller, logger = self.logger)
+            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem)
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor

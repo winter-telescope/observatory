@@ -110,11 +110,12 @@ class local_dome(QtCore.QObject):
         self.state.update({'reconnect_timeout'              :   self.remote_state.get('reconnect_timeout', self.default)})
         self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
         
-        
+        # timestamp of last reply
         utc = self.remote_state.get('UTC', '1970-01-01 00:00:00.00') # last query timestamp
         utc_datetime_obj = datetime.strptime(utc, '%Y-%m-%d %H:%M:%S.%f')        # last query time string
         timestamp = utc_datetime_obj.timestamp()
-        self.state.update({'UTC_timestamp' : timestamp})
+        #self.state.update({'UTC_timestamp' : timestamp})
+        self.state.update({'timestamp' : timestamp})
         
         self.state.update({'Telescope_Power'                :   self.remote_state.get('Telescope_Power',                  self.default)})
         self.state.update({'Dome_Azimuth'                   :   self.remote_state.get('Dome_Azimuth',                     self.default)})

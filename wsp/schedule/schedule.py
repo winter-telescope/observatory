@@ -111,7 +111,7 @@ class Schedule(object):
     #     except:
     #         print("Unable to make an observing plan for tonight!")
 
-    def __init__(self, base_directory, config, logger, date = 'today'):
+    def __init__(self, base_directory, config, logger):#, date = 'today'):
         """
         sets up logging and opens connection to the database. Does
         not actually access any data yet.

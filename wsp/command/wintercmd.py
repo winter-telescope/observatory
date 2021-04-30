@@ -150,6 +150,7 @@ class Wintercmd(QtCore.QObject):
     # a signal which will be used to send a commandRequest directly back to command executor
     newCmdRequest = QtCore.pyqtSignal(object)
     
+    
     def __init__(self, base_directory, config, state, daemonlist, telescope, dome, chiller, logger):
         # init the parent class
         #super().__init__()
@@ -1610,6 +1611,58 @@ class Wintercmd(QtCore.QObject):
         # Now signal that we should execute the list of commands
         #self.newRoutine.emit(cmd_list)
         self.newCmdRequest.emit(cmdrequest)
+    
+    ######## COMMANDS RELATED TO THE ROBOTIC OPERATIONS ########
+    
+    @cmd
+    def load_target_schedule(self):
+        """Usage: load_target_schedule <TOO_ScheduleFile.db>"""
+        self.defineCmdParser('load in a TOO target schedule file')
+        self.cmdparser.add_argument('schedulefile_name',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<target_schedulefile.db>')
+        self.getargs()
+        schedulefile_name = self.args.schedulefile_name[0]
+        # send signal that the schedule executor should swap schedule files
+        self.roboThread.changeSchedule.emit(schedulefile_name)
+    @cmd
+    def load_nightly_schedule(self):
+        self.defineCmdParser('load the schedule file for the nightly plan')
+        schedulefile_name = 'nightly'
+        self.roboThread.changeSchedule.emit(schedulefile_name)
+
+    """@cmd
+    def schedule_start(self):
+        self.defineCmdParser('start/resume scheduled observations')
+        if self.scheduleThread:
+            self.scheduleThread.start()
+
+    @cmd
+    def schedule_pause(self):
+        self.defineCmdParser('interrupt scheduled observations')
+        if self.scheduleThread:
+            self.scheduleThread.stop()"""
+            
+    @cmd
+    def robo_kill(self):
+        self.defineCmdParser('kill the robotic operator thread')
+        if self.roboThread.isRunning():
+            self.roboThread.terminate()
+        else:
+            pass
+    @cmd
+    def robo_init(self):
+        self.defineCmdParser('init the robotic operator thread')
+        if not self.roboThread.isRunning():
+            self.roboThread.start()
+        
+    @cmd
+    def robo_run(self):
+        self.defineCmdParser('start the robotic operator')
+        if self.roboThread.isRunning():
+            self.roboThread.restartRoboSignal.emit()
         
     # General Shut Down
     @cmd
@@ -1647,34 +1700,7 @@ class ScheduleCmd(Wintercmd):
         self.prompt = 'wintercmd(S): '
         """    
 
-    @cmd
-    def load_target_schedule(self):
-        """Usage: load_target_schedule <TOO_ScheduleFile.db>"""
-        self.defineCmdParser('load in a TOO target schedule file')
-        self.cmdparser.add_argument('schedulefile_name',
-                                    nargs = 1,
-                                    action = None,
-                                    type = str,
-                                    help = '<target_schedulefile.db>')
-        self.getargs()
-        schedulefile_name = self.args.schedulefile_name[0]
-        # send signal that the schedule executor should swap schedule files
-        self.scheduleThread.changeSchedule.emit(schedulefile_name)
+    
 
-    @cmd
-    def load_nightly_schedule(self):
-        self.defineCmdParser('load the schedule file for the nightly plan')
-        pass
-
-    @cmd
-    def start_schedule(self):
-        self.defineCmdParser('start/resume scheduled observations')
-        if self.scheduleThread:
-            self.scheduleThread.start()
-
-    @cmd
-    def pause_schedule(self):
-        self.defineCmdParser('interrupt scheduled observations')
-        if self.scheduleThread:
-            self.scheduleThread.stop()
+    
             

@@ -139,8 +139,8 @@ class WorkerQThread(QtCore.QThread):
         
         
         # list all the active threads:
-        for thread in threading.enumerate(): 
-            print(thread.name)
+        """for thread in threading.enumerate(): 
+            print(thread.name)"""
         # Retrieve args/kwargs here; and fire processing using them
         try:
             result = self.fn(*self.args, **self.kwargs)
@@ -233,7 +233,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def recurring_timer(self):
         self.counter +=1
         self.l.setText("Counter: %d" % self.counter)
-    
+        #time.sleep(5)
     
 app = QtWidgets.QApplication([])
 window = MainWindow()
