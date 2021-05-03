@@ -288,28 +288,15 @@ fields:
         units: deg
         dtype: float64
         rate: slow
-        var: "roboThread.robo.az_scheduled"
+        var: "schedule.currentObs['azimuth']"
     alt_scheduled:
         ftype: raw
         label: 'Alt'
         units: deg
         dtype: float64
         rate: slow
-        var: "schedule.scheduleExec.alt_scheduled"
-    current_field_alt:
-        ftype: raw
-        label: 'Alt'
-        units: deg
-        dtype: float64
-        rate: slow
-        var: "schedule.scheduleExec.current_field_alt"
-    current_field_az:
-        ftype: raw
-        label: 'Alt'
-        units: deg
-        dtype: float64
-        rate: slow
-        var: "schedule.scheduleExec.current_field_az"
+        var: "schedule.currentObs['azimuth']"
+
 #telescope
     pwi4_version_field0:
         ftype: raw

@@ -68,7 +68,7 @@ class RoboOperatorThread(QtCore.QThread):
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, housekeeping, telescope, dome, chiller, ephem):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, schedule, telescope, dome, chiller, ephem):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -77,8 +77,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.state = state
         self.wintercmd = wintercmd
         self.wintercmd.roboThread = self
-        self.housekeeping = housekeeping
-        self.housekeeping.roboThread = self
+        self.schedule = schedule
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
@@ -93,6 +92,7 @@ class RoboOperatorThread(QtCore.QThread):
                                      state = self.state, 
                                      wintercmd = self.wintercmd,
                                      logger = self.logger,
+                                     schedule = self.schedule,
                                      telescope = self.telescope, 
                                      dome = self.dome, 
                                      chiller = self.chiller, 
@@ -135,7 +135,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, telescope, dome, chiller, ephem):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, schedule, telescope, dome, chiller, ephem):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -152,6 +152,7 @@ class RoboOperator(QtCore.QObject):
         self.chiller = chiller
         self.logger = logger
         self.ephem = ephem
+        self.schedule = schedule
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
@@ -163,7 +164,8 @@ class RoboOperator(QtCore.QObject):
         self.ok_to_observe = False
     
         # init the scheduler
-        self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
+        #self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
+        
         # init the database writer
         self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
         

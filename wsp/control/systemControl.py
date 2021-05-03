@@ -41,7 +41,7 @@ from command import wintercmd
 from command import commandParser
 from housekeeping import housekeeping
 from dome import dome
-#from schedule import schedule
+from schedule import schedule
 #from schedule import ObsWriter
 #from utils import utils
 #from power import power
@@ -169,6 +169,11 @@ class control(QtCore.QObject):
         #self.weather = local_weather.Weather(self.base_directory, config = self.config, logger = self.logger)
         self.weather = 'placeholder'
         
+        # init the schedule. put it here so it can be passed into housekeeping
+        self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
+
+        
+        
         """
         # NPL: 4-29-21: moving the schedule stuff over to the roboOperator.
         #init the scheduler
@@ -184,6 +189,7 @@ class control(QtCore.QObject):
         self.hk = housekeeping.housekeeping(self.config,
                                                 base_directory = self.base_directory,
                                                 mode = mode,
+                                                schedule = self.schedule,
                                                 telescope = self.telescope,
                                                 dome = self.dome,
                                                 weather = self.weather,
@@ -226,7 +232,7 @@ class control(QtCore.QObject):
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
             #self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, housekeeping = self.hk, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem)
+            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, schedule = self.schedule, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem)
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
