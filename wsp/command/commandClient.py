@@ -28,7 +28,8 @@ def main():
     
     # connect the socket ot the port where the server is listening
     #server_address = ('192.168.1.11',7000)
-    server_address = ('localhost', 62000)
+    server_address = ('localhost', 7000)
+    #server_address = ('localhost', 62000)
     print(f'connecting to {server_address[0]} port {server_address[1]}')
     sock.connect(server_address)
     

@@ -33,7 +33,9 @@ class ObsWriter():
         self.survey_start_time = survey_start_time
         self.prev_obs = None
         try:
-            self.engine = db.create_engine('sqlite:///' + f'/home/winter/data/{self.log_name}.db')
+            dbfilename = os.getenv("HOME") + '/' + log_name
+            #self.engine = db.create_engine('sqlite:///' + f'/home/winter/data/{self.log_name}.db')
+            self.engine = db.create_engine('sqlite:///' + f'{dbfilename}.db')
         except:
             print(sys.exc_info()[0]) # used to print error messages from sqlalchemy, delete later
         self.logger.debug('made new engine')

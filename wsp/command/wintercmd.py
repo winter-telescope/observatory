@@ -1421,8 +1421,8 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('GoTo', az)
         self.dome.newCommand.emit(sigcmd)
         
-        self.logger.info(f'self.state["dome_az_deg"] = {self.state["dome_az_deg"]}, type = {type(self.state["dome_az_deg"])}')
-        self.logger.info(f'az = {az}, type = {type(az)}')
+        #self.logger.info(f'self.state["dome_az_deg"] = {self.state["dome_az_deg"]}, type = {type(self.state["dome_az_deg"])}')
+        #self.logger.info(f'az = {az}, type = {type(az)}')
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True

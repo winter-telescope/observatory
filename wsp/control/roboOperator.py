@@ -157,19 +157,25 @@ class RoboOperator(QtCore.QObject):
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
         
-        # set attribute to indicate if robo operator is running
+        ### OBSERVING FLAGS ###
+        # set attribute to indicate if robo operator is running (
+        ## this flag is used to pause the schedule execution if we want to. 
+        ## ie we want to stop the schedule even though it's okay to observe
         self.running = True
+        
         # set an attribute to indicate if we are okay to observe
         ## ie, if startup is complete, the calibration is complete, and the weather/dome is okay
         self.ok_to_observe = False
     
-        # init the scheduler
-        #self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
+        ### SET UP THE WRITER ###
         # init the database writer
-        self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
+        writerpath = self.config['obslog_directory'] + '/' + self.config['oblog_database_name']
+        #self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
+        self.writer = ObsWriter.ObsWriter(writerpath, self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
+
         
-        
+        ### SCHEDULE ATTRIBUTES ###
         # load the dither list
         self.dither_alt, self.dither_az = np.loadtxt(self.schedule.base_directory + '/' + self.config['dither_file'], unpack = True)
         # convert from arcseconds to degrees
@@ -194,7 +200,7 @@ class RoboOperator(QtCore.QObject):
         
         ## overrides
         # override the dome.ok_to_open flag
-        self.dome_override = True
+        self.dome_override = False
         # override the sun altitude flag
         self.sun_override = True
         
@@ -221,7 +227,9 @@ class RoboOperator(QtCore.QObject):
         if self.mode == 'r':
             # start the robo?
             self.restart_robo()        # make a timer that will control the cadence of checking the conditions
-
+            
+        
+        
         
         
     def restart_robo(self):
@@ -257,7 +265,16 @@ class RoboOperator(QtCore.QObject):
         self.do_currentObs()
         return
         
-    def check_ok_to_observe(self):
+    def check_ok_to_observe(self, logcheck = False):
+        """
+        check if it's okay to observe/open the dome
+        
+        
+        # logcheck flag indicates whether the result of the check should be written to the log
+            we want the result logged if we're checking from within the do_observing loop,
+            but if we're just loopin through restart_robo we can safely ignore the constant logging'
+        """
+        
         # if the sun is below the horizon, or if the sun_override is active, then we want to open the dome
         if self.ephem.sun_below_horizon or self.sun_override:
             
@@ -266,10 +283,12 @@ class RoboOperator(QtCore.QObject):
                 #self.logger.info(f'robo: the sun is below the horizon, I want to open the dome.')
                 pass
             elif self.sun_override:
-                self.logger.warning(f"robo: the SUN IS ABOVE THE HORIZON, but sun_override is active so I want to open the dome")
+                if logcheck:
+                    self.logger.warning(f"robo: the SUN IS ABOVE THE HORIZON, but sun_override is active so I want to open the dome")
             else:
                 # shouldn't ever be here
-                self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with sun handling")
+                if logcheck:
+                    self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with sun handling")
                 self.ok_to_observe = False
                 #return
                 #break
@@ -282,7 +301,8 @@ class RoboOperator(QtCore.QObject):
                     #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
                     pass
                 elif self.dome_override:
-                    self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
+                    if logcheck:
+                        self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
                 else:
                     # shouldn't ever be here
                     self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with dome handling")
@@ -294,7 +314,8 @@ class RoboOperator(QtCore.QObject):
                 
                 # Check if the dome is open:
                 if self.dome.Shutter_Status == 'OPEN':
-                    self.logger.info(f'robo: okay to observe check passed')
+                    if logcheck:
+                        self.logger.info(f'robo: okay to observe check passed')
                     
                     #####
                     # We're good to observe
@@ -513,7 +534,7 @@ class RoboOperator(QtCore.QObject):
                         3. emit a restartRobo signal so it gets kicked back to the top of the tree
         
         """
-        self.check_ok_to_observe()
+        self.check_ok_to_observe(logcheck = True)
         if self.running & self.ok_to_observe:
             
             # grab some fields from the currentObs
@@ -561,7 +582,7 @@ class RoboOperator(QtCore.QObject):
         
     def log_observation_and_gotoNext(self):
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
-        self.check_ok_to_observe()
+        self.check_ok_to_observe(logcheck = True)
         if not self.ok_to_observe:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
             self.restart_robo()

@@ -36,6 +36,11 @@ scheduleFile_nightly_prefix: 'nightly_'
 scheduleFile_nightly_link_directory: 'data'
 scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 
+# observation log
+obslog_directory: 'data'
+oblog_database_name: 'WINTER_ObsLog' #.db is implied
+
+
 # dither table
 dither_file: 'config/dither_list.conf'
 
