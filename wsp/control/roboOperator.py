@@ -68,7 +68,7 @@ class RoboOperatorThread(QtCore.QThread):
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, schedule, telescope, dome, chiller, ephem):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -82,6 +82,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.dome = dome
         self.chiller = chiller
         self.logger = logger
+        self.alertHandler = alertHandler
         self.ephem = ephem
         
     
@@ -92,6 +93,7 @@ class RoboOperatorThread(QtCore.QThread):
                                      state = self.state, 
                                      wintercmd = self.wintercmd,
                                      logger = self.logger,
+                                     alertHandler = self.alertHandler,
                                      schedule = self.schedule,
                                      telescope = self.telescope, 
                                      dome = self.dome, 
@@ -135,7 +137,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, schedule, telescope, dome, chiller, ephem):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -145,12 +147,13 @@ class RoboOperator(QtCore.QObject):
         self.wintercmd = wintercmd
         # assign self to wintercmd so that wintercmd has access to the signals
         self.wintercmd.roboOperator = self
-        
+        self.alertHandler = alertHandler
         # set up the hardware systems
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
         self.logger = logger
+        self.alertHandler = alertHandler
         self.ephem = ephem
         self.schedule = schedule
         

@@ -217,8 +217,10 @@ if __name__ == '__main__':
     #alertHandler.email_group(group, subject, message)
     #alertHandler.text_group(group,subject, message)
     #alertHandler.slack_message_group(group, message)
-    alertHandler.slack_log('just logging a normal old message', group = 'sudo')
+    alertHandler.slack_log('just logging a normal old message', group = None)
     
+    """
     group = 'announcements'
     message = 'This is a test of the WINTER emergency alert system'
     alertHandler.email_group(group, subject, message)
+    """

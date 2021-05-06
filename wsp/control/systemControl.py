@@ -25,6 +25,7 @@ import time
 import signal
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import Pyro5.client
+import yaml
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,6 +54,7 @@ from chiller import chiller
 #from routines import schedule_executor
 from control import roboOperator
 from ephem import ephem
+from alerts import alert_handler
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -172,7 +174,12 @@ class control(QtCore.QObject):
         # init the schedule. put it here so it can be passed into housekeeping
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
 
-        
+        # init the alert handler
+        auth_config  = yaml.load(open(self.config['alert_handler']['auth_config_file']) , Loader = yaml.FullLoader)
+        user_config  = yaml.load(open(self.config['alert_handler']['user_config_file']), Loader = yaml.FullLoader)
+        alert_config = yaml.load(open(self.config['alert_handler']['alert_config_file']), Loader = yaml.FullLoader)
+
+        self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
         
         """
         # NPL: 4-29-21: moving the schedule stuff over to the roboOperator.
@@ -232,7 +239,7 @@ class control(QtCore.QObject):
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
             #self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, schedule = self.schedule, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem)
+            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, alertHandler = self.alertHandler, schedule = self.schedule, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem)
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
