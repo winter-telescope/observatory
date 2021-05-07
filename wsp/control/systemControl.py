@@ -175,9 +175,9 @@ class control(QtCore.QObject):
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
 
         # init the alert handler
-        auth_config  = yaml.load(open(self.config['alert_handler']['auth_config_file']) , Loader = yaml.FullLoader)
-        user_config  = yaml.load(open(self.config['alert_handler']['user_config_file']), Loader = yaml.FullLoader)
-        alert_config = yaml.load(open(self.config['alert_handler']['alert_config_file']), Loader = yaml.FullLoader)
+        auth_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['auth_config_file'] )) , Loader = yaml.FullLoader)
+        user_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['user_config_file'] )) , Loader = yaml.FullLoader)
+        alert_config = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['alert_config_file'])) , Loader = yaml.FullLoader)
 
         self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
         
