@@ -39,7 +39,7 @@ class SlackDispatcher(object):
         else:
             self.logger.log(level = level, msg = msg) 
     
-    def post(self, channel_list, msg):
+    def post(self, channel_list, msg, verbose = False):
         
         # allow just a single address, in addition to a list
         if type(channel_list) is str:
@@ -177,7 +177,7 @@ class AlertHandler(object):
         # now send the email
         self.slacker.post(recipient_list, message)
     
-    def slack_log(self, message, group = None):
+    def slack_log(self, message, group = None, verbose = False):
         # just post a message to the #winter_observatory channel
         # if a group is specified users from that group will be mentioned, eg @username
         mentions = ''
@@ -195,7 +195,7 @@ class AlertHandler(object):
         
         full_message = message + mentions
         # now post the message
-        self.slacker.post('winter_observatory', full_message)
+        self.slacker.post('winter_observatory', full_message, verbose = verbose)
     
 if __name__ == '__main__':
     

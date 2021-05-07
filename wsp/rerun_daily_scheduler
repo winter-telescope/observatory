@@ -65,7 +65,7 @@ print(f'running command: {cmd}')
 print('PRINTOUT FROM SCHEDULER:')
 
 # run the daily scheduler!
-#os.system(cmd)
+os.system(cmd)
 
 
 

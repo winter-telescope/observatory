@@ -159,7 +159,7 @@ def killPIDS(pidlist, logger = None):
     
     for pid in pidlist:
         try:
-            msg = f'killing process with PID {pid}'
+            msg = f'>> killing process with PID {pid}'
             os.kill(pid, signal.SIGKILL)
         except:
             msg = f'could not kill process with PID {pid}'
