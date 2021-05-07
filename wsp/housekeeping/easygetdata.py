@@ -195,7 +195,7 @@ class EasyGetData:
         # Sanitize spf
         if spf is not None and spf == -1:
             spf = max([self._df.spf(name) for name in fields])
-
+            
         data = {}
         for name in fields:
             # getdata from the dirfile
@@ -207,6 +207,7 @@ class EasyGetData:
                     num_samples=0)
             raw_spf = int(len(raw) / num_frames)
             data[name] = RawDataField(raw, raw_spf)
+            
         # Return the data in the form of a DataBlock, unless dealing with raw data
         return DataBlock(data=data, nframes=num_frames, spf=spf)
 

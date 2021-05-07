@@ -21,6 +21,7 @@ import time
 from datetime import datetime
 import subprocess
 import yaml
+import pygetdata as getdata
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.abspath(__file__))
@@ -46,10 +47,12 @@ msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} Starting wsp.py watchdog"
 
 alertHandler.slack_log(msg, group = None)
 
-filePath = os.getenv("HOME") + '/data/dm.lnk'
+# set up the link to the dirfile (df)
+dirfilePath = os.getenv("HOME") + '/data/dm.lnk'
 program_to_monitor = 'wsp.py'
+df = getdata.dirfile(dirfilePath)
 
-args = ["python", program_to_monitor,'-m', '--domesim']
+args = ["python", program_to_monitor,'-m', '--domesim', '>> wspterm.log 2>&1']
 
 
 
@@ -57,14 +60,19 @@ args = ["python", program_to_monitor,'-m', '--domesim']
 while True:
     
     try:
-        #lastmod_timestamp = os.path.getmtime(filePath)
-        lastmod_timestamp = os.path.getatime(filePath)
+        # Get the last timestamp written to the dirfile
+        #last_timestamp = os.path.getatime(filePath)
+        # sometimes it seems like it might not want to read the *last* frame?
+        frame_to_read = df.nframes-1
+        last_timestamp = df.getdata('timestamp',first_frame = frame_to_read, num_frames = 1)[0]
 
-        # DO ALL THE CALCULATIONS LOCALLY OTHERWISE THEY WILL BE WRONG! DON'T USE UTC
-        now_timestamp = datetime.now().timestamp()
+        """# DO ALL THE CALCULATIONS LOCALLY OTHERWISE THEY WILL BE WRONG! DON'T USE UTC
+        now_timestamp = datetime.now().timestamp()"""
+        # THE DIRFILE TIMESTAMPS ARE UTC
+        now_timestamp = datetime.utcnow().timestamp()
         #print(f'last update timestamp = {lastmod_timestamp}')
         # get dt in seconds
-        dt = now_timestamp - lastmod_timestamp
+        dt = now_timestamp - last_timestamp
         
         if dt >= 5.0:
             #print(f'dt = {dt:0.2f}, RELAUNCHING WRITER')
@@ -93,11 +101,11 @@ while True:
             time.sleep(60)
             
             # relink since the dirfile may need to be reconnected
-            filePath = os.getenv("HOME") + '/data/dm.lnk'
+            #filePath = os.getenv("HOME") + '/data/dm.lnk'
+            df.close()
+            df = getdata.dirfile(dirfilePath)
 
 
-#%% kill any main process
-#killPIDS(main_pid)
         
         # sleep before running loop again
         time.sleep(0.5)
@@ -106,4 +114,6 @@ while True:
         print('exiting watchdog loop.')
         break
     
+# close the connection to the dirfile
+df.close()
 print('done.')
