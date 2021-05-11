@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 Code for logging observations to a sqlite database
 """
@@ -10,7 +13,15 @@ import sys
 import pandas as pd
 import logging
 import json
+import yaml
 
+
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, wsp_path)
+print(f'writer: wsp_path = {wsp_path}')
+
+from utils import logging_setup
 
 class ObsWriter():
     """
@@ -45,7 +56,9 @@ class ObsWriter():
         #Note: Change to accept path argument instead of hardcoding
         self.logger.debug('reading json file')
         with open(self.base_directory + '/config/' + "dataconfig.json") as json_data_file:
-            self.dbStructure = json.load(json_data_file)
+            #self.dbStructure = json.load(json_data_file)
+            #NPL 5-7-21: changing to yaml since it's a smarter loader
+            self.dbStructure = yaml.load(json_data_file, Loader = yaml.FullLoader)
         self.logger.debug("read json config file")
 
     def setUpDatabase(self):
@@ -141,7 +154,7 @@ class ObsWriter():
             separatedData = self.separate_data_dict(record)
         except:
             self.logger.error('separation failed', exc_info=True )
-        self.logger.debug(f'Separated Data: {separatedData}')
+        #self.logger.debug(f'Separated Data: {separatedData}')
 
         for table in separatedData:
             try:
@@ -154,12 +167,13 @@ class ObsWriter():
                 try:
                     record_row = pd.DataFrame(separatedData[table], index=[uuid.uuid4().hex])
                     record_row.to_sql(table, self.conn, index=False, if_exists='append')
-                    self.logger.debug(f'Inserted {table} Row: {separatedData[table]}')
+                    #self.logger.debug(f'Inserted {table} Row: {separatedData[table]}')
                 except:
                     self.logger.error('insert failed:', exc_info=True )
             else:
-                self.logger.debug('did not insert because the row already existed in the database')
-
+                #self.logger.debug('did not insert because the row already existed in the database')
+                pass
+            
     def separate_data_dict(self, dataDict):
         separatedData = {}
         for table in self.dbStructure:
@@ -187,6 +201,17 @@ class ObsWriter():
 
 
 if __name__ == '__main__':
+    
+    base_directory = wsp_path
+    config = yaml.load(open(os.path.join(wsp_path, 'config','config.yaml')), Loader = yaml.FullLoader)
+    logger = logging_setup.setup_logger(base_directory, config)  
+    
+    writerpath = config['obslog_directory'] + '/' + config['obslog_database_name']
+    writer = ObsWriter(writerpath, base_directory, config = config, logger = logger) #the ObsWriter initialization
+    
+    
+    
+    
     # used to make this file importable
     pass
 

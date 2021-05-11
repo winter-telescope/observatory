@@ -17,6 +17,9 @@ usb_serial_dev:
     chiller: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AQ00T8I9-if00-port0'
     steppers: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AG0JG9J3-if00-port0'
     
+    
+########## FITS IMAGE DIRECTORY ##########
+image_directory: '/data/viscam/'
 
 ########## WINTERCMD COMMANDING ##########
 wintercmd_server_addr: 'localhost'
@@ -38,16 +41,14 @@ scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 
 # observation log
 obslog_directory: 'data'
-oblog_database_name: 'WINTER_ObsLog' #.db is implied
+obslog_database_name: 'WINTER_ObsLog' #.db is implied
 
 
 # dither table
 dither_file: 'config/dither_list.conf'
 
-# telescope
-telescope:
-    host: "thor"
-    port: 8220
+
+
 
 # commanding (seconds)
 cmd_timeout: 10.0
@@ -85,10 +86,19 @@ log_link_directory: 'data'
 log_link_name: 'winter.log'
 
 
-# define telescope home position
-telescope_home:
-    alt_degs: 16.0
-    az_degs: 290.0
+########### TELESCOPE SET UP ##########
+telescope:
+    host: "thor"
+    port: 8220
+    home_alt_degs: 16.0
+    home_az_degs: 290.0
+    min_alt: 15.0
+    max_alt: 89.0
+    rotator_home_degs: -25.0
+    #rotator_max_degs: 20.0
+    rotator_max_degs: -20.0
+    #rotator_min_degs: -70.0
+    rotator_min_degs: -30.0
 
 # define telemetry servers
 telemetry_server:
@@ -308,7 +318,7 @@ fields:
         dtype: float64
         rate: slow
         var: "schedule.currentObs['azimuth']"
-
+        
 #telescope
     pwi4_version_field0:
         ftype: raw
@@ -435,7 +445,7 @@ fields:
         units: 'deg'
         dtype: float64
         rate: fast
-        var: telescope.state["mount.dec_j2000_deg"]
+        var: telescope.state["mount.dec_j2000_degs"]
     mount_target_ra_apparent_hours:
         ftype: raw
         label: RA
@@ -449,7 +459,7 @@ fields:
         units: 'deg'
         dtype: float64
         rate: fast
-        var: telescope.state["mount.target_dec_apparent_deg"]
+        var: telescope.state["mount.target_dec_apparent_degs"]
     mount_az_deg:
         ftype: raw
         label: 'Az'
@@ -664,6 +674,20 @@ fields:
         dtype: int64
         rate: fast
         var: telescope.state["rotator.is_enabled"]
+    rotator_wrap_check_enabled:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["rotator_wrap_check_enabled"]
+    rotator_wrap_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: fast
+        var: telescope.state["wrap_status"]
     rotator_mech_position:
         ftype: raw
         label: 'Position'

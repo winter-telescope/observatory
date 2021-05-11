@@ -35,7 +35,8 @@ class SlackDispatcher(object):
     
     def log(self, msg, level = logging.INFO):
         if self.logger is None:
-                print(msg)
+                #print(msg)
+                pass
         else:
             self.logger.log(level = level, msg = msg) 
     

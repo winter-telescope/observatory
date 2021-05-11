@@ -51,6 +51,16 @@ class EphemMon(object):
         self.verbose = verbose
         self.state = dict()
         
+        # set up site
+        lat = astropy.coordinates.Angle(self.config['site']['lat'])
+        lon = astropy.coordinates.Angle(self.config['site']['lon'])
+        height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
+                                        
+        self.site = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
+        # this gives the same result as using the of_site('Palomar') definition
+        
+        
+        
         if verbose:
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name, print_thread_name_in_update = True, thread_numbering = 'norm')
         else:
@@ -64,7 +74,10 @@ class EphemMon(object):
         
         # get sun altitude
         self.sunalt = self.get_sun_alt(obstime = time_utc, time_format = 'datetime')
+        self.moonalt, self.moonaz = self.get_moon_altaz(obstime = time_utc, time_format = 'datetime')
         self.state.update({'sunalt' : self.sunalt})
+        self.state.update({'moonalt' : self.moonalt})
+        self.state.update({'moonaz' : self.moonaz})
         
         # is the sun  below the horizon?
         if self.sunalt < 0:
@@ -85,18 +98,7 @@ class EphemMon(object):
         
         obstime = astropy.time.Time(obstime, format = time_format)
         
-        
-        lat = astropy.coordinates.Angle(self.config['site']['lat'])
-        lon = astropy.coordinates.Angle(self.config['site']['lon'])
-        height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
-                                        
-        palomar = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
-        # this gives the same result as using the of_site('Palomar') definition
-        
-        
-        
-        
-        frame = astropy.coordinates.AltAz(obstime = obstime, location = palomar)
+        frame = astropy.coordinates.AltAz(obstime = obstime, location = self.site)
         
         sunloc = astropy.coordinates.get_sun(obstime)
         
@@ -105,6 +107,22 @@ class EphemMon(object):
         sunalt = sun_coords.alt.value
         return sunalt
     
+    def get_moon_altaz(self, obstime = 'now', time_format = 'datetime'):
+        
+        if obstime == 'now':
+            obstime = datetime.utcnow()
+        
+        obstime = astropy.time.Time(obstime, format = time_format)
+
+        frame = astropy.coordinates.AltAz(obstime = obstime, location = self.site)
+        
+        loc = astropy.coordinates.get_moon(obstime)
+        
+        coords = loc.transform_to(frame)
+        
+        alt = coords.alt.value
+        az = coords.az.value
+        return alt, az
     
     def getState(self):
         return self.state

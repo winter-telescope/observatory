@@ -154,7 +154,7 @@ class control(QtCore.QObject):
         self.counter =  test_daemon_local.local_counter(wsp_path)     
 
         # init the telescope
-        self.telescope = telescope.Telescope(host = self.config['telescope']['host'], port = self.config['telescope']['port'])
+        self.telescope = telescope.Telescope(config = self.config, host = self.config['telescope']['host'], port = self.config['telescope']['port'])
 
         
         # init the dome
@@ -180,7 +180,9 @@ class control(QtCore.QObject):
         alert_config = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['alert_config_file'])) , Loader = yaml.FullLoader)
 
         self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
-        
+        if mode == 'r':
+            # send a signal that we've started up wsp!
+            self.alertHandler.slack_log(f':futurama-bender-robot::telescope: *Starting WSP in Robotic Mode!*')
         """
         # NPL: 4-29-21: moving the schedule stuff over to the roboOperator.
         #init the scheduler

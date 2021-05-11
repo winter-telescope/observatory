@@ -57,7 +57,7 @@ class local_dome(QtCore.QObject):
         self.default = self.config['default_value']
         
         # initialize a home azimuth
-        self.home_az = self.config['telescope_home']['az_degs']
+        self.home_az = self.config['telescope']['home_az_degs']
         
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)

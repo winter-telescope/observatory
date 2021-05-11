@@ -188,9 +188,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.server_thread.start()
         
         # Dome Characteristics
-        self.az_speed = 3.5 #360/180 # speed in deg/sec
-        self.open_time = 90 # time to open the shutter
-        self.close_time = 90 # time to close the shutter
+        self.az_speed = 23.5 #360/180 # speed in deg/sec #3.5 nominal
+        self.open_time = 5 #90 # time to open the shutter #90 nominal
+        self.close_time = 5 #90 # time to close the shutter #90 nominal
         self.allowed_error = 0.1
         self.movedir = 1.0 # is either +1 or -1 depending on which direction its going to move
         self.ok = False

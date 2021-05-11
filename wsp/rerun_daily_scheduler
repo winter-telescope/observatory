@@ -14,6 +14,7 @@ import os
 import sys
 import yaml
 from datetime import datetime
+import subprocess
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.abspath(__file__))
@@ -31,8 +32,8 @@ daily_scheduler_path = os.path.join(code_path, 'scheduler','daily_winter_schedul
 filepath = os.path.join(daily_scheduler_path,'run_winter_sim.py')
 sky_config = os.path.join(daily_scheduler_path, 'sims', 'allsky_config.json')
 night_config = os.path.join(daily_scheduler_path, 'config', 'tonight.cfg')
-
-print('### RUNNING DAILY WINTER SCHEDULER ###')
+print(f'Setting up to run schedule for night of {utils.tonight()}')
+print(f'### RUNNING DAILY WINTER SCHEDULER ###')
 print(f'wsp_path = {wsp_path}')
 print(f'daily_scheduler_path = {daily_scheduler_path}')
 
@@ -65,7 +66,9 @@ print(f'running command: {cmd}')
 print('PRINTOUT FROM SCHEDULER:')
 
 # run the daily scheduler!
-os.system(cmd)
+#os.system(cmd)
+args = ["python", filepath, sky_config, night_config]
+scheduler_process = subprocess.Popen(args, shell = False)
 
 
 

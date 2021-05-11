@@ -13,6 +13,8 @@ import Pyro5.core
 import Pyro5.server
 import time
 from datetime import datetime
+import astropy.coordinates
+import astropy.units as u
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -31,6 +33,14 @@ class local_ephem(object):
         # default value for bad query
         self.default = -888
         self.default_timestamp = datetime(1970,1,1,0,0).timestamp()
+        
+        # set up site
+        lat = astropy.coordinates.Angle(self.config['site']['lat'])
+        lon = astropy.coordinates.Angle(self.config['site']['lon'])
+        height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
+                                        
+        self.site = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
+        
         
         # init the local and remote state dictionaries
         self.state = dict()
@@ -65,6 +75,11 @@ class local_ephem(object):
         # get the ephemeris data
         self.sunalt = self.remote_state.get('sunalt', self.default)
         self.state.update({'sunalt' : self.sunalt})
+        
+        self.moonalt = self.remote_state.get('moonalt', self.default)
+        self.moonaz = self.remote_state.get('moonaz', self.default)
+        self.state.update({'moonalt' : self.moonalt})
+        self.state.update({'moonaz' : self.moonaz})
         
         # is the sun below the horizon?
         self.sun_below_horizon = self.remote_state.get('sun_below_horizon', False)

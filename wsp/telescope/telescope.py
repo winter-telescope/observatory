@@ -27,12 +27,23 @@ import numpy as np
 import sys
 import os
 from datetime import datetime
+from PyQt5 import QtCore
+import yaml
+
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(os.getcwd())
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
+print(f'telescope: wsp_path = {wsp_path}')
 
 # winter modules
 from telescope import pwi4_client
+from utils import utils
+
+class TelescopeSignals(QtCore.QObject):
+    
+    wrapWarning = QtCore.pyqtSignal(object) 
+        
+        
 
 
 class Telescope(pwi4_client.PWI4):
@@ -41,12 +52,17 @@ class Telescope(pwi4_client.PWI4):
     This inherits from pwi4_client.PWI4
     """
     
-    def __init__(self, host="localhost", port=8220):
+    
+    def __init__(self, config, host="localhost", port=8220):
     
         super(Telescope, self).__init__(host = host, port = port)
     
         # create an empty state dictionary that will be updated 
         self.state = dict()
+        self.config = config
+        self.signals = TelescopeSignals()
+        self.wrap_check_enabled = False
+        self.wrap_status = False
         
     def status_text_to_dict_parse(self, response):
         """
@@ -108,6 +124,9 @@ class Telescope(pwi4_client.PWI4):
         try:
             #self.state = self.status()
             self.state = self.status_text_to_dict_parse(self.request("/status"))
+            self.state.update({'rotator_wrap_check_enabled' : self.wrap_check_enabled})
+            self.check_for_wrap()
+            
         except Exception as e:
             '''
             do nothing here. this avoids flooding the log with errors if
@@ -124,13 +143,42 @@ class Telescope(pwi4_client.PWI4):
             
             if verbose:
                 print(f'could not update telescope status: {type(e)}: {e}')
+    
+    def enable_wrap_check(self):
+        self.wrap_check_enabled = True
+    def disable_wrap_check(self):
+        self.wrap_check_enabled = False
+        
+    def check_for_wrap(self):
+        angle = self.state['rotator.mech_position_degs']
+        #print(f'rotator angle = {angle}')
+        min_angle = self.config['telescope']['rotator_min_degs']
+        max_angle = self.config['telescope']['rotator_max_degs']
+        self.wrap_status = (angle <= min_angle) or (angle >= max_angle)
+        #print(f'{angle} in range ({min_angle}, {max_angle})? {self.wrap_status}')
+        
+        self.state.update({'wrap_status' : self.wrap_status})
+        if self.wrap_check_enabled:
+            if self.wrap_status:
+                
+                #print('WRAP WARNING')
+                # we're in danger of wrapping!!
+                self.signals.wrapWarning.emit(angle)
+                # set the flag to false so we don't send a billion signals
+                self.wrap_check_enabled = False
+            
+    
 if __name__ == '__main__':
         
-
-    telescope = Telescope('thor')
-    print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
+    # load the config
+    config_file = wsp_path + '/config/config.yaml'
+    config = utils.loadconfig(config_file)
     
-    print(f'Getting Updated State from Telescope:')
-    telescope.update_state()
+    telescope = Telescope(config, 'thor')
     print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
-
+    #%%
+    print(f'Getting Updated State from Telescope:')
+    telescope.update_state(verbose = True)
+    print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
+    #telescope.signals.wrapWarning.emit()
+    print(f'Wrap Status = {telescope.state.get("wrap_status", -999)}')
