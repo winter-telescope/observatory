@@ -25,6 +25,7 @@ import pathlib
 from labjack import ljm
 import astropy.coordinates
 import astropy.units as u
+import json
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -113,7 +114,12 @@ class housekeeping():
                                                   )
                                                   #rate = 'very_slow')
         
+        # write the current state to a file
         
+        
+        self.statedump_loop = data_handler.daq_loop(func = self.dump_state,
+                                                    dt = 5,
+                                                    name = 'state_dump')
         # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
         self.housekeeping_poll_functions.append(self.chiller.update_state)
@@ -139,7 +145,9 @@ class housekeeping():
         self.start_housekeeping_poll_loop()
         print("Done init'ing housekeeping")
         
-    
+    def dump_state(self):
+        with open('data.json', 'w') as outfile:
+            json.dump(self.state, outfile, indent = 2)
     
     def poll_housekeeping(self):
         """
