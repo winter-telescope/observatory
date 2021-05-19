@@ -217,7 +217,7 @@ def create_socket(ipaddr, port, timeout = 0.01, logger = None, verbose = False):
     return sock
 
 
-def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001,badchars = None):
+def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, timeout = 0.001,badchars = None, singlevalue = False):
     """
     This is a utility to send a single command to a remote server,
     then wait a response. It tries to return a dictionary from the returned  
@@ -261,13 +261,16 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
     if not badchars is None:
         for char in badchars:
             reply = reply.replace(char,'')
-    try:
-        #NPL 3-23-21 switched to yaml which handles bad keys better (ie, keys/values missing quotes)
-        #d = json.loads(reply)
-        d = yaml.load(reply, Loader = yaml.FullLoader)
-    except Exception as e:
-        #print(f'could not turn reply into json, {type(e)}: {e}')
+    if singlevalue:
         d = reply
+    else:
+        try:
+            #NPL 3-23-21 switched to yaml which handles bad keys better (ie, keys/values missing quotes)
+            #d = json.loads(reply)
+            d = yaml.load(reply, Loader = yaml.FullLoader)
+        except Exception as e:
+            #print(f'could not turn reply into json, {type(e)}: {e}')
+            d = reply
     
     #print(f'Reply = {d}')
     return d

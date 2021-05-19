@@ -37,12 +37,15 @@ def sendreceive(sock, command):
     if len(fields) > 1:
         error_text = fields[1]
     return (response_code, error_text)
-
+#%%
 #### BEGIN SAMPLE SESSION ####
 print("Connecting to PWShutter TCP server...")
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.settimeout(0.5)
 sock.connect(("192.168.1.12", 9897))
+#%
 print( "Checking connection...")
+
 (code, text) = sendreceive(sock, "isconnected")
 if code == 0:
     print( "PWShutter is connected to the controller")
@@ -56,6 +59,7 @@ if code == 0:
     print ("Connection established")
 else:
     print("ERROR:", code, text)
+#%%
 print("Trying to begin opening the shutter...")
 (code, text) = sendreceive(sock, "beginopen")
 if code == 0:
@@ -81,7 +85,7 @@ while True:
         print("ERROR:", code, text)
      # Exit loop if we are in any state other than Opening
     if code != 2:
-        break
+        pass#break
     # Wait a bit before checking again
     time.sleep(1)
 print("Done")

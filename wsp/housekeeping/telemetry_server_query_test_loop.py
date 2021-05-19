@@ -65,59 +65,16 @@ def query_socket(sock, cmd,line_ending = '\n', end_char = '', num_chars = 2048, 
     
     
     
-#%%
-""" 
-# Connect to the server
-sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-sock.settimeout(0.5)
-server_address = ('198.202.125.214', 4698)
-sock.connect(server_address)
-
 
 #%%
-index = 0
-while index == 0:
-    print(f'query number: {index}')
-    try:
-        d = query_socket(sock,
-                         'WEATHER_JSON', 
-                         #'198.202.125.214', 4698, 
-                         end_char = '}]',
-                         timeout = 2)
-        # convert the string to dict using json loads
-        
-        
-        
-        
-        d_p200 = d[0]
-        d_p60 = d[1]
-        d_p48 = d[2]
-        
-        # try to grab a single element
-        print('Grabbing element from dict:')
-        elements = ['P48_UTC','P48_Outside_Air_Temp','P48_Wetness','P48_Weather_Status']
-        #for element in elements:
-        #    print(f'{element} = {d_p48[element]}')
-        print()
-        print(json.dumps(d_p48,indent = 4))
-    except:       
-            print('could not query telemetry server')
-    time.sleep(0.5)
-    index+=1
-    
-    
-# Send a command
-#sock.sendall(bytes('BYE\n',"utf-8"))
-    
-#sock.close()
-"""
-#%%
-# Connect to the server
+'''
+# Connect to the WINTER Command Serverserver
 try:
     pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     pcs_sock.settimeout(0.5)
     server_address = ('198.202.125.142', 62000)
     #server_address = ('localhost', 62000)
+
     pcs_sock.connect(server_address)
 except:
     pass
@@ -130,11 +87,73 @@ while True:
                          end_char = '}',
                          timeout = 2)
                          #badchars = '\\"')
+
         # convert the string to dict using json loads
         #d = d.replace('\\','')
         #print(d)
         
         print(json.dumps(d,indent = 4))
+        
+        #time.sleep(0.5)
+        # try to grab a single element
+        """
+        print('Grabbing element from dict:')
+        elements = ['Shutter_Status']
+        for element in elements:
+            
+            print(f'{element} = {d[element]}')
+        """
+    except KeyboardInterrupt:
+        break
+    
+    except Exception as e:
+        print(f'could not query command server, error: {e}')
+        try:
+            pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            pcs_sock.settimeout(0.5)
+            #server_address = ('198.202.125.142', 62000)
+            server_address = ('localhost', 62000)
+            pcs_sock.connect(server_address)
+        except:
+            pass
+'''
+#%% Connect to the WINTER Command Serverserver
+
+shutter_state_dict = dict({0 : "OPEN",
+                           1 : "CLOSED",
+                           2 : "OPENING",
+                           3 : "CLOSING",
+                           4 : "ERROR",
+                           5 : "PARTLY_OPEN"})
+try:
+    pcs_sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    pcs_sock.settimeout(0.5)
+    #server_address = ('198.202.125.142', 62000)
+    #server_address = ('localhost', 62000)
+    server_address = ('192.168.1.12', 9897)
+    pcs_sock.connect(server_address)
+except:
+    pass
+
+while True:
+    time.sleep(0.5)
+    try: 
+        """d = query_socket(pcs_sock,
+                         'status?',
+                         end_char = '}',
+                         timeout = 2)
+                         #badchars = '\\"')"""
+        d = query_socket(pcs_sock,
+                         'shutterstate',
+                         end_char = '\n',
+                         timeout = 0.25)
+                         #badchars = '\\"')
+        
+        
+        
+        #print(json.dumps(d,indent = 4))
+        
+        print(f"Shutter State = {shutter_state_dict[d]}")
         
         #time.sleep(0.5)
         # try to grab a single element

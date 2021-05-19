@@ -39,6 +39,7 @@ from datetime import datetime
 import threading
 import logging
 import json
+import io
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,11 +47,40 @@ sys.path.insert(1, wsp_path)
 print(f'wsp_path = {wsp_path}')
 
 
-from housekeeping import data_handler
+#from housekeeping import data_handler
 from daemon import daemon_utils
 from utils import utils
 from utils import logging_setup
 
+# connection methods from planewave
+
+def readline(sock):
+    """
+    Utility function for reading from a socket until a
+    newline character is found
+    """
+    buf = io.StringIO()
+    while True:
+        data = sock.recv(1).decode("utf-8")
+        buf.write(data)
+        if data == '\n':
+            return buf.getvalue()
+def sendreceive(sock, command):
+    """
+    Send a command to the server, and read the response.
+    The response will be split into an integer error code and an optional error text messsage.
+    Returns a tuple (code, error_text)
+    """
+    sock.send(bytes(command + "\n","utf-8"))
+    response = readline(sock)
+    # The response should consist of a numeric code, optionally
+    # followed by some text if the code is 255 (error). Parse this out.
+    fields = response.split(" ")
+    response_code = int(fields[0])
+    error_text = ""
+    if len(fields) > 1:
+        error_text = fields[1]
+    return (response_code, error_text)
 
 class ReconnectHandler(object):
     '''
@@ -161,14 +191,24 @@ class StatusMonitor(QtCore.QObject):
         try:
             
             self.log(f'(Thread {threading.get_ident()}) StatusMonitor: trying to connection to ({self.addr} | {self.port})')
-            
+            self.setup_connection()
             # try to reconnect the socket
             self.sock.connect((self.addr, self.port))
             
-            #print(f'(Thread {threading.get_ident()}) Connection attempt successful!')
+            if self.verbose:
+                self.log(f'(Thread {threading.get_ident()}) Connection attempt successful!')
             
-            #if this works, then set connected to True
-            self.connected = True
+            (code, text) = sendreceive(self.sock, "connect")
+            if code == 0:
+                print ("Connection established")
+                #if this works, then set connected to True
+                self.connected = True
+            else:
+                print("ERROR:", code, text) 
+                raise Exception 
+            
+            
+            
             
             # since the connection is fine, reset all the timeouts
             self.reconnector.reset_reconnect_timeout()
@@ -215,12 +255,20 @@ class StatusMonitor(QtCore.QObject):
             self.reconnector.time_since_last_connection = 0.0
             #print(f'Connected! Querying Dome Status.')
             try:
-                dome_state = utils.query_socket(self.sock,
-                             'status?', 
-                             end_char = '}',
-                             timeout = 2)
-                #print(f'dome state = {json.dumps(dome_state, indent = 2)}')
-                self.updateDomeState(dome_state)
+                """
+                open_status = utils.query_socket(self.sock,
+                             'shutterstate', 
+                             end_char = '\n',
+                             timeout = 2,
+                             singlevalue = True)
+                """
+                (code, text) = sendreceive(self.sock, "shutterstate")
+                # try to convert to number
+                #open_status_num = int(open_status.strip())
+                #print(f'open_status = {open_status_num}')
+                state = dict({"Open_Status" : code})
+                #print(f'dome state = {json.dumps(state, indent = 2)}')
+                self.updateDomeState(state)
             
             except:
                 #print(f'Query attempt failed.')
@@ -296,6 +344,7 @@ class CommandHandler(QtCore.QObject):
         self.sock.settimeout(150)
         
     def connect_socket(self):
+        #return
         if self.verbose:
             self.log(f'(Thread {threading.get_ident()}) CommandHandler: Attempting to connect socket')
         # record the time of this connection attempt
@@ -303,15 +352,22 @@ class CommandHandler(QtCore.QObject):
         #self.reconnector.reset_last_reconnect_timestamp()
         
         try:
-            
+            self.setup_connection()
             # try to reconnect the socket
             self.sock.connect((self.addr, self.port))
             
             if self.verbose:
                 self.log(f'(Thread {threading.get_ident()}) Connection attempt successful!')
             
-            #if this works, then set connected to True
-            self.connected = True
+            (code, text) = sendreceive(self.sock, "connect")
+            if code == 0:
+                #print ("Connection established")
+                #if this works, then set connected to True
+                self.connected = True
+            else:
+                print("ERROR:", code, text) 
+                raise Exception 
+            
             
             # since the connection is fine, reset all the timeouts
             #self.reconnector.reset_reconnect_timeout()
@@ -433,7 +489,7 @@ class StatusThread(QtCore.QThread):
         
 
 #class Dome(object):        
-class Dome(QtCore.QObject):
+class TelescopeShutter(QtCore.QObject):
     """
     This is the pyro object that handles connections and communication with t
     the dome.
@@ -450,7 +506,7 @@ class Dome(QtCore.QObject):
     commandRequest = QtCore.pyqtSignal(str)
     
     def __init__(self, addr, port, logger = None, connection_timeout = 1.5, verbose = False):
-        super(Dome, self).__init__()
+        super(TelescopeShutter, self).__init__()
         # attributes describing the internet address of the dome server
         self.addr = addr
         self.port = port
@@ -517,24 +573,22 @@ class Dome(QtCore.QObject):
         return self.state
     
     # Commands which make the dome do things
-    @Pyro5.server.expose
-    def Home(self):
-        cmd = 'home'
-        self.commandRequest.emit(cmd)
+
     
     @Pyro5.server.expose
-    def Close(self):
-        cmd = 'close'
+    def Close(self, wait = False):
+        if not wait:
+            cmd = 'beginclose'
+
         self.commandRequest.emit(cmd)
     
-    @Pyro5.server.expose
-    def GoDome(self, az):
-        cmd = f'godome {az}'
-        self.commandRequest.emit(cmd)
+
     
     @Pyro5.server.expose
-    def Open(self):
-        cmd = 'open'
+    def Open(self, wait = False):
+        if not wait:
+            cmd = 'beginopen'
+        
         self.commandRequest.emit(cmd)
     
     @Pyro5.server.expose
@@ -542,15 +596,7 @@ class Dome(QtCore.QObject):
         cmd = 'stop'
         self.commandRequest.emit(cmd)
         
-    @Pyro5.server.expose
-    def TakeControl(self):
-        cmd = 'takecontrol'
-        self.commandRequest.emit(cmd)
-    
-    @Pyro5.server.expose
-    def GiveControl(self):
-        cmd = 'givecontrol'
-        self.commandRequest.emit(cmd)
+
         
     
         
@@ -562,14 +608,14 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, config, logger = None, verbose = False, parent=None, domesim = False):            
+    def __init__(self, config, logger = None, verbose = False, parent=None, sim = False):            
         super(PyroGUI, self).__init__(parent)   
 
         self.config = config
         self.logger = logger
         self.verbose = verbose
         
-        msg = f'(Thread {threading.get_ident()}: Starting up Dome Daemon '
+        msg = f'(Thread {threading.get_ident()}: Starting up Shutter Daemon '
         if logger is None:
             print(msg)
         else:
@@ -577,21 +623,21 @@ class PyroGUI(QtCore.QObject):
 
         
         # set up the dome
-        self.servername = 'command_server' # this is the key it uses to set up the server from the conf file
-        if domesim == True:
-            self.dome_addr = 'localhost'
+        self.servername = 'telescope_shutter' # this is the key it uses to set up the server from the conf file
+        if sim == True:
+            self.addr = 'localhost'
         else:
-            self.dome_addr                  = self.config[self.servername]['addr']
-        self.dome_port                  = self.config[self.servername]['port']
-        self.dome_connection_timeout    = self.config[self.servername]['timeout']
-        
-        self.dome = Dome(addr = self.dome_addr, 
-                         port = self.dome_port, 
+            self.addr                  = self.config[self.servername]['addr']
+        self.port                  = self.config[self.servername]['port']
+        self.connection_timeout    = self.config[self.servername]['timeout']
+        #print(f'addr = {self.addr}, port = {self.port}')
+        self.shutter = TelescopeShutter(addr = self.addr, 
+                         port = self.port, 
                          logger = self.logger, 
-                         connection_timeout = self.dome_connection_timeout,
+                         connection_timeout = self.connection_timeout,
                          verbose = self.verbose)        
         
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.dome, name = 'dome')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.shutter, name = 'shutter')
         self.pyro_thread.start()
         
 
@@ -605,8 +651,8 @@ def sigint_handler( *args):
     print('CAUGHT SIGINT, KILLING PROGRAM')
     
     # explicitly kill each thread, otherwise sometimes they live on
-    main.dome.statusThread.quit()
-    main.dome.commandThread.quit()
+    main.shutter.statusThread.quit()
+    main.shutter.commandThread.quit()
     #main.dome.statusThread.terminate()
     #print('KILLING APPLICATION')
     
@@ -622,12 +668,12 @@ if __name__ == "__main__":
     modes = dict()
     modes.update({'-v' : "Running in VERBOSE mode"})
     modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
-    modes.update({'--domesim' : "Running in SIMULATED DOME mode" })
+    modes.update({'--sim' : "Running in SIMULATED mode" })
     
     # set the defaults
     verbose = True
     doLogging = True
-    domesim = False
+    sim = False
     #domesim = True
     
     #print(f'args = {args}')
@@ -650,9 +696,9 @@ if __name__ == "__main__":
                     print(modes[arg])
                     doLogging = False
                 
-                elif opt == 'domesim':
+                elif opt == 'sim':
                     print(modes[arg])
-                    domesim = True
+                    sim = True
             else:
                 print(f'Invalid mode {arg}')
     
@@ -680,7 +726,7 @@ if __name__ == "__main__":
         logger = None
     
     # set up the main app. note that verbose is set above
-    main = PyroGUI(config = config, logger = logger, verbose = verbose, domesim = domesim)
+    main = PyroGUI(config = config, logger = logger, verbose = verbose, sim = False)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)

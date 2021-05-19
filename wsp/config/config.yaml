@@ -113,7 +113,21 @@ command_server:
     port: 62000
     cmd: 'status?'
     endchar: '}'
-    timeout: 0.1
+    timeout: 0.25
+    
+telescope_shutter:
+    addr: '192.168.1.12'
+    port: 9897
+    cmd: "shutterstate"
+    endchar: '\n'
+    timeout: 0.25
+    Status_Dict:
+        0 : "OPEN"
+        1 : "CLOSED"
+        2 : "OPENING"
+        3 : "CLOSING"
+        4 : "ERROR"
+        5 : "PARTLY_OPEN"
     
 
 # dictionaries to interpret the status from the weather servers
