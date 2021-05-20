@@ -1,0 +1,58 @@
+# Chiller configuration
+
+serial_params:
+    port: '/dev/tty.usbserial-AQ00V91K'
+    baudrate: 9600
+    timeout: 3.0
+    parity: 'N'
+    stopbits: serial.STOPBITS_ONE
+    bytesize: 8
+    xonxoff: True
+
+# time in between sequential register polls
+serial_query_dt: 0.5
+
+# offset between datasheet registers and registers to send
+#modbus_register_offset: -1
+
+# how often should we poll the status? 
+status_poll_dt_seconds: 5.0
+
+# where to put the log. base directory is home
+# THIS SHOULD MATCH THE WSP CONFIG OTHERWISE THEY WILL LOG DIFFERENTLY!
+log_directory: 'data/log'
+log_link_directory: 'data'
+log_link_name: 'winter.log'
+
+
+
+
+
+
+# MASTER LIST OF REGISTERS
+# addr: the register number from the datasheet
+# scaling: multiplicative factor used to rescale based on datasheet units since modbus only passes integers
+    # eg, temp format = XXX.Y means divide number by 10
+# mode: one of 'r', 'w', or 'rw'
+    # this specifies whether this register will just be read (r), just be written to (w), or both (rw).
+
+
+
+commands:
+    readWatchDog:
+        command: '.0101WatchDog'
+        scale: 0
+        mode: 'r'
+    readSupplyT:
+        command: '.0104rSupplyT'
+        scale: 0
+        mode: 'r'
+    setStatus:
+        command: '.0115sStatus_'
+        scale: 0
+        mode: 'w'
+    setCtrlT:
+        command: '.0117sCtrlT__'
+        scale: 0.1
+        mode: 'w'
+  
