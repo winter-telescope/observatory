@@ -145,7 +145,7 @@ class local_chiller(QtCore.QObject):
         self.remote_object.TurnOff()
     
     def WriteRegister(self, register, value):
-        self.remote_object.WriteRegister(register, value)
+        self.remote_object.WriteCommand(register, value)
         
         
 # Try it out
@@ -171,6 +171,7 @@ if __name__ == '__main__':
     
     #%%
     #chiller.WriteRegister('UserSetpoint', 18.1)
+    chiller.TurnOn()
     chiller.setSetpoint(17.9)
     
     
