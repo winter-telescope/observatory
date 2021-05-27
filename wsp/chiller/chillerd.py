@@ -163,14 +163,14 @@ class CommandHandler(QtCore.QObject):
             else:
                 # the connection is broken. set connected to false
                 self.connected = False
-                self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+                self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')#' waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             
         except:
             
             # the connection is broken. set connected to false
             self.connected = False
-            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+            self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')#' waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             
     def sendCommand(self, register_request):
