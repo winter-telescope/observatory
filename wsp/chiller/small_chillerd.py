@@ -131,15 +131,16 @@ class CommandHandler(QtCore.QObject):
         if self.verbose:
             self.log(f'(Thread {threading.get_ident()}) CommandHandler: creating socket')
 
-        self.sock = serial.Serial(
-            port        = self.config['serial_params']['port'],
-            baudrate    = self.config['serial_params']['baudrate'],
-            timeout     = self.config['serial_params']['timeout'],
-            parity      = self.config['serial_params']['parity'],
-            stopbits    = self.config['serial_params']['stopbits'],
-            xonxoff     = self.config['serial_params']['xonxoff'],
-            bytesize    = self.config['serial_params']['bytesize'])
-        
+        self.sock = serial.Serial()
+        self.sock.port        = self.config['serial_params']['port']
+        self.sock.baudrate    = self.config['serial_params']['baudrate']
+        self.sock.timeout     = self.config['serial_params']['timeout']
+        self.sock.parity      = self.config['serial_params']['parity']
+        # breaks the code, use default anyway
+        #self.sock.stopbits    = self.config['serial_params']['stopbits']
+        self.sock.xonxoff     = self.config['serial_params']['xonxoff']
+        self.sock.bytesize    = self.config['serial_params']['bytesize']
+
         
     def connect_socket(self):
         if self.verbose:
@@ -161,14 +162,16 @@ class CommandHandler(QtCore.QObject):
             else:
                 # the connection is broken. set connected to false
                 self.connected = False
-                self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+                self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')#' waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+                #self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             
         except:
             
             # the connection is broken. set connected to false
             self.connected = False
-            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+            self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')#' waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+            #self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             
     def sendCommand(self, register_request):
@@ -293,15 +296,18 @@ class StatusMonitor(QtCore.QObject):
     def create_socket(self):
         if self.verbose:
             self.log(f'(Thread {threading.get_ident()}) StatusMonitor: creating socket')
+            
 
-        self.sock = serial.Serial(
-            port        = self.config['serial_params']['port'],
-            baudrate    = self.config['serial_params']['baudrate'],
-            timeout     = self.config['serial_params']['timeout'],
-            parity      = self.config['serial_params']['parity'],
-            stopbits    = self.config['serial_params']['stopbits'],
-            xonxoff     = self.config['serial_params']['xonxoff'],
-            bytesize    = self.config['serial_params']['bytesize'])
+        self.sock = serial.Serial()
+        self.sock.port        = self.config['serial_params']['port']
+        self.sock.baudrate    = self.config['serial_params']['baudrate']
+        self.sock.timeout     = self.config['serial_params']['timeout']
+        self.sock.parity      = self.config['serial_params']['parity']
+        # use default
+        #self.sock.stopbits    = self.config['serial_params']['stopbits']
+        self.sock.xonxoff     = self.config['serial_params']['xonxoff']
+        self.sock.bytesize    = self.config['serial_params']['bytesize']
+        
             
         
     def connect_socket(self):
@@ -703,7 +709,8 @@ class Chiller(QtCore.QObject):
     def WriteCommand(self, command, value):
         self.log(f'chiller: got request to set {command} to {value}')
         # make sure the register is in the list
-        for com in self.config['commands']:
+        com = command
+        if com in self.config['commands']:
             if 'w' in self.config['commands'][com]['mode']:
                 
                 #self.log(f'chiller: register request is on write-approved list')
@@ -755,19 +762,19 @@ class Chiller(QtCore.QObject):
         self.log(f'got request to set chiller temperature to {temperature} C')
         temperature_string = int(temperature / 0.1)
         temperature_string = '0'+ str(temperature_string)
-        self.WriteRegister('setCtrlT', temperature_string)
+        self.WriteCommand('setCtrlT', temperature_string)
         
     @Pyro5.server.expose
     def TurnOn(self):
         # TURN THE CHILLER ON
         self.log('got request set chiller to RUN')
-        self.WriteRegister('setStatus', '1')
+        self.WriteCommand('setStatus', '1')
     
     @Pyro5.server.expose
     def TurnOff(self):
         # TURN THE CHILLER OFF
         self.log('got request to set chiller to STANDBY')
-        self.WriteRegister('setStatus', '0')
+        self.WriteCommand('setStatus', '0')
     
     """# Commands which make the dome do things
     @Pyro5.server.expose
