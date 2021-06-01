@@ -32,6 +32,11 @@ from alerts import alert_handler
 from utils import utils
 from daemon import daemon_utils
 
+
+#### GET ANY COMMAND LINE ARGUMENTS #####
+# These args are specified the same way that they would be in wsp, they are passed directly to the wsp call
+cmdline_args = sys.argv[1:]
+
 # set up the alert system to post to slack
 auth_config_file  = wsp_path + '/credentials/authentication.yaml'
 user_config_file = wsp_path + '/credentials/alert_list.yaml'
@@ -52,7 +57,12 @@ dirfilePath = os.getenv("HOME") + '/data/dm.lnk'
 program_to_monitor = 'wsp.py'
 df = getdata.dirfile(dirfilePath)
 
-args = ["python", program_to_monitor,'-m', '--domesim', '>> wspterm.log 2>&1']
+args = ["python", program_to_monitor]
+for arg in cmdline_args:
+    args.append(arg)
+
+# dump the terminal output to a logfile:
+args.append('>> wspterm.log 2>&1')
 
 
 

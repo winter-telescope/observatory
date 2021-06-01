@@ -19,7 +19,7 @@ with the telescope dome
 
 
 import os
-import numpy as np
+#import numpy as np
 import sys
 import Pyro5.core
 import Pyro5.server

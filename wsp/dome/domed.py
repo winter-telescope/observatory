@@ -28,17 +28,20 @@ import os
 import Pyro5.core
 import Pyro5.server
 import time
-from PyQt5 import uic, QtCore, QtGui, QtWidgets
-from astropy.io import fits
+#from PyQt5 import uic, QtGui, QtWidgets
+from PyQt5 import QtCore
+#from astropy.io import fits
 import numpy as np
 import sys
 import signal
-import queue
+#import queue
 import socket
 from datetime import datetime
 import threading
 import logging
-import json
+#import json
+import subprocess
+import yaml
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,10 +49,12 @@ sys.path.insert(1, wsp_path)
 print(f'wsp_path = {wsp_path}')
 
 
-from housekeeping import data_handler
+#from housekeeping import data_handler
 from daemon import daemon_utils
 from utils import utils
 from utils import logging_setup
+from watchdog import watchdog
+from alerts import alert_handler
 
 
 class ReconnectHandler(object):
@@ -112,7 +117,7 @@ class StatusMonitor(QtCore.QObject):
     
     newStatus = QtCore.pyqtSignal(object)
     doReconnect = QtCore.pyqtSignal()
-    
+    handModeEnabled = QtCore.pyqtSignal()
     
     def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
         super(StatusMonitor, self).__init__()
@@ -196,6 +201,13 @@ class StatusMonitor(QtCore.QObject):
                 
                 except:
                     pass
+        
+        # check to see if the dome control state is MANUAL (ie in hand mode). if so then emit the handModeEnabled signal
+        dome_control_state = domeState.get('Control_Status', 'UNKNOWN')
+        
+        if dome_control_state == 'MANUAL':
+            # THE DOME HAS BEEN PUT INTO HAND MODE! EMIT THE SIGNAL THAT THIS HAS HAPPENED
+            self.handModeEnabled.emit()
         
         
     def pollStatus(self):
@@ -404,6 +416,7 @@ class StatusThread(QtCore.QThread):
         nothing else..."""
     newStatus = QtCore.pyqtSignal(object)
     doReconnect = QtCore.pyqtSignal()
+    enableHandMode = QtCore.pyqtSignal()
     
     def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
         super(QtCore.QThread, self).__init__()
@@ -418,12 +431,15 @@ class StatusThread(QtCore.QThread):
             self.newStatus.emit(newStatus)
         def SignalDoReconnect():
             self.doReconnect.emit()
+        def SignalHandModeEnabled():
+            self.enableHandMode.emit()
         
         self.timer= QtCore.QTimer()
         self.statusMonitor = StatusMonitor(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
         
         self.statusMonitor.newStatus.connect(SignalNewStatus)
         self.statusMonitor.doReconnect.connect(SignalDoReconnect)
+        self.statusMonitor.handModeEnabled.connect(SignalHandModeEnabled)
         
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.statusMonitor.pollStatus)
@@ -449,7 +465,7 @@ class Dome(QtCore.QObject):
     #statusRequest = QtCore.pyqtSignal(object)
     commandRequest = QtCore.pyqtSignal(str)
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 1.5, verbose = False):
+    def __init__(self, addr, port, logger = None, connection_timeout = 1.5, alertHandler = None, verbose = False):
         super(Dome, self).__init__()
         # attributes describing the internet address of the dome server
         self.addr = addr
@@ -457,6 +473,7 @@ class Dome(QtCore.QObject):
         self.logger = logger
         self.connection_timeout = connection_timeout
         self.state = dict()
+        self.alertHandler = alertHandler
         self.verbose = verbose
         
         self.statusThread = StatusThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
@@ -468,6 +485,9 @@ class Dome(QtCore.QObject):
         
         # if the status thread is request a reconnection, trigger the reconnection in the command thread too
         self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
+        
+        # if the status thread gets the signbal that we've entered hand mode then enter hand mode
+        self.statusThread.enableHandMode.connect(self.handleHandMode)
         
         self.statusThread.newStatus.connect(self.updateStatus)
         self.commandRequest.connect(self.commandThread.HandleCommand)
@@ -508,7 +528,63 @@ class Dome(QtCore.QObject):
             self.state.update({'command_reply' : reply})
         except:
             pass
+    
+    
+    def handleHandMode(self):
         
+        msg = f'DOME HAS BEEN SWITCHED TO HAND MODE!'
+        self.log(msg = msg, level = logging.WARNING)
+        self.alertHandler.slack_log(f':redsiren: *{msg}*')
+        
+        # shut down the wsp watchdog
+        self.log('Shutting down any runing instance of the WSP watchdog...')
+        watchdog.shutdown_watchdog()
+        
+        
+        # after the watchdog is stopped, kill wsp
+        msg = 'Launching WSP KILLER! CHECK INSTRUMENT MANUALLY AFTER!'
+        self.log(msg, logging.WARNING)        
+        self.alertHandler.slack_log(f':redsiren: *{msg}*')
+        
+        try:
+            # get the PID of the wsp.py process
+            main_pid, child_pids = daemon_utils.checkParent('wsp.py', printall = False)
+            
+            args = ['python',f'{wsp_path}/wsp_kill.py']
+            subprocess.Popen(args,shell = False, start_new_session = True)
+            
+            """# kill it!
+            if not main_pid is None:
+                daemon_utils.killPIDS(main_pid)
+                
+            # pause for a hot second
+            time.sleep(0.5)
+            # check again
+            main_pid, child_pids = daemon_utils.checkParent('wsp.py', printall = False)
+            
+            if main_pid is None:
+                msg = 'Successfully killed WSP'
+                self.log(msg, logging.WARNING)        
+                self.alertHandler.slack_log(msg)
+            else:
+                msg = 'COULD NOT KILL WSP!!!! SYSTEM IS STILL LIVE!'
+                self.log(msg, logging.WARNING)
+                self.alertHandler.slack_log(f':redsiren: *WARNING* {msg}')"""
+        except Exception as e:
+                msg = f'COULD NOT KILL WSP!!!! SYSTEM IS STILL LIVE! Exception: {e}'
+                self.log(msg, logging.WARNING)
+                self.alertHandler.slack_log(f':redsiren: *WARNING* {msg}')
+            
+        
+        
+        # kill this daemon
+        sigint_handler()
+        
+        
+        
+
+    
+    
     ###### PUBLIC FUNCTIONS THAT CAN BE CALLED USING PYRO SERVER #####
     
     # Return the Current Status (the status is updated on its own)
@@ -576,6 +652,19 @@ class PyroGUI(QtCore.QObject):
             logger.info(msg)
 
         
+        # set up an alert handler so that the dome can send messages directly
+        auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+        user_config_file = wsp_path + '/credentials/alert_list.yaml'
+        alert_config_file = wsp_path + '/config/alert_config.yaml'
+        
+        auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
+        user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
+        alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
+        
+        self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)    
+        
+
+
         # set up the dome
         self.servername = 'command_server' # this is the key it uses to set up the server from the conf file
         if domesim == True:
@@ -589,6 +678,7 @@ class PyroGUI(QtCore.QObject):
                          port = self.dome_port, 
                          logger = self.logger, 
                          connection_timeout = self.dome_connection_timeout,
+                         alertHandler = self.alertHandler,
                          verbose = self.verbose)        
         
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.dome, name = 'dome')
@@ -657,7 +747,8 @@ if __name__ == "__main__":
                 print(f'Invalid mode {arg}')
     
 
-
+    
+    
     
     
     

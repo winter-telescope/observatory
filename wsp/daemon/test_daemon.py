@@ -11,13 +11,14 @@ test daemon
 import os
 import Pyro5.core
 import Pyro5.server
-import time
-from PyQt5 import uic, QtCore, QtGui, QtWidgets
-from astropy.io import fits
-import numpy as np
+#import time
+#from PyQt5 import uic, QtGui, QtWidgets
+from PyQt5 import QtCore
+#from astropy.io import fits
+#import numpy as np
 import sys
 import signal
-import queue
+#import queue
 import threading
 
 # add the wsp directory to the PATH

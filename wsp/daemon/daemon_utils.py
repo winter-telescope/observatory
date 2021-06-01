@@ -171,7 +171,7 @@ def killPIDS(pidlist, logger = None):
 
 #%%
 
-def checkParent(main_program_name, printall = False):
+def checkParent(main_program_name, printall = False, verbose = False):
     main_pid = None
     child_pids = []
     
@@ -198,34 +198,37 @@ def checkParent(main_program_name, printall = False):
             pass
         
     if main_process is None:
-        print(f'No {main_program_name} process running.')
+        if verbose:
+            print(f'No {main_program_name} process running.')
     
     else:
         for p in py_processes:
             if p.parent().pid == main_process.pid:
                 child_processes.append(p)
-        print()
-        print(f'Main Process:')      
-        for p in [main_process]:
-            print(f'\t pid     = \t {p.pid}')
-            print(f'\t name    = \t {p.name()}')
-            print(f'\t program = \t {p.cmdline()[1].split("/")[-1]}')
+        if verbose:
             print()
-        print(f'Child Processes:')
-        for p in child_processes:
-            try:
+            print(f'Main Process:')      
+            for p in [main_process]:
                 print(f'\t pid     = \t {p.pid}')
-                child_pids.append(p.pid)
                 print(f'\t name    = \t {p.name()}')
                 print(f'\t program = \t {p.cmdline()[1].split("/")[-1]}')
-                print(f'\t parent  = \t {p.parent().cmdline()[1].split("/")[-1]}')
                 print()
-            except Exception as e:
-                print(f'Could not parse process with PID = {p.pid}, {e}')
-            
+            print(f'Child Processes:')
+            for p in child_processes:
+                try:
+                    print(f'\t pid     = \t {p.pid}')
+                    child_pids.append(p.pid)
+                    print(f'\t name    = \t {p.name()}')
+                    print(f'\t program = \t {p.cmdline()[1].split("/")[-1]}')
+                    print(f'\t parent  = \t {p.parent().cmdline()[1].split("/")[-1]}')
+                    print()
+                except Exception as e:
+                    print(f'Could not parse process with PID = {p.pid}, {e}')
+                
     # print all the process info
     #printall = False
-    print()
+    if verbose:
+        print()
     if printall:
         print("All info for currently running Python Processes")    
         for p in py_processes:
