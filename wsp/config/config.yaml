@@ -109,7 +109,8 @@ telemetry_server:
     timeout: 0.1
 
 command_server:
-    addr: '198.202.125.142'
+    #addr: '198.202.125.142'
+    addr: '10.200.98.100'
     port: 62000
     cmd: 'status?'
     endchar: '}'
