@@ -140,7 +140,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -159,6 +159,7 @@ class RoboOperator(QtCore.QObject):
         self.alertHandler = alertHandler
         self.ephem = ephem
         self.schedule = schedule
+        self.viscam = viscam
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
