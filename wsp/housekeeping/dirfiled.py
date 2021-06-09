@@ -143,7 +143,7 @@ class DirfileWriter(QtCore.QObject):
                 self.add_to_frame(self.state)
                 
             except Exception as e:
-                print(f'dome: could not update remote state: {e}')
+                #print(f'dirfile: could not update remote state: {e}')
                 pass
         
         self.samples_in_curframe += 1

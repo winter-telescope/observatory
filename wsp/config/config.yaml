@@ -92,15 +92,15 @@ log_link_name: 'winter.log'
 telescope:
     host: "thor"
     port: 8220
-    home_alt_degs: 16.0
-    home_az_degs: 290.0
+    home_alt_degs: 45.0
+    home_az_degs: 180.0
     min_alt: 15.0
     max_alt: 89.0
     rotator_home_degs: -25.0
     #rotator_max_degs: 20.0
-    rotator_max_degs: -20.0
+    rotator_max_degs: 500.0
     #rotator_min_degs: -70.0
-    rotator_min_degs: -30.0
+    rotator_min_degs: -500.0
 
 # define telemetry servers
 telemetry_server:

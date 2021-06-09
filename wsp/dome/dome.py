@@ -95,7 +95,7 @@ class local_dome(QtCore.QObject):
                 
                 
             except Exception as e:
-                print(f'dome: could not update remote state: {e}')
+                #print(f'dome: could not update remote state: {e}')
                 pass
     
     
