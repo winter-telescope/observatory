@@ -155,7 +155,7 @@ class Wintercmd(QtCore.QObject):
     newCmdRequest = QtCore.pyqtSignal(object)
     
     
-    def __init__(self, base_directory, config, state, daemonlist, telescope, dome, chiller, logger):
+    def __init__(self, base_directory, config, state, daemonlist, telescope, dome, chiller, pdu1, logger):
         # init the parent class
         #super().__init__()
         super(Wintercmd, self).__init__()
@@ -170,6 +170,7 @@ class Wintercmd(QtCore.QObject):
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
+        self.pdu1 = pdu1
     
         self.base_directory = base_directory
         self.config = config
@@ -1837,6 +1838,55 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('start the chiller')
         sigcmd = signalCmd('TurnOn')
         self.chiller.newCommand.emit(sigcmd)
+    
+    @cmd
+    def pdu_on(self):
+        """
+        created: NPL 6-7-21
+        
+        this turns on a channel on the specified PDU
+        
+        call: pdu_on 1 8, turns on ch 8 on pdu 1
+
+        """
+        
+        self.defineCmdParser('execute routine from specified text file. default path is wsp/routines')
+        self.cmdparser.add_argument('channel',
+                                    nargs = 2,
+                                    action = None,
+                                    help = "<pdu_num> <chan_num>")
+        self.getargs()
+        pdu_num = self.args.channel[0]
+        chan_num = self.args.channel[1]
+        
+        # send the on command
+        if pdu_num == 1:
+            self.pdu1.on(chan_num)
+   
+    @cmd
+    def pdu_off(self):
+        """
+        created: NPL 6-7-21
+        
+        this turns on a channel on the specified PDU
+        
+        call: pdu_on 1 8, turns on ch 8 on pdu 1
+
+        """
+        
+        self.defineCmdParser('execute routine from specified text file. default path is wsp/routines')
+        self.cmdparser.add_argument('channel',
+                                    nargs = 2,
+                                    action = None,
+                                    help = "<pdu_num> <chan_num>")
+        self.getargs()
+        pdu_num = self.args.channel[0]
+        chan_num = self.args.channel[1]
+        
+        # send the on command
+        if pdu_num == 1:
+            self.pdu1.on(chan_num)
+             
     
     @cmd
     def do_routine(self):

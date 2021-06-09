@@ -158,7 +158,7 @@ if __name__ == '__main__':
         pdu1 = PDU('pdu1.ini',os.path.dirname(os.getcwd()))
         
         print('initial status = ',pdu1.status)
-        new_status = [1,1,1,1,1,1,1,1]
+        new_status = [1,1,0,0,1,1,0,0]
         pdu1.sendStatus(new_status)
         
         print('final status = ',pdu1.status)

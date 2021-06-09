@@ -300,6 +300,14 @@ fields:
         dtype: float64
         rate: 'hk'
         var: 'counter.state["count"]'
+#power statues
+    pdu1_1:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'pdu1.status[0]'
 #ephemeris
     ephem_timestamp:
         ftype: raw
