@@ -129,6 +129,8 @@ class control(QtCore.QObject):
                 # start up the fake dome as a daemon
                 self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
                 self.daemonlist.add_daemon(self.domesim)
+                
+                    
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
@@ -206,8 +208,10 @@ class control(QtCore.QObject):
                                                 dome = self.dome,
                                                 weather = self.weather,
                                                 chiller = self.chiller,
+                                                pdu1 = self.pdu1,
                                                 counter = self.counter,
-                                                ephem = self.ephem)
+                                                ephem = self.ephem
+                                                )
         
         
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.hk, name = 'state')
@@ -217,7 +221,7 @@ class control(QtCore.QObject):
         In this section we set up the appropriate command interface and executors for the chosen mode
         '''
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.base_directory, self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, logger = self.logger)
+        self.wintercmd = wintercmd.Wintercmd(self.base_directory, self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, pdu1 = self.pdu1, logger = self.logger)
         
         if mode in ['r','m']:
             #init the schedule executor
