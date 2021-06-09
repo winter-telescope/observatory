@@ -79,7 +79,7 @@ class hk_loop(QtCore.QThread):
         self.timer.timeout.connect(self.update_status)
         self.timer.start()
         #self.exec()
-        print(f'datahandler: running slowloop update in thread {self.currentThread()}')
+        print(f'datahandler: running housekeeping update at dt = {self.dt} ms, in thread {self.currentThread()}')
 
 
     def __del__(self):
@@ -112,10 +112,13 @@ class hk_loop(QtCore.QThread):
                 # update the state and frame dictionaries
                 curval = self.get(self.config['fields'][field]['var'])
                 self.state.update({field : curval})
-
+                
+                #NPL 6-1-21: removing the dirfile handling from wsp
+                """
                 # update the vectors in the current frame
                 # shift over the vector by one, then replace the last
                 self.curframe[field] = np.append(self.curframe[field][1:], curval)
+                """
             except Exception as e:
                 """
                 we end up here if there's a problem either getting the field,

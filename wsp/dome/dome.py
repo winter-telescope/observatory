@@ -95,7 +95,7 @@ class local_dome(QtCore.QObject):
                 
                 
             except Exception as e:
-                print(f'dome: could not update remote state: {e}')
+                #print(f'dome: could not update remote state: {e}')
                 pass
     
     
@@ -126,7 +126,9 @@ class local_dome(QtCore.QObject):
         self.Home_Status = self.remote_state.get('Home_Status', 'NOT_READY')               # status of whether dome needs to be homed
         self.state.update({'Home_Status_Num'                :   self.config['Dome_Status_Dict']['Home_Status'].get(self.Home_Status,       self.default) })
         
-        self.Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
+        """ FOR TESTING WITHOUT OPENING SHUTTER ONLY!!!!! """
+        self.Shutter_Status = "OPEN"
+        #self.Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
         self.state.update({'Shutter_Status_Num'             :   self.config['Dome_Status_Dict']['Shutter_Status'].get(self.Shutter_Status, self.default) })
         
         self.Control_Status = self.remote_state.get('Control_Status','FAULT')

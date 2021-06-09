@@ -26,6 +26,7 @@ from labjack import ljm
 import astropy.coordinates
 import astropy.units as u
 import json
+import Pyro5.server
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,8 +38,11 @@ print(f'housekeeping: wsp_path = {wsp_path}')
 from housekeeping import easygetdata as egd
 from housekeeping import data_handler
 from housekeeping import labjacks
+from daemon import daemon_utils
 
-# the main housekeeping class it lives in the namespace of the control class
+# the main housekeeping class, it lives in the namespace of the control class
+
+
 
 class housekeeping():                     
     def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, dome = None, weather = None, chiller = None, pdu1 = None, counter = None, ephem = None, viscam = None):
@@ -85,14 +89,18 @@ class housekeeping():
         # current state values
         self.state = dict()
         
+       
+        
         # vectors holding all the samples in the current frame
+        #NPL 6-1-21: removing the dirfile handling from wsp
         self.curframe = dict()
         
         # build the dictionaries for current data and fame
         self.build_dicts()
         
         # create the dirfile
-        self.create_dirfile()
+        #NPL 6-1-21: removing the dirfile handling from wsp
+        #self.create_dirfile()
         
         # create the housekeeping poll list
         self.housekeeping_poll_functions = list()
@@ -140,12 +148,17 @@ class housekeeping():
 
         
         # define the dirfile write loop
-        self.writethread = data_handler.write_thread(config = config, dirfile = self.df, state = self.state, curframe = self.curframe)
+        #NPL 6-1-21: removing the dirfile handling from wsp
+        #self.writethread = data_handler.write_thread(config = config, dirfile = self.df, state = self.state, curframe = self.curframe)
         
         # start the housekeeping poll FROM THE MAIN EVENT LOOP
         self.start_housekeeping_poll_loop()
         print("Done init'ing housekeeping")
-        
+    
+    @Pyro5.server.expose
+    def GetStatus(self):
+        return self.state
+    
     def dump_state(self):
         with open('data.json', 'w') as outfile:
             json.dump(self.state, outfile, indent = 2)
@@ -241,7 +254,7 @@ class housekeeping():
         # go through each daq loop in the config file and build the HK dictionaries
         for rate in self.config['daq_dt']:
             # calculate the spf for each daq loop
-            spf = int(self.config['write_dt']/self.config['daq_dt'][rate])
+            spf = int(self.config['dirfile_write_dt']/self.config['daq_dt'][rate])
             self.spf.update({rate : spf})
             print(f'{rate} daq loop: {spf} samples per frame')
             
@@ -252,12 +265,14 @@ class housekeeping():
             self.state.update({field : None})
             print(f'housekeeping: adding field "{field}"')
             
+            #NPL 6-1-21: removing the dirfile handling from wsp
+            """
             # add a numpy array item to the curframe dictionary
             spf = self.spf[self.config['fields'][field]['rate']]
             dtype = np.dtype(self.config['fields'][field]['dtype'])         
             self.curframe.update({field : np.full(spf, 0, dtype = dtype)})
             #print(f'adding vector with len = {spf} and type {dtype} to current frame dictionary')
-
+            """
 
         
     def get_sun_alt(self, time = 'now', time_format = 'datetime'):

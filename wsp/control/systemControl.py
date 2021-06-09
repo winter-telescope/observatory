@@ -118,6 +118,9 @@ class control(QtCore.QObject):
                 self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.chillerd)
             
+            # housekeeping data logging daemon (hkd = housekeeping daemon)
+            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/dirfiled.py")
+            self.daemonlist.add_daemon(self.hkd)
             
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
@@ -223,7 +226,9 @@ class control(QtCore.QObject):
                                                 )
         
         
-
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.hk, name = 'state')
+        self.pyro_thread.start()
+        
         '''
         In this section we set up the appropriate command interface and executors for the chosen mode
         '''
