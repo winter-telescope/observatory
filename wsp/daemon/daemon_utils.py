@@ -21,13 +21,15 @@ multithreaded programs.
 import os
 import Pyro5.core
 import Pyro5.server
-import time
-from PyQt5 import uic, QtCore, QtGui, QtWidgets
-import numpy as np
+#import time
+#from PyQt5 import uic, QtGui, QtWidgets
+from PyQt5 import QtCore
+#import numpy as np
 import sys
 import signal
 import subprocess
 import psutil
+import threading
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -63,7 +65,18 @@ class PyroDaemon(QtCore.QThread):
         self.uri = daemon.register(self.obj)
         ns.register(self.name, self.uri)
         daemon.requestLoop()
+        
+class PyroGUI(QtCore.QObject):   
 
+                  
+    def __init__(self, Object, name, parent=None ):            
+        super(PyroGUI, self).__init__(parent)   
+        print(f'PyroGUI {name}: main thread = {threading.get_ident()}')
+        
+        self.Object = Object
+                
+        self.pyro_thread = PyroDaemon(obj = self.Object, name = name)
+        self.pyro_thread.start()
 
 
 class daemon_list():

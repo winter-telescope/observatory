@@ -83,10 +83,21 @@ class EasyGetData:
         self._df.add(entry)
         
         # now add the units and axis label to the format file
+        """
         if ((not units is None) or (units.lower() == 'none')):
             self._df.add_spec(f'{field}/units STRING {units}')
         if ((not label is None) or (label.lower() == 'none')):
             self._df.add_spec(f'{field}/quantity STRING {label}')
+        """
+            
+        # now add the units and axis label to the format file
+        if (not units is None):
+            if (units.lower() != 'none'):
+                self._df.add_spec(f'{field}/units STRING {units}')
+        if (not label is None):
+            if (label.lower() != 'none'):
+                self._df.add_spec(f'{field}/quantity STRING {label}')
+                
         self._df.flush()
         
     def add_linterp_entry(self, field, input_field, LUT_file, units = None, label = None):
@@ -106,10 +117,22 @@ class EasyGetData:
         self._df.add_spec(f'{field} LINTERP {input_field} {LUT_file}')
         
         # now add the units and axis label to the format file
+        """
         if ((not units is None) or (units.lower() == 'none')):
             self._df.add_spec(f'{field}/units STRING {units}')
         if ((not label is None) or (label.lower() == 'none')):
             self._df.add_spec(f'{field}/quantity STRING {label}')
+        """
+            
+        # now add the units and axis label to the format file
+        if (not units is None):
+            if (units.lower() != 'none'):
+                self._df.add_spec(f'{field}/units STRING {units}')
+        if (not label is None):
+            if (label.lower() != 'none'):
+                self._df.add_spec(f'{field}/quantity STRING {label}')
+            
+            
         self._df.flush()
     
     def add_lincom_entry(self, field, input_field, slope, intercept, units = None, label = None):

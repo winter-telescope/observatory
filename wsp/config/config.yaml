@@ -67,13 +67,15 @@ alert_handler:
 
 # define update times (ms)
 daq_dt:
-    hk: 500.0
+    hk: 100.0
     fast: 500.0
     slow: 500.0
     very_slow: 2000.0
 
 # this will crash if this is not greater than or equal to the max daq_dt
-write_dt: 500.0
+#write_dt: 500.0
+dirfile_write_dt: 1000
+dirfile_spf: 10
 
 # where to put the data. base directory is home
 housekeeping_data_directory: 'data/rawdir'
