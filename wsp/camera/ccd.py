@@ -3,7 +3,7 @@
 """
 Created on Tue Jun  1 16:22:38 2021
 
-viscam.py
+ccd.py
 
 This file is part of wsp
 

@@ -3,7 +3,7 @@
 """
 Created on Tue Jun  1 16:20:02 2021
 
-viscamd.py
+ccd_daemon.py
 
 This file is part of wsp
 
