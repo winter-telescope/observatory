@@ -51,6 +51,7 @@ from daemon import daemon_utils
 from daemon import test_daemon_local
 #from dome import dome
 from chiller import chiller
+from chiller import small_chiller
 #from routines import schedule_executor
 from control import roboOperator
 from ephem import ephem
@@ -84,7 +85,7 @@ class control(QtCore.QObject):
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'test_daemon.py','dome_simulator_gui.py','ephemd.py']
+        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'small_chillerd.py', 'test_daemon.py','dome_simulator_gui.py','ephemd.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -162,9 +163,12 @@ class control(QtCore.QObject):
         
         # init the dome
         self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config)
-
+        
         # init the chiller
-        self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
+        if '--smallchiller' in opts:
+            self.chiller = small_chiller.local_chiller(base_directory = self.base_directory, config = self.config)
+        else:
+            self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
         
         # init the ephemeris
         self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config)
