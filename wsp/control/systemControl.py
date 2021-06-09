@@ -155,7 +155,7 @@ class control(QtCore.QObject):
             self.logger.warning(f"control: could not init NPS at pdu1, {type(e)}: {e}")
 
         # init the test object (goes with the test_daemon)
-        self.counter =  test_daemon_local.local_counter(wsp_path)     
+        self.counter =  test_daemon_local.local_counter(wsp_path)
 
         # init the telescope
         self.telescope = telescope.Telescope(config = self.config, host = self.config['telescope']['host'], port = self.config['telescope']['port'])
@@ -241,11 +241,11 @@ class control(QtCore.QObject):
         self.cmdexecutor = commandParser.cmd_executor(telescope = self.telescope, wintercmd = self.wintercmd, logger = self.logger)#, listener = listener)
         
         # init the command prompt
-        self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)        
+        self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
         
         # connect the new command signal to the command executor
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-        # signal for if main wants to execute a raw cmd (same format as terminal). 
+        # signal for if main wants to execute a raw cmd (same format as terminal).
         self.newcmd.connect(self.cmdexecutor.add_cmd_to_queue)
         # signal for if main wants to execute a command request
         self.newcmdRequest.connect(self.cmdexecutor.add_cmd_request_to_queue)
