@@ -41,7 +41,7 @@ from housekeeping import labjacks
 # the main housekeeping class it lives in the namespace of the control class
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, dome = None, weather = None, chiller = None, pdu1 = None, counter = None, ephem = None):            
+    def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, dome = None, weather = None, chiller = None, pdu1 = None, counter = None, ephem = None, viscam = None):
         
         
         # store the config
@@ -60,6 +60,7 @@ class housekeeping():
         self.pdu1 = pdu1
         self.counter = counter
         self.ephem = ephem
+        self.viscam = viscam
         
         # setup any labjacks that are in the config
         '''
