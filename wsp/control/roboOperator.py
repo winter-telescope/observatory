@@ -213,8 +213,9 @@ class RoboOperator(QtCore.QObject):
         #self.changeSchedule.connect(self.change_schedule)
         
         ## overrides
+        """ REMEMBER TO CHANGE BACK FOR NORMAL OPERATION """
         # override the dome.ok_to_open flag
-        self.dome_override = False
+        self.dome_override = True
         # override the sun altitude flag
         self.sun_override = True
         

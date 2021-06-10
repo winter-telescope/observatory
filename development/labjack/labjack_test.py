@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 
 handle = ljm.openS("T7", "ETHERNET", '192.168.1.110')
 
+
+
 info = ljm.getHandleInfo(handle)
 
 print(f"Opened a LabJack with \n\
@@ -32,3 +34,4 @@ vals = ljm.eReadNames(handle, len(channels), channels)
 val_dict = dict(zip(channels,vals))
 for key in val_dict.keys():
     print(f'{key}: {val_dict[key]}')
+    

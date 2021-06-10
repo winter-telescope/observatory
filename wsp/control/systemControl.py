@@ -85,7 +85,7 @@ class control(QtCore.QObject):
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'small_chillerd.py', 'test_daemon.py','dome_simulator_gui.py','ephemd.py']
+        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'small_chillerd.py', 'test_daemon.py','dome_simulator_gui.py','ephemd.py', 'dirfiled.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -112,9 +112,15 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.testd)
             
             # chiller daemon
-            self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
+            if '--smallchiller' in opts:
+                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py")#, args = ['-v'])
+            else:
+                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.chillerd)
             
+            # housekeeping data logging daemon (hkd = housekeeping daemon)
+            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/dirfiled.py")
+            self.daemonlist.add_daemon(self.hkd)
             
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
@@ -155,7 +161,7 @@ class control(QtCore.QObject):
             self.logger.warning(f"control: could not init NPS at pdu1, {type(e)}: {e}")
 
         # init the test object (goes with the test_daemon)
-        self.counter =  test_daemon_local.local_counter(wsp_path)     
+        self.counter =  test_daemon_local.local_counter(wsp_path)
 
         # init the telescope
         self.telescope = telescope.Telescope(config = self.config, host = self.config['telescope']['host'], port = self.config['telescope']['port'])
@@ -220,7 +226,9 @@ class control(QtCore.QObject):
                                                 )
         
         
-
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.hk, name = 'state')
+        self.pyro_thread.start()
+        
         '''
         In this section we set up the appropriate command interface and executors for the chosen mode
         '''
@@ -241,11 +249,11 @@ class control(QtCore.QObject):
         self.cmdexecutor = commandParser.cmd_executor(telescope = self.telescope, wintercmd = self.wintercmd, logger = self.logger)#, listener = listener)
         
         # init the command prompt
-        self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)        
+        self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
         
         # connect the new command signal to the command executor
         self.cmdprompt.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-        # signal for if main wants to execute a raw cmd (same format as terminal). 
+        # signal for if main wants to execute a raw cmd (same format as terminal).
         self.newcmd.connect(self.cmdexecutor.add_cmd_to_queue)
         # signal for if main wants to execute a command request
         self.newcmdRequest.connect(self.cmdexecutor.add_cmd_request_to_queue)

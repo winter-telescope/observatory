@@ -74,13 +74,15 @@ alert_handler:
 
 # define update times (ms)
 daq_dt:
-    hk: 500.0
+    hk: 100.0
     fast: 500.0
     slow: 500.0
     very_slow: 2000.0
 
 # this will crash if this is not greater than or equal to the max daq_dt
-write_dt: 500.0
+#write_dt: 500.0
+dirfile_write_dt: 1000
+dirfile_spf: 10
 
 # where to put the data. base directory is home
 housekeeping_data_directory: 'data/rawdir'
@@ -97,15 +99,15 @@ log_link_name: 'winter.log'
 telescope:
     host: "thor"
     port: 8220
-    home_alt_degs: 16.0
-    home_az_degs: 290.0
+    home_alt_degs: 45.0
+    home_az_degs: 180.0
     min_alt: 15.0
     max_alt: 89.0
     rotator_home_degs: -25.0
     #rotator_max_degs: 20.0
-    rotator_max_degs: -20.0
+    rotator_max_degs: 500.0
     #rotator_min_degs: -70.0
-    rotator_min_degs: -30.0
+    rotator_min_degs: -500.0
 
 # define telemetry servers
 telemetry_server:
