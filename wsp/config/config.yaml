@@ -35,7 +35,7 @@ wintercmd_trusted_hosts:
 # add Raspberry Pi URL to communicate with the VISCAM
 # shutter and filter wheel
 # TODO, move this somewhere cleaner
-viscam_url = 'http://192.168.1.228:5001/'
+viscam_url: 'http://192.168.1.228:5001/'
 
 
 ########## SCHEDULING ##########
@@ -1447,70 +1447,6 @@ fields:
         rate: slow
         var: labjacks.labjacks['lj0'].state['FIO3']
     
-    # CHILLER STUFF
-    chiller_setpoint:
-        ftype: raw
-        label: 'T'
-        units: 'C'
-        dtype: float64
-        rate: 'hk'
-        var: chiller.state['UserSetpoint']
-    chiller_setpoint_last_update_dt:
-        ftype: raw
-        label: 'T'
-        units: 'C'
-        dtype: float64
-        rate: 'hk'
-        var: chiller.state['last_poll_dt']['UserSetpoint']
-    chiller_temperature:
-        ftype: raw
-        label: 'T'
-        units: 'C'
-        dtype: float64
-        rate: 'hk'
-        var: chiller.state['SystemDisplayValueStatus']
-    chiller_is_running:
-        ftype: raw
-        label: 'Status'
-        units: None
-        dtype: float64
-        rate: 'hk'
-        var: chiller.state['UserRemoteStartStop']
-        
-derived_fields:
-    # note the base directory for the LUT is the wsp directory
-    T_LJ0:
-        ftype: lincom
-        input_field: 'V_LJ0_AIN14'
-        slope: -92.6
-        intercept: 194.45
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN0:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN0'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN1:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN1'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN2:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN2'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN3:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN3'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-        
     # Viscam housekeeping
     
     Pi_State:
@@ -1555,4 +1491,70 @@ derived_fields:
         dtype: float64
         rate: slow
         var: 'viscam.state["filter_wheel_position_last_timestamp"]'
+
+    # CHILLER STUFF
+    chiller_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['UserSetpoint']
+    chiller_setpoint_last_update_dt:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['last_poll_dt']['UserSetpoint']
+    chiller_temperature:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['SystemDisplayValueStatus']
+    chiller_is_running:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['UserRemoteStartStop']
+
+        
+derived_fields:
+    # note the base directory for the LUT is the wsp directory
+    T_LJ0:
+        ftype: lincom
+        input_field: 'V_LJ0_AIN14'
+        slope: -92.6
+        intercept: 194.45
+        label: 'T'
+        units: 'C'
+    T_LJ0_AIN0:
+        ftype: linterp
+        input_field: 'V_LJ0_AIN0'
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+        label: 'T'
+        units: 'C'
+    T_LJ0_AIN1:
+        ftype: linterp
+        input_field: 'V_LJ0_AIN1'
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+        label: 'T'
+        units: 'C'
+    T_LJ0_AIN2:
+        ftype: linterp
+        input_field: 'V_LJ0_AIN2'
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+        label: 'T'
+        units: 'C'
+    T_LJ0_AIN3:
+        ftype: linterp
+        input_field: 'V_LJ0_AIN3'
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+        label: 'T'
+        units: 'C'
+        
 

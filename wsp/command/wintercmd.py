@@ -2039,32 +2039,32 @@ class Wintercmd(QtCore.QObject):
         # kill the program
         QtCore.QCoreApplication.quit()
 
-        ##### TEST VISCAM COMMANDS #####
-        @cmd
-        def command_viscam_shutter(self):
-            self.defineCmdParser('Command viscam shutter')
+##### TEST VISCAM COMMANDS ####
+    @cmd
+    def command_viscam_shutter(self):
+        self.defineCmdParser('Command viscam shutter')
                   
-            self.cmdparser.add_argument('shutter_cmd',
+        self.cmdparser.add_argument('shutter_cmd',
               nargs = 1,
               action = None,
               help = '<shutter_int>')
 
-            self.getargs()
-            shutter_cmd = self.args.shutter_cmd[0]
-            self.viscam.send_shutter_command(shutter_cmd)
+        self.getargs()
+        shutter_cmd = self.args.shutter_cmd[0]
+        self.viscam.send_shutter_command(shutter_cmd)
 
-        @cmd
-        def command_filter_wheel(self):
-            self.defineCmdParser('Command viscam filter wheel')
+    @cmd
+    def command_filter_wheel(self):
+        self.defineCmdParser('Command viscam filter wheel')
                   
-            self.cmdparser.add_argument('fw_cmd',
+        self.cmdparser.add_argument('fw_cmd',
               nargs = 1,
               action = None,
               help = '<fw_cmd_int>')
 
-            self.getargs()
-            fw_cmd = self.args.fw_cmd[0]
-            self.viscam.send_filter_wheel_command(fw_cmd)
+        self.getargs()
+        fw_cmd = self.args.fw_cmd[0]
+        self.viscam.send_filter_wheel_command(fw_cmd)
 
         #############
         """
