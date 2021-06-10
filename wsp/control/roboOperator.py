@@ -71,7 +71,7 @@ class RoboOperatorThread(QtCore.QThread):
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -87,7 +87,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.logger = logger
         self.alertHandler = alertHandler
         self.ephem = ephem
-        
+        self.viscam = viscam
     
     def run(self):           
         self.robo = RoboOperator(base_directory = self.base_directory, 
@@ -101,7 +101,8 @@ class RoboOperatorThread(QtCore.QThread):
                                      telescope = self.telescope, 
                                      dome = self.dome, 
                                      chiller = self.chiller, 
-                                     ephem = self.ephem
+                                     ephem = self.ephem,
+                                     viscam = self.viscam
                                      )
         
         # Put all the signal/slot connections here:
