@@ -30,6 +30,13 @@ wintercmd_trusted_hosts:
     -127.0.1.1
     -192.168.1.10
     -192.168.1.11
+    
+############# VISCAM RASPI ###########################
+# add Raspberry Pi URL to communicate with the VISCAM
+# shutter and filter wheel
+# TODO, move this somewhere cleaner
+viscam_url: 'http://192.168.1.228:5001/'
+
 
 ########## SCHEDULING ##########
 # location of the schedule files (home + this directory)
@@ -1440,6 +1447,51 @@ fields:
         rate: slow
         var: labjacks.labjacks['lj0'].state['FIO3']
     
+    # Viscam housekeeping
+    
+    Pi_State:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'viscam.state["pi_status"]'
+    Pi_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'viscam.state["pi_status_last_timestamp"]'
+    Viscam_Shutter_State:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'viscam.state["shutter_state"]'
+    Viscam_Shutter_State_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'viscam.state["shutter_state_last_timestamp"]'
+    Viscam_Filter_Wheel_Position:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'viscam.state["filter_wheel_position"]'
+    Viscam_Filter_Wheel_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'viscam.state["filter_wheel_position_last_timestamp"]'
+
     # CHILLER STUFF
     chiller_setpoint:
         ftype: raw
@@ -1469,6 +1521,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: chiller.state['UserRemoteStartStop']
+
         
 derived_fields:
     # note the base directory for the LUT is the wsp directory
@@ -1503,3 +1556,5 @@ derived_fields:
         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
         label: 'T'
         units: 'C'
+        
+
