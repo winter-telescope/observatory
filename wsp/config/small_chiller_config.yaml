@@ -1,7 +1,7 @@
 # Chiller configuration
 
 serial_params:
-    port: '/dev/tty.usbserial-AQ00V91K'
+    port: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AQ00V91K-if00-port0'
     baudrate: 9600
     timeout: 3.0
     parity: 'N'
