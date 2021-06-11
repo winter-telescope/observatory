@@ -149,6 +149,8 @@ class CommandHandler(QtCore.QObject):
         
         try:
             
+            #disconnect first
+            #self.sock.close()
             # try to reconnect the socket
             self.sock.open()
             
@@ -197,10 +199,10 @@ class CommandHandler(QtCore.QObject):
                 self.sock.write(command_ascii)
                 
                 # read response
-                reply = self.sock.read(100)
+                reply = self.sock.read(self.sock.inWaiting())
                 # fifth character deams error
                 err_char = chr(reply[5])
-                
+                self.log(f'CommandHandler: Command sent reply = {reply}')
                 if err_char == '0':
                         self.log(f'CommandHandler: Command sent successfully! reply = {reply}')
                 
@@ -321,7 +323,8 @@ class StatusMonitor(QtCore.QObject):
         self.reconnector.increment_reconnect_timeout()
         
         try:
-            
+            # disconnect first
+            #self.sock.close()
             # try to reconnect the socket
             self.sock.open()
             
