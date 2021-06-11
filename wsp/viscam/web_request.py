@@ -28,15 +28,15 @@ class Viscam:
             status = res.status_code
             if res.text == "Raspi is responding":
                 #print("Status: ", status, res.text)
-                self.logger.info(f'Raspi status {status}, {res.text}')
+                self.logger.debug(f'Raspi status {status}, {res.text}')
                 return 1
             else:
                 #print("Status: ", status, "Raspi is not responding")
-                self.logger.info(f'Raspi status {status}, Raspi is not responding')
+                self.logger.debug(f'Raspi status {status}, Raspi is not responding')
                 return 0
         except:
             #print("Raspi is not responding")
-            self.logger.info(f'Raspi is not responding')
+            self.logger.debug(f'Raspi is not responding')
             return 0
             
     def update_state(self):
