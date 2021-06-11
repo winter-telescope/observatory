@@ -132,7 +132,7 @@ class housekeeping():
         # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
         self.housekeeping_poll_functions.append(self.chiller.update_state)
-        
+        self.housekeeping_poll_functions.append(self.viscam.update_state)
 
         self.hk_loop = data_handler.hk_loop(config = self.config, 
                                                state = self.state, 
@@ -144,7 +144,8 @@ class housekeeping():
                                                counter = self.counter,
                                                dome = self.dome,
                                                chiller = self.chiller,
-                                               ephem = self.ephem)
+                                               ephem = self.ephem,
+                                               viscam = self.viscam)
 
         
         # define the dirfile write loop
