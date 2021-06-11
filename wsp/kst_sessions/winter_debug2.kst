@@ -88,6 +88,14 @@
         <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="focuser_is_connected" start="-1" count="30" skip="-1" doAve="false" startUnits="frames" rangeUnits="frames" initialVNum="88" initialXNum="961"/>
         <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="mount_ra_j2000_hours" start="-1" count="30" skip="-1" doAve="false" startUnits="frames" rangeUnits="frames" initialVNum="89" initialXNum="972"/>
         <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="mount_dec_j2000_deg" start="-1" count="30" skip="-1" doAve="false" startUnits="frames" rangeUnits="frames" initialVNum="90" initialXNum="983"/>
+        <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="rotator_is_moving" start="-1" count="30" skip="-1" doAve="false" startUnits="" rangeUnits="" initialVNum="91" initialXNum="994"/>
+        <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="rotator_is_enabled" start="-1" count="30" skip="-1" doAve="false" startUnits="" rangeUnits="" initialVNum="92" initialXNum="1005"/>
+        <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="rotator_is_slewing" start="-1" count="30" skip="-1" doAve="false" startUnits="" rangeUnits="" initialVNum="93" initialXNum="1016"/>
+        <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="rotator_field_angle" start="-1" count="30" skip="-1" doAve="false" startUnits="" rangeUnits="" initialVNum="94" initialXNum="1027"/>
+        <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="rotator_wrap_status" start="-1" count="30" skip="-1" doAve="false" startUnits="" rangeUnits="" initialVNum="95" initialXNum="1038"/>
+        <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="rotator_is_connected" start="-1" count="30" skip="-1" doAve="false" startUnits="" rangeUnits="" initialVNum="96" initialXNum="1049"/>
+        <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="rotator_mech_position" start="-1" count="30" skip="-1" doAve="false" startUnits="" rangeUnits="" initialVNum="97" initialXNum="1060"/>
+        <datavector file="/home/winter/data/dm.lnk" fileRelative="../../../data/dm.lnk" field="rotator_wrap_check_enabled" start="-1" count="30" skip="-1" doAve="false" startUnits="" rangeUnits="" initialVNum="98" initialXNum="1071"/>
     </variables>
     <objects/>
     <relations>
@@ -173,6 +181,14 @@
         <curve xvector="INDEX (V2)" yvector="focuser\_is\_connected (V88)" color="#aa0000" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="3" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="50331648" initialCNum="87"/>
         <curve xvector="INDEX (V2)" yvector="mount\_ra\_j2000\_hours (V89)" color="#0000aa" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="0" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="659" initialCNum="88"/>
         <curve xvector="INDEX (V2)" yvector="mount\_dec\_j2000\_deg (V90)" color="#005500" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="1" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="0" initialCNum="89"/>
+        <curve xvector="INDEX (V2)" yvector="rotator\_is\_moving (V91)" color="#000000" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="0" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="-1158141040" initialCNum="90"/>
+        <curve xvector="INDEX (V2)" yvector="rotator\_is\_enabled (V92)" color="#aa00aa" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="1" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="-1133791488" initialCNum="91"/>
+        <curve xvector="INDEX (V2)" yvector="rotator\_is\_slewing (V93)" color="#2e5778" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="2" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="-16777216" initialCNum="92"/>
+        <curve xvector="INDEX (V2)" yvector="rotator\_field\_angle (V94)" color="#350a0a" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="3" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="0" initialCNum="93"/>
+        <curve xvector="INDEX (V2)" yvector="rotator\_wrap\_status (V95)" color="#0a350a" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="4" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="0" initialCNum="94"/>
+        <curve xvector="INDEX (V2)" yvector="rotator\_is\_connected (V96)" color="#ff0000" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="5" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="0" initialCNum="95"/>
+        <curve xvector="INDEX (V2)" yvector="rotator\_mech\_position (V97)" color="#0000ff" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="6" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="0" initialCNum="96"/>
+        <curve xvector="INDEX (V2)" yvector="rotator\_wrap\_check\_enabled (V98)" color="#008000" alpha="255" headcolor="#000000" headalpha="255" barfillcolor="#000000" barfillalpha="255" haslines="true" linewidth="0" linestyle="0" haspoints="false" pointtype="7" pointdensity="0" pointsize="12" hasbars="false" ignoreautoscale="false" hashead="false" headtype="0" initialCNum="97"/>
     </relations>
     <graphics>
         <view name="Index" width="1137" height="481" color="#ffffff" style="1">
@@ -209,7 +225,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="INDEX" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="false" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="3" name="Plot">
                 <position x="1.8319011815252417" y="160.62591240875912" z="500"/>
@@ -244,7 +260,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="1" name="Plot">
                 <position x="1.8319011815252417" y="1.3166058394160585" z="500"/>
@@ -279,7 +295,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="542.275" width="29" height="30.450000000000045"/>
+                <projectionrect x="2143" y="2142.275" width="29" height="30.449999999999818"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="2" name="Plot">
                 <position x="568.1946831364124" y="160.62591240875912" z="500"/>
@@ -314,7 +330,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,12,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="43" name="Plot">
                 <position x="465.60714999999993" y="501.4107" z="500"/>
@@ -349,7 +365,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="INDEX" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="false" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
         </view>
         <view name="Pointing" width="1137" height="481" color="#ffffff" style="1">
@@ -363,9 +379,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="94.750121271248" y="23.804248522831443" z="500"/>
+                    <position x="86.10898145297355" y="23.804248522831443" z="500"/>
                     <rect x="0" y="0" width="151" height="15"/>
-                    <relativesize width="0.323945301546082" height="0.22726022553141326" centerx="0.1917394080194178" centery="0.26974650231440034" posx="0.029766757246376764" posy="0.15611638954869372" leftx="0.029766757246376764" lefty="0.383376615080107" rightx="0.35371205879245876" righty="0.383376615080107" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.31787176604225137" height="0.22726022553141326" centerx="0.18870264026750244" centery="0.26974650231440034" posx="0.029766757246376774" posy="0.15611638954869372" leftx="0.029766757246376774" lefty="0.383376615080107" rightx="0.3476385232886281" righty="0.383376615080107" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -386,7 +402,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.09591654905455212" width="29" height="0.23602986589378183"/>
+                <projectionrect x="2143" y="-0.2028267112633132" width="29" height="0.3496562512533804"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="40" name="Plot">
                 <position x="2.9973637961335675" y="240.00103734439836" z="500"/>
@@ -398,9 +414,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="96.55443234829279" y="19.92598252212654" z="500"/>
+                    <position x="87.9477672728457" y="19.92598252212654" z="500"/>
                     <rect x="0" y="0" width="151" height="17"/>
-                    <relativesize width="0.323945301546082" height="0.2575615889356017" centerx="0.19561025633687606" centery="0.22613881028376065" posx="0.033637605563835105" posy="0.0973580158159598" leftx="0.033637605563835105" lefty="0.35491960475156153" rightx="0.3575829071099171" righty="0.35491960475156153" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.31787176604225137" height="0.2575615889356017" centerx="0.19257348858496073" centery="0.22613881028376065" posx="0.0336376055638351" posy="0.0973580158159598" leftx="0.0336376055638351" lefty="0.35491960475156153" rightx="0.3515093716060864" righty="0.35491960475156153" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -421,7 +437,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="0.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="38" name="Plot">
                 <position x="2.9973637961335675" y="121.49740663900414" z="500"/>
@@ -433,9 +449,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="96.55443234829279" y="19.92598252212654" z="500"/>
+                    <position x="87.9477672728457" y="19.92598252212654" z="500"/>
                     <rect x="0" y="0" width="149" height="17"/>
-                    <relativesize width="0.3196546353004386" height="0.2575615889356017" centerx="0.19346492321405434" centery="0.22613881028376065" posx="0.033637605563835105" posy="0.0973580158159598" leftx="0.033637605563835105" lefty="0.35491960475156153" rightx="0.3532922408642736" righty="0.35491960475156153" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.3136615439754666" height="0.2575615889356017" centerx="0.19046837755156834" centery="0.22613881028376065" posx="0.0336376055638351" posy="0.0973580158159598" leftx="0.0336376055638351" lefty="0.35491960475156153" rightx="0.34729914953930163" righty="0.35491960475156153" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -456,7 +472,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="0.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="36" name="Plot">
                 <position x="2.9973637961335675" y="2.993775933609958" z="500"/>
@@ -468,9 +484,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="96.55443234829279" y="19.92598252212654" z="500"/>
+                    <position x="87.9477672728457" y="19.92598252212654" z="500"/>
                     <rect x="0" y="0" width="115" height="17"/>
-                    <relativesize width="0.24671330912449954" height="0.2575615889356017" centerx="0.15699426012608483" centery="0.22613881028376065" posx="0.033637605563835105" posy="0.0973580158159598" leftx="0.033637605563835105" lefty="0.35491960475156153" rightx="0.2803509146883346" righty="0.35491960475156153" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.24208776884012517" height="0.2575615889356017" centerx="0.15468148998389766" centery="0.22613881028376065" posx="0.0336376055638351" posy="0.0973580158159598" leftx="0.0336376055638351" lefty="0.35491960475156153" rightx="0.2757253744039603" righty="0.35491960475156153" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -491,7 +507,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="336.09499999999997" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="44.894999999999996" width="29" height="0.21000000000000796"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="37" name="Plot">
                 <position x="568.0004393673111" y="2.993775933609958" z="500"/>
@@ -503,9 +519,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="96.55443234829279" y="19.92598252212656" z="500"/>
+                    <position x="87.9477672728457" y="19.92598252212656" z="500"/>
                     <rect x="0" y="0" width="118" height="17"/>
-                    <relativesize width="0.25314930849296474" height="0.2575615889356017" centerx="0.16021225981031745" centery="0.22613881028376098" posx="0.033637605563835105" posy="0.09735801581596012" leftx="0.033637605563835105" lefty="0.3549196047515618" rightx="0.2867869140567998" righty="0.3549196047515618" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.24840310194030238" height="0.2575615889356017" centerx="0.15783915653398625" centery="0.22613881028376098" posx="0.0336376055638351" posy="0.09735801581596012" leftx="0.0336376055638351" lefty="0.3549196047515618" rightx="0.28204070750413746" righty="0.3549196047515618" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -526,7 +542,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="335.99561332302915" width="29" height="0.0398668839187053"/>
+                <projectionrect x="2143" y="44.976657720098196" width="29" height="0.005757939117209787"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="39" name="Plot">
                 <position x="568.0004393673111" y="121.49740663900414" z="500"/>
@@ -538,9 +554,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="96.55443234829279" y="19.92598252212656" z="500"/>
+                    <position x="87.9477672728457" y="19.92598252212656" z="500"/>
                     <rect x="0" y="0" width="120" height="17"/>
-                    <relativesize width="0.2574399747386082" height="0.2575615889356017" centerx="0.16235759293313917" centery="0.22613881028376098" posx="0.033637605563835105" posy="0.09735801581596012" leftx="0.033637605563835105" lefty="0.3549196047515618" rightx="0.2910775803024433" righty="0.3549196047515618" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.25261332400708714" height="0.2575615889356017" centerx="0.15994426756737865" centery="0.22613881028376098" posx="0.0336376055638351" posy="0.09735801581596012" leftx="0.0336376055638351" lefty="0.3549196047515618" rightx="0.28625092957092224" righty="0.3549196047515618" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -561,7 +577,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="48.35853472352571" width="29" height="0.04383959762238021"/>
+                <projectionrect x="2143" y="45.24299175815462" width="29" height="0.07299921383905428"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="41" name="Plot">
                 <position x="568.0004393673111" y="240.00103734439836" z="500"/>
@@ -573,9 +589,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="96.55443234829279" y="19.92598252212654" z="500"/>
+                    <position x="87.9477672728457" y="19.92598252212654" z="500"/>
                     <rect x="0" y="0" width="145" height="17"/>
-                    <relativesize width="0.31107330280915163" height="0.2575615889356017" centerx="0.18917425696841086" centery="0.22613881028376065" posx="0.033637605563835105" posy="0.0973580158159598" leftx="0.033637605563835105" lefty="0.35491960475156153" rightx="0.3447109083729867" righty="0.35491960475156153" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.305241099841897" height="0.2575615889356017" centerx="0.18625815548478356" centery="0.22613881028376065" posx="0.0336376055638351" posy="0.0973580158159598" leftx="0.0336376055638351" lefty="0.35491960475156153" rightx="0.33887870540573206" righty="0.35491960475156153" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -596,7 +612,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="0.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="70" name="Plot">
                 <position x="2.9973637961335675" y="358.50466804979254" z="500"/>
@@ -608,9 +624,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="94.750121271248" y="23.804248522831443" z="500"/>
+                    <position x="86.10898145297355" y="23.804248522831443" z="500"/>
                     <rect x="0" y="0" width="149" height="15"/>
-                    <relativesize width="0.3196546353004386" height="0.22726022553141326" centerx="0.18959407489659605" centery="0.26974650231440034" posx="0.029766757246376764" posy="0.15611638954869372" leftx="0.029766757246376764" lefty="0.383376615080107" rightx="0.3494213925468153" righty="0.383376615080107" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.3136615439754666" height="0.22726022553141326" centerx="0.18659752923411005" centery="0.26974650231440034" posx="0.029766757246376774" posy="0.15611638954869372" leftx="0.029766757246376774" lefty="0.383376615080107" rightx="0.3434283012218433" righty="0.383376615080107" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -631,14 +647,14 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.04865562817445669" width="29" height="0.07391001640493038"/>
+                <projectionrect x="2143" y="-0.027050552552192547" width="29" height="0.05580384185373259"/>
             </plot>
         </view>
         <view name="Az" width="1137" height="481" color="#ffffff" style="1">
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="72" name="Plot">
                 <position x="2.9973637961335675" y="2.540492957746479" z="500"/>
                 <rect x="0" y="0" width="1130.006151142355" height="475.07218309859155"/>
-                <relativesize width="0.9938488576449912" height="0.9876760563380281" centerx="0.4995606326889279" centery="0.49911971830985913" posx="0.0026362038664323375" posy="0.00528169014084507" leftx="0.0026362038664323375" lefty="0.9929577464788732" rightx="0.9964850615114236" righty="0.9929577464788732" fixaspect="false" lockpostodata="false"/>
+                <relativesize width="0.9929755282446002" height="0.9856269358891941" centerx="0.49912165146512394" centery="0.49808420022207933" posx="0.002633887342823873" posy="0.005270732277482321" leftx="0.002633887342823873" lefty="0.9908976681666765" rightx="0.9956094155874242" righty="0.9908976681666765" fixaspect="false" lockpostodata="false"/>
                 <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                 <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                     <brush color="#000000" style="1"/>
@@ -670,7 +686,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-1032.38" width="29" height="1401.96"/>
+                <projectionrect x="2143" y="-1025.1" width="29" height="1096.1999999999998"/>
             </plot>
         </view>
         <view name="P48" width="1137" height="481" color="#ffffff" style="1">
@@ -707,7 +723,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="19" name="Plot">
                 <position x="850.8908066860465" y="287.8503896103896" z="500"/>
@@ -742,7 +758,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="17" name="Plot">
                 <position x="285.2828851744186" y="287.8503896103896" z="500"/>
@@ -777,7 +793,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="15" name="Plot">
                 <position x="850.8908066860465" y="192.52493506493508" z="500"/>
@@ -812,7 +828,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="13" name="Plot">
                 <position x="285.2828851744186" y="192.52493506493508" z="500"/>
@@ -847,7 +863,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="11" name="Plot">
                 <position x="850.8908066860465" y="97.19948051948052" z="500"/>
@@ -882,7 +898,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="9" name="Plot">
                 <position x="285.2828851744186" y="97.19948051948052" z="500"/>
@@ -917,7 +933,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,12,-1,5,50,0,0,0,0,0" globalfontscale="4.4" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="7" name="Plot">
                 <position x="1081.6116952874647" y="110.48638905472636" z="500"/>
@@ -952,7 +968,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="4.4" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="INDEX" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="4.4" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="false" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="4.4" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="5" name="Plot">
                 <position x="285.2828851744186" y="1.874025974025974" z="500"/>
@@ -987,7 +1003,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="4" name="Plot">
                 <position x="2.478924418604651" y="1.874025974025974" z="500"/>
@@ -1022,7 +1038,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="6" name="Plot">
                 <position x="568.0868459302326" y="1.874025974025974" z="500"/>
@@ -1057,7 +1073,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,12,-1,5,50,0,0,0,0,0" globalfontscale="4.4" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="8" name="Plot">
                 <position x="200.53179599434495" y="197.04078922056385" z="500"/>
@@ -1127,7 +1143,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="12" name="Plot">
                 <position x="2.478924418604651" y="192.52493506493508" z="500"/>
@@ -1162,7 +1178,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,12,-1,5,50,0,0,0,0,0" globalfontscale="4.4" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="14" name="Plot">
                 <position x="567.6538529074198" y="192.21982423281946" z="500"/>
@@ -1232,7 +1248,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="18" name="Plot">
                 <position x="568.0868459302326" y="287.8503896103896" z="500"/>
@@ -1267,7 +1283,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="20" name="Plot">
                 <position x="2.478924418604651" y="383.1758441558441" z="500"/>
@@ -1302,7 +1318,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="4.437601569801833" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="22" name="Plot">
                 <position x="567.5514200622493" y="382.54039499472333" z="500"/>
@@ -1337,7 +1353,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="4.437601569801833" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
         </view>
         <view name="PCS" width="1137" height="481" color="#ffffff" style="1">
@@ -1374,7 +1390,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="0.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="33" name="Plot">
                 <position x="756.6228197674419" y="1.9421265141318977" z="500"/>
@@ -1409,7 +1425,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="0.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="31" name="Plot">
                 <position x="2.478924418604651" y="383.11682368775234" z="500"/>
@@ -1444,7 +1460,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="0.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="28" name="Plot">
                 <position x="379.55087209302326" y="192.5294751009421" z="500"/>
@@ -1479,7 +1495,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="26" name="Plot">
                 <position x="379.55087209302326" y="97.235800807537" z="500"/>
@@ -1514,7 +1530,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="32.894999999999996" width="29" height="0.21000000000000796"/>
+                <projectionrect x="2143" y="34.894999999999996" width="29" height="0.21000000000000796"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="24" name="Plot">
                 <position x="379.55087209302326" y="1.9421265141318977" z="500"/>
@@ -1549,7 +1565,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="12.495" width="29" height="0.21000000000000085"/>
+                <projectionrect x="2143" y="12.695" width="29" height="0.21000000000000085"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,12,-1,5,50,0,0,0,0,0" globalfontscale="6" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="23" name="Plot">
                 <position x="311.221" y="110.50685" z="500"/>
@@ -1584,7 +1600,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="6" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="INDEX" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="6" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="false" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="6" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="25" name="Plot">
                 <position x="2.478924418604651" y="97.235800807537" z="500"/>
@@ -1619,7 +1635,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="27" name="Plot">
                 <position x="2.478924418604651" y="192.5294751009421" z="500"/>
@@ -1654,7 +1670,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-3.1025" width="29" height="0.10499999999999998"/>
+                <projectionrect x="2143" y="-2.005" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="29" name="Plot">
                 <position x="2.478924418604651" y="287.82314939434724" z="500"/>
@@ -1689,7 +1705,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="1.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="1.895" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="30" name="Plot">
                 <position x="379.55087209302326" y="287.82314939434724" z="500"/>
@@ -1724,7 +1740,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="336.09499999999997" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="44.894999999999996" width="29" height="0.21000000000000796"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="32" name="Plot">
                 <position x="379.55087209302326" y="383.11682368775234" z="500"/>
@@ -1759,7 +1775,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="0.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.047431568147635" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="34" name="Plot">
                 <position x="756.6228197674419" y="97.235800807537" z="500"/>
@@ -1794,7 +1810,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.047431568147635" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
         </view>
         <view name="CDS" width="1137" height="481" color="#ffffff" style="1">
@@ -1831,7 +1847,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="47" name="Plot">
                 <position x="3.1179159049360146" y="319.7111640842273" z="500"/>
@@ -1866,7 +1882,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="45" name="Plot">
                 <position x="567.9803473491774" y="160.7155343663091" z="500"/>
@@ -1901,7 +1917,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="43" name="Plot">
                 <position x="3.1179159049360146" y="160.7155343663091" z="500"/>
@@ -1936,7 +1952,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="41" name="Plot">
                 <position x="567.9803473491774" y="1.7199046483909415" z="500"/>
@@ -1971,7 +1987,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="39" name="Plot">
                 <position x="3.1179159049360146" y="1.7199046483909415" z="500"/>
@@ -2006,7 +2022,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="40" name="Plot">
                 <position x="285.5491316270567" y="1.7199046483909415" z="500"/>
@@ -2041,7 +2057,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="42" name="Plot">
                 <position x="850.4115630712979" y="1.7199046483909415" z="500"/>
@@ -2076,7 +2092,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="44" name="Plot">
                 <position x="285.5491316270567" y="160.7155343663091" z="500"/>
@@ -2111,7 +2127,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="46" name="Plot">
                 <position x="850.4115630712979" y="160.7155343663091" z="500"/>
@@ -2146,7 +2162,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="48" name="Plot">
                 <position x="285.5491316270567" y="319.7111640842273" z="500"/>
@@ -2181,7 +2197,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="6.531972647421809" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="50" name="Plot">
                 <position x="850.4115630712979" y="319.7111640842273" z="500"/>
@@ -2216,7 +2232,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="6.531972647421809" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
         </view>
         <view name="Scheduler" width="1137" height="481" color="#ffffff" style="1">
@@ -2254,7 +2270,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="INDEX" autolabel="true" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="false" font="Sans,12,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-1032.3758632748857" width="29" height="1401.7862575451973"/>
+                <projectionrect x="2143" y="-1025.0995569641357" width="29" height="1096.1813924936982"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="52" name="Plot">
                 <position x="2.917878528656972" y="240.00103734439836" z="500"/>
@@ -2326,7 +2342,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="9.237604307034013" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="53" name="Plot">
                 <position x="568.0516561514196" y="2.1220588235294118" z="500"/>
@@ -2361,7 +2377,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="9.237604307034013" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="52" name="Plot">
                 <position x="2.6900630914826498" y="2.1220588235294118" z="500"/>
@@ -2396,7 +2412,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="9.237604307034013" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="54" name="Plot">
                 <position x="2.6900630914826498" y="160.80490196078432" z="500"/>
@@ -2431,7 +2447,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Sans,10,-1,5,50,0,0,0,0,0" globalfontscale="9.237604307034013" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="57" name="Plot">
                 <position x="568.0516561514196" y="319.4877450980393" z="500"/>
@@ -2466,7 +2482,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Sans,10,-1,5,50,0,0,0,0,0" fontscale="9.237604307034013" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
         </view>
         <view name="LabJack States" width="1137" height="481" color="#ffffff" style="1">
@@ -2503,7 +2519,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="61" name="Plot">
                 <position x="2.6900630914826498" y="2.1220588235294118" z="500"/>
@@ -2538,7 +2554,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="62" name="Plot">
                 <position x="568.0516561514196" y="2.1220588235294118" z="500"/>
@@ -2573,7 +2589,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="64" name="Plot">
                 <position x="568.0516561514196" y="240.14632352941177" z="500"/>
@@ -2608,7 +2624,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-999.105" width="29" height="0.21000000000003638"/>
+                <projectionrect x="2143" y="-999.105" width="29" height="0.21000000000003638"/>
             </plot>
         </view>
         <view name="LabJack Temps" width="1137" height="481" color="#ffffff" style="1">
@@ -2645,7 +2661,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-208180.23416666675" width="29" height="0.21000000002095476"/>
+                <projectionrect x="2143" y="-208180.23416666675" width="29" height="0.21000000002095476"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="66" name="Plot">
                 <position x="2.6900630914826498" y="2.1220588235294118" z="500"/>
@@ -2680,7 +2696,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-208180.23416666675" width="29" height="0.21000000002095476"/>
+                <projectionrect x="2143" y="-208180.23416666675" width="29" height="0.21000000002095476"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="65" name="Plot">
                 <position x="2.6900630914826498" y="319.4877450980393" z="500"/>
@@ -2715,7 +2731,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="92701.74499999998" width="29" height="0.21000000002095476"/>
+                <projectionrect x="2143" y="92701.74499999998" width="29" height="0.21000000002095476"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="67" name="Plot">
                 <position x="568.0516561514196" y="2.1220588235294118" z="500"/>
@@ -2750,7 +2766,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-208180.23416666675" width="29" height="0.21000000002095476"/>
+                <projectionrect x="2143" y="-208180.23416666675" width="29" height="0.21000000002095476"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="69" name="Plot">
                 <position x="568.0516561514196" y="160.80490196078432" z="500"/>
@@ -2785,7 +2801,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-208180.23416666675" width="29" height="0.21000000002095476"/>
+                <projectionrect x="2143" y="-208180.23416666675" width="29" height="0.21000000002095476"/>
             </plot>
             <label text="Mean Temps:&#10;T_C = [T_LJ0_AIN0:Mean (X832)] C&#10;T_H = [T_LJ0_AIN1:Mean (X843)] C&#10;T_B = [T_LJ0_AIN2:Mean (X854)] C&#10;T_R = [T_LJ0_AIN3:Mean (X865)] C" scale="12" color="#000000" font="Sans,10,-1,5,50,0,0,0,0,0" fixleft="true" name="Label">
                 <position x="678.8930710008555" y="429.1078838174274" z="500"/>
@@ -2832,7 +2848,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="70" name="Plot">
                 <position x="3" y="3" z="500"/>
@@ -2867,7 +2883,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="71" name="Plot">
                 <position x="568.5" y="3" z="500"/>
@@ -2902,7 +2918,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="73" name="Plot">
                 <position x="568.5" y="240.5" z="500"/>
@@ -2937,7 +2953,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="0.895" width="29" height="0.20999999999999996"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
             </plot>
         </view>
         <view name="RA DEC J2000" width="1137" height="481" color="#ffffff" style="1">
@@ -2951,9 +2967,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="9.6" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="157.59133004753915" y="39.102287946428575" z="500"/>
+                    <position x="157.59133004753917" y="39.102287946428575" z="500"/>
                     <rect x="0" y="0" width="189" height="21"/>
-                    <relativesize width="0.19188426028744568" height="0.12280701754385964" centerx="0.12595331582604946" centery="0.211124490914787" posx="0.030011185682326618" posy="0.14972098214285717" leftx="0.030011185682326618" lefty="0.2725279996867168" rightx="0.2218954459697723" righty="0.2725279996867168" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.19188426028744568" height="0.12280701754385964" centerx="0.1259533158260495" centery="0.211124490914787" posx="0.030011185682326646" posy="0.14972098214285717" leftx="0.030011185682326646" lefty="0.2725279996867168" rightx="0.2218954459697723" righty="0.2725279996867168" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -2962,6 +2978,16 @@
                 </legend>
                 <cartesianrender name="Cartesian Plot" type="1">
                     <relation tag="mount\_ra\_j2000\_hours vs INDEX (C88)"/>
+                    <label text="Mean RA = [mount_ra_j2000_hours:Mean (X976)] h" scale="20" color="#000000" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fixleft="true" name="Label">
+                        <position x="485" y="144" z="500"/>
+                        <rect x="0" y="-30" width="278" height="30"/>
+                        <relativesize width="0.2822424569307402" height="0.17543859649122806" centerx="0.5035375487801009" centery="0.6754385964912281" posx="0.3624163203147308" posy="0.5877192982456141" leftx="0.3624163203147308" lefty="0.7631578947368421" rightx="0.6446587772454709" righty="0.7631578947368421" fixaspect="true" lockpostodata="false"/>
+                        <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                        <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                            <brush color="#000000" style="1"/>
+                        </pen>
+                        <brush color="#000000" style="0"/>
+                    </label>
                 </cartesianrender>
                 <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
                     <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="-1155019312"/>
@@ -2974,7 +3000,7 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="17.97594135903412" width="29" height="7.570213558238947e-6"/>
+                <projectionrect x="2143" y="1.0813522095461565" width="29" height="1.2778151126768833e-5"/>
             </plot>
             <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="16" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="75" name="Plot">
                 <position x="3" y="240.5" z="500"/>
@@ -2986,9 +3012,9 @@
                 </pen>
                 <brush color="#ffffff" style="1"/>
                 <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="9.6" color="#000000" verticaldisplay="false" name="Legend">
-                    <position x="157.59133004753915" y="39.102287946428575" z="500"/>
+                    <position x="157.59133004753917" y="39.102287946428575" z="500"/>
                     <rect x="0" y="0" width="188" height="21"/>
-                    <relativesize width="0.19086899965100415" height="0.12280701754385964" centerx="0.1254456855078287" centery="0.211124490914787" posx="0.030011185682326618" posy="0.14972098214285717" leftx="0.030011185682326618" lefty="0.2725279996867168" rightx="0.2208801853333308" righty="0.2725279996867168" fixaspect="false" lockpostodata="false"/>
+                    <relativesize width="0.19086899965100415" height="0.12280701754385964" centerx="0.12544568550782872" centery="0.211124490914787" posx="0.030011185682326646" posy="0.14972098214285717" leftx="0.030011185682326646" lefty="0.2725279996867168" rightx="0.2208801853333308" righty="0.2725279996867168" fixaspect="false" lockpostodata="false"/>
                     <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
                     <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
                         <brush color="#000000" style="1"/>
@@ -2997,6 +3023,16 @@
                 </legend>
                 <cartesianrender name="Cartesian Plot" type="1">
                     <relation tag="mount\_dec\_j2000\_deg vs INDEX (C89)"/>
+                    <label text="Mean Dec = [mount_dec_j2000_deg:Mean (X987)] deg" scale="20" color="#000000" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fixleft="true" name="Label">
+                        <position x="479" y="75.5" z="500"/>
+                        <rect x="0" y="-30" width="318" height="30"/>
+                        <relativesize width="0.32285288238840065" height="0.17543859649122806" centerx="0.5177511976902821" centery="0.27485380116959063" posx="0.35632475649608175" posy="0.1871345029239766" leftx="0.35632475649608175" lefty="0.36257309941520466" rightx="0.6791776388844823" righty="0.36257309941520466" fixaspect="true" lockpostodata="false"/>
+                        <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                        <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                            <brush color="#000000" style="1"/>
+                        </pen>
+                        <brush color="#000000" style="0"/>
+                    </label>
                 </cartesianrender>
                 <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
                     <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="-1155019312"/>
@@ -3009,7 +3045,289 @@
                 <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
                 <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="16" fontcolor="#000000" fontuseglobal="true"/>
-                <projectionrect x="543" y="66.63297281324812" width="29" height="2.581928906408848e-5"/>
+                <projectionrect x="2143" y="53.64072423892725" width="29" height="1.5190432002043508e-5"/>
+            </plot>
+        </view>
+        <view name="Rotator" width="1137" height="481" color="#ffffff" style="1">
+            <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="82" name="Plot">
+                <position x="3" y="359.25" z="500"/>
+                <rect x="0" y="0" width="565.5" height="118.75"/>
+                <relativesize width="0.4969244288224956" height="0.24636929460580914" centerx="0.25109841827768015" centery="0.8685165975103735" posx="0.0026362038664323375" posy="0.7453319502074689" leftx="0.0026362038664323375" lefty="0.991701244813278" rightx="0.4995606326889279" righty="0.991701244813278" fixaspect="false" lockpostodata="false"/>
+                <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                    <brush color="#000000" style="1"/>
+                </pen>
+                <brush color="#ffffff" style="1"/>
+                <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
+                    <position x="96.5083009581635" y="23.84271080760095" z="500"/>
+                    <rect x="0" y="0" width="139" height="15"/>
+                    <relativesize width="0.29903526168946853" height="0.22641509433962265" centerx="0.17928438809111108" centery="0.2693239367185049" posx="0.029766757246376827" posy="0.1561163895486936" leftx="0.029766757246376827" lefty="0.38253148388831626" rightx="0.3288020189358454" righty="0.38253148388831626" fixaspect="false" lockpostodata="false"/>
+                    <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                    <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                        <brush color="#000000" style="1"/>
+                    </pen>
+                    <brush color="#ffffff" style="1"/>
+                </legend>
+                <cartesianrender name="Cartesian Plot" type="1">
+                    <relation tag="rotator\_mech\_position vs INDEX (C96)"/>
+                </cartesianrender>
+                <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="-1"/>
+                </plotaxis>
+                <plotaxis id="yaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="1" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="false" linecolor="#000000" linestyle="1" linewidth="1" curvemode="-1"/>
+                </plotaxis>
+                <plotlabel id="leftlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="rightlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <projectionrect x="2143" y="-32.93123792113371" width="29" height="0.17603011455151574"/>
+            </plot>
+            <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="80" name="Plot">
+                <position x="3" y="240.5" z="500"/>
+                <rect x="0" y="0" width="565.5" height="118.75"/>
+                <relativesize width="0.4969244288224956" height="0.24636929460580914" centerx="0.25109841827768015" centery="0.6221473029045643" posx="0.0026362038664323375" posy="0.49896265560165975" leftx="0.0026362038664323375" lefty="0.7453319502074689" rightx="0.4995606326889279" righty="0.7453319502074689" fixaspect="false" lockpostodata="false"/>
+                <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                    <brush color="#000000" style="1"/>
+                </pen>
+                <brush color="#ffffff" style="1"/>
+                <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
+                    <position x="96.5083009581635" y="23.84271080760095" z="500"/>
+                    <rect x="0" y="0" width="130" height="15"/>
+                    <relativesize width="0.27967326632827993" height="0.22641509433962265" centerx="0.16960339041051675" centery="0.2693239367185049" posx="0.029766757246376827" posy="0.1561163895486936" leftx="0.029766757246376827" lefty="0.38253148388831626" rightx="0.3094400235746567" righty="0.38253148388831626" fixaspect="false" lockpostodata="false"/>
+                    <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                    <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                        <brush color="#000000" style="1"/>
+                    </pen>
+                    <brush color="#ffffff" style="1"/>
+                </legend>
+                <cartesianrender name="Cartesian Plot" type="1">
+                    <relation tag="rotator\_wrap\_status vs INDEX (C94)"/>
+                </cartesianrender>
+                <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="0"/>
+                </plotaxis>
+                <plotaxis id="yaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="1" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="false" linecolor="#000000" linestyle="1" linewidth="1" curvemode="1157627904"/>
+                </plotaxis>
+                <plotlabel id="leftlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="rightlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+            </plot>
+            <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="78" name="Plot">
+                <position x="3" y="121.75" z="500"/>
+                <rect x="0" y="0" width="565.5" height="118.75"/>
+                <relativesize width="0.4969244288224956" height="0.24636929460580914" centerx="0.25109841827768015" centery="0.3757780082987552" posx="0.0026362038664323375" posy="0.2525933609958506" leftx="0.0026362038664323375" lefty="0.49896265560165975" rightx="0.4995606326889279" righty="0.49896265560165975" fixaspect="false" lockpostodata="false"/>
+                <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                    <brush color="#000000" style="1"/>
+                </pen>
+                <brush color="#ffffff" style="1"/>
+                <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
+                    <position x="96.5083009581635" y="23.84271080760095" z="500"/>
+                    <rect x="0" y="0" width="121" height="15"/>
+                    <relativesize width="0.26031127096709133" height="0.22641509433962265" centerx="0.15992239272992245" centery="0.2693239367185049" posx="0.029766757246376827" posy="0.1561163895486936" leftx="0.029766757246376827" lefty="0.38253148388831626" rightx="0.2900780282134681" righty="0.38253148388831626" fixaspect="false" lockpostodata="false"/>
+                    <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                    <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                        <brush color="#000000" style="1"/>
+                    </pen>
+                    <brush color="#ffffff" style="1"/>
+                </legend>
+                <cartesianrender name="Cartesian Plot" type="1">
+                    <relation tag="rotator\_is\_slewing vs INDEX (C92)"/>
+                </cartesianrender>
+                <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="7274605"/>
+                </plotaxis>
+                <plotaxis id="yaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="1" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="false" linecolor="#000000" linestyle="1" linewidth="1" curvemode="131082"/>
+                </plotaxis>
+                <plotlabel id="leftlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="rightlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
+            </plot>
+            <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="76" name="Plot">
+                <position x="3" y="3" z="500"/>
+                <rect x="0" y="0" width="565.5" height="118.75"/>
+                <relativesize width="0.4969244288224956" height="0.24636929460580914" centerx="0.25109841827768015" centery="0.12940871369294607" posx="0.0026362038664323375" posy="0.006224066390041493" leftx="0.0026362038664323375" lefty="0.2525933609958506" rightx="0.4995606326889279" righty="0.2525933609958506" fixaspect="false" lockpostodata="false"/>
+                <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                    <brush color="#000000" style="1"/>
+                </pen>
+                <brush color="#ffffff" style="1"/>
+                <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
+                    <position x="96.5083009581635" y="23.84271080760095" z="500"/>
+                    <rect x="0" y="0" width="120" height="15"/>
+                    <relativesize width="0.2581599381491815" height="0.22641509433962265" centerx="0.15884672632096752" centery="0.2693239367185049" posx="0.029766757246376827" posy="0.1561163895486936" leftx="0.029766757246376827" lefty="0.38253148388831626" rightx="0.28792669539555826" righty="0.38253148388831626" fixaspect="false" lockpostodata="false"/>
+                    <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                    <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                        <brush color="#000000" style="1"/>
+                    </pen>
+                    <brush color="#ffffff" style="1"/>
+                </legend>
+                <cartesianrender name="Cartesian Plot" type="1">
+                    <relation tag="rotator\_is\_moving vs INDEX (C90)"/>
+                </cartesianrender>
+                <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="-1155019312"/>
+                </plotaxis>
+                <plotaxis id="yaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="1" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="false" linecolor="#000000" linestyle="1" linewidth="1" curvemode="1"/>
+                </plotaxis>
+                <plotlabel id="leftlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="rightlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
+            </plot>
+            <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="77" name="Plot">
+                <position x="568.5" y="3" z="500"/>
+                <rect x="0" y="0" width="565.5" height="118.75"/>
+                <relativesize width="0.4969244288224956" height="0.24636929460580914" centerx="0.7480228471001757" centery="0.12940871369294607" posx="0.4995606326889279" posy="0.006224066390041493" leftx="0.4995606326889279" lefty="0.2525933609958506" rightx="0.9964850615114236" righty="0.2525933609958506" fixaspect="false" lockpostodata="false"/>
+                <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                    <brush color="#000000" style="1"/>
+                </pen>
+                <brush color="#ffffff" style="1"/>
+                <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
+                    <position x="96.5083009581635" y="23.84271080760095" z="500"/>
+                    <rect x="0" y="0" width="123" height="15"/>
+                    <relativesize width="0.2646139366029111" height="0.22641509433962265" centerx="0.1620737255478323" centery="0.2693239367185049" posx="0.029766757246376827" posy="0.1561163895486936" leftx="0.029766757246376827" lefty="0.38253148388831626" rightx="0.29438069384928783" righty="0.38253148388831626" fixaspect="false" lockpostodata="false"/>
+                    <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                    <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                        <brush color="#000000" style="1"/>
+                    </pen>
+                    <brush color="#ffffff" style="1"/>
+                </legend>
+                <cartesianrender name="Cartesian Plot" type="1">
+                    <relation tag="rotator\_is\_enabled vs INDEX (C91)"/>
+                </cartesianrender>
+                <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="-1155019312"/>
+                </plotaxis>
+                <plotaxis id="yaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="1" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="false" linecolor="#000000" linestyle="1" linewidth="1" curvemode="131082"/>
+                </plotaxis>
+                <plotlabel id="leftlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="rightlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
+            </plot>
+            <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="79" name="Plot">
+                <position x="568.5" y="121.75" z="500"/>
+                <rect x="0" y="0" width="565.5" height="118.75"/>
+                <relativesize width="0.4969244288224956" height="0.24636929460580914" centerx="0.7480228471001757" centery="0.3757780082987552" posx="0.4995606326889279" posy="0.2525933609958506" leftx="0.4995606326889279" lefty="0.49896265560165975" rightx="0.9964850615114236" righty="0.49896265560165975" fixaspect="false" lockpostodata="false"/>
+                <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                    <brush color="#000000" style="1"/>
+                </pen>
+                <brush color="#ffffff" style="1"/>
+                <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
+                    <position x="96.5083009581635" y="23.84271080760095" z="500"/>
+                    <rect x="0" y="0" width="125" height="15"/>
+                    <relativesize width="0.26891660223873076" height="0.22641509433962265" centerx="0.16422505836574214" centery="0.2693239367185049" posx="0.029766757246376827" posy="0.1561163895486936" leftx="0.029766757246376827" lefty="0.38253148388831626" rightx="0.2986833594851075" righty="0.38253148388831626" fixaspect="false" lockpostodata="false"/>
+                    <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                    <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                        <brush color="#000000" style="1"/>
+                    </pen>
+                    <brush color="#ffffff" style="1"/>
+                </legend>
+                <cartesianrender name="Cartesian Plot" type="1">
+                    <relation tag="rotator\_field\_angle vs INDEX (C93)"/>
+                </cartesianrender>
+                <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="7274605"/>
+                </plotaxis>
+                <plotaxis id="yaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="1" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="false" linecolor="#000000" linestyle="1" linewidth="1" curvemode="0"/>
+                </plotaxis>
+                <plotlabel id="leftlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="rightlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <projectionrect x="2143" y="-171.34857386440748" width="29" height="0.0010044325829881018"/>
+            </plot>
+            <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="81" name="Plot">
+                <position x="568.5" y="240.5" z="500"/>
+                <rect x="0" y="0" width="565.5" height="118.75"/>
+                <relativesize width="0.4969244288224956" height="0.24636929460580914" centerx="0.7480228471001757" centery="0.6221473029045643" posx="0.4995606326889279" posy="0.49896265560165975" leftx="0.4995606326889279" lefty="0.7453319502074689" rightx="0.9964850615114236" righty="0.7453319502074689" fixaspect="false" lockpostodata="false"/>
+                <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                    <brush color="#000000" style="1"/>
+                </pen>
+                <brush color="#ffffff" style="1"/>
+                <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
+                    <position x="96.5083009581635" y="23.84271080760095" z="500"/>
+                    <rect x="0" y="0" width="133" height="15"/>
+                    <relativesize width="0.28612726478200945" height="0.22641509433962265" centerx="0.17283038963738154" centery="0.2693239367185049" posx="0.029766757246376827" posy="0.1561163895486936" leftx="0.029766757246376827" lefty="0.38253148388831626" rightx="0.3158940220283863" righty="0.38253148388831626" fixaspect="false" lockpostodata="false"/>
+                    <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                    <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                        <brush color="#000000" style="1"/>
+                    </pen>
+                    <brush color="#ffffff" style="1"/>
+                </legend>
+                <cartesianrender name="Cartesian Plot" type="1">
+                    <relation tag="rotator\_is\_connected vs INDEX (C95)"/>
+                </cartesianrender>
+                <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="0"/>
+                </plotaxis>
+                <plotaxis id="yaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="1" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="false" linecolor="#000000" linestyle="1" linewidth="1" curvemode="0"/>
+                </plotaxis>
+                <plotlabel id="leftlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="rightlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <projectionrect x="2143" y="0.895" width="29" height="0.20999999999999996"/>
+            </plot>
+            <plot tiedxzoom="false" tiedyzoom="false" leftlabelvisible="true" bottomlabelvisible="true" rightlabelvisible="true" toplabelvisible="true" globalfont="Ubuntu,11,-1,5,50,0,0,0,0,0" globalfontscale="11.31370849898476" globalfontcolor="#000000" showlegend="true" hidebottomaxislabel="false" hidetopaxislabel="false" hideleftaxislabel="false" hiderightaxislabel="false" numberaxislabelscale="true" initialPlotNum="83" name="Plot">
+                <position x="568.5" y="359.25" z="500"/>
+                <rect x="0" y="0" width="565.5" height="118.75"/>
+                <relativesize width="0.4969244288224956" height="0.24636929460580914" centerx="0.7480228471001757" centery="0.8685165975103735" posx="0.4995606326889279" posy="0.7453319502074689" leftx="0.4995606326889279" lefty="0.991701244813278" rightx="0.9964850615114236" righty="0.991701244813278" fixaspect="false" lockpostodata="false"/>
+                <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                    <brush color="#000000" style="1"/>
+                </pen>
+                <brush color="#ffffff" style="1"/>
+                <legend auto="true" title="" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="6.788225099390855" color="#000000" verticaldisplay="false" name="Legend">
+                    <position x="96.5083009581635" y="23.84271080760095" z="500"/>
+                    <rect x="0" y="0" width="165" height="15"/>
+                    <relativesize width="0.35496991495512453" height="0.22641509433962265" centerx="0.20725171472393908" centery="0.2693239367185049" posx="0.029766757246376827" posy="0.1561163895486936" leftx="0.029766757246376827" lefty="0.38253148388831626" rightx="0.3847366722015013" righty="0.38253148388831626" fixaspect="false" lockpostodata="false"/>
+                    <transform m11="1" m12="0" m13="0" m21="0" m22="1" m23="0" m31="0" m32="0" m33="1"/>
+                    <pen style="1" width="1" miterlimit="2" cap="16" joinStyle="64">
+                        <brush color="#000000" style="1"/>
+                    </pen>
+                    <brush color="#ffffff" style="1"/>
+                </legend>
+                <cartesianrender name="Cartesian Plot" type="1">
+                    <relation tag="rotator\_wrap\_check\_enabled vs INDEX (C97)"/>
+                </cartesianrender>
+                <plotaxis id="xaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="0" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="true" linecolor="#000000" linestyle="1" linewidth="1" curvemode="-987412"/>
+                </plotaxis>
+                <plotaxis id="yaxis" visible="true" log="false" reversed="false" autobaseoffset="true" baseoffset="false" forceoffsetmin="false" interpret="false" interpretation="1" display="4" displayformatstring="hh:mm:ss.zzz" majortickmode="5" minortickcount="5" autominortickcount="true" drawmajorticks="true" drawminorticks="true" drawmajorgridlines="true" drawminorgridlines="false" drawmajorgridlinecolor="#a0a0a4" drawminorgridlinecolor="#a0a0a4" drawmajorgridlinestyle="2" drawminorgridlinestyle="2" drawmajorgridlinewidth="1" drawminorgridlinewidth="1" significantdigits="9" rotation="0" zoommode="1" timezonename="GMT" timezoneoffset="0">
+                    <plotmarkers xaxis="false" linecolor="#000000" linestyle="1" linewidth="1" curvemode="-987669"/>
+                </plotaxis>
+                <plotlabel id="leftlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="rightlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="toplabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="bottomlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <plotlabel id="numberlabel" visible="true" overridetext="" autolabel="true" font="Ubuntu,11,-1,5,50,0,0,0,0,0" fontscale="11.31370849898476" fontcolor="#000000" fontuseglobal="true"/>
+                <projectionrect x="2143" y="-0.10500000000000001" width="29" height="0.21000000000000002"/>
             </plot>
         </view>
     </graphics>

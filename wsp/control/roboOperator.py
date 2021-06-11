@@ -71,7 +71,7 @@ class RoboOperatorThread(QtCore.QThread):
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -88,6 +88,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.alertHandler = alertHandler
         self.ephem = ephem
         self.viscam = viscam
+        self.ccd = ccd
     
     def run(self):           
         self.robo = RoboOperator(base_directory = self.base_directory, 
@@ -102,7 +103,8 @@ class RoboOperatorThread(QtCore.QThread):
                                      dome = self.dome, 
                                      chiller = self.chiller, 
                                      ephem = self.ephem,
-                                     viscam = self.viscam
+                                     viscam = self.viscam,
+                                     ccd = self.ccd
                                      )
         
         # Put all the signal/slot connections here:
@@ -141,7 +143,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -161,6 +163,7 @@ class RoboOperator(QtCore.QObject):
         self.ephem = ephem
         self.schedule = schedule
         self.viscam = viscam
+        self.ccd = ccd
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
@@ -877,3 +880,4 @@ class RoboOperator(QtCore.QObject):
             ## TODO: Code to close connections to the databases.
             self.schedule.closeConnection()
             self.writer.closeConnection()
+

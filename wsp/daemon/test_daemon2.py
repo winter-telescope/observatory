@@ -83,13 +83,16 @@ class Counter(QtCore.QObject):
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name)
     
     def run_timer(self):
-        print()
-        print('running timer')
-        self.timerthread = TimerThread(5)
-        self.timerthread.timerTimeout.connect(self.print_done)
-        self.timerthread.timerTimeout.connect(self.timerthread.terminate)
-        self.timerthread.run()
         
+        try:
+            print()
+            print(f'running timer in thread: {threading.get_ident()}')
+            self.timerthread = TimerThread(5)
+            self.timerthread.timerTimeout.connect(self.print_done)
+            self.timerthread.timerTimeout.connect(self.timerthread.terminate)
+            self.timerthread.run()
+        except Exception as e:
+            print(f'error: {e}')
         
         
     def update(self):
@@ -108,8 +111,16 @@ class Counter(QtCore.QObject):
         print('TIMER IS DONE!')
     
 
-
-
+class DoingStuffThread(QtCore.QThread):
+    def __init__(self):
+        QtCore.QThread.__init__(self)
+        
+    def run(self):
+        print(f'DoingStuffThread = {threading.get_ident()}')
+        self.counter = Counter(start = 0, step = 1, dt = 1000, name = 'counter', verbose = False)
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.counter, name = 'counter')
+        self.pyro_thread.start()
+        self.exec()
         
 class PyroGUI(QtCore.QObject):   
 
@@ -118,17 +129,16 @@ class PyroGUI(QtCore.QObject):
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
+        self.stuffThread = DoingStuffThread()
+        self.stuffThread.start()
+        
+        """
         self.counter = Counter(start = 0, step = 1, dt = 1000, name = 'counter', verbose = False)
                 
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.counter, name = 'counter')
         self.pyro_thread.start()
+        """
         
-        """
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(500)
-        self.timer.timeout.connect(self.check_pyro_queue)
-        self.timer.start()
-        """
 
 
             
@@ -137,7 +147,8 @@ def sigint_handler( *args):
     """Handler for the SIGINT signal."""
     sys.stderr.write('\r')
     
-    main.counter.daqloop.quit()
+    #main.counter.daqloop.quit()
+    main.stuffThread.counter.daqloop.quit()
     
     QtCore.QCoreApplication.quit()
 

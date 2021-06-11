@@ -140,6 +140,19 @@ class PyDaemon(object):
         # adds the daemon to the specified list
         daemonlist.add_daemon(self)"""
 
+def getPIDS(progname):
+    """
+    get any pids of programs that are running with the specified program name
+    """
+    pidlist = list()
+    for p in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            if progname in p.name():
+                pidlist.append(p.pid)
+        except:
+            pass
+    return pidlist
+
 
 def cleanup(daemons_to_kill = list(), logger = None):
     py_processes = list()

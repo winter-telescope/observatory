@@ -69,6 +69,11 @@ class local_counter(object):
 if __name__ == '__main__':
 
     counter = local_counter(wsp_path)
+    
+    counter.print_state()
+    
+    counter.run_timer()
+    
     """while True:
         try:
             counter = local_counter(wsp_path)

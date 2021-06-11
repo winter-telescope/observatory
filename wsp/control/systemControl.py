@@ -57,6 +57,7 @@ from control import roboOperator
 from ephem import ephem
 from alerts import alert_handler
 from viscam import web_request
+from viscam import ccd
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -85,7 +86,7 @@ class control(QtCore.QObject):
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['pyro5-ns', 'domed.py', 'chillerd.py', 'small_chillerd.py', 'test_daemon.py','dome_simulator_gui.py','ephemd.py', 'dirfiled.py']
+        daemons_to_kill = ['pyro5-ns', 'ccd_daemon.py' ,'domed.py', 'chillerd.py', 'small_chillerd.py', 'test_daemon.py','dome_simulator_gui.py','ephemd.py', 'dirfiled.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -117,6 +118,10 @@ class control(QtCore.QObject):
             else:
                 self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.chillerd)
+            
+            # ccd daemon
+            self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
+            self.daemonlist.add_daemon(self.ccdd)
             
             # housekeeping data logging daemon (hkd = housekeeping daemon)
             self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/dirfiled.py")
@@ -189,6 +194,9 @@ class control(QtCore.QObject):
         
         # init the viscam shutter, filter wheel, and raspberry pi
         self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
+        
+        # init the viscam ccd
+        self.ccd = ccd.local_ccd(base_directory = self.base_directory, config = self.config, logger = self.logger)
 
         # init the alert handler
         auth_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['auth_config_file'] )) , Loader = yaml.FullLoader)
@@ -222,7 +230,8 @@ class control(QtCore.QObject):
                                                 pdu1 = self.pdu1,
                                                 counter = self.counter,
                                                 ephem = self.ephem,
-                                                viscam = self.logger
+                                                viscam = self.viscam, 
+                                                ccd = self.ccd
                                                 )
         
         
@@ -233,7 +242,7 @@ class control(QtCore.QObject):
         In this section we set up the appropriate command interface and executors for the chosen mode
         '''
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.base_directory, self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, pdu1 = self.pdu1, logger = self.logger, viscam = self.viscam)
+        self.wintercmd = wintercmd.Wintercmd(self.base_directory, self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, pdu1 = self.pdu1, logger = self.logger, viscam = self.viscam, ccd = self.ccd)
         
         if mode in ['r','m']:
             #init the schedule executor
@@ -262,7 +271,7 @@ class control(QtCore.QObject):
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
             #self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, alertHandler = self.alertHandler, schedule = self.schedule, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem, viscam=self.viscam)
+            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, alertHandler = self.alertHandler, schedule = self.schedule, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem, viscam=self.viscam, ccd = self.ccd)
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
@@ -325,15 +334,3 @@ class control(QtCore.QObject):
         ## Not loving this approach at the moment, trying something else
         # if mode == 0:
         #     self.cmdprompt.newcmd.connect(self.scheduleExec.stop)
-
-
-
-
-
-       
-
-
-
-
-
-

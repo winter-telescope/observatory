@@ -1,0 +1,565 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jun  1 16:20:02 2021
+
+ccd_daemon.py
+
+This file is part of wsp
+
+# PURPOSE #
+This module runs the visible camera daemon that controls the LLAMAS
+camera interface.
+
+
+
+@author: nlourie
+"""
+import sys
+import os
+from PyQt5 import QtCore
+import threading
+import Pyro5.core
+import Pyro5.server
+import signal
+import yaml
+import logging
+import time
+from datetime import datetime
+from astropy.time import Time
+
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print(f'wsp_path = {wsp_path}')
+sys.path.insert(1, wsp_path)
+
+# Import WINTER Modules
+from utils import utils
+from daemon import daemon_utils
+from utils import logging_setup
+from alerts import alert_handler
+from viscam import web_request
+
+
+# add the huaso directory to the PATH
+home_path = os.getenv("HOME")
+huaso_path = os.path.join(home_path, 'LLAMAS_GIT','huaso')
+server_daemon_dir = os.path.join(huaso_path, 'server_daemon', 'bin')
+server_daemon_path = os.path.join(server_daemon_dir, 'huaso_server')
+#sys.path.insert(1, huaso_path)
+sys.path.append(huaso_path)
+sys.path.append(server_daemon_dir)
+# import huaso modules
+from console import cameraClient
+
+
+#%%
+
+        
+        
+class CCD(QtCore.QObject):
+    
+    startStatusLoop = QtCore.pyqtSignal()
+    
+    """
+    # these are signals to start timers which are kept in the main PyroGUI object
+    WHY? Well this is a workaround because when I tried to put the QTimers in
+    the __init__ of this QObject, it didn't work. Everytime pyro would trigger the 
+    function it would throw an error that QTimers could not be started from a different
+    thread. Even though it seems like it should all be the same thread, evidently
+    all the pyro function calls happen in worker threads. This seems to fix it, 
+    so we'll give it a try!
+    
+    """
+    
+    startExposureTimer = QtCore.pyqtSignal(object)
+    startReadTimer = QtCore.pyqtSignal(object)
+    
+    
+    
+    #commandRequest = QtCore.pyqtSignal(str) 
+    
+    # put any signal defs here
+    def __init__(self, camnum, config, logger = None, verbose = False):
+        super(CCD, self).__init__()
+        
+        # set up the internals
+        self.camnum = camnum
+        self.config = config
+        self.logger = logger
+        self.verbose = verbose
+        
+        # for now, just hardcode the image path and prefix
+        self.imagepath = os.path.join(os.getenv("HOME"), 'data','viscam', '20210610')
+        self.imageprefix = 'viscam_'
+        
+        
+        # init the state dictionary
+        self.state = dict()
+        
+        # init the viscam (ie the shutter)
+        self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
+        
+        # flags to monitor connection status
+        self.server_running = False
+        self.connected = False
+        
+        # connect signals and slots
+        self.startStatusLoop.connect(self.startPollingStatus)
+        
+        # create a QTimer which will allow regular polling of the status
+        self.pollTimer = QtCore.QTimer()
+        self.pollTimer.setInterval(10000)
+        self.pollTimer.setSingleShot(False)
+        self.pollTimer.timeout.connect(self.pollStatus)
+        
+        """
+        # exposure timer
+        self.expTimer = QtCore.QTimer()
+        self.expTimer.setSingleShot(True)
+        self.expTimer.timeout.connect(self.readImg)
+        
+        # readout timer
+        self.readTimer = QtCore.QTimer()
+        self.readTimer.setSingleShot(True)
+        self.readTimer.timeout.connect(self.fetchImg)
+        """
+        
+        
+        # set up the camera and server
+        self.startup()
+        
+    def log(self, msg, level = logging.INFO):
+        
+        msg = f'ccd_daemon: {msg}'
+        
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)
+    
+    def startup(self):
+        
+        self.reconnect()
+        
+        
+    def startPollingStatus(self):
+        self.pollTimer.start()
+    
+    def pollStatus(self):
+        self.log('polling status')
+        try:
+            
+            self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
+            self.state.update({'tec_temp' : self.tec_temp})
+            
+            self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
+            self.state.update({'tec_setpoint' : self.tec_setpoint})
+            
+            self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
+            self.state.update({'pcb_temp' : self.pcb_temp})
+            
+            fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
+            self.tec_status = int(fpgastatus_str[0])
+            self.state.update({'tec_status' : self.tec_status})
+            
+            self.exptime = self.cc.getexposure('self.camnum')
+            self.state.update({'exptime' : self.exptime})
+            
+            
+            #print(f'>> TEC TEMP = {self.tec_temp}')
+        except Exception as e:
+            self.log(f'BADNESS WHILE POLLING STATUS: {e}')
+        pass
+        
+        
+
+    @Pyro5.server.expose
+    def setexposure(self, seconds):
+        self.log(f'setting exposure to {seconds}s')
+        #self.exptime_nom = seconds
+        
+        #self.pollTimer.stop()
+        
+        self.exptime_nom = seconds
+        
+        
+        time_in_ccd_units = int(seconds*40000000)
+        
+        self.cc.setexposure(self.camnum, time_in_ccd_units)
+        #camserver['setexposure'](camera_id,exposure*40000000/1000)
+        
+        #self.pollTimer.start()
+        
+        pass
+    
+    @Pyro5.server.expose
+    def setSetpoint(self, temp):
+        self.log(f'setting TEC setpoint to {temp} C')
+        #self.pollTimer.stop()
+        self.cc.settecpt(self.camnum, temp)
+        #self.pollTimer.start()
+        pass
+    
+    @Pyro5.server.expose
+    def doExposure(self):
+        self.log(f'starting an exposure!')
+        self.log(f'doExposure is being called in thread {threading.get_ident()}')
+        #self.pollTimer.stop()
+        
+        
+        
+        self.cc.acquireimg('00')
+        self.cc.settrigmode(self.camnum, '01')
+        
+        
+        
+        # then start the exposure timer
+        if True: #self.exptime is None:
+            waittime = self.exptime_nom * 1000
+            
+        
+        else:
+            waittime = self.exptime*1000
+        
+        self.log(f'starting {self.exptime_nom}s timer to wait for exposure to finish')
+        #self.expTimer.start(int(waittime))
+        self.startExposureTimer.emit(waittime)
+        
+        # open the shutter!!
+        self.log('opening the shutter!')
+        self.viscam.send_shutter_command(1)
+        
+        self.shutter_open_timestamp = datetime.utcnow().timestamp()
+        
+        self.log('got to the end of the doExposure method')
+        pass
+    
+    def readImg(self):
+        
+        # CLOSE THE SHUTTER!
+        self.log('closing the shutter!')
+        self.viscam.send_shutter_command(0)
+        
+        self.shutter_close_timestamp = datetime.utcnow().timestamp()
+        
+        self.exptime_actual = self.shutter_close_timestamp - self.shutter_open_timestamp
+        
+        self.state.update({'exptime_actual' : self.exptime_actual})
+        
+        # double check the readout time
+        self.getReadoutTime()
+        
+        waittime = self.readoutTime * 1000
+        self.log(f'starting {self.readoutTime}s timer to wait for image to download')
+        
+        #self.readTimer.start(int(waittime))
+        self.startReadTimer.emit(waittime)
+        
+        
+        pass
+    
+    def fetchImg(self):
+        self.log(f'downloading image to directory: {self.imagepath}')
+        # download the image from the cam buffer
+        
+        timestamp = Time(datetime.utcnow()).isot
+        image_prefix = f'viscam_{timestamp}'
+        
+        self.cc.downloadimg(self.camnum, 
+                            image_path = self.imagepath,
+                            image_prefix = image_prefix,
+                            metadata = self.state)
+        
+        #self.pollTimer.start()
+        self.log(f'done getting image?')
+        pass
+    
+    
+    @Pyro5.server.expose
+    def tecStop(self):
+        #self.pollTimer.stop()
+        self.cc.setfpgactrlreg(self.camnum, 'off')
+        #self.pollTimer.start()
+        pass
+    
+    @Pyro5.server.expose
+    def tecStart(self):
+        #self.pollTimer.stop()
+        self.cc.setfpgactrlreg(self.camnum, 'on')
+        #self.pollTimer.start()
+        pass
+    
+    def getReadoutTime(self):
+        self.log(f'trying to get readout time, note: readout clock = {self.readoutclock}, type(readout clock) = {type(self.readoutclock)}')
+        self.readoutTime = (2049 * 2048)/self.readoutclock
+        
+    # Return the Current Status (the status is updated on its own)
+    @Pyro5.server.expose
+    def GetStatus(self):
+        # make a note of the time that the status was requested
+        self.state.update({'request_timestamp' : datetime.utcnow().timestamp()})
+        
+        return self.state
+        
+    
+    def reconnect(self):
+        #self.pollTimer.stop()
+        try:
+            # first kill any running instances of the server daemon
+            self.huaso_server_pids = daemon_utils.getPIDS('huaso_server')
+            if len(self.huaso_server_pids) > 0:
+                self.log(f'found instances of huaso_server running with PIDs = {self.huaso_server_pids}')
+            else:
+                self.log(f'no instances of huaso_server already running')
+            
+            daemon_utils.killPIDS(self.huaso_server_pids, logger = self.logger)
+            
+            
+            # re-init the daemon
+            self.daemonlist = daemon_utils.daemon_list()
+            
+            self.log(f'relaunching huaso_server from {server_daemon_path}')
+            self.serverd = daemon_utils.PyDaemon(name = 'huaso_server >> /home/winter/data/ccd_daemon.log', filepath = server_daemon_path, python = False)
+            self.daemonlist.add_daemon(self.serverd)
+            # launch the daemon
+            self.daemonlist.launch_all()
+            
+            # we got here so I think the server is running. 
+            # BUT this isn't really a guarentee.. we haven't probed it yet but it's probably fine if we get here
+            self.server_running = True
+        
+        except Exception as e:
+            self.log(f'could not start launch server due to {type(e)}: {e}')
+            self.server_running = False
+        
+        # init the camera client
+        # do this in a while loop but have a timeout
+        t_elapsed = 0
+        dt = 0.5
+        timeout = 10.0
+        
+        while t_elapsed < timeout:
+            try:
+                self.cc = cameraClient.CameraClient('huaso_server', ('localhost', 43322))
+                self.connected = self.cc._connect()
+            
+            except:
+                self.connected = False
+            
+            if self.connected:
+                break
+            else:
+                time.sleep(dt)
+                t_elapsed += dt
+            
+            
+            
+        if self.connected:
+            
+            # Do some startup things
+            
+            self.log(">> successfully connected to huaso_server!")
+            
+            # Download current trigger mode:
+            # gettrigmode return byte array, LSB is what we switch
+            #    '00' = continuous parallel dump
+            #    '01' = software trigger (use this when integrating)
+            #camdict['settrigmode']('all','00')
+            self.cc.settrigmode(self.camnum, '00')
+            
+            #self.startStatusLoop.emit()
+            
+            # get the readout speed
+            self.readoutclock = self.cc.getreadoutclock(self.camnum)[self.camnum]
+            
+            #self.startStatusLoop.emit()
+            
+        else:
+            self.log(">> error: Could not connect to huaso_server")
+            
+        #self.pollTimer.start()
+        
+
+
+
+class PyroGUI(QtCore.QObject):   
+
+    Tell_CCD_To_Read_Image = QtCore.pyqtSignal()              
+    Tell_CCD_To_Download_Image = QtCore.pyqtSignal()
+    
+    def __init__(self, config, logger = None, verbose = False, parent=None):            
+        super(PyroGUI, self).__init__(parent)   
+        print(f'main: running in thread {threading.get_ident()}')
+        
+        self.config = config
+        self.logger = logger
+        self.verbose = verbose
+        
+        msg = f'(Thread {threading.get_ident()}: Starting up CCD Daemon '
+        if logger is None:
+            print(msg)
+        else:
+            logger.info(msg)
+
+        
+        # set up an alert handler so that the dome can send messages directly
+        auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+        user_config_file = wsp_path + '/credentials/alert_list.yaml'
+        alert_config_file = wsp_path + '/config/alert_config.yaml'
+        
+        auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
+        user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
+        alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
+        
+        self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config) 
+        
+        self.logger.info(f'initializing ccd object in thread {threading.get_ident()}')
+        
+        ##### Define the timers which will be used to sequence the image taking #####
+        # exposure timer
+        self.expTimer = QtCore.QTimer()
+        self.expTimer.setSingleShot(True)
+        #self.expTimer.timeout.connect(self.readImg)
+        self.expTimer.timeout.connect(self.expTimerComplete)
+        
+        # readout timer
+        self.readTimer = QtCore.QTimer()
+        self.readTimer.setSingleShot(True)
+        #self.readTimer.timeout.connect(self.fetchImg)
+        self.readTimer.timeout.connect(self.readTimerComplete)
+        
+        ##### DEFINE THE CCD #####
+        
+        self.ccd = CCD(camnum = '00', config = config, logger = logger, verbose = verbose)
+        
+        # Connect the signals 
+        #self.counter.runTimerSignal.connect(self.timer.start)
+        
+        self.ccd.startExposureTimer.connect(self.startExpTimer)
+        self.Tell_CCD_To_Read_Image.connect(self.ccd.readImg)
+        
+        self.ccd.startReadTimer.connect(self.startReadTimer)
+        self.Tell_CCD_To_Download_Image.connect(self.ccd.fetchImg)
+        
+        
+        self.logger.info(f'trying to do all the stupid pyro stuff now...? ')
+
+        
+        
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.ccd, name = 'ccd')
+        self.pyro_thread.start()
+        
+    
+    def startExpTimer(self, waittime):
+        self.logger.info(f'starting exposure timer, waittime = {waittime}')
+        self.expTimer.setInterval(waittime)
+        self.expTimer.start()
+        
+    def expTimerComplete(self):
+        self.logger.info(f'exposure timer complete! telling ccd to read image')
+        self.Tell_CCD_To_Read_Image.emit()
+
+    def startReadTimer(self, waittime):
+        self.logger.info(f'starting readout timer, waittime = {waittime}')
+        self.readTimer.setInterval(waittime)
+        self.readTimer.start()
+        
+    def readTimerComplete(self):
+        self.logger.info(f'readout timer complete! telling ccd to download image')
+        self.Tell_CCD_To_Download_Image.emit()
+        
+def sigint_handler( *args):
+    """Handler for the SIGINT signal."""
+    sys.stderr.write('\r')
+    
+    #main.counter.daqloop.quit()
+    
+    QtCore.QCoreApplication.quit()
+
+
+
+
+if __name__ == "__main__":
+    
+    print(f'the main lives in thread {threading.get_ident()}')
+    
+    #### GET ANY COMMAND LINE ARGUMENTS #####
+    
+    args = sys.argv[1:]
+    
+    
+    modes = dict()
+    modes.update({'-v' : "Running in VERBOSE mode"})
+    modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
+    
+    # set the defaults
+    verbose = True
+    doLogging = True
+
+    
+    #print(f'args = {args}')
+    
+    if len(args)<1:
+        pass
+    
+    else:
+        for arg in args:
+            
+            if arg in modes.keys():
+                
+                # remove the dash when passing the option
+                opt = arg.replace('-','')
+                if opt == 'v':
+                    print(modes[arg])
+                    verbose = True
+                    
+                elif opt == 'p':
+                    print(modes[arg])
+                    doLogging = False
+
+            else:
+                print(f'Invalid mode {arg}')
+    
+
+    
+    
+    
+    
+    
+    
+    ##### RUN THE APP #####
+    app = QtCore.QCoreApplication(sys.argv)
+
+    # set the wsp path as the base directory
+    base_directory = wsp_path
+
+    # load the config
+    config_file = base_directory + '/config/config.yaml'
+    config = utils.loadconfig(config_file)
+    
+    
+    # set up the logger
+    if doLogging:
+        logger = logging_setup.setup_logger(base_directory, config)    
+    else:
+        logger = None
+    
+    # set up the main app. note that verbose is set above
+    main = PyroGUI(config = config, logger = logger, verbose = verbose)
+
+    # handle the sigint with above code
+    signal.signal(signal.SIGINT, sigint_handler)
+    # Murder the application (reference: https://stackoverflow.com/questions/4938723/what-is-the-correct-way-to-make-my-pyqt-application-quit-when-killed-from-the-co)
+    #signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
+    # Run the interpreter every so often to catch SIGINT
+    timer = QtCore.QTimer()
+    timer.start(100) 
+    timer.timeout.connect(lambda: None) 
+
+    sys.exit(app.exec_())
+
+
+

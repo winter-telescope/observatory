@@ -30,6 +30,7 @@ print(f'wsp_path = {wsp_path}')
 from housekeeping import data_handler
 from daemon import daemon_utils
 
+
 class TimerThread(QtCore.QThread):
     '''
     This is a thread that just counts up the timeout and then emits a 
@@ -43,7 +44,7 @@ class TimerThread(QtCore.QThread):
         print('created a timer thread')
         # Set up the timeout. Convert seconds to ms
         self.timeout = timeout*1000.0
-    
+        
         
     def run(self):
         def printTimeoutMessage():
@@ -58,9 +59,10 @@ class TimerThread(QtCore.QThread):
         self.exec_() 
 
 
-
-@Pyro5.server.expose
 class Counter(QtCore.QObject):
+    
+    runTimerSignal = QtCore.pyqtSignal(object)
+    
     def __init__(self, start = 0, step = 10, dt = 1000, name = 'counter', verbose = False):
         
         super(Counter, self).__init__()   
@@ -71,41 +73,42 @@ class Counter(QtCore.QObject):
         self.step = step
         self.count = self.start
         self.msg = 'initial message'
-        
-        self.expTimer = QtCore.QTimer()
-        self.expTimer.setSingleShot(True)
-        self.expTimer.timeout.connect(self.print_done)
-        #self.timer.start()
+
+
         
         if verbose:
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name, print_thread_name_in_update = True, thread_numbering = 'norm')
         else:
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name)
     
+    @Pyro5.server.expose
     def run_timer(self):
-        print()
-        print('running timer')
-        self.timerthread = TimerThread(5)
-        self.timerthread.timerTimeout.connect(self.print_done)
-        self.timerthread.timerTimeout.connect(self.timerthread.terminate)
-        self.timerthread.run()
+        waittime = 5000.5
+        print(f'Signaling Main to Run Timer (waittime = {waittime} from thread {threading.get_ident()}')
+        self.runTimerSignal.emit(waittime)
         
         
-        
+    @Pyro5.server.expose    
     def update(self):
         #self.msg = f'{self.name}: {self.count}'
         self.count += self.step
         
         #print(self.msg)
-        
+    
+    @Pyro5.server.expose
     def getMsg(self):
         return self.msg
     
+    @Pyro5.server.expose
     def getCount(self):
         return self.count
     
+    @Pyro5.server.expose
     def print_done(self):
         print('TIMER IS DONE!')
+        
+    def timerDone(self):
+        print('Got signal from PyroGUI that the timer is done :D')
     
 
 
@@ -113,24 +116,35 @@ class Counter(QtCore.QObject):
         
 class PyroGUI(QtCore.QObject):   
 
+    expTimerComplete = QtCore.pyqtSignal()
                   
     def __init__(self, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(True)
+        #self.timer.setInterval(5000.5)
+        self.timer.timeout.connect(self.print_done)
+        
+        
         self.counter = Counter(start = 0, step = 1, dt = 1000, name = 'counter', verbose = False)
-                
+        
+        #self.counter.runTimerSignal.connect(self.timer.start)
+        self.counter.runTimerSignal.connect(self.startExpTimer)
+        self.expTimerComplete.connect(self.counter.timerDone)
+        
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.counter, name = 'counter')
         self.pyro_thread.start()
         
-        """
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(500)
-        self.timer.timeout.connect(self.check_pyro_queue)
+  
+    def print_done(self):
+        print('TIMER IS DONE! Emitting expTimerComplete signal')
+        self.expTimerComplete.emit()
+
+    def startExpTimer(self, waittime):
+        self.timer.setInterval(waittime)
         self.timer.start()
-        """
-
-
             
         
 def sigint_handler( *args):

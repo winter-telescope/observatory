@@ -155,7 +155,7 @@ class Wintercmd(QtCore.QObject):
     newCmdRequest = QtCore.pyqtSignal(object)
     
     
-    def __init__(self, base_directory, config, state, daemonlist, telescope, dome, chiller, pdu1, logger, viscam):
+    def __init__(self, base_directory, config, state, daemonlist, telescope, dome, chiller, pdu1, logger, viscam, ccd):
         # init the parent class
         #super().__init__()
         super(Wintercmd, self).__init__()
@@ -176,6 +176,7 @@ class Wintercmd(QtCore.QObject):
         self.config = config
         self.logger = logger
         self.viscam = viscam
+        self.ccd = ccd
         self.defineParser()
     
     def throwTimeoutError(self):
@@ -2065,8 +2066,53 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         fw_cmd = self.args.fw_cmd[0]
         self.viscam.send_filter_wheel_command(fw_cmd)
-
-        #############
+        
+        
+    @cmd
+    def ccd_set_exposure(self):
+        self.defineCmdParser('Set exposure time in seconds')
+        self.cmdparser.add_argument('seconds',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<exposure_time_seconds>')
+        
+        self.getargs()
+        secs = np.float(self.args.seconds[0]) # remember the args come in as strings!!
+        sigcmd = signalCmd('setexposure', secs)
+        self.ccd.newCommand.emit(sigcmd)
+        
+        
+    @cmd
+    def ccd_set_tec_sp(self):
+        self.defineCmdParser('Set tec setpoint in celsius')
+        self.cmdparser.add_argument('degrees',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<tec_sp_celsius>')
+        
+        self.getargs()
+        degs = np.float(self.args.degrees[0]) # remember the args come in as strings!!
+        sigcmd = signalCmd('setSetpoint', degs)
+        self.ccd.newCommand.emit(sigcmd)
+        
+    @cmd
+    def ccd_do_exposure(self):
+        self.defineCmdParser('Start ccd exposure')
+        sigcmd = signalCmd('doExposure')
+        self.ccd.newCommand.emit(sigcmd)
+        
+    @cmd
+    def ccd_tec_start(self):
+        self.defineCmdParser('Start ccd tec')
+        sigcmd = signalCmd('tecStart')
+        self.ccd.newCommand.emit(sigcmd)
+        
+    @cmd
+    def ccd_tec_stop(self):
+        self.defineCmdParser('Stop ccd tec')
+        sigcmd = signalCmd('tecStop')
+        self.ccd.newCommand.emit(sigcmd)
+                
         """
 class ManualCmd(Wintercmd):
 
@@ -2085,8 +2131,3 @@ class ScheduleCmd(Wintercmd):
         super().__init__(config, state, telescope, logger)
         self.prompt = 'wintercmd(S): '
         """    
-
-    
-
-    
-            
