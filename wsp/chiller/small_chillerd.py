@@ -34,6 +34,8 @@ import time
 from datetime import datetime
 import json
 import serial # pip install pyserial
+import yaml
+
 
 
 # add the wsp directory to the PATH
@@ -46,6 +48,8 @@ print(f'wsp_path = {wsp_path}')
 from daemon import daemon_utils
 from utils import utils
 from utils import logging_setup
+# import the alert handler
+from alerts import alert_handler
 
 
 
@@ -98,6 +102,7 @@ class ReconnectHandler(object):
         timestamp = datetime.utcnow().timestamp()
         self.time_since_last_connection = (timestamp - self.last_reconnect_timestamp)
         self.reconnect_remaining_time = self.reconnect_timeout - self.time_since_last_connection
+
 
 
 # class CommandHandler(QtCore.QObject):
@@ -239,9 +244,13 @@ class StatusMonitor(QtCore.QObject):
     
     newStatus = QtCore.pyqtSignal(object)
     doReconnect = QtCore.pyqtSignal()
+    newReply = QtCore.pyqtSignal(str)
+    #newCommand = QtCore.pyqtSignal(object)
+    newRequest = QtCore.pyqtSignal(object)
+    alert_error = QtCore.pyqtSignal(object)  
     
     
-    def __init__(self, config, logger = None, verbose = False):
+    def __init__(self, config, logger = None, verbose = False, alertHandler  = None):
         super(StatusMonitor, self).__init__()
         
         self.config = config
@@ -258,6 +267,10 @@ class StatusMonitor(QtCore.QObject):
         self.verbose = verbose
         self.timestamp = datetime.utcnow().timestamp()
         self.connected = False
+        
+        # set up alerts
+        self.alertHandler = alertHandler
+        self.alert_error.connect(self.broadcast_alert)
         
         # set up the state dictionary
         self.setup_state_dict()
@@ -291,6 +304,13 @@ class StatusMonitor(QtCore.QObject):
                 print(msg)
         else:
             self.logger.log(level = level, msg = msg)    
+    
+    def broadcast_alert(self, name, content):
+        # create a notification
+        print(f'Broadcasting error: Chiller has encountered {name} : {content}' )
+        msg = f':redsiren: *Alert!!*  Chiller has encountered {name} : {content}'       
+        group = 'sudo'
+        self.alertHandler.slack_log(msg, group = group)
     
     def setup_connection(self):
         self.create_socket()
@@ -455,10 +475,13 @@ class StatusMonitor(QtCore.QObject):
                                         self.sock.write(command_ascii)
                                         time.sleep(1)
                                         reply = self.sock.read(self.sock.inWaiting())
-                                        print("alarm says: ", reply)	
+                                        print("alarm says: ", reply)
+                                        err_name = 'Chiller alarm triggered'
+                                        err_content = reply
+                                        self.broadcast_alert(err_name, err_content)
                                 else:
                                     val = reply[14:19]
-                                    print('temp_val', val)
+                                    #print('temp_val', val)
                                     val = val.decode()
                                     val = int(val)*0.1
                                     self.state.update({com : val})
@@ -481,7 +504,13 @@ class StatusMonitor(QtCore.QObject):
                                 
                             elif err_char == '3':
                                 self.log(f'chiller: Parameter/Data Out of Bound')
+                             
+                            elif err_char == '4':
+                                self.log(f'chiller: Message length error')
                                 
+                            elif err_char == '5':
+                                self.log(f'chiller: Sensor/Feature not Configured or Used')
+                                            
                             else:
                                 if self.verbose:
                                     self.log(f'chiller: could not get {com}: {reply}')
@@ -493,6 +522,7 @@ class StatusMonitor(QtCore.QObject):
                             
                         
                         except Exception as e:
+                            print(f'Poll chiller status error: {e}')
                             pass
                         
                         
@@ -531,18 +561,93 @@ class StatusMonitor(QtCore.QObject):
         
         self.newStatus.emit(self.state)
  
+    def sendCommand(self, register_request):
+        '''
+        This takes the command string and sends it directly to the dome.
+        It takes any received reply and triggers a new reply event
+        '''
+        command_ascii = register_request.command
+        com = command_ascii.decode()
+        
+        #print(f'CommandHandler: caught newRequest signal to set {addr} to {value}')
+        
+        if self.sock.is_open:
+            #self.time_since_last_connection = 0.0
+            #self.reconnector.time_since_last_connection = 0.0
+            #print(f'Connected! Querying Dome Status.')
+            
+            
+
+            try:
+                # SEND THE COMMAND
+                self.sock.write(command_ascii)
+                time.sleep(1)
+                
+                # read response
+                reply = self.sock.read(self.sock.inWaiting())
+
+                # # send test error
+                # err_name = 'Chiller test error, no need to be alarmed :)'
+                # err_content = reply
+                # print('Sending test error')
+                # self.broadcast_alert(err_name, err_content)
+                
+                # fifth character deams error
+                err_char = chr(reply[5])
+                self.log(f'CommandHandler: Command sent reply = {reply}')
+                if err_char == '0':
+                        self.log(f'CommandHandler: Command sent successfully! reply = {reply}')
+                
+                # possible errors
+                elif err_char == '1':
+                    self.log(f'chiller: checksum error, please check if valid command')
+                    
+                elif err_char == '2':
+                    self.log(f'chiller: Bad Command Number (Command Not used)')
+                    
+                elif err_char == '3':
+                    self.log(f'chiller: Parameter/Data Out of Bound')
+                    
+                elif err_char == '4':
+                    self.log(f'chiller: Message length error')
+                    
+                elif err_char == '5':
+                    self.log(f'chiller: Sensor/Feature not Configured or Used')
+                    
+                else:
+                    if self.verbose:
+                        self.log(f'chiller: could not get {com}: {reply}')
+                    pass
+            
+            except Exception as e:
+                #print(f'Query attempt failed.')
+                self.log(f'CommandHandler: Tried to write {com} : {e}')
+                self.connected = False
+        else:
+            self.log(f'CommandHandler: Received command to write {com} but chiller was disconnected. ')
+
+            # the dome is not connected. set the reply to something that represents this state
+            #self.newReply.emit(self.disconnectedReply)
+            pass 
+        
 
 class StatusThread(QtCore.QThread):
     """ I'm just going to setup the event loop and do
         nothing else..."""
     newStatus = QtCore.pyqtSignal(object)
     doReconnect = QtCore.pyqtSignal()
+    newReply = QtCore.pyqtSignal(int)
+    #newCommand = QtCore.pyqtSignal(str)
+    newRequest = QtCore.pyqtSignal(object)
+    #doReconnect = QtCore.pyqtSignal()
     
-    def __init__(self, config, logger = None, verbose = False):
+    
+    def __init__(self, config, logger = None, verbose = False, alertHandler = None):
         super(QtCore.QThread, self).__init__()
         self.config = config
         self.logger = logger
         self.verbose = verbose
+        self.alertHandler = alertHandler
         
         
         # check the update time is okay! will be bad if the loop time takes longer than the total poll time
@@ -557,18 +662,27 @@ class StatusThread(QtCore.QThread):
         else:
             self.update_dt = self.config['status_poll_dt_seconds']*1000.0
 
-    
+
+    def HandleRequest(self, request_object):
+        self.newRequest.emit(request_object)
+            
     def run(self):    
         def SignalNewStatus(newStatus):
             self.newStatus.emit(newStatus)
         def SignalDoReconnect():
             self.doReconnect.emit()
+            
+        def SignalNewReply(reply):
+            self.newReply.emit(reply)
         
         self.timer= QtCore.QTimer()
-        self.statusMonitor = StatusMonitor(self.config, logger = self.logger, verbose = self.verbose)
+        self.statusMonitor = StatusMonitor(self.config, logger = self.logger, verbose = self.verbose, alertHandler= self.alertHandler)
         
         self.statusMonitor.newStatus.connect(SignalNewStatus)
         self.statusMonitor.doReconnect.connect(SignalDoReconnect)
+        
+        self.newRequest.connect(self.statusMonitor.sendCommand)
+        self.statusMonitor.newReply.connect(SignalNewReply) # fix
         
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.statusMonitor.pollStatus)
@@ -640,15 +754,16 @@ class Chiller(QtCore.QObject):
     #statusRequest = QtCore.pyqtSignal(object)
     commandRequest = QtCore.pyqtSignal(object)
     
-    def __init__(self, config, logger = None, verbose = False):
+    def __init__(self, config, logger = None, verbose = False, alertHandler=None):
         super(Chiller, self).__init__()
         # attributes describing the internet address of the dome server
         self.config = config
         self.logger = logger
         self.state = dict()
         self.verbose = verbose
+        self.alertHandler = alertHandler
         
-        self.statusThread = StatusThread(  config = self.config, logger = self.logger, verbose = self.verbose)
+        self.statusThread = StatusThread(  config = self.config, logger = self.logger, verbose = self.verbose, alertHandler = self.alertHandler )
         # self.commandThread = CommandThread(config = self.config, logger = self.logger, verbose = self.verbose)
         # connect the signals and slots
         
@@ -659,7 +774,7 @@ class Chiller(QtCore.QObject):
         # self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
         
         self.statusThread.newStatus.connect(self.updateStatus)
-        # self.commandRequest.connect(self.commandThread.HandleRequest)
+        self.commandRequest.connect(self.statusThread.HandleRequest)
         # self.commandThread.newReply.connect(self.updateCommandReply)
         self.log(f'chiller: running in thread {threading.get_ident()}')
     
@@ -731,76 +846,84 @@ class Chiller(QtCore.QObject):
         
         return self.state
     
-    # @Pyro5.server.expose
-    # def WriteCommand(self, command, value):
-    #     self.log(f'chiller: got request to set {command} to {value}')
-    #     # make sure the register is in the list
-    #     com = command
-    #     if com in self.config['commands']:
-    #         if 'w' in self.config['commands'][com]['mode']:
-                
-    #             #self.log(f'chiller: register request is on write-approved list')
-    #             # get command
-    #             command_string = self.config['commands'][com]['command']
-    #             #scale = self.config['registers'][register]['scale']
-                
-                
-    #             # make input ascii to add to command string
-    #             command_string = command_string + value
-                
-    #             # add checksum
-    #             check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
-    #             command_ascii = command_string.encode('ascii') + check_sum.encode('ascii') + b'\r'
-                
-    #             # write the value to the specified command register
-    #             request = SerialCommandRequest(command = command_ascii)
-    #             self.commandRequest.emit(request)
-                
-    #              # TODO - finish
-    #             # update the state with the register value
-    #             self.state.update({com : value})
-                
-                
-    #             # calculate the time since the last successfull pol
-    #             timestamp = datetime.utcnow().timestamp()
-                
-    #             # log the timestamp of this poll for THIS REGISTER ONLY for future calculation of dt
-    #             self.state['last_poll_time'].update({com : timestamp})
-                
+    @Pyro5.server.expose
+    def WriteCommand(self, command, value):
+        self.log(f'chiller: got request to set {command} to {value}')
+        # make sure the register is in the list
+        com = command
 
+        if com in self.config['commands']:
+            if 'w' in self.config['commands'][com]['mode']:
+                
+                try:
+                
+                    #self.log(f'chiller: register request is on write-approved list')
+                    # get command
+                    command_string = self.config['commands'][com]['command']
+                    #scale = self.config['registers'][register]['scale']
+                    
+                    
+                    # make input ascii to add to command string
+                    command_string = command_string + value
+                    
+                    # add checksum
+                    check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
+                    if len(check_sum) == 1:
+                                check_sum = '0' + check_sum
+                    command_ascii = command_string.encode('ascii') + check_sum.encode('ascii') + b'\r'
+                    
+                    # write the value to the specified command register
+                    request = SerialCommandRequest(command = command_ascii)
+                    self.commandRequest.emit(request)
+                    
+                      # TODO - finish
+                    # update the state with the register value
+                    self.state.update({com : value})
+                    
+                    
+                    # calculate the time since the last successfull pol
+                    timestamp = datetime.utcnow().timestamp()
+                    
+                    # log the timestamp of this poll for THIS REGISTER ONLY for future calculation of dt
+                    self.state['last_poll_time'].update({com : timestamp})
+                
+                except Exception as e:
+                    #print(f'Query attempt failed.')
+                    self.log(f'Chiller write command: Tried to write {com} but unfortunately: {e}')
+              
                 
                 
                 
-                
-    #         else:
-    #             # the register is not on the write-allowed list
-    #             self.log(f'chiller: ignored request for {command} which is set to read-only in config file')
-    #             return
-    #     else:
-    #         # the register is not on the list
-    #         self.log(f'chiller: ignored request to {command} which is not included in the config file')
+            else:
+                # the register is not on the write-allowed list
+                self.log(f'chiller: ignored request for {command} which is set to read-only in config file')
+                return
+        
+        else:
+            # the register is not on the list
+            self.log(f'chiller: ignored request to {command} which is not included in the config file')
 
-    #         return
+            return
         
-    # @Pyro5.server.expose
-    # def setSetpoint(self, temperature):
-    #     # change the setpoint
-    #     self.log(f'got request to set chiller temperature to {temperature} C')
-    #     temperature_string = int(temperature / 0.1)
-    #     temperature_string = '0'+ str(temperature_string)
-    #     self.WriteCommand('setCtrlT', temperature_string)
+    @Pyro5.server.expose
+    def setSetpoint(self, temperature):
+        # change the setpoint
+        self.log(f'got request to set chiller temperature to {temperature} C')
+        temperature_string = int(temperature / 0.1)
+        temperature_string = '0'+ str(temperature_string)
+        self.WriteCommand('setCtrlT', temperature_string)
         
-    # @Pyro5.server.expose
-    # def TurnOn(self):
-    #     # TURN THE CHILLER ON
-    #     self.log('got request set chiller to RUN')
-    #     self.WriteCommand('setStatus', '1')
+    @Pyro5.server.expose
+    def TurnOn(self):
+        # TURN THE CHILLER ON
+        self.log('got request set chiller to RUN')
+        self.WriteCommand('setStatus', '1')
     
-    # @Pyro5.server.expose
-    # def TurnOff(self):
-    #     # TURN THE CHILLER OFF
-    #     self.log('got request to set chiller to STANDBY')
-    #     self.WriteCommand('setStatus', '0')
+    @Pyro5.server.expose
+    def TurnOff(self):
+        # TURN THE CHILLER OFF
+        self.log('got request to set chiller to STANDBY')
+        self.WriteCommand('setStatus', '0')
     
     """# Commands which make the dome do things
     @Pyro5.server.expose
@@ -818,12 +941,13 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, config, logger = None, verbose = False, parent=None ):            
+    def __init__(self, config, logger = None, verbose = False, alertHandler = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
 
         self.config = config
         self.logger = logger
         self.verbose = verbose
+        self.alertHandler = alertHandler
         
         msg = f'(Thread {threading.get_ident()}: Starting up Chiller Daemon '
         if logger is None:
@@ -835,7 +959,8 @@ class PyroGUI(QtCore.QObject):
         # set up the dome
         self.chiller = Chiller(config = self.config,
                                logger = self.logger,
-                               verbose = self.verbose)
+                               verbose = self.verbose,
+                               alertHandler = self.alertHandler)
         
               
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.chiller, name = 'chiller')
@@ -923,8 +1048,21 @@ if __name__ == "__main__":
     else:
         logger = None
     
+    # set up alerts locally
+    # set up the alert system to post to slack
+    auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+    user_config_file = wsp_path + '/credentials/alert_list.yaml'
+    alert_config_file = wsp_path + '/config/alert_config.yaml'
+    
+    auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
+    user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
+    alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
+    
+    alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
+    print("alert handler", alertHandler, type(alertHandler))
+    
     # set up the main app. note that verbose is set above
-    main = PyroGUI(config = config, logger = logger, verbose = verbose)
+    main = PyroGUI(config = config, logger = logger, verbose = verbose, alertHandler = alertHandler)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)
@@ -944,3 +1082,4 @@ if __name__ == "__main__":
     timer.timeout.connect(lambda: None) 
 
     sys.exit(app.exec_())
+
