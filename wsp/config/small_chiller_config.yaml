@@ -47,12 +47,16 @@ commands:
         command: '.0104rSupplyT'
         scale: 0
         mode: 'r'
+    readSetT:
+        command: '.0103rSetTemp'
+        scale: 0
+        mode: 'r'
     setStatus:
         command: '.0115sStatus_'
         scale: 0
         mode: 'w'
     setCtrlT:
-        command: '.0117sCtrlT__'
+        command: '.0117sCtrlT__+'
         scale: 0.1
         mode: 'w'
   
