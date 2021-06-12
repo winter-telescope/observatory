@@ -139,7 +139,7 @@ class RoboOperator(QtCore.QObject):
     startRoboSignal = QtCore.pyqtSignal()
     stopRoboSignal = QtCore.pyqtSignal()
     
-    
+    startExposure = QtCore.pyqtSignal(object)
 
     
 
@@ -218,7 +218,7 @@ class RoboOperator(QtCore.QObject):
         ## overrides
         """ REMEMBER TO CHANGE BACK FOR NORMAL OPERATION """
         # override the dome.ok_to_open flag
-        self.dome_override = True
+        self.dome_override = False
         # override the sun altitude flag
         self.sun_override = True
         
@@ -283,6 +283,10 @@ class RoboOperator(QtCore.QObject):
     
     def restart_robo(self):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
+        
+        # if we're in this loop, the robotic schedule operator is running:
+        self.running = True
+        
         while True:
             # EXECUTE THE FULL ROBOTIC SEQUENCE
             # return statements will exit and stop the robotic sequence
@@ -311,6 +315,7 @@ class RoboOperator(QtCore.QObject):
             
         # we escaped the loop!
         # if it's okay to observe, then do the first observation!
+        self.logger.info(f'finished startup, calibration, and it is okay to observe: doing current observation')
         self.do_currentObs()
         return
         
@@ -644,14 +649,42 @@ class RoboOperator(QtCore.QObject):
         
         """
         self.check_ok_to_observe(logcheck = True)
+        self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
         if self.running & self.ok_to_observe:
             
             # grab some fields from the currentObs
             self.lastSeen = self.schedule.currentObs['obsHistID']
-            self.alt_scheduled = float(self.schedule.currentObs['altitude'])
-            self.az_scheduled = float(self.schedule.currentObs['azimuth'])
-            msg = f'executing observation of obsHistID = {self.lastSeen} at (alt, az) = ({self.alt_scheduled:0.2f}, {self.az_scheduled:0.2f})'
+            #self.alt_scheduled = float(self.schedule.currentObs['altitude'])
+            #self.az_scheduled = float(self.schedule.currentObs['azimuth'])
+            
+            self.ra_radians_scheduled = float(self.schedule.currentObs['fieldRA'])
+            self.dec_radians_scheduled = float(self.schedule.currentObs['fieldDec'])
+            
+            
+            
+            
+            # convert ra to hours
+            self.j2000_ra_scheduled = astropy.coordinates.Angle(self.ra_radians_scheduled * u.rad)
+            self.j2000_dec_scheduled = astropy.coordinates.Angle(self.dec_radians_scheduled * u.rad)
+            
+            # calculate the current Alt and Az of the target 
+            obstime_utc = astropy.time.Time(datetime.utcnow(), format = 'datetime')
+            frame = astropy.coordinates.AltAz(obstime = obstime_utc, location = self.ephem.site)
+            j2000_coords = astropy.coordinates.SkyCoord(ra = self.j2000_ra_scheduled, dec = self.j2000_dec_scheduled, frame = 'icrs')
+            local_coords = j2000_coords.transform_to(frame)
+            self.local_alt_deg = local_coords.alt.deg
+            self.local_az_deg = local_coords.az.deg
+            
+            #msg = f'executing observation of obsHistID = {self.lastSeen} at (alt, az) = ({self.alt_scheduled:0.2f}, {self.az_scheduled:0.2f})'
+            msg = f'executing observation of obsHistID = {self.lastSeen}'
             self.announce(msg)
+            
+            self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
+            
+            self.announce(f'>> Target (RA, DEC) = ({self.j2000_ra_scheduled.hour} h, {self.j2000_dec_scheduled.deg} deg)')
+            
+            self.announce(f'>> Target Current (ALT, AZ) = ({self.local_alt_deg} deg, {self.local_az_deg} deg)')
+
             
             # 1: point the telescope
             #TODO: change this to RA/DEC pointing instead of AZ/EL
@@ -670,7 +703,7 @@ class RoboOperator(QtCore.QObject):
                 self.do('rotator_wrap_check_enable')
                 
                 # check if alt and az are in allowed ranges
-                in_view = (self.alt_scheduled >= self.config['telescope']['min_alt']) & (self.alt_scheduled <= self.config['telescope']['max_alt'])
+                in_view = (self.local_alt_deg >= self.config['telescope']['min_alt']) & (self.local_alt_deg <= self.config['telescope']['max_alt'])
                 if in_view:
                     pass
                 else:
@@ -680,6 +713,7 @@ class RoboOperator(QtCore.QObject):
                     self.gotoNext()
                     return
                 
+                """
                 # Launder the alt and az scheduled to RA/DEC
                 self.lastcmd = 'convert_alt-az_to_ra-dec'
                 #TODO: remove this! This is just a patch so that we can observe the schedule during the day
@@ -695,11 +729,12 @@ class RoboOperator(QtCore.QObject):
                 j2000_coords = altaz_coords.transform_to('icrs')
                 j2000_ra_hours = j2000_coords.ra.hour
                 j2000_dec_deg = j2000_coords.dec.deg
-                
+                """
                 
                 # slew the telscope
                 #self.do(f'mount_goto_alt_az {self.alt_scheduled} {self.az_scheduled}')
-                self.do(f'mount_goto_ra_dec_j2000 {j2000_ra_hours} {j2000_dec_deg}')
+                #self.do(f'mount_goto_ra_dec_j2000 {j2000_ra_hours} {j2000_dec_deg}')
+                self.do(f'mount_goto_ra_dec_j2000 {self.j2000_ra_scheduled.hour} {self.j2000_dec_scheduled.deg}')
                 
             except Exception as e:
                 msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -710,7 +745,7 @@ class RoboOperator(QtCore.QObject):
             
             system = 'dome'
             try:
-                self.do(f'dome_goto {self.az_scheduled}')
+                self.do(f'dome_goto {self.local_az_deg}')
             except Exception as e:
                 msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
                 self.log(msg)

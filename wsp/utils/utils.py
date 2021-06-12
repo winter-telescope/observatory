@@ -385,7 +385,7 @@ def readcsv(filename,skiprows=0):
         return csv
 
 
-def tonight():
+def tonight_local():
     # a similar version of the minerva function by NPL
     # NPL: 4/27/21 changing the conventions. 
     # Want the night of a given day to be defined from 8a that day, to 7:59 the next day LOCAL TIME so it's easy to keep track of.
@@ -400,8 +400,15 @@ def tonight():
         now_cali = now_cali - timedelta(days=1)
         
     tonight_string = now_cali.strftime('%Y%m%d') 
-    return tonight_string    
+    return tonight_string   
 
+def tonight():
+    # this uses UT time to match ZTF etc
+    utcnow = datetime.utcnow()
+    tonight_string = utcnow.strftime('%Y%m%d') 
+    return tonight_string   
+    
+    
 """
 def night():
     # DEPRECATED. This if from Minerva

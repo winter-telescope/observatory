@@ -49,8 +49,10 @@ class local_ccd(QtCore.QObject):
         self.base_directory = base_directory
         self.config = config
         self.state = dict()
+        self.hk_state = dict()
         self.remote_state = dict()
         self.connected = False
+        self.hk_connected = False
         self.logger = logger
         self.default = self.config['default_value']
         
@@ -58,9 +60,42 @@ class local_ccd(QtCore.QObject):
         self.newCommand.connect(self.doCommand)
         
         # Startup
+        # setup connection to pyro ccd
         self.init_remote_object()
         self.update_state()
+        # setup connection to pyro state
+        self.init_hk_state_object()
+        self.update_hk_state()
         
+    ### Things for getting the housekeeping state from the Pyro Server ###
+        
+    def init_hk_state_object(self):
+        # init the remote object
+        try:
+            self.remote_hk_state_object = Pyro5.client.Proxy("PYRONAME:state")
+            self.hk_connected = True
+        except:
+            self.hk_connected = False
+            pass
+        '''
+        except Exception:
+            self.logger.error('connection with remote object failed', exc_info = True)
+        '''
+    def update_hk_state(self):
+        # poll the state, if we're not connected try to reconnect
+        # this should reconnect down the line if we get disconnected
+        if not self.hk_connected:
+            self.init_hk_state_object()
+            
+        else:
+            try:
+                self.hk_state = self.remote_hk_state_object.GetStatus()
+                
+            except Exception as e:
+                self.logger.info(f'local ccd could not update remote housekeeping state: {e}')
+                pass    
+        
+    ###    
     def doCommand(self, cmd_obj):
         """
         This is connected to the newCommand signal. It parses the command and
@@ -107,7 +142,7 @@ class local_ccd(QtCore.QObject):
                 
                 
             except Exception as e:
-                #print(f'ccd: could not update remote state: {e}')
+                #(f'ccd: could not update remote state: {e}')
                 pass
     
     def parse_state(self):
@@ -140,10 +175,16 @@ class local_ccd(QtCore.QObject):
         self.remote_object.setSetpoint(temp)
         
     def doExposure(self):
+        # first get the housekeeping state
+        self.update_hk_state()
+        
+        # now dispatch the observation
+        
         try:
-            self.remote_object.doExposure()
+            self.remote_object.doExposure(header = self.hk_state)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
+            
     def tecStart(self):
         self.remote_object.tecStart()
         

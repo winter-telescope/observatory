@@ -128,7 +128,7 @@ class housekeeping():
         
         
         self.statedump_loop = data_handler.daq_loop(func = self.dump_state,
-                                                    dt = 5,
+                                                    dt = 5000,
                                                     name = 'state_dump')
         # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
@@ -164,7 +164,8 @@ class housekeeping():
         return self.state
     
     def dump_state(self):
-        with open('data.json', 'w') as outfile:
+        filepath = os.path.join(os.getenv("HOME"), 'data','data.json')
+        with open(filepath, 'w') as outfile:
             json.dump(self.state, outfile, indent = 2)
     
     def poll_housekeeping(self):

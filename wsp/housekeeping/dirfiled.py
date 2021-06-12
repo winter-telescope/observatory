@@ -114,6 +114,7 @@ class DirfileWriter(QtCore.QObject):
         self.timer.timeout.connect(self.update_state)
         self.timer.start(self.dt)
         
+        # 
         
     def init_remote_object(self):
         # init the remote object

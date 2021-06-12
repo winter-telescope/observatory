@@ -19,7 +19,11 @@ usb_serial_dev:
     
     
 ########## FITS IMAGE DIRECTORY ##########
-image_directory: '/data/viscam/'
+image_directory: 'data/images'
+#image_prefix: 'viscam_'
+image_data_link_directory: 'data'
+image_data_link_name: 'tonight_images.lnk'
+image_last_taken_link: 'last_image.lnk'
 
 ########## WINTERCMD COMMANDING ##########
 wintercmd_server_addr: 'localhost'
@@ -150,6 +154,11 @@ telescope_shutter:
 #        P48_Weather_Status:
 #            'READY': 1
 #            'UNKNOWN': 0
+
+########### DOME SET UP ##########
+# dome tracking error allowed in degrees
+dome_tracking_error_threshold: 0.1
+
 Dome_Status_Dict:
     ## Palomar Command Server
     Dome_Status:
@@ -1016,7 +1025,28 @@ fields:
         dtype: int64
         rate: slow
         var: 'dome.state["Wetness_Status_Num"]'
-    
+    # things from dome_local
+    dome_tracking_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'dome.state["tracking"]'
+    dome_az_goal:
+        ftype: raw
+        label: 'Az'
+        units: 'deg'
+        dtype: float64
+        rate: slow
+        var: 'dome.state["az_goal"]'
+    dome_az_error:
+        ftype: raw
+        label: 'Az'
+        units: 'deg'
+        dtype: float64
+        rate: slow
+        var: 'dome.state["az_error"]'
     
     # Weather info from dome
     Tdp_outside_threshold_pcs:
@@ -1449,116 +1479,157 @@ fields:
     
     # Viscam housekeeping
 
-    # ccd_tec_temp:
-    #     ftype: raw
-    #     label: 'status'
-    #     units: None
-    #     dtype: float64
-    #     rate: slow
-    #     var: 'ccd.state["tec_temp"]'
-    # ccd_tec_setpoint:
-    #     ftype: raw
-    #     label: 'status'
-    #     units: None
-    #     dtype: float64
-    #     rate: slow
-    #     var: 'ccd.state["tec_setpoint"]'
-    # ccd_pcb_temp:
-    #     ftype: raw
-    #     label: 'status'
-    #     units: None
-    #     dtype: float64
-    #     rate: slow
-    #     var: 'ccd.state["pcb_temp"]'
-    # ccd_tec_status:
-    #     ftype: raw
-    #     label: 'status'
-    #     units: None
-    #     dtype: int64
-    #     rate: slow
-    #     var: 'ccd.state["tec_status"]'
-    # ccd_exptime:
-    #     ftype: raw
-    #     label: 'status'
-    #     units: None
-    #     dtype: float64
-    #     rate: slow
-    #     var: 'ccd.state["exptime"]'
+    ccd_tec_temp:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: float64
+        rate: slow
+        var: 'ccd.state["tec_temp"]'
+    ccd_tec_setpoint:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: float64
+        rate: slow
+        var: 'ccd.state["tec_setpoint"]'
+    ccd_pcb_temp:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: float64
+        rate: slow
+        var: 'ccd.state["pcb_temp"]'
+    ccd_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'ccd.state["tec_status"]'
+    ccd_exptime:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: float64
+        rate: slow
+        var: 'ccd.state["exptime"]'
     
-    # Pi_State:
-    #     ftype: raw
-    #     label: 'status'
-    #     units: None
-    #     dtype: int64
-    #     rate: slow
-    #     var: 'viscam.state["pi_status"]'
-    # Pi_timestamp:
-    #     ftype: raw
-    #     label: 'time'
-    #     units: ctime
-    #     dtype: float64
-    #     rate: slow
-    #     var: 'viscam.state["pi_status_last_timestamp"]'
-    # Viscam_Shutter_State:
-    #     ftype: raw
-    #     label: 'status'
-    #     units: None
-    #     dtype: int64
-    #     rate: slow
-    #     var: 'viscam.state["shutter_state"]'
-    # Viscam_Shutter_State_timestamp:
-    #     ftype: raw
-    #     label: 'time'
-    #     units: ctime
-    #     dtype: float64
-    #     rate: slow
-    #     var: 'viscam.state["shutter_state_last_timestamp"]'
-    # Viscam_Filter_Wheel_Position:
-    #     ftype: raw
-    #     label: 'status'
-    #     units: None
-    #     dtype: int64
-    #     rate: slow
-    #     var: 'viscam.state["filter_wheel_position"]'
-    # Viscam_Filter_Wheel_timestamp:
-    #     ftype: raw
-    #     label: 'time'
-    #     units: ctime
-    #     dtype: float64
-    #     rate: slow
-    #     var: 'viscam.state["filter_wheel_position_last_timestamp"]'
+    Pi_State:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'viscam.state["pi_status"]'
+    Pi_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'viscam.state["pi_status_last_timestamp"]'
+    Viscam_Shutter_State:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'viscam.state["shutter_state"]'
+    Viscam_Shutter_State_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'viscam.state["shutter_state_last_timestamp"]'
+    Viscam_Filter_Wheel_Position:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'viscam.state["filter_wheel_position"]'
+    Viscam_Filter_Wheel_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'viscam.state["filter_wheel_position_last_timestamp"]'
 
-    # # CHILLER STUFF
-    # chiller_setpoint:
-    #     ftype: raw
-    #     label: 'T'
-    #     units: 'C'
-    #     dtype: float64
-    #     rate: 'hk'
-    #     var: chiller.state['UserSetpoint']
-    # chiller_setpoint_last_update_dt:
-    #     ftype: raw
-    #     label: 'T'
-    #     units: 'C'
-    #     dtype: float64
-    #     rate: 'hk'
-    #     var: chiller.state['last_poll_dt']['UserSetpoint']
-    # chiller_temperature:
-    #     ftype: raw
-    #     label: 'T'
-    #     units: 'C'
-    #     dtype: float64
-    #     rate: 'hk'
-    #     var: chiller.state['SystemDisplayValueStatus']
-    # chiller_is_running:
-    #     ftype: raw
-    #     label: 'Status'
-    #     units: None
-    #     dtype: float64
-    #     rate: 'hk'
-    #     var: chiller.state['UserRemoteStartStop']
+    # CHILLER STUFF
+    chiller_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['UserSetpoint']
+    chiller_setpoint_last_update_dt:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['last_poll_dt']['UserSetpoint']
+    chiller_temperature:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['SystemDisplayValueStatus']
+    chiller_is_running:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['UserRemoteStartStop']
+    small_chiller_temperature:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: chiller.state['readSupplyT']
+    small_chiller_ControlStatusMode:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: chiller.state['ControlStatusMode']
+    small_chiller_isRunning:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: chiller.state['PumpStatusFlag']    
+    small_chiller_AlarmStatusFlag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: chiller.state['AlarmStatusFlag']       
+    small_chiller_WarningStatusFlag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: chiller.state['WarningStatusFlag']        
+#    small_chiller_setpoint:
+#        ftype: raw
+#        label: 'T'
+#        units: 'C'
+#        dtype: float64
+#        rate: slow
+#        var: chiller.state['readSetT'] 
 
-        
 derived_fields:
     # note the base directory for the LUT is the wsp directory
     T_LJ0:

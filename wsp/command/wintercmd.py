@@ -770,6 +770,55 @@ class Wintercmd(QtCore.QObject):
                 break    
         self.logger.info(f'Telescope Move complete')
     
+    def mount_goto_ra_dec_j2000_rad(self):
+        """Usage: mount_goto_ra_dec_j2000 <ra> <dec>"""
+        self.defineCmdParser('move telescope to specified j2000 ra (rad)/dec (rad) ')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<ra_hours> <dec_degs>')
+        self.getargs()
+        ra_rad = self.args.position[0]
+        dec_rad = self.args.position[1]
+        
+        # convert the ra and dec in radians to ra (hours) and dec (deg)
+        ra_hours = astropy.coordinates.Angle(ra_rad * u.rad).hour
+        dec_deg = astropy.coordinates.Angle(dec_rad * u.rad).deg
+        
+        
+        self.telescope.mount_goto_ra_dec_j2000(ra_hours = ra_hours, dec_degs = dec_deg)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 60.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = ( (not self.state['mount_is_slewing']) & (self.state['mount_az_dist_to_target'] < 0.1) & (self.state['mount_alt_dist_to_target'] < 0.1))
+
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+        self.logger.info(f'Telescope Move complete')
+    
     
     @cmd
     def mount_goto_object(self):
@@ -1787,6 +1836,24 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         az = self.args.azimuth[0]
         sigcmd = signalCmd('SetHome', az)
+        self.dome.newCommand.emit(sigcmd)
+    
+    @cmd
+    def dome_tracking_on(self):
+        """ created: NPL 6-12-21 
+        turn on tracking so that dome follows telescope
+        """
+        self.defineCmdParser('make dome track telescope')
+        sigcmd = signalCmd('TrackingOn')
+        self.dome.newCommand.emit(sigcmd)
+        
+    @cmd
+    def dome_tracking_off(self):
+        """ created: NPL 6-12-21 
+        turn on tracking so that dome follows telescope
+        """
+        self.defineCmdParser('stop making dome track telescope')
+        sigcmd = signalCmd('TrackingOff')
         self.dome.newCommand.emit(sigcmd)
     
     @cmd

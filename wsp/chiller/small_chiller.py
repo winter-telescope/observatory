@@ -46,7 +46,7 @@ class local_chiller(QtCore.QObject):
     '''
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config):
+    def __init__(self, base_directory, config, alertHandler=None):
         super(local_chiller, self).__init__()
         
         # Define attributes
@@ -56,6 +56,7 @@ class local_chiller(QtCore.QObject):
         self.remote_state = dict()
         self.connected = False
         self.default = self.config['default_value']
+        self.alertHandler = alertHandler
         
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)
@@ -170,7 +171,9 @@ if __name__ == '__main__':
     chiller.print_state()
     
     #%%
-    # #chiller.WriteRegister('UserSetpoint', 18.1)
+    #chiller.WriteRegister('UserSetpoint', 18.1)
     #chiller.TurnOn()
-    chiller.setSetpoint(10.9)
-
+    #chiller.setSetpoint(10.9)
+    
+    #chiller.update_state()
+    #chiller.print_state()

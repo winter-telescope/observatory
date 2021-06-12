@@ -26,6 +26,7 @@ import yaml
 import logging
 import time
 from datetime import datetime
+import pathlib
 from astropy.time import Time
 
 # add the wsp directory to the PATH
@@ -90,9 +91,9 @@ class CCD(QtCore.QObject):
         self.verbose = verbose
         
         # for now, just hardcode the image path and prefix
-        self.imagepath = os.path.join(os.getenv("HOME"), 'data','viscam', '20210610')
-        self.imageprefix = 'viscam_'
-        
+        #self.imagepath = os.path.join(os.getenv("HOME"), 'data','viscam', '20210610')
+        self.image_prefix = 'viscam_'
+        #self.default_imagepath = os.path.join(os.getenv("HOME"), self.config['image_directory'],)
         
         # init the state dictionary
         self.state = dict()
@@ -125,6 +126,8 @@ class CCD(QtCore.QObject):
         self.readTimer.timeout.connect(self.fetchImg)
         """
         
+        # set up the image directories
+        self.setupFITS_directory() # just use the defaults
         
         # set up the camera and server
         self.startup()
@@ -150,6 +153,9 @@ class CCD(QtCore.QObject):
         self.log('polling status')
         try:
             
+            self.exptime = self.cc.getexposure('self.camnum')
+            self.state.update({'exptime' : self.exptime})
+            
             self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
             self.state.update({'tec_temp' : self.tec_temp})
             
@@ -163,8 +169,7 @@ class CCD(QtCore.QObject):
             self.tec_status = int(fpgastatus_str[0])
             self.state.update({'tec_status' : self.tec_status})
             
-            self.exptime = self.cc.getexposure('self.camnum')
-            self.state.update({'exptime' : self.exptime})
+            
             
             
             #print(f'>> TEC TEMP = {self.tec_temp}')
@@ -202,7 +207,56 @@ class CCD(QtCore.QObject):
         pass
     
     @Pyro5.server.expose
-    def doExposure(self):
+    def setupFITS_directory(self, image_directory = 'default'):
+        """
+        set up the FITS file that will be used for the next 
+        """
+        
+        if image_directory == 'default':
+            
+            tonight = utils.tonight()
+            
+            ### SET UP NIGHTLY IMAGE DIRECTORY ###
+            self.image_directory = os.path.join(os.getenv("HOME"), self.config['image_directory'], tonight)
+            self.log(f'setting FITS image directory set to {self.image_directory}')
+            
+            # create the image data directory if it doesn't exist already
+            pathlib.Path(self.image_directory).mkdir(parents = True, exist_ok = True)
+            self.log(f'making image directory: {image_directory}')
+            
+            
+            
+        else:
+            self.image_directory = image_directory
+            
+        ### SET UP SYMBOLIC LINK TO CURRENT IMAGE DIRECTORY ###
+        # create the data link directory if it doesn't exist already
+        image_link_path = os.path.join(os.getenv("HOME"), self.config['image_data_link_directory'], self.config['image_data_link_name'])
+        try:
+            os.symlink(self.image_directory, image_link_path)
+        except FileExistsError:
+            print('deleting existing symbolic link')
+            os.remove(image_link_path)
+            os.symlink(self.image_directory, image_link_path)
+            
+        
+        
+        pass
+    
+    @Pyro5.server.expose
+    def doExposure(self, header = None, image_suffix = None):
+        
+        # update the header info and image suffix (some note) that got passed in
+        if header is None:
+            self.header = dict()
+        else:
+            self.header = header
+            
+        if image_suffix is None:
+            self.image_suffix = ''
+        else:
+            self.image_suffix = image_suffix
+        
         self.log(f'starting an exposure!')
         self.log(f'doExposure is being called in thread {threading.get_ident()}')
         #self.pollTimer.stop()
@@ -260,18 +314,27 @@ class CCD(QtCore.QObject):
         pass
     
     def fetchImg(self):
-        self.log(f'downloading image to directory: {self.imagepath}')
+        self.log(f'downloading image to directory: {self.image_directory}')
         # download the image from the cam buffer
         
         timestamp = Time(datetime.utcnow()).isot
-        image_prefix = f'viscam_{timestamp}'
+        image_prefix = self.image_prefix + f'{timestamp}'
+        
+        # add in the camera state info to the FITS header
+        self.header.update(self.state)
+        
+        self.log(f'Image Suffix = {self.image_suffix}, type = {type(self.image_suffix)}')
         
         self.cc.downloadimg(self.camnum, 
-                            image_path = self.imagepath,
+                            image_path = self.image_directory,
                             image_prefix = image_prefix,
-                            metadata = self.state)
+                            image_suffix = self.image_suffix,
+                            metadata = self.header)
         
-        #self.pollTimer.start()
+        # make a symbolic link to the last image
+        #filename = image_prefix + self.
+        #filepath = os.path.join(self.imagepath, )
+        
         self.log(f'done getting image?')
         pass
     

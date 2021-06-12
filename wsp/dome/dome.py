@@ -26,12 +26,14 @@ import Pyro5.server
 from datetime import datetime
 from PyQt5 import QtCore
 import time
+import logging
 import json
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
 
 from utils import utils
+
 
 
 
@@ -45,28 +47,53 @@ class local_dome(QtCore.QObject):
     '''
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config):
+    startTracking = QtCore.pyqtSignal()
+    stopTracking = QtCore.pyqtSignal()
+    moveDome = QtCore.pyqtSignal(object)
+    
+    def __init__(self, base_directory, config, logger = None, telescope = None):
         super(local_dome, self).__init__()
         
         # Define attributes
         self.base_directory = base_directory
         self.config = config
+        self.logger = logger
         self.state = dict()
         self.remote_state = dict()
         self.connected = False
         self.default = self.config['default_value']
+        self.telescope = telescope
         
-        # initialize a home azimuth
+        ## STUFF FOR TRACKING TELESCOPE MOTION ##
+        # initialize a variable to control if we're tracking
+        self.tracking = False
+        self.tracking_error_threshold = self.config['dome_tracking_error_threshold']
+        
+        #self.trackingTimer = QtCore.QTimer()
+        
+        
+        
+        
+        
+        # initialize a home azimuth & an azimuth goal
         self.home_az = self.config['telescope']['home_az_degs']
+        self.az_goal = self.home_az
+        self.az_error = 0.0
         
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)
+        self.moveDome.connect(self.GoTo)
         
         # Startup
         self.init_remote_object()
         self.update_state()
         
-        
+    def log(self, msg, level = logging.INFO):
+        msg = f'local_dome: {msg}'
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)  
         
     def init_remote_object(self):
         # init the remote object
@@ -126,9 +153,9 @@ class local_dome(QtCore.QObject):
         self.Home_Status = self.remote_state.get('Home_Status', 'NOT_READY')               # status of whether dome needs to be homed
         self.state.update({'Home_Status_Num'                :   self.config['Dome_Status_Dict']['Home_Status'].get(self.Home_Status,       self.default) })
         
-        """ FOR TESTING WITHOUT OPENING SHUTTER ONLY!!!!! """
-        self.Shutter_Status = "OPEN"
-        #self.Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
+        #""" FOR TESTING WITHOUT OPENING SHUTTER ONLY!!!!! """
+        #self.Shutter_Status = "OPEN"
+        self.Shutter_Status = self.remote_state.get('Shutter_Status','FAULT')
         self.state.update({'Shutter_Status_Num'             :   self.config['Dome_Status_Dict']['Shutter_Status'].get(self.Shutter_Status, self.default) })
         
         self.Control_Status = self.remote_state.get('Control_Status','FAULT')
@@ -179,6 +206,17 @@ class local_dome(QtCore.QObject):
         
         self.ok_to_open = self.dome_ok & self.weather_ok & self.faults_ok
         self.state.update({'ok_to_open' : self.ok_to_open})
+        
+        # record the azimuth goal of the dome
+        self.state.update({'az_goal' : self.az_goal})
+        self.state.update({'az_error' : self.az_error})
+        
+        # record if we're tracking
+        self.state.update({'tracking' : int(self.tracking)})
+        self.telescope_az = self.telescope.state["mount.axis0.position_degs"]
+        self.az_error = abs(self.telescope_az - self.az_goal)
+        
+        self.CheckTracking()
     
     def doCommand(self, cmd_obj):
         """
@@ -197,6 +235,8 @@ class local_dome(QtCore.QObject):
             getattr(self, cmd)(*args, **kwargs)
         except:
             pass
+    
+    
     
     def Home(self):
         #print(f'dome: trying to HOME dome')
@@ -241,7 +281,12 @@ class local_dome(QtCore.QObject):
             pass
     
     def GoTo(self, az):
+        #TODO: i might need to turn off dome tracking here
         #print(f'dome: trying to move dome to AZ = {az}')
+        
+        # update the azimuth goal
+        self.az_goal = az
+        
         try:
             self.remote_object.GoDome(az)
         except:
@@ -252,6 +297,35 @@ class local_dome(QtCore.QObject):
             self.home_az = az
         except:
             pass
+        
+    def TrackingOn(self):
+        self.log('turning on dome tracking')
+        #self.startTracking.emit()
+        self.tracking = True
+        pass
+    
+    def TrackingOff(self):
+        self.log('turning off dome tracking')
+        #self.stopTracking.emit()
+        self.tracking = False
+    
+    def CheckTracking(self):
+        
+        
+        # if we're supposed to be tracking, see if we're within the allowed error from the telescope az
+        if self.tracking:
+            try:
+                # try to calculate the az error
+                
+                if self.az_error > self.tracking_error_threshold:
+                    self.moveDome.emit(self.telescope_az)
+                
+            except:
+                # could not calcualte the az error
+                pass
+            
+            pass
+        
         
     """def GoHome(self):
         try:

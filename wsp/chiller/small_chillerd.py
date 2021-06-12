@@ -376,6 +376,7 @@ class StatusMonitor(QtCore.QObject):
         to the state dictionary
         '''
         #print(f'(Thread: {threading.get_ident()}): recvd dome state: {domeState}')
+        print("STATE", state)
         if type(state) is dict:
             # make sure we don't get some garbage, and only attempt if this is actually a dictionary
             for key in state.keys():
