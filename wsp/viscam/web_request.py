@@ -28,15 +28,15 @@ class Viscam:
             status = res.status_code
             if res.text == "Raspi is responding":
                 #print("Status: ", status, res.text)
-                self.logger.debug(f'Raspi status {status}, {res.text}')
+                #self.logger.debug(f'Raspi status {status}, {res.text}')
                 return 1
             else:
                 #print("Status: ", status, "Raspi is not responding")
-                self.logger.debug(f'Raspi status {status}, Raspi is not responding')
+                #self.logger.debug(f'Raspi status {status}, Raspi is not responding')
                 return 0
         except:
             #print("Raspi is not responding")
-            self.logger.debug(f'Raspi is not responding')
+            self.logger.info(f'Raspi is not responding')
             return 0
             
     def update_state(self):
@@ -54,6 +54,11 @@ class Viscam:
             self.state.update({'pi_status_last_timestamp'  : datetime.utcnow().timestamp()})
             
             pos = self.send_filter_wheel_command(8)
+            try:
+                pos = int(pos[22]) + 1 # get position in int
+            except:
+                pos = -1 # invalid filter position
+
             self.state.update({'filter_wheel_position' : pos})
             self.state.update({'filter_wheel_position_last_timestamp'  : datetime.utcnow().timestamp()})
             
@@ -75,7 +80,7 @@ class Viscam:
             res = requests.get(string, timeout=10)
             status = res.status_code
             #print("Status", status, "Response: ", res.text)
-            self.logger.info(f'Filter wheel status {status}, {res.text}')
+            #self.logger.info(f'Filter wheel status {status}, {res.text}')
             return res.text
         except:
             #print("Raspi is not responding")
@@ -111,15 +116,20 @@ class Viscam:
             status = res.status_code
             if res.text[0] == "3":
                 #print("Status: ", status, " Unknown shutter state")
+                return -1
+            elif res.text[0] == "1":
+                #print("Status: ", status, "Shutter state is ", res.text)
                 return 1
-            else:
+            elif res.text[0] == "0":
                 #print("Status: ", status, "Shutter state is ", res.text)
                 return 0
-            #print("Status", status, "Response: ", res.text)
-            #return status
+            else:
+                #print("Status", status, "Response: ", res.text)
+                #return status
+                return -1
         except:
             #print("Raspi is not responding")
-            return 0
+            return -1
 
 
 #viscam = Viscam(URL = 'http://192.168.1.54:5001/')
