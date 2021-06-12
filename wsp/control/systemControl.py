@@ -169,17 +169,13 @@ class control(QtCore.QObject):
         self.counter =  test_daemon_local.local_counter(wsp_path)
 
         # init the telescope
-        self.telescope = telescope.Telescope(config = self.config, host = self.config['telescope']['host'], port = self.config['telescope']['port'])
+        self.telescope = telescope.Telescope(config = self.config, 
+                                             host = self.config['telescope']['host'], 
+                                             port = self.config['telescope']['port'])
 
         
         # init the dome
-        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config)
-        
-        # init the chiller
-        if '--smallchiller' in opts:
-            self.chiller = small_chiller.local_chiller(base_directory = self.base_directory, config = self.config)
-        else:
-            self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
+        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope)
         
         # init the ephemeris
         self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config)
@@ -214,6 +210,12 @@ class control(QtCore.QObject):
         ## init the database writer
         self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
         """
+
+        # init the chiller
+        if '--smallchiller' in opts:
+            self.chiller = small_chiller.local_chiller(base_directory = self.base_directory, config = self.config, alertHandler = self.alertHandler)
+        else:
+            self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
 
         ### SET UP THE HOUSEKEEPING ###
 
