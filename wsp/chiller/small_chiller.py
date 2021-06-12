@@ -134,18 +134,18 @@ class local_chiller(QtCore.QObject):
     def print_state(self):
         print(f'state = {json.dumps(chiller.state, indent = 2)}')
 
-    # def setSetpoint(self, temperature):
-    #     #print(f'chiller: trying to set the set point to {temperature}')
-    #     self.remote_object.setSetpoint(temperature)
+    def setSetpoint(self, temperature):
+        #print(f'chiller: trying to set the set point to {temperature}')
+        self.remote_object.setSetpoint(temperature)
     
-    # def TurnOn(self):
-    #     self.remote_object.TurnOn()
+    def TurnOn(self):
+        self.remote_object.TurnOn()
     
-    # def TurnOff(self):
-    #     self.remote_object.TurnOff()
+    def TurnOff(self):
+        self.remote_object.TurnOff()
     
-    # def WriteRegister(self, register, value):
-    #     self.remote_object.WriteCommand(register, value)
+    def WriteRegister(self, register, value):
+        self.remote_object.WriteCommand(register, value)
         
         
 # Try it out
@@ -171,5 +171,6 @@ if __name__ == '__main__':
     
     #%%
     # #chiller.WriteRegister('UserSetpoint', 18.1)
-    # chiller.TurnOn()
-    # chiller.setSetpoint(17.9)
+    #chiller.TurnOn()
+    chiller.setSetpoint(10.9)
+
