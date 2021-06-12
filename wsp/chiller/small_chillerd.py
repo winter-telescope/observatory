@@ -100,137 +100,137 @@ class ReconnectHandler(object):
         self.reconnect_remaining_time = self.reconnect_timeout - self.time_since_last_connection
 
 
-class CommandHandler(QtCore.QObject):
+# class CommandHandler(QtCore.QObject):
     
-    newReply = QtCore.pyqtSignal(str)
-    #newCommand = QtCore.pyqtSignal(object)
-    newRequest = QtCore.pyqtSignal(object)
+#     newReply = QtCore.pyqtSignal(str)
+#     #newCommand = QtCore.pyqtSignal(object)
+#     newRequest = QtCore.pyqtSignal(object)
     
-    def __init__(self, config, logger = None, verbose = False):
-        super(CommandHandler, self).__init__()
+#     def __init__(self, config, logger = None, verbose = False):
+#         super(CommandHandler, self).__init__()
         
-        self.config = config
+#         self.config = config
         
-        self.logger = logger
-        self.connection_timeout = self.config['serial_params']['timeout'] # time to allow each connection attempt to take
-        self.verbose = verbose
-        self.connected = False
+#         self.logger = logger
+#         self.connection_timeout = self.config['serial_params']['timeout'] # time to allow each connection attempt to take
+#         self.verbose = verbose
+#         self.connected = False
         
-        self.setup_connection()
+#         self.setup_connection()
         
-    def log(self, msg, level = logging.INFO):
-        if self.logger is None:
-                print(msg)
-        else:
-            self.logger.log(level = level, msg = msg)    
+#     def log(self, msg, level = logging.INFO):
+#         if self.logger is None:
+#                 print(msg)
+#         else:
+#             self.logger.log(level = level, msg = msg)    
     
-    def setup_connection(self):
-        self.create_socket()
+#     def setup_connection(self):
+#         self.create_socket()
     
-    def create_socket(self):
-        if self.verbose:
-            self.log(f'(Thread {threading.get_ident()}) CommandHandler: creating socket')
+#     def create_socket(self):
+#         if self.verbose:
+#             self.log(f'(Thread {threading.get_ident()}) CommandHandler: creating socket')
 
-        self.sock = serial.Serial()
-        self.sock.port        = self.config['serial_params']['port']
-        self.sock.baudrate    = self.config['serial_params']['baudrate']
-        self.sock.timeout     = self.config['serial_params']['timeout']
-        self.sock.parity      = self.config['serial_params']['parity']
-        # breaks the code, use default anyway
-        #self.sock.stopbits    = self.config['serial_params']['stopbits']
-        self.sock.xonxoff     = self.config['serial_params']['xonxoff']
-        self.sock.bytesize    = self.config['serial_params']['bytesize']
+#         self.sock = serial.Serial()
+#         self.sock.port        = self.config['serial_params']['port']
+#         self.sock.baudrate    = self.config['serial_params']['baudrate']
+#         self.sock.timeout     = self.config['serial_params']['timeout']
+#         self.sock.parity      = self.config['serial_params']['parity']
+#         # breaks the code, use default anyway
+#         #self.sock.stopbits    = self.config['serial_params']['stopbits']
+#         self.sock.xonxoff     = self.config['serial_params']['xonxoff']
+#         self.sock.bytesize    = self.config['serial_params']['bytesize']
 
         
-    def connect_socket(self):
-        if self.verbose:
-            self.log(f'(Thread {threading.get_ident()}) CommandHandler: Attempting to connect socket')
+#     def connect_socket(self):
+#         if self.verbose:
+#             self.log(f'(Thread {threading.get_ident()}) CommandHandler: Attempting to connect socket')
         
         
-        try:
+#         try:
             
-            #disconnect first
-            #self.sock.close()
-            # try to reconnect the socket
-            self.sock.open()
+#             #disconnect first
+#             #self.sock.close()
+#             # try to reconnect the socket
+#             self.sock.open()
             
-            #print(f'(Thread {threading.get_ident()}) Connection attempt successful!')
+#             #print(f'(Thread {threading.get_ident()}) Connection attempt successful!')
             
-            #if this works, then set connected to True
-            if self.sock.is_open:
-                self.connected = True
+#             #if this works, then set connected to True
+#             if self.sock.is_open:
+#                 self.connected = True
                 
 
-            else:
-                # the connection is broken. set connected to false
-                self.connected = False
-                self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')#' waiting {self.reconnector.reconnect_timeout} until next reconnection')   
-                #self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+#             else:
+#                 # the connection is broken. set connected to false
+#                 self.connected = False
+#                 self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')#' waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+#                 #self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             
-        except:
+#         except:
             
-            # the connection is broken. set connected to false
-            self.connected = False
-            self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')#' waiting {self.reconnector.reconnect_timeout} until next reconnection')   
-            #self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+#             # the connection is broken. set connected to false
+#             self.connected = False
+#             self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')#' waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+#             #self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful. waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             
-    def sendCommand(self, register_request):
-        '''
-        This takes the command string and sends it directly to the dome.
-        It takes any received reply and triggers a new reply event
-        '''
-        command_ascii = register_request.command
-        com = command_ascii.decode()
+#     def sendCommand(self, register_request):
+#         '''
+#         This takes the command string and sends it directly to the dome.
+#         It takes any received reply and triggers a new reply event
+#         '''
+#         command_ascii = register_request.command
+#         com = command_ascii.decode()
         
-        #print(f'CommandHandler: caught newRequest signal to set {addr} to {value}')
+#         #print(f'CommandHandler: caught newRequest signal to set {addr} to {value}')
         
-        if self.connected:
-            #self.time_since_last_connection = 0.0
-            #self.reconnector.time_since_last_connection = 0.0
-            #print(f'Connected! Querying Dome Status.')
+#         if self.connected:
+#             #self.time_since_last_connection = 0.0
+#             #self.reconnector.time_since_last_connection = 0.0
+#             #print(f'Connected! Querying Dome Status.')
             
             
 
-            try:
-                # SEND THE COMMAND
+#             try:
+#                 # SEND THE COMMAND
                 
-                self.sock.write(command_ascii)
+#                 self.sock.write(command_ascii)
                 
-                # read response
-                reply = self.sock.read(self.sock.inWaiting())
-                # fifth character deams error
-                err_char = chr(reply[5])
-                self.log(f'CommandHandler: Command sent reply = {reply}')
-                if err_char == '0':
-                        self.log(f'CommandHandler: Command sent successfully! reply = {reply}')
+#                 # read response
+#                 reply = self.sock.read(self.sock.inWaiting())
+#                 # fifth character deams error
+#                 err_char = chr(reply[5])
+#                 self.log(f'CommandHandler: Command sent reply = {reply}')
+#                 if err_char == '0':
+#                         self.log(f'CommandHandler: Command sent successfully! reply = {reply}')
                 
-                # possible errors
-                elif err_char == '1':
-                    self.log(f'chiller: checksum error, please check if valid command')
+#                 # possible errors
+#                 elif err_char == '1':
+#                     self.log(f'chiller: checksum error, please check if valid command')
                     
-                elif err_char == '2':
-                    self.log(f'chiller: Bad Command Number (Command Not used)')
+#                 elif err_char == '2':
+#                     self.log(f'chiller: Bad Command Number (Command Not used)')
                     
-                elif err_char == '3':
-                    self.log(f'chiller: Parameter/Data Out of Bound')
+#                 elif err_char == '3':
+#                     self.log(f'chiller: Parameter/Data Out of Bound')
                     
-                else:
-                    if self.verbose:
-                        self.log(f'chiller: could not get {com}: {reply}')
-                    pass
+#                 else:
+#                     if self.verbose:
+#                         self.log(f'chiller: could not get {com}: {reply}')
+#                     pass
             
-            except Exception as e:
-                #print(f'Query attempt failed.')
-                self.log(f'CommandHandler: Tried to write {com} : {e}')
-                self.connected = False
-        else:
-            self.log(f'CommandHandler: Received command to write {com} but chiller was disconnected. ')
+#             except Exception as e:
+#                 #print(f'Query attempt failed.')
+#                 self.log(f'CommandHandler: Tried to write {com} : {e}')
+#                 self.connected = False
+#         else:
+#             self.log(f'CommandHandler: Received command to write {com} but chiller was disconnected. ')
 
-            # the dome is not connected. set the reply to something that represents this state
-            #self.newReply.emit(self.disconnectedReply)
-            pass 
+#             # the dome is not connected. set the reply to something that represents this state
+#             #self.newReply.emit(self.disconnectedReply)
+#             pass 
         
         
         
@@ -423,31 +423,54 @@ class StatusMonitor(QtCore.QObject):
                                 check_sum = '0' + check_sum
                             command_ascii = command_string.encode('ascii') + check_sum.encode('ascii') + b'\r'
                             self.sock.write(command_ascii)
-                            
+                            time.sleep(1)                            
                             # read response
-                            reply = self.sock.read(100)
+                            reply = self.sock.read(self.sock.inWaiting())
                             # fifth character deams error
                             err_char = chr(reply[5])
                             
+                            # calculate the time since the last successfull pol
+                            timestamp = datetime.utcnow().timestamp()
+                            
+                            
                             if err_char == '0':
-                                    if com == 'readWatchDog':
-                                        val = reply[14:17]
-                                        val = val.decode()
-                                    elif com == 'readSupplyT':
-                                        val = reply[14:18]
-                                        val = val.decode()
-                                        val = int(val)*0.1
-                                    
-                                     # TODO - finish
-                                    # update the state with the register value
+                                if com == 'readWatchDog':
+                                    val = reply[14:18]
+                                    val = val.decode()
+                                    self.state.update({'ControlStatusMode' : int(val[0])})
+                                    self.state.update({'PumpStatusFlag' : int(val[1])})
+                                    self.state.update({'AlarmStatusFlag' : int(val[2])})
+                                    self.state.update({'WarningStatusFlag' : int(val[3])})
+                                    self.state['last_poll_time'].update({'ControlStatusMode' : timestamp})
+                                    self.state['last_poll_time'].update({'PumpStatusFlag': timestamp})
+                                    self.state['last_poll_time'].update({'AlarmStatusFlag'  : timestamp})
+                                    self.state['last_poll_time'].update({'WarningStatusFlag' : timestamp})
+                                    if val[3] == 1:
+                                        print("Chiller alarm!")
+                                        command_string = '.0166rAlrmBit'
+                                        check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
+                                        if len(check_sum) == 1:
+                                            check_sum = '0' + check_sum
+                                        command_ascii = command_string.encode('ascii') + check_sum.encode('ascii') + b'\r'
+                                        self.sock.write(command_ascii)
+                                        time.sleep(1)
+                                        reply = self.sock.read(self.sock.inWaiting())
+                                        print("alarm says: ", reply)	
+                                else:
+                                    val = reply[14:19]
+                                    print('temp_val', val)
+                                    val = val.decode()
+                                    val = int(val)*0.1
                                     self.state.update({com : val})
+                                    self.state['last_poll_time'].update({com : timestamp})                                     # TODO - finish
+                                    # update the state with the register value
+                                    #self.state.update({com : val})
                                     
                                     
-                                    # calculate the time since the last successfull pol
-                                    timestamp = datetime.utcnow().timestamp()
+                                
                                     
                                     # log the timestamp of this poll for THIS REGISTER ONLY for future calculation of dt
-                                    self.state['last_poll_time'].update({com : timestamp})
+                                    # self.state['last_poll_time'].update({com : timestamp})
                             
                             # possible errors
                             elif err_char == '1':
@@ -553,39 +576,39 @@ class StatusThread(QtCore.QThread):
         self.exec_()
 
 
-class CommandThread(QtCore.QThread):
-    newReply = QtCore.pyqtSignal(int)
-    #newCommand = QtCore.pyqtSignal(str)
-    newRequest = QtCore.pyqtSignal(object)
-    doReconnect = QtCore.pyqtSignal()
+# class CommandThread(QtCore.QThread):
+#     newReply = QtCore.pyqtSignal(int)
+#     #newCommand = QtCore.pyqtSignal(str)
+#     newRequest = QtCore.pyqtSignal(object)
+#     doReconnect = QtCore.pyqtSignal()
     
-    def __init__(self, config, logger = None,  verbose = False):
-        super(QtCore.QThread, self).__init__()
+#     def __init__(self, config, logger = None,  verbose = False):
+#         super(QtCore.QThread, self).__init__()
         
-        self.config = config
-        self.logger = logger
-        self.verbose = verbose
+#         self.config = config
+#         self.logger = logger
+#         self.verbose = verbose
     
-    def HandleRequest(self, request_object):
-        self.newRequest.emit(request_object)
+#     def HandleRequest(self, request_object):
+#         self.newRequest.emit(request_object)
     
-    def DoReconnect(self):
-        #print(f'(Thread {threading.get_ident()}) Main: caught reconnect signal')
-        self.doReconnect.emit()
+#     def DoReconnect(self):
+#         #print(f'(Thread {threading.get_ident()}) Main: caught reconnect signal')
+#         self.doReconnect.emit()
     
-    def run(self):    
-        def SignalNewReply(reply):
-            self.newReply.emit(reply)
+#     def run(self):    
+#         def SignalNewReply(reply):
+#             self.newReply.emit(reply)
         
-        self.commandHandler = CommandHandler(config = config, logger = self.logger, verbose = self.verbose)
-        # if the newReply signal is caught, execute the sendCommand function
-        self.newRequest.connect(self.commandHandler.sendCommand)
-        self.commandHandler.newReply.connect(SignalNewReply)
+#         self.commandHandler = CommandHandler(config = config, logger = self.logger, verbose = self.verbose)
+#         # if the newReply signal is caught, execute the sendCommand function
+#         self.newRequest.connect(self.commandHandler.sendCommand)
+#         self.commandHandler.newReply.connect(SignalNewReply)
         
-        # if we recieve a doReconnect signal, trigger a reconnection
-        self.doReconnect.connect(self.commandHandler.connect_socket)
+#         # if we recieve a doReconnect signal, trigger a reconnection
+#         self.doReconnect.connect(self.commandHandler.connect_socket)
         
-        self.exec_()
+#         self.exec_()
 
        
 class RegisterRequest(object):
@@ -626,18 +649,18 @@ class Chiller(QtCore.QObject):
         self.verbose = verbose
         
         self.statusThread = StatusThread(  config = self.config, logger = self.logger, verbose = self.verbose)
-        self.commandThread = CommandThread(config = self.config, logger = self.logger, verbose = self.verbose)
+        # self.commandThread = CommandThread(config = self.config, logger = self.logger, verbose = self.verbose)
         # connect the signals and slots
         
         self.statusThread.start()
-        self.commandThread.start()
+        # self.commandThread.start()
         
         # if the status thread is request a reconnection, trigger the reconnection in the command thread too
-        self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
+        # self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
         
         self.statusThread.newStatus.connect(self.updateStatus)
-        self.commandRequest.connect(self.commandThread.HandleRequest)
-        self.commandThread.newReply.connect(self.updateCommandReply)
+        # self.commandRequest.connect(self.commandThread.HandleRequest)
+        # self.commandThread.newReply.connect(self.updateCommandReply)
         self.log(f'chiller: running in thread {threading.get_ident()}')
     
     
@@ -683,7 +706,7 @@ class Chiller(QtCore.QObject):
                 time_since_last_poll = timestamp - self.state['last_poll_time'][reg]
                 self.state['last_poll_dt'].update({reg : time_since_last_poll})
             except Exception as e:
-                #print(f'Could not update dt for {reg}, error: {e}')
+                print(f'Could not update dt for {reg}, error: {e}')
                 pass
             
     def updateCommandReply(self, reply):
@@ -708,76 +731,76 @@ class Chiller(QtCore.QObject):
         
         return self.state
     
-    @Pyro5.server.expose
-    def WriteCommand(self, command, value):
-        self.log(f'chiller: got request to set {command} to {value}')
-        # make sure the register is in the list
-        com = command
-        if com in self.config['commands']:
-            if 'w' in self.config['commands'][com]['mode']:
+    # @Pyro5.server.expose
+    # def WriteCommand(self, command, value):
+    #     self.log(f'chiller: got request to set {command} to {value}')
+    #     # make sure the register is in the list
+    #     com = command
+    #     if com in self.config['commands']:
+    #         if 'w' in self.config['commands'][com]['mode']:
                 
-                #self.log(f'chiller: register request is on write-approved list')
-                # get command
-                command_string = self.config['commands'][com]['command']
-                #scale = self.config['registers'][register]['scale']
-                
-                
-                # make input ascii to add to command string
-                command_string = command_string + value
-                
-                # add checksum
-                check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
-                command_ascii = command_string.encode('ascii') + check_sum.encode('ascii') + b'\r'
-                
-                # write the value to the specified command register
-                request = SerialCommandRequest(command = command_ascii)
-                self.commandRequest.emit(request)
-                
-                 # TODO - finish
-                # update the state with the register value
-                self.state.update({com : value})
+    #             #self.log(f'chiller: register request is on write-approved list')
+    #             # get command
+    #             command_string = self.config['commands'][com]['command']
+    #             #scale = self.config['registers'][register]['scale']
                 
                 
-                # calculate the time since the last successfull pol
-                timestamp = datetime.utcnow().timestamp()
+    #             # make input ascii to add to command string
+    #             command_string = command_string + value
                 
-                # log the timestamp of this poll for THIS REGISTER ONLY for future calculation of dt
-                self.state['last_poll_time'].update({com : timestamp})
+    #             # add checksum
+    #             check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
+    #             command_ascii = command_string.encode('ascii') + check_sum.encode('ascii') + b'\r'
+                
+    #             # write the value to the specified command register
+    #             request = SerialCommandRequest(command = command_ascii)
+    #             self.commandRequest.emit(request)
+                
+    #              # TODO - finish
+    #             # update the state with the register value
+    #             self.state.update({com : value})
+                
+                
+    #             # calculate the time since the last successfull pol
+    #             timestamp = datetime.utcnow().timestamp()
+                
+    #             # log the timestamp of this poll for THIS REGISTER ONLY for future calculation of dt
+    #             self.state['last_poll_time'].update({com : timestamp})
                 
 
                 
                 
                 
                 
-            else:
-                # the register is not on the write-allowed list
-                self.log(f'chiller: ignored request for {command} which is set to read-only in config file')
-                return
-        else:
-            # the register is not on the list
-            self.log(f'chiller: ignored request to {command} which is not included in the config file')
+    #         else:
+    #             # the register is not on the write-allowed list
+    #             self.log(f'chiller: ignored request for {command} which is set to read-only in config file')
+    #             return
+    #     else:
+    #         # the register is not on the list
+    #         self.log(f'chiller: ignored request to {command} which is not included in the config file')
 
-            return
+    #         return
         
-    @Pyro5.server.expose
-    def setSetpoint(self, temperature):
-        # change the setpoint
-        self.log(f'got request to set chiller temperature to {temperature} C')
-        temperature_string = int(temperature / 0.1)
-        temperature_string = '0'+ str(temperature_string)
-        self.WriteCommand('setCtrlT', temperature_string)
+    # @Pyro5.server.expose
+    # def setSetpoint(self, temperature):
+    #     # change the setpoint
+    #     self.log(f'got request to set chiller temperature to {temperature} C')
+    #     temperature_string = int(temperature / 0.1)
+    #     temperature_string = '0'+ str(temperature_string)
+    #     self.WriteCommand('setCtrlT', temperature_string)
         
-    @Pyro5.server.expose
-    def TurnOn(self):
-        # TURN THE CHILLER ON
-        self.log('got request set chiller to RUN')
-        self.WriteCommand('setStatus', '1')
+    # @Pyro5.server.expose
+    # def TurnOn(self):
+    #     # TURN THE CHILLER ON
+    #     self.log('got request set chiller to RUN')
+    #     self.WriteCommand('setStatus', '1')
     
-    @Pyro5.server.expose
-    def TurnOff(self):
-        # TURN THE CHILLER OFF
-        self.log('got request to set chiller to STANDBY')
-        self.WriteCommand('setStatus', '0')
+    # @Pyro5.server.expose
+    # def TurnOff(self):
+    #     # TURN THE CHILLER OFF
+    #     self.log('got request to set chiller to STANDBY')
+    #     self.WriteCommand('setStatus', '0')
     
     """# Commands which make the dome do things
     @Pyro5.server.expose
