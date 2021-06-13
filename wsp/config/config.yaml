@@ -104,14 +104,14 @@ telescope:
     host: "thor"
     port: 8220
     home_alt_degs: 45.0
-    home_az_degs: 180.0
+    home_az_degs: 169.0
     min_alt: 15.0
     max_alt: 89.0
     rotator_home_degs: -25.0
     #rotator_max_degs: 20.0
-    rotator_max_degs: 500.0
+    rotator_max_degs: 160.0
     #rotator_min_degs: -70.0
-    rotator_min_degs: -500.0
+    rotator_min_degs: -210.0
 
 # define telemetry servers
 telemetry_server:
@@ -672,6 +672,36 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state["mount.model.rms_error_arcsec"]
+    # mirror cover
+    Mirror_Cover_State:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'mirror_cover.state["mirror_cover_state"]'
+    Mirror_Cover_State_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'mirror_cover.state["mirror_cover_state_last_timestamp"]'
+    Mirror_Cover_Connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'mirror_cover.state["mirror_cover_connected"]'
+    Mirror_Cover_Connected_timestamp:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'mirror_cover.state["mirror_cover_connected_last_timestamp"]'
+
     # focuser
     focuser_is_connected:
         ftype: raw
@@ -1507,6 +1537,13 @@ fields:
         dtype: int64
         rate: slow
         var: 'ccd.state["tec_status"]'
+    ccd_image_saved_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: slow
+        var: 'ccd.state["imageSavedFlag"]'
     ccd_exptime:
         ftype: raw
         label: 'status'
@@ -1514,6 +1551,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'ccd.state["exptime"]'
+    ccd_last_update_timestamp:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: float64
+        rate: slow
+        var: 'ccd.state["last_update_timestamp"]'
     
     Pi_State:
         ftype: raw
@@ -1622,13 +1666,13 @@ fields:
         dtype: int64
         rate: slow
         var: chiller.state['WarningStatusFlag']        
-#    small_chiller_setpoint:
-#        ftype: raw
-#        label: 'T'
-#        units: 'C'
-#        dtype: float64
-#        rate: slow
-#        var: chiller.state['readSetT'] 
+    small_chiller_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+        var: chiller.state['readSetT'] 
 
 derived_fields:
     # note the base directory for the LUT is the wsp directory

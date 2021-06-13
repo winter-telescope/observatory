@@ -71,7 +71,7 @@ class RoboOperatorThread(QtCore.QThread):
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -89,6 +89,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.ephem = ephem
         self.viscam = viscam
         self.ccd = ccd
+        self.mirror_cover = mirror_cover
     
     def run(self):           
         self.robo = RoboOperator(base_directory = self.base_directory, 
@@ -104,7 +105,8 @@ class RoboOperatorThread(QtCore.QThread):
                                      chiller = self.chiller, 
                                      ephem = self.ephem,
                                      viscam = self.viscam,
-                                     ccd = self.ccd
+                                     ccd = self.ccd,
+                                     mirror_cover = self.mirror_cover
                                      )
         
         # Put all the signal/slot connections here:
@@ -143,7 +145,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -164,6 +166,7 @@ class RoboOperator(QtCore.QObject):
         self.schedule = schedule
         self.viscam = viscam
         self.ccd = ccd
+        self.mirror_cover = mirror_cover
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
@@ -200,8 +203,12 @@ class RoboOperator(QtCore.QObject):
         self.exptimer.setSingleShot(True)
         # if there's too many things i think they may not all get triggered?
         #self.exptimer.timeout.connect(self.log_timer_finished)
-        self.exptimer.timeout.connect(self.log_observation_and_gotoNext)
+        #self.exptimer.timeout.connect(self.log_observation_and_gotoNext)
         #self.exptimer.timeout.connect(self.rotator_stop_and_reset)
+        
+        # when the image is saved, log the observation and go to the next
+        #### FIX THIS SOON! NPL 6-13-21
+        #self.ccd.imageSaved.connect(self.log_observation_and_gotoNext)
 
         
         ### CONNECT SIGNALS AND SLOTS ###
@@ -556,9 +563,13 @@ class RoboOperator(QtCore.QObject):
         try:
             # take control of dome        
             self.do('dome_takecontrol')
+            
+            #self.do('dome_tracking_off')
     
             # home the dome
             self.do('dome_home')
+            
+            #self.do('dome_tracking_off')
             
             # signal we're complete
             msg = 'dome startup complete'
@@ -685,22 +696,29 @@ class RoboOperator(QtCore.QObject):
             
             self.announce(f'>> Target Current (ALT, AZ) = ({self.local_alt_deg} deg, {self.local_az_deg} deg)')
 
+            # turn off dome tracking while slewing the telescope
+            self.do('dome_tracking_off')
             
             # 1: point the telescope
-            #TODO: change this to RA/DEC pointing instead of AZ/EL
             context = 'do_currentObs'
             system = 'telescope'
             try:
-                # point the rotator to the home position
-                self.do(f'rotator_home')
+                
+                
                 
                 # turn tracking back on
                 self.do(f'rotator_enable')
-                # don't turn the tracking on it will drift off. just leave the rotator enabled and tracking off and then do a goto RA/DEC
-                #self.do(f'mount_tracking_on')
                 
                 # TURN ON WRAP CHECK 
                 self.do('rotator_wrap_check_enable')
+                
+                # don't turn the tracking on it will drift off. just leave the rotator enabled and tracking off and then do a goto RA/DEC
+                #self.do(f'mount_tracking_on')
+                
+                # point the rotator to the home position
+                self.do(f'rotator_home')
+                
+                
                 
                 # check if alt and az are in allowed ranges
                 in_view = (self.local_alt_deg >= self.config['telescope']['min_alt']) & (self.local_alt_deg <= self.config['telescope']['max_alt'])
@@ -752,14 +770,32 @@ class RoboOperator(QtCore.QObject):
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
                 return
+            
+            # now that the slew is finished, turn on the dome tracking
+            # turn on dome tracking (of telescope)
+            #self.do('dome_tracking_on')
+            
             # 2: create the log dictionary & FITS header. save log dict to self.lastObs_record
+            # for now this is happeningin the ccd_daemon, but we need to make this better
+            # and get the info from the database, etc
+            
             # 3: trigger image acquisition
+            self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
+            self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
+            self.ccd.setexposure(self.exptime)
+            time.sleep(0.5)
+
+            self.logger.info(f'robo: telling ccd to take exposure!')
+            self.ccd.doExposure()
+            
+            """
             # 4: start exposure timer
             self.logger.info('robo: starting timer to wait for exposure to finish')
             self.waittime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
             self.waittime_padding = 2.0 # pad the waittime a few seconds just to be sure it's done
             self.waiting_for_exposure = True
             self.exptimer.start((self.waittime + self.waittime_padding)*1000.0) # start the timer with waittime in ms as a timeout
+            """
             # 5: exit
             
             
@@ -915,4 +951,3 @@ class RoboOperator(QtCore.QObject):
             ## TODO: Code to close connections to the databases.
             self.schedule.closeConnection()
             self.writer.closeConnection()
-

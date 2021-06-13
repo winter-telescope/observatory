@@ -52,6 +52,7 @@ sys.path.append(huaso_path)
 sys.path.append(server_daemon_dir)
 # import huaso modules
 from console import cameraClient
+from housekeeping import data_handler
 
 
 #%%
@@ -61,6 +62,9 @@ from console import cameraClient
 class CCD(QtCore.QObject):
     
     startStatusLoop = QtCore.pyqtSignal()
+    
+    imageAcquired = QtCore.pyqtSignal()
+    imageSaved = QtCore.pyqtSignal()
     
     """
     # these are signals to start timers which are kept in the main PyroGUI object
@@ -76,12 +80,14 @@ class CCD(QtCore.QObject):
     startExposureTimer = QtCore.pyqtSignal(object)
     startReadTimer = QtCore.pyqtSignal(object)
     
+    preventPollingSignal = QtCore.pyqtSignal()
+    allowPollingSignal = QtCore.pyqtSignal()
     
     
     #commandRequest = QtCore.pyqtSignal(str) 
     
     # put any signal defs here
-    def __init__(self, camnum, config, logger = None, verbose = False):
+    def __init__(self, camnum, config, logger = None, verbose = False ):
         super(CCD, self).__init__()
         
         # set up the internals
@@ -105,14 +111,28 @@ class CCD(QtCore.QObject):
         self.server_running = False
         self.connected = False
         
+        # flag to indicate that an image has been saved.
+        # set it to false and add it to state
+        self.resetImageSavedFlag()
+        
+
+        
         # connect signals and slots
         self.startStatusLoop.connect(self.startPollingStatus)
+        self.allowPollingSignal.connect(self.allowPolling)
+        self.preventPollingSignal.connect(self.preventPolling)
+        self.imageSaved.connect(self.raiseImageSavedFlag)
         
         # create a QTimer which will allow regular polling of the status
         self.pollTimer = QtCore.QTimer()
         self.pollTimer.setInterval(10000)
         self.pollTimer.setSingleShot(False)
         self.pollTimer.timeout.connect(self.pollStatus)
+        
+        # start with the do polling flag true
+        self.doPolling = True
+        # is a poll currently happening?
+        self.doing_poll = False
         
         """
         # exposure timer
@@ -126,11 +146,19 @@ class CCD(QtCore.QObject):
         self.readTimer.timeout.connect(self.fetchImg)
         """
         
+        # set up poll status thread
+        self.statusThread = data_handler.daq_loop(func = self.pollStatus, 
+                                                       dt = 10000,
+                                                       name = 'ccd_status_loop'
+                                                       )
+        
         # set up the image directories
         self.setupFITS_directory() # just use the defaults
         
         # set up the camera and server
         self.startup()
+        
+        
         
     def log(self, msg, level = logging.INFO):
         
@@ -144,39 +172,70 @@ class CCD(QtCore.QObject):
     def startup(self):
         
         self.reconnect()
+    
+    def allowPolling(self):
+        self.doPolling = True
+        self.log(f'allowing further status polls')
         
-        
+    def preventPolling(self):
+        self.doPolling = False
+        self.log(f'preventing further status polls')
+
     def startPollingStatus(self):
         self.pollTimer.start()
     
     def pollStatus(self):
-        self.log('polling status')
-        try:
-            
-            self.exptime = self.cc.getexposure('self.camnum')
-            self.state.update({'exptime' : self.exptime})
-            
-            self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
-            self.state.update({'tec_temp' : self.tec_temp})
-            
-            self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
-            self.state.update({'tec_setpoint' : self.tec_setpoint})
-            
-            self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
-            self.state.update({'pcb_temp' : self.pcb_temp})
-            
-            fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
-            self.tec_status = int(fpgastatus_str[0])
-            self.state.update({'tec_status' : self.tec_status})
-            
-            
-            
-            
-            #print(f'>> TEC TEMP = {self.tec_temp}')
-        except Exception as e:
-            self.log(f'BADNESS WHILE POLLING STATUS: {e}')
-        pass
         
+        if self.doPolling:
+            self.log('polling status')
+            self.doing_poll = True
+            
+            try:
+                
+                self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
+                print(f"EXPOSURE TIME = {self.exptime}")
+                self.state.update({'exptime' : self.exptime})
+                time.sleep(2)
+                
+                self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
+                self.state.update({'tec_temp' : self.tec_temp})
+                time.sleep(1)
+                
+                self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
+                self.state.update({'tec_setpoint' : self.tec_setpoint})
+                time.sleep(1)
+                
+                self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
+                self.state.update({'pcb_temp' : self.pcb_temp})
+                time.sleep(1)
+                
+                fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
+                self.tec_status = int(fpgastatus_str[0])
+                self.state.update({'tec_status' : self.tec_status})
+                
+                # record this update time
+                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+                
+                
+                #print(f'>> TEC TEMP = {self.tec_temp}')
+            except Exception as e:
+                self.log(f'BADNESS WHILE POLLING STATUS: {e}')
+            
+            # done with the current poll
+            self.doing_poll = False
+            pass
+        else:
+            self.log('I would have polled but it was prevented')
+        
+        
+    @Pyro5.server.expose
+    def resetImageSavedFlag(self):
+        self.imageSavedFlag = False
+        self.state.update({'imageSavedFlag' : self.imageSavedFlag})
+    
+    def raiseImageSavedFlag(self):
+        self.imageSavedFlag = True
+        self.state.update({'imageSavedFlag' : self.imageSavedFlag})
         
 
     @Pyro5.server.expose
@@ -197,6 +256,12 @@ class CCD(QtCore.QObject):
         #self.pollTimer.start()
         
         pass
+    
+    @Pyro5.server.expose
+    def getExposure(self):
+        self.log(f'getting current exposure time')
+        exptime = self.cc.getexposure(self.camnum)[self.camnum]
+        return exptime
     
     @Pyro5.server.expose
     def setSetpoint(self, temp):
@@ -243,8 +308,18 @@ class CCD(QtCore.QObject):
         
         pass
     
+    
+    
     @Pyro5.server.expose
     def doExposure(self, header = None, image_suffix = None):
+        
+        self.preventPollingSignal.emit()
+        
+        # wait for the current poll to be finished
+        while self.doing_poll:
+            time.sleep(0.5)
+            self.log('poll still happening, waiting 0.5 seconds')
+        
         
         # update the header info and image suffix (some note) that got passed in
         if header is None:
@@ -310,10 +385,15 @@ class CCD(QtCore.QObject):
         #self.readTimer.start(int(waittime))
         self.startReadTimer.emit(waittime)
         
-        
+        # emit a signal that we're done acquiring the image. useful for roboOperator
+        self.imageAcquired.emit()
         pass
     
     def fetchImg(self):
+        
+        # prevent status polling while downloading the image so the buffer stays clear
+        
+        
         self.log(f'downloading image to directory: {self.image_directory}')
         # download the image from the cam buffer
         
@@ -336,20 +416,33 @@ class CCD(QtCore.QObject):
         #filepath = os.path.join(self.imagepath, )
         
         self.log(f'done getting image?')
+        time.sleep(27)
+        # re-enable the polling
+        self.allowPollingSignal.emit()
+        
+        # send out signal that the image has been saved to the directory
+        self.imageSaved.emit()
+        
         pass
     
     
     @Pyro5.server.expose
     def tecStop(self):
         #self.pollTimer.stop()
-        self.cc.setfpgactrlreg(self.camnum, 'off')
+        self.log(f'sending command to ccd: setfpgactrlreg({self.camnum}, {"off"})')
+        #self.cc.setfpgactrlreg(self.camnum, 'off')
+        self.cc.setfpgactrlreg(self.camnum,'off')
         #self.pollTimer.start()
         pass
     
     @Pyro5.server.expose
     def tecStart(self):
         #self.pollTimer.stop()
+        
+        self.log(f'sending command to ccd: setfpgactrlreg({self.camnum}, {"on"})')
+        
         self.cc.setfpgactrlreg(self.camnum, 'on')
+        #self.cc.setfpgactrlreg('00','on')
         #self.pollTimer.start()
         pass
     
@@ -383,7 +476,7 @@ class CCD(QtCore.QObject):
             self.daemonlist = daemon_utils.daemon_list()
             
             self.log(f'relaunching huaso_server from {server_daemon_path}')
-            self.serverd = daemon_utils.PyDaemon(name = 'huaso_server >> /home/winter/data/ccd_daemon.log', filepath = server_daemon_path, python = False)
+            self.serverd = daemon_utils.PyDaemon(name = 'huaso_server>/home/winter/data/huaso_server.log', filepath = server_daemon_path, python = False)
             self.daemonlist.add_daemon(self.serverd)
             # launch the daemon
             self.daemonlist.launch_all()

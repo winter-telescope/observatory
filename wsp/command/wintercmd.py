@@ -155,7 +155,7 @@ class Wintercmd(QtCore.QObject):
     newCmdRequest = QtCore.pyqtSignal(object)
     
     
-    def __init__(self, base_directory, config, state, daemonlist, telescope, dome, chiller, pdu1, logger, viscam, ccd):
+    def __init__(self, base_directory, config, state, mirror_cover, daemonlist, telescope, dome, chiller, pdu1, logger, viscam, ccd):
         # init the parent class
         #super().__init__()
         super(Wintercmd, self).__init__()
@@ -177,6 +177,7 @@ class Wintercmd(QtCore.QObject):
         self.logger = logger
         self.viscam = viscam
         self.ccd = ccd
+        self.mirror_cover = mirror_cover
         self.defineParser()
     
     def throwTimeoutError(self):
@@ -2106,6 +2107,23 @@ class Wintercmd(QtCore.QObject):
         
         # kill the program
         QtCore.QCoreApplication.quit()
+
+##### Mirror cover commands ####
+        
+    @cmd
+    def mirror_cover_connect(self):
+        self.defineCmdParser('Connect to mirror cover server')
+        self.mirror_cover.sendreceive("connect")
+        
+    @cmd
+    def mirror_cover_open(self):
+        self.defineCmdParser('Open mirror cover')
+        self.mirror_cover.sendreceive("beginopen")
+        
+    @cmd
+    def mirror_cover_close(self):
+        self.defineCmdParser('Close mirror cover')
+        self.mirror_cover.sendreceive("beginclose")
 
 ##### TEST VISCAM COMMANDS ####
     @cmd

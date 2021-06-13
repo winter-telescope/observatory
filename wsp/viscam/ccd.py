@@ -30,7 +30,7 @@ sys.path.insert(1, wsp_path)
 print(f'ccd: wsp_path = {wsp_path}')
 from utils import utils
 from utils import logging_setup
-
+from housekeeping import data_handler
 
 
 #class local_dome(object):
@@ -41,6 +41,8 @@ class local_ccd(QtCore.QObject):
     from outside this thread let's try using the signal/slot approach.
     '''
     newCommand = QtCore.pyqtSignal(object)
+    
+    imageSaved = QtCore.pyqtSignal()
     
     def __init__(self, base_directory, config, logger):
         super(local_ccd, self).__init__()
@@ -149,7 +151,8 @@ class local_ccd(QtCore.QObject):
         '''
         Do any conditioning we need to properly handle and parse the state dictionary
         '''
-        """ # things that have to do with querying server
+        """ 
+        # things that have to do with querying server
         self.state.update({'last_command_reply'             :   self.remote_state.get('command_reply', self.default)})
         self.state.update({'query_timestamp'                :   self.remote_state.get('timestamp', self.default)})
         self.state.update({'reconnect_remaining_time'       :   self.remote_state.get('reconnect_remaining_time', self.default)})
@@ -161,7 +164,13 @@ class local_ccd(QtCore.QObject):
         
         self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
         
-        
+        self.imageSavedFlag = self.state.get('imageSavedFlag', False)
+        if self.imageSavedFlag:
+            self.imageSaved.emit()
+            self.resetImageSavedFlag()
+    
+    def resetImageSavedFlag(self):
+        self.remote_object.resetImageSavedFlag()
             
     def print_state(self):
         self.update_state()
@@ -191,8 +200,10 @@ class local_ccd(QtCore.QObject):
     def tecStop(self):
         self.remote_object.tecStop()
         
+    def getExposure(self):
+        exptime = self.remote_object.getExposure()
     
-        
+        print(f'exposure time = {exptime}')
 '''
     def setSetpoint(self, temperature):
         #print(f'ccd: trying to set the set point to {temperature}')
@@ -221,7 +232,7 @@ if __name__ == '__main__':
     ccd.print_state()
     
     
-    while True:
+    while False:
         try:
             ccd.update_state()
             ccd.print_state()

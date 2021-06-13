@@ -22,9 +22,11 @@ class MirrorCovers:
         self.port = port
         self.config = config
         self.logger = logger
+        self.open_mirror_cover_socket(self.addr, self.port)
+
         
     def open_mirror_cover_socket(self, addr, port):
-        self.log.info(f'Connecting to PWShutter TCP server at address {addr} and port {port}')
+        self.logger.info(f'Connecting to PWShutter TCP server at address {addr} and port {port}')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(0.5)
         self.sock.connect((addr, port))
@@ -37,7 +39,7 @@ class MirrorCovers:
             self.state.update({'mirror_cover_connected_last_timestamp'  : datetime.utcnow().timestamp()})
         elif code == 255:
             self.state.update({'mirror_cover_connected' : code})
-            self.log.info(f'Error while connecting to mirror cover, code {code} ')
+            self.logger.info(f'Error while connecting to mirror cover, code {code} ')
             self.state.update({'mirror_cover_connected_last_timestamp'  : datetime.utcnow().timestamp()})    
         
         (code, text) = self.sendreceive( "shutterstate")
@@ -66,7 +68,7 @@ class MirrorCovers:
         Returns a tuple (code, error_text)
         """
         self.sock.send(bytes(command + "\n","utf-8"))
-        response = self.readline(self.sock)
+        response = self.readline()
         # The response should consist of a numeric code, optionally
         # followed by some text if the code is 255 (error). Parse this out.
         fields = response.split(" ")

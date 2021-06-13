@@ -36,6 +36,7 @@ print(f'control: wsp_path = {wsp_path}')
 from power import power
 #from telescope import pwi4
 from telescope import telescope
+from telescope import mirror_cover 
 #from command import commandServer_multiClient
 from command import commandServer
 from command import wintercmd
@@ -173,6 +174,10 @@ class control(QtCore.QObject):
                                              host = self.config['telescope']['host'], 
                                              port = self.config['telescope']['port'])
 
+        # init the mirror cover 
+        self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
+                                                      port = self.config['telescope_shutter']['port'],
+                                                      config = self.config, logger = self.logger)
         
         # init the dome
         self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope)
@@ -233,7 +238,8 @@ class control(QtCore.QObject):
                                                 counter = self.counter,
                                                 ephem = self.ephem,
                                                 viscam = self.viscam, 
-                                                ccd = self.ccd
+                                                ccd = self.ccd, 
+                                                mirror_cover = self.mirror_cover
                                                 )
         
         
@@ -244,7 +250,7 @@ class control(QtCore.QObject):
         In this section we set up the appropriate command interface and executors for the chosen mode
         '''
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.base_directory, self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, pdu1 = self.pdu1, logger = self.logger, viscam = self.viscam, ccd = self.ccd)
+        self.wintercmd = wintercmd.Wintercmd(self.base_directory, self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, pdu1 = self.pdu1, logger = self.logger, viscam = self.viscam, ccd = self.ccd, mirror_cover = self.mirror_cover)
         
         if mode in ['r','m']:
             #init the schedule executor
@@ -273,7 +279,7 @@ class control(QtCore.QObject):
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
             #self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, alertHandler = self.alertHandler, schedule = self.schedule, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem, viscam=self.viscam, ccd = self.ccd)
+            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, alertHandler = self.alertHandler, schedule = self.schedule, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem, viscam=self.viscam, ccd = self.ccd, mirror_cover = self.mirror_cover)
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor

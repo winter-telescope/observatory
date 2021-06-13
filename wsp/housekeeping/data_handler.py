@@ -47,7 +47,7 @@ from telescope import pwi4
 
 class hk_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, schedule, telescope,weather,labjacks, counter, dome, chiller, ephem, viscam, ccd, verbose = False):
+    def __init__(self,config, state, curframe, schedule, telescope,weather, mirror_cover, labjacks, counter, dome, chiller, ephem, viscam, ccd, verbose = False):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -64,6 +64,7 @@ class hk_loop(QtCore.QThread):
         self.ephem = ephem
         self.viscam = viscam
         self.ccd = ccd
+        self.mirror_cover = mirror_cover
         
         # pass the config to the thread
         self.config = config
