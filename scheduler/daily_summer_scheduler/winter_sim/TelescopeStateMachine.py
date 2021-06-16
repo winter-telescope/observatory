@@ -123,7 +123,7 @@ class TelescopeStateMachine(Machine):
             < (10. * u.deg)):
             return False
         # W 
-        if ((target_skycoord.dec < -35. * u.deg) or
+        if ((target_skycoord.dec < -36. * u.deg) or
                 (target_skycoord.dec > 90. * u.deg)):
             return False
         return True
