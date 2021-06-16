@@ -12,7 +12,7 @@ from astropy.time import Time, TimeDelta
 import astroplan
 from .Fields import Fields
 #from .SkyBrightness import SkyBrightness, FakeSkyBrightness
-from .magnitudes import W_limiting_mag
+from .magnitudes import limiting_mag
 from .optimize import request_set_optimize, slot_optimize, tsp_optimize, night_optimize
 from .cadence import enough_gap_since_last_obs
 from .constants import W_loc, P48_loc, PROGRAM_IDS, FILTER_IDS, TIME_BLOCK_SIZE
@@ -403,8 +403,8 @@ class QueueManager(object):
 
         # compute seeing at each pointing
         df.loc[wup, 'seeing'] = seeing_at_pointing(df.loc[wup,'altitude'])
-
-        df.loc[wup, 'limiting_mag'] = W_limiting_mag(EXPOSURE_TIME, 
+        # W
+        df.loc[wup, 'limiting_mag'] = limiting_mag(EXPOSURE_TIME, 
             df.loc[wup, 'seeing'],
             df.loc[wup, 'sky_brightness'],
             filter_id = df.loc[wup,'filter_id'],
@@ -424,17 +424,17 @@ class QueueManager(object):
         dm_r = (21.5-20.1)
         dm_i = (20.9-19.5)
 
-#        wg = df['filter_id'] == 1
-#        if np.sum(wg):
-#            df.loc[wg,'limiting_mag'] = \
-#                (df.loc[wg,'limiting_mag'] - mlim_bright_g) * dm_r/dm_g \
-#                + mlim_bright_r
-#
-#        wi = df['filter_id'] == 3
-#        if np.sum(wi):
-#            df.loc[wi,'limiting_mag'] = \
-#               (df.loc[wi,'limiting_mag'] - mlim_bright_i) * dm_r/dm_i \
-#                + mlim_bright_r 
+        wg = df['filter_id'] == 1
+        if np.sum(wg):
+            df.loc[wg,'limiting_mag'] = \
+                (df.loc[wg,'limiting_mag'] - mlim_bright_g) * dm_r/dm_g \
+                + mlim_bright_r
+
+        wi = df['filter_id'] == 3
+        if np.sum(wi):
+            df.loc[wi,'limiting_mag'] = \
+              (df.loc[wi,'limiting_mag'] - mlim_bright_i) * dm_r/dm_i \
+                + mlim_bright_r 
 
         # assign a very bright limiting mag to the fields that are down 
         # so the metric goes to zero
