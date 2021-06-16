@@ -1,0 +1,9 @@
+{
+	"run_name": "1_night_test",
+	"queues": [
+		{"config_file": "summer_test_config.json",
+			"queue_name": "default"},
+        {"config_file": "summer_fallback.json",
+        "queue_name": "fallback"}
+	]
+}	

@@ -1,0 +1,9 @@
+{
+	"run_name": "example_winter_schedule",
+	"queues": [
+		{"config_file": "W_survey_180501.json",
+			"queue_name": "default"},
+		{"config_file": "reference_building.json",
+			"queue_name": "fallback"}
+	]
+}	
