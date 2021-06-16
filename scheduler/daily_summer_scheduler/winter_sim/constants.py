@@ -111,7 +111,7 @@ PROGRAM_IDS = list(PROGRAM_ID_TO_NAME.keys())
 PROGRAM_BLOCK_SEQUENCE = [1, 2, 1, 2, 3]
 LEN_BLOCK_SEQUENCE = len(PROGRAM_BLOCK_SEQUENCE)
 
-FILTER_NAME_TO_ID = {'u': 1, 'r': 2, 'i': 3}
+FILTER_NAME_TO_ID = {'g': 1, 'r': 2, 'i': 3}
 FILTER_NAMES = list(FILTER_NAME_TO_ID.keys())
 FILTER_ID_TO_NAME = {v: k for k, v in list(FILTER_NAME_TO_ID.items())}
 FILTER_IDS = list(FILTER_ID_TO_NAME.keys())
