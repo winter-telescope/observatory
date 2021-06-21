@@ -26,11 +26,11 @@ from utils import utils
 
 # get the path for the scheduler
 code_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-daily_scheduler_path = os.path.join(code_path, 'scheduler','daily_winter_scheduler')
+daily_scheduler_path = os.path.join(code_path, 'scheduler','daily_summer_scheduler')
 
 # create the arguments
 filepath = os.path.join(daily_scheduler_path,'run_winter_sim.py')
-sky_config = os.path.join(daily_scheduler_path, 'sims', 'allsky_config.json')
+sky_config = os.path.join(daily_scheduler_path, 'sims', 'summer_1_night.json')
 night_config = os.path.join(daily_scheduler_path, 'config', 'tonight.cfg')
 print(f'Setting up to run schedule for night of {utils.tonight()}')
 print(f'### RUNNING DAILY WINTER SCHEDULER ###')
@@ -53,7 +53,7 @@ alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
 
 alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
 
-msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} running daily winter scheduler!"
+msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} running daily summer scheduler!"
 
 alertHandler.slack_log(msg, group = None)
 print(f'running command: {cmd}')
