@@ -1,15 +1,16 @@
 """Sky brightness model."""
 
-#import sklearn
-#from sklearn import model_selection, ensemble, preprocessing, pipeline
-#from sklearn import neighbors, svm, linear_model
-#from sklearn_pandas import DataFrameMapper
+import sklearn
+from sklearn import model_selection, ensemble, preprocessing, pipeline
+from sklearn import neighbors, svm, linear_model
+from sklearn_pandas import DataFrameMapper
 from sklearn.externals import joblib
-#import xgboost as xgb
+import xgboost as xgb
 import pandas as pd
 import numpy as np
 from .constants import FILTER_NAME_TO_ID, BASE_DIR
-
+import sys
+sys.modules['sklearn.externals.joblib'] = joblib
 
 class SkyBrightness(object):
 
@@ -38,9 +39,9 @@ class SkyBrightness(object):
         wr = (df['filter_id'] == FILTER_NAME_TO_ID['r'])
         if np.sum(wr):
             sky[wr] = self.clf_r.predict(df[wr])
-        wi = (df['filter_id'] == FILTER_NAME_TO_ID['i'])
-        if np.sum(wi):
-            sky[wi] = self.clf_i.predict(df[wi])
+        #wi = (df['filter_id'] == FILTER_NAME_TO_ID['i'])
+        #if np.sum(wi):
+        #    sky[wi] = self.clf_i.predict(df[wi])
         
         #print('Self', df.moonillf) 
         #print('Sky', sky) 
@@ -60,7 +61,7 @@ class FakeSkyBrightness(object):
 def train_sky_model(filter_name='r', df=None):
 
     # PTF used 4 for i-band
-    filterid_map = {'r': 2, 'g': 1, 'i': 4}
+    filterid_map = {'r': 2, 'g': 1}
 
     if df is None:
         df = pd.read_csv(BASE_DIR + '../data/ptf-iptf_diq.csv.gz')
