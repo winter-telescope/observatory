@@ -221,12 +221,12 @@ class QueueManager(object):
                 mjd_range = [mjd_start, mjd_stop])
         # drop engineering/commissioning
         obs_count_by_program = obs_count_by_program[
-                obs_count_by_program['program_id'] != 0]
+                obs_count_by_program['program_id'] != 7]
         obs_count_by_program.set_index('program_id', inplace=True)
 
         # if there are no observations, add zeros
         for program_id in PROGRAM_IDS:
-            if program_id != 0:
+            if program_id != 7:
                 if program_id not in obs_count_by_program.index:
                     obs_count_by_program.loc[program_id] = 0
 
@@ -234,7 +234,7 @@ class QueueManager(object):
 
         # infer the program fractions from the subprograms
         target_program_fractions = {propid:0 for propid in PROGRAM_IDS 
-                if propid != 0}
+                if propid != 7}
         for op in self.observing_programs:
             target_program_fractions[op.program_id] = \
                     op.program_observing_time_fraction
@@ -346,9 +346,9 @@ class QueueManager(object):
                 self.assign_nightly_requests(current_state, obs_log)
 
         # define functions that actually do the work in subclasses
-        print("Debug queue manager inputs: ", current_state, obs_log, time_limit)
+
         next_obs = self._next_obs(current_state, obs_log,time_limit = time_limit)
-        print("Debug queue manager outputs: ", next_obs )
+
         # check if we have a disallowed observation, and reject it:
         if next_obs['target_limiting_mag'] < 0:
             self.remove_requests(next_obs['request_id'])
@@ -681,8 +681,8 @@ class GurobiQueueManager(QueueManager):
         self.filter_by_slot = \
             grp['metric_filter_id'].apply(lambda x: np.unique(x)[0])
             
-        print('queued', self.queued_requests_by_slot)
-        print('old', grp['request_id'].apply(list))
+        #print('queued', self.queued_requests_by_slot)
+        #print('old', grp['request_id'].apply(list))
 
         # self.queued_requests_by_slot = grp['request_id'].apply(list)
         # self.filter_by_slot = \
