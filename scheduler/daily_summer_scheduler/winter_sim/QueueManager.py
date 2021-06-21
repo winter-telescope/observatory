@@ -11,7 +11,7 @@ import astropy.units as u
 from astropy.time import Time, TimeDelta
 import astroplan
 from .Fields import Fields
-#from .SkyBrightness import SkyBrightness, FakeSkyBrightness
+from .SkyBrightness import SkyBrightness, FakeSkyBrightness
 from .magnitudes import limiting_mag
 from .optimize import request_set_optimize, slot_optimize, tsp_optimize, night_optimize
 from .cadence import enough_gap_since_last_obs
@@ -89,7 +89,7 @@ class QueueManager(object):
         else:
             self.fields = fields
 
-        # self.Sky = SkyBrightness()
+        self.Sky = SkyBrightness()
 
     def is_valid(self, time):
         if self.validity_window is None:
@@ -200,7 +200,7 @@ class QueueManager(object):
         if (len(self.rp.pool) <= 0): # W
             raise QueueEmptyError("Started night with no valid observations")
 
-        assert(len(self.rp.pool) > 0)
+        #assert(len(self.rp.pool) > 0) # W
 
         # any specific tasks needed)
         self._assign_nightly_requests(current_state, 
@@ -346,8 +346,9 @@ class QueueManager(object):
                 self.assign_nightly_requests(current_state, obs_log)
 
         # define functions that actually do the work in subclasses
+        print("Debug queue manager inputs: ", current_state, obs_log, time_limit)
         next_obs = self._next_obs(current_state, obs_log,time_limit = time_limit)
-
+        print("Debug queue manager outputs: ", next_obs )
         # check if we have a disallowed observation, and reject it:
         if next_obs['target_limiting_mag'] < 0:
             self.remove_requests(next_obs['request_id'])
