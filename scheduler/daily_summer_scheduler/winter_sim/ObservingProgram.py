@@ -157,7 +157,7 @@ class ObservingProgram(object):
             filter_sequence = [filter_ids_tonight for i in
                                range(self.n_visits_per_night)]
         elif self.filter_choice == 'sequence':
-            assert(len(self.filter_ids) == self.n_visits_per_night)
+            # assert(len(self.filter_ids) == self.n_visits_per_night) # W
             filter_sequence = self.filter_ids.copy()
 
         request_set = []
