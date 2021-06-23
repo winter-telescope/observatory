@@ -90,16 +90,20 @@ def getRADecs(url):
     return RAs, Decs
     
 
-def get_fields(url,sigma=0.13009,file='SUMMER_fields.txt',names=['ID',"RA",'Dec','EBV','GalLong','GalLat','EclLong','EclLat']):
+def get_fields(url=None,RAs=None,Decs=None,sigma=0.13009,file='SUMMER_fields.txt',names=['ID',"RA",'Dec','EBV','GalLong','GalLat','EclLong','EclLat']):
     '''
     
-
+    Either have a url with the RA/Decs, or input your own through RAs and Decs.
     Parameters
     ----------
     url : String
-        A URL of the supernovae from a csv in https://sites.astro.caltech.edu/ztf/bts/explorer.php?f=s&subsample=sn&classstring=Ia&quality=y&purity=y&ztflink=lasair&startsavedate=2021-05-31&endsavedate=2021-06-15&endpeakmag=19.0&reverse=y.RIPTION.
+        A URL of the supernovae from a csv in https://sites.astro.caltech.edu/ztf/bts/explorer.php?f=s&subsample=sn&classstring=Ia&quality=y&purity=y&ztflink=lasair&startsavedate=2021-05-31&endsavedate=2021-06-15&endpeakmag=19.0&reverse=y.RIPTION. Defaults to none if you have no url
+    RAs: List of strings
+        List of RAs in form 00h00m00s. Defaults to None. Leave as none if using a url for RA/Decs
+    Decs: List of strings
+        List of Decs in form 00d00m00s. Defaults to None. Leave as none if using a url for RA/Decs
     sigma : FLoat, optional
-        Distance that the field's Dec can be from desired Dec. Defaults to 13.009
+        Distance that the field's Dec can be from desired Dec. Defaults to 0.13009
     file : String, optional
         File name of file with fields. Defaults to "SUMMER_fields.txt
     names : List of strings, optional
@@ -111,13 +115,12 @@ def get_fields(url,sigma=0.13009,file='SUMMER_fields.txt',names=['ID',"RA",'Dec'
         Field IDs of each RA/Dec
 
     '''
-    RAs,Decs=getRADecs(url)
+    if RAs==None and Decs==None:  
+        RAs,Decs=getRADecs(url)
     fields=[]
     for i in range(len(RAs)):
         fields.append(fieldFinder(RAs[i],Decs[i]))
     return fields
-        
-        
                 
         
     
