@@ -822,6 +822,22 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state["autofocus.tolerance"]
+        
+#calibration
+    darks:
+        num_pics: 6
+        exposures: [10,20,30,40,50,60]
+    biases:
+        num_pics: 6
+    flats:
+        num_pics: 6
+        exposures: [10,10,30,30,60,60]
+        filters: ['u','r','u','r','u','r']
+    calibration_focus_levels:
+        r: 10200
+        u: 10250
+    
+    
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud_index:
