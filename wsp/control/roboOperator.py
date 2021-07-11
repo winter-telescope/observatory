@@ -617,16 +617,41 @@ class RoboOperator(QtCore.QObject):
         self.startup_complete = True
             
         self.announce(':greentick: startup complete!')
-        
+    
+    ### Calibration ###
+    def take_darks(self):
+        numPics=self.config(['darks']['num_pics'])
+        exposuresList=self.config(['darks']['exposures'])
+        for i in range(numPics)
+            self.do('ccd_set_exposure'+exposuresList[i])
+            self.do('ccd_do_exposure')
+   
+    def take_biases(self):
+        numPics=self.config(['biases']['num_pics'])
+        for i in range(numPics):
+            self.do('ccd_set_exposure 0') #this doesn't work, need to comment out shutter in ccd_do_exposure
+            self.do('ccd_do_exposure')
+
+    def take_flats(self):
+        numPics=self.config(['flats']['num_pics'])
+        filterList=self.config(['flats']['filters'])
+        exposuresList=self.config(['flats']['exposures'])
+        self.do('mount_goto_alt_az 45 90')
+        self.do('dome_goto 90')
+        for i in range(numPics-1):
+            self.do('command_filter_wheel'+str(filterList[i]))
+            self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
+            self.do('ccd_set_exposure '+exposuresList[i])
+            self.do('ccd_do_exposure')
+    
     def do_calibration(self):
         
         context = 'do_calibration'
         
         self.logger.info('robo: doing calibration routine. for now this does nothing.')
-        ### Take darks ###
-        # Nothing here yet
-        
-        
+        self.take_biases
+        self.take_darks
+        self.take_flats
         self.calibration_complete = True
     
     def do_currentObs(self):
