@@ -365,10 +365,11 @@ class CCD(QtCore.QObject):
         pass
     
     def readImg(self):
-        
-        # CLOSE THE SHUTTER!
-        self.log('closing the shutter!')
-        self.viscam.send_shutter_command(0)
+        shutterStatus=self.viscam.check_shutter_state #check if shutter is open
+        if shutterStatus==1: #if shutter isn't open, close it
+            # CLOSE THE SHUTTER!
+            self.log('closing the shutter!')
+            self.viscam.send_shutter_command(0)
         
         self.shutter_close_timestamp = datetime.utcnow().timestamp()
         
@@ -442,30 +443,6 @@ class CCD(QtCore.QObject):
         self.log('got to the end of the doExposure method')
         pass
     
-    def readImgNoShutter(self):
-        
-        # CLOSE THE SHUTTER! -- No not here! this is the difference between this one and readImg
-        #self.log('closing the shutter!')
-        #self.viscam.send_shutter_command(0)
-        
-        self.shutter_close_timestamp = datetime.utcnow().timestamp()
-        
-        self.exptime_actual = self.shutter_close_timestamp - self.shutter_open_timestamp
-        
-        self.state.update({'exptime_actual' : self.exptime_actual})
-        
-        # double check the readout time
-        self.getReadoutTime()
-        
-        waittime = self.readoutTime * 1000
-        self.log(f'starting {self.readoutTime}s timer to wait for image to download')
-        
-        #self.readTimer.start(int(waittime))
-        self.startReadTimer.emit(waittime)
-        
-        # emit a signal that we're done acquiring the image. useful for roboOperator
-        self.imageAcquired.emit()
-        pass
     
     def fetchImg(self):
         
