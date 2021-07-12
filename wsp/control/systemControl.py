@@ -125,7 +125,12 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.ccdd)
             
             # housekeeping data logging daemon (hkd = housekeeping daemon)
-            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/dirfiled.py")
+            if '--gd' in opts:
+                print(f'control: USING THE DIRFILE WRITER FROM GETDATA')
+                self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/dirfiled.py")
+            else:
+                print(f'control: USING THE PYTHON-ONLY DIRFILE WRITER')
+                self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py")
             self.daemonlist.add_daemon(self.hkd)
             
         if mode in ['r','m']:
@@ -175,6 +180,7 @@ class control(QtCore.QObject):
                                              port = self.config['telescope']['port'])
 
         # init the mirror cover 
+        
         self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
                                                       port = self.config['telescope_shutter']['port'],
                                                       config = self.config, logger = self.logger)
