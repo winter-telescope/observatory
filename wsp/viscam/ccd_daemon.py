@@ -389,6 +389,84 @@ class CCD(QtCore.QObject):
         self.imageAcquired.emit()
         pass
     
+     def doExposureNoShutter(self, header = None, image_suffix = None):
+        
+        self.preventPollingSignal.emit()
+        
+        # wait for the current poll to be finished
+        while self.doing_poll:
+            time.sleep(0.5)
+            self.log('poll still happening, waiting 0.5 seconds')
+        
+        
+        # update the header info and image suffix (some note) that got passed in
+        if header is None:
+            self.header = dict()
+        else:
+            self.header = header
+            
+        if image_suffix is None:
+            self.image_suffix = ''
+        else:
+            self.image_suffix = image_suffix
+        
+        self.log(f'starting an exposure!')
+        self.log(f'doExposure is being called in thread {threading.get_ident()}')
+        #self.pollTimer.stop()
+        
+        
+        
+        self.cc.acquireimg('00')
+        self.cc.settrigmode(self.camnum, '01')
+        
+        
+        
+        # then start the exposure timer
+        if True: #self.exptime is None:
+            waittime = self.exptime_nom * 1000
+            
+        
+        else:
+            waittime = self.exptime*1000
+        
+        self.log(f'starting {self.exptime_nom}s timer to wait for exposure to finish')
+        #self.expTimer.start(int(waittime))
+        self.startExposureTimer.emit(waittime)
+        
+        # open the shutter!!----No not in this one! This is the difference between this one and doExposure
+        #self.log('opening the shutter!')
+        #self.viscam.send_shutter_command(1)
+        
+        self.shutter_open_timestamp = datetime.utcnow().timestamp()
+        
+        self.log('got to the end of the doExposure method')
+        pass
+    
+    def readImgNoShutter(self):
+        
+        # CLOSE THE SHUTTER! -- No not here! this is the difference between this one and readImg
+        #self.log('closing the shutter!')
+        #self.viscam.send_shutter_command(0)
+        
+        self.shutter_close_timestamp = datetime.utcnow().timestamp()
+        
+        self.exptime_actual = self.shutter_close_timestamp - self.shutter_open_timestamp
+        
+        self.state.update({'exptime_actual' : self.exptime_actual})
+        
+        # double check the readout time
+        self.getReadoutTime()
+        
+        waittime = self.readoutTime * 1000
+        self.log(f'starting {self.readoutTime}s timer to wait for image to download')
+        
+        #self.readTimer.start(int(waittime))
+        self.startReadTimer.emit(waittime)
+        
+        # emit a signal that we're done acquiring the image. useful for roboOperator
+        self.imageAcquired.emit()
+        pass
+    
     def fetchImg(self):
         
         # prevent status polling while downloading the image so the buffer stays clear
