@@ -121,8 +121,11 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.chillerd)
             
             # ccd daemon
-            self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
-            self.daemonlist.add_daemon(self.ccdd)
+            if '--viscam' in opts:
+                self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
+                self.daemonlist.add_daemon(self.ccdd)
+            else:
+                pass
             
             # housekeeping data logging daemon (hkd = housekeeping daemon)
             if '--gd' in opts:
