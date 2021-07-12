@@ -326,6 +326,55 @@ fields:
         dtype: int64
         rate: 'hk'
         var: 'pdu1.status[0]'
+    pdu1_2:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'pdu1.status[1]'
+    pdu1_3:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'pdu1.status[2]'
+    pdu1_4:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'pdu1.status[3]'
+    pdu1_5:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'pdu1.status[4]'
+    pdu1_6:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'pdu1.status[5]'
+    pdu1_7:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'pdu1.status[6]'
+    pdu1_8:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'pdu1.status[7]'
 #ephemeris
     ephem_timestamp:
         ftype: raw
