@@ -134,7 +134,7 @@ class CCD(QtCore.QObject):
         # is a poll currently happening?
         self.doing_poll = False
         
-        """
+        
         # exposure timer
         self.expTimer = QtCore.QTimer()
         self.expTimer.setSingleShot(True)
@@ -144,7 +144,7 @@ class CCD(QtCore.QObject):
         self.readTimer = QtCore.QTimer()
         self.readTimer.setSingleShot(True)
         self.readTimer.timeout.connect(self.fetchImg)
-        """
+        
         
         # set up poll status thread
         self.statusThread = data_handler.daq_loop(func = self.pollStatus, 
