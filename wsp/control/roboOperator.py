@@ -630,7 +630,7 @@ class RoboOperator(QtCore.QObject):
         numPics=self.config(['biases']['num_pics'])
         for i in range(numPics):
             self.do('ccd_set_exposure 0') #this doesn't work, need to comment out shutter in ccd_do_exposure
-            self.do('ccd_do_exposure')
+            self.do('ccd_do_exposure_no_shutter')
 
     def take_flats(self):
         numPics=self.config(['flats']['num_pics'])
@@ -642,7 +642,7 @@ class RoboOperator(QtCore.QObject):
             self.do('command_filter_wheel'+str(filterList[i]))
             self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
             self.do('ccd_set_exposure '+exposuresList[i])
-            self.do('ccd_do_exposure')
+            self.do('ccd_do_exposure_no_shutter')
     
     def do_calibration(self):
         
