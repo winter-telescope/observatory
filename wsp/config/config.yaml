@@ -661,7 +661,7 @@ fields:
         ftype: raw
         label: 'Status'
         units: None
-        dtype: int
+        dtype: int64
         rate: fast
         var: 'telescope.state["mount.axis1.is_enabled"]'
     mount_alt_rms_error:
