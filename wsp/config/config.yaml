@@ -301,7 +301,7 @@ fields:
         ftype: raw
         label: 'count'
         units: None
-        dtype: float64
+        dtype: int64
         rate: slow
         var: 'index'
     timestamp:
