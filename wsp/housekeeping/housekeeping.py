@@ -105,8 +105,8 @@ class housekeeping():
         #self.create_dirfile()
         
         # create the housekeeping poll list
-        self.housekeeping_poll_functions = list()
-        
+        #self.housekeeping_poll_functions = list()
+        self.housekeeping_poll_functions = dict()
         
         # define the DAQ loops
         if mode.lower() in ['m','r']:
@@ -116,9 +116,12 @@ class housekeeping():
                                                        )
                                                        #rate = 'fast')
             # add NON INSTRUMENT status polls to housekeeping
-            self.housekeeping_poll_functions.append(self.dome.update_state)
-            self.housekeeping_poll_functions.append(self.ephem.update_state)
-        
+            #self.housekeeping_poll_functions.append(self.dome.update_state)
+            #self.housekeeping_poll_functions.append(self.ephem.update_state)
+            self.housekeeping_poll_functions.update({'dome' : self.dome.update_state})
+            self.housekeeping_poll_functions.update({'ephem' : self.ephem.update_state})
+            
+            
         self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
                                                   dt = self.config['daq_dt']['hk'],
                                                   name = 'labjack_daqloop'
@@ -132,11 +135,19 @@ class housekeeping():
                                                     dt = 5000,
                                                     name = 'state_dump')
         # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
+        """
         self.housekeeping_poll_functions.append(self.counter.update_state)
         self.housekeeping_poll_functions.append(self.chiller.update_state)
         self.housekeeping_poll_functions.append(self.viscam.update_state)
         self.housekeeping_poll_functions.append(self.ccd.update_state)
         self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
+        """
+        self.housekeeping_poll_functions.update({'counter' : self.counter.update_state})
+        self.housekeeping_poll_functions.update({'chiller' : self.chiller.update_state})
+        #self.housekeeping_poll_functions.update({'viscam'  : self.viscam.update_state})
+        self.housekeeping_poll_functions.update({'ccd'     : self.ccd.update_state})
+        self.housekeeping_poll_functions.update({'mirror_cover' : self.mirror_cover.update_state})
+        
 
         self.hk_loop = data_handler.hk_loop(config = self.config, 
                                                state = self.state, 
@@ -175,8 +186,12 @@ class housekeeping():
         """
         execute all the functions in the housekeeping_poll_functions
         """
-        for func in self.housekeeping_poll_functions:
+        #for func in self.housekeeping_poll_functions:
+        for key in self.housekeeping_poll_functions.keys():
+            func = self.housekeeping_poll_functions[key]
+            object_name = key
             # do the function
+            #print(f'housekeeping: polling {object_name}.{func.__name__}')
             func()
             
     def start_housekeeping_poll_loop(self):
