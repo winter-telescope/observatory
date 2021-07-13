@@ -28,10 +28,10 @@ can be read and visualized in real time using KST.
 import sys
 import os
 import numpy as np
-import time
+#import time
 from datetime import datetime
-from PyQt5 import uic, QtCore, QtGui, QtWidgets
-import functools
+from PyQt5 import QtCore#, uic, QtGui, QtWidgets
+#import functools
 import threading
 
 # add the wsp directory to the PATH
@@ -40,8 +40,8 @@ sys.path.insert(1, wsp_path)
 print(f'data_handler: wsp_path = {wsp_path}')
 
 # winter modules
-from housekeeping import easygetdata as egd
-from telescope import pwi4
+#from housekeeping import easygetdata as egd
+#from telescope import pwi4
 
 
 
