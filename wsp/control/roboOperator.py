@@ -21,6 +21,8 @@ import threading
 import astropy.time
 import astropy.coordinates
 import astropy.units as u
+import glob
+import yaml
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
@@ -629,6 +631,24 @@ class RoboOperator(QtCore.QObject):
         
         self.calibration_complete = True
     
+    def do_focusLoop(self):
+        """
+        Runs a focus loop for a given filter by taking a set of images and collecting the relative
+        size of objects in the image. Will collimate mirror at optimal position.
+        
+        """
+        filter_range = range(self.focuser_config['filt_limits']['u_lower'], self.focuser_config['filt_limits']['u_upper'], self.focuser_config['focus_loop_param']['interval'])
+        images = []
+        
+        for dist in filter_range:
+            self.telescope.focuser_goto(dist)
+            self.ccd.doExposure()
+            recent_imgs = glob.glob(self.focuser_config['focus_loop_param']['recent_path'] + self.focuser_config['focus_loop_param']['file_type'])
+            images.append(max(recent_imgs, key=os.path.getctime))
+        
+        
+        
+        
     def do_currentObs(self):
         """
         do the observation of whatever is the current observation in self.schedule.currentObs
