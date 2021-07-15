@@ -37,7 +37,7 @@ print(f'housekeeping: wsp_path = {wsp_path}')
 # winter modules
 #from housekeeping import easygetdata as egd
 from housekeeping import data_handler
-from housekeeping import labjacks
+#from housekeeping import labjacks
 #from daemon import daemon_utils
 
 # the main housekeeping class, it lives in the namespace of the control class
@@ -75,7 +75,7 @@ class housekeeping():
             lj0:
                 config: 'labjack0_config.yaml'
         '''
-        self.labjacks = labjacks.labjack_set(self.config, self.base_directory)
+        #self.labjacks = labjacks.labjack_set(self.config, self.base_directory)
         #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
         
         #self.labjacks.read_all_labjacks()
@@ -121,13 +121,13 @@ class housekeeping():
             self.housekeeping_poll_functions.update({'dome' : self.dome.update_state})
             self.housekeeping_poll_functions.update({'ephem' : self.ephem.update_state})
             
-            
+        """    
         self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
                                                   dt = self.config['daq_dt']['hk'],
                                                   name = 'labjack_daqloop'
                                                   )
                                                   #rate = 'very_slow')
-        
+        """
         # write the current state to a file
         
         
