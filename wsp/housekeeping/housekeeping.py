@@ -22,7 +22,7 @@ import time
 from datetime import datetime
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import pathlib
-from labjack import ljm
+#from labjack import ljm
 import astropy.coordinates
 import astropy.units as u
 import json
