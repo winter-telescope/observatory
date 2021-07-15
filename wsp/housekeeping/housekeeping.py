@@ -76,6 +76,7 @@ class housekeeping():
                 config: 'labjack0_config.yaml'
         '''
         #self.labjacks = labjacks.labjack_set(self.config, self.base_directory)
+        self.labjacks = None
         #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
         
         #self.labjacks.read_all_labjacks()
@@ -148,7 +149,7 @@ class housekeeping():
         self.housekeeping_poll_functions.update({'ccd'     : self.ccd.update_state})
         self.housekeeping_poll_functions.update({'mirror_cover' : self.mirror_cover.update_state})
         
-
+        
         self.hk_loop = data_handler.hk_loop(config = self.config, 
                                                state = self.state, 
                                                curframe = self.curframe,
