@@ -2065,6 +2065,16 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('start the robotic operator')
         if self.roboThread.isRunning():
             self.roboThread.restartRoboSignal.emit()
+    
+    @cmd
+    def robo_do_currentObs(self):
+        self.defineCmdParser('do the current observation')
+        self.roboThread.do_currentObs_Signal.emit()
+        
+    @cmd
+    def robo_do_exposure(self):
+        self.defineCmdParser('tell the robotic operator to take an image with the camera')
+        self.roboThread.doExposureSignal.emit()
         
     # General Shut Down
     @cmd

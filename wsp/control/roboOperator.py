@@ -71,6 +71,13 @@ class RoboOperatorThread(QtCore.QThread):
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
     
+    # this signal is typically emitted by wintercmd and is connected to the RoboOperator's do_currentObs method
+    do_currentObs_Signal = QtCore.pyqtSignal()
+    
+    # this signal is typically emitted by wintercmd, it connected to RoboOperator's doExposure method.
+    # this really just replicates calling ccd_do_exposure directly, but tests out all the connections between roboOperator and the ccd_daemon
+    doExposureSignal = QtCore.pyqtSignal()
+    
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover):
         super(QtCore.QThread, self).__init__()
         
@@ -114,6 +121,9 @@ class RoboOperatorThread(QtCore.QThread):
         self.restartRoboSignal.connect(self.robo.restart_robo)
         ## change schedule
         self.changeSchedule.connect(self.robo.change_schedule)
+        ## do an exposure with the ccd
+        self.doExposureSignal.connect(self.robo.doExposure)
+        
         # Start the event loop
         self.exec_()
 
@@ -803,6 +813,7 @@ class RoboOperator(QtCore.QObject):
         else:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
             self.restart_robo()
+            
     def gotoNext(self): 
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
@@ -895,7 +906,21 @@ class RoboOperator(QtCore.QObject):
     def log_timer_finished(self):
         self.logger.info('robo: exposure timer finished.')
         self.waiting_for_exposure = False
-        
+    
+    
+    def doExposure(self):
+        # test method for making sure the roboOperator can communicate with the CCD daemon
+        # 3: trigger image acquisition
+        #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
+        self.exptime = 1.0
+        self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
+        self.ccd.setexposure(self.exptime)
+        time.sleep(0.5)
+
+        self.logger.info(f'robo: telling ccd to take exposure!')
+        self.ccd.doExposure()
+    
+    
     def old_do_observing(self):
         '''
         This function must contain all of the database manipulation code to remain threadsafe and prevent

@@ -137,7 +137,8 @@ class CCD(QtCore.QObject):
         # NOTE: NPL 7-12-21 it looks like somebody commented out the connections below...
         # that means the camera won't actually take an image... so not sure why. I'm  uncommenting
         # it again.
-        
+        # NOTE: NPL 7-15-21 nevermind, this actually happens in the PyroGUI thread and should stay commented out!
+        """
         # exposure timer
         self.expTimer = QtCore.QTimer()
         self.expTimer.setSingleShot(True)
@@ -147,7 +148,7 @@ class CCD(QtCore.QObject):
         self.readTimer = QtCore.QTimer()
         self.readTimer.setSingleShot(True)
         self.readTimer.timeout.connect(self.fetchImg)
-        
+        """
         # set up poll status thread
         self.statusThread = data_handler.daq_loop(func = self.pollStatus, 
                                                        dt = 10000,
@@ -245,10 +246,14 @@ class CCD(QtCore.QObject):
         self.log(f'setting exposure to {seconds}s')
         #self.exptime_nom = seconds
         self.exptime_nom = seconds
+        """
+        # NPL 7-15-21: this is the old approach. updated below with Rob's new huaso_server api
         time_in_ccd_units = int(seconds*40000000)
         self.cc.setexposure(self.camnum, time_in_ccd_units,readback=True)
         time.sleep(0.10)
         print("ACK EXPOSURE TIME: {}".format(self.cc._result[self.camnum]))   
+        """
+        self.ccd.setexposure(self.camnum, self.exptime_nom)
         pass
     
     @Pyro5.server.expose
@@ -491,9 +496,11 @@ class CCD(QtCore.QObject):
         
         while t_elapsed < timeout:
             try:
-                self.cc = cameraClient.CameraClient('huaso_server', ('localhost', 43322))
+                #self.cc = cameraClient.CameraClient('huaso_server', ('localhost', 43322))
+                #self.connected = self.cc._connect()
+                # 7-15-21 updating with Rob's new huaso_server client approach
+                self.cc = cameraClient.CameraClient('SUMMER', ('localhost', 43322))
                 self.connected = self.cc._connect()
-            
             except:
                 self.connected = False
             
