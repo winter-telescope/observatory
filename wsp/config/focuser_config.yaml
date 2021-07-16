@@ -7,7 +7,9 @@ focus_loop_param:
 	file_type: '\*fits'
 	
 filt_limits:
-	u_upper: 10500
-	u_lower: 10000
-	r_upper: 10400
-	r_lower: 900
+	u:
+		upper: 10400
+		lower: 9000
+	r:
+		upper: 10500
+		lower: 10000
