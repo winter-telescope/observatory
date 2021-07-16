@@ -646,6 +646,7 @@ class RoboOperator(QtCore.QObject):
             self.telescope.focuser_goto(dist)
             self.ccd.doExposure()
             
+            #
             #Load recent image track
             recent_imgs = glob.glob(self.focuser_config['focus_loop_param']['recent_path'] + self.focuser_config['focus_loop_param']['file_type'])
             #Add most recent image to list of images to use in focusing

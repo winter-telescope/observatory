@@ -5,7 +5,7 @@ focus_loop_param:
 	#filt_limits : {'u':[10000,10500], '1':[10000,10500],'3': [900,10400], 'r':[900,10400]}
 	recent_path: '/data/tonight_images.lnk'
 	file_type: '\*fits'
-	
+	pixscale: 0.466
 filt_limits:
 	u:
 		upper: 10400
