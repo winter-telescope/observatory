@@ -637,16 +637,20 @@ class RoboOperator(QtCore.QObject):
         size of objects in the image. Will collimate mirror at optimal position.
         
         """
+        
         filter_range = range(self.focuser_config['filt_limits']['u_lower'], self.focuser_config['filt_limits']['u_upper'], self.focuser_config['focus_loop_param']['interval'])
         images = []
         
         for dist in filter_range:
+            #Collimate and take exposure
             self.telescope.focuser_goto(dist)
             self.ccd.doExposure()
+            
+            #Load recent image track
             recent_imgs = glob.glob(self.focuser_config['focus_loop_param']['recent_path'] + self.focuser_config['focus_loop_param']['file_type'])
+            #Add most recent image to list of images to use in focusing
             images.append(max(recent_imgs, key=os.path.getctime))
-        
-        
+            
         
         
     def do_currentObs(self):
