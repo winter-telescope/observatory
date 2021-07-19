@@ -40,7 +40,7 @@ sys.path.insert(1, wsp_path)
 print(f'data_handler: wsp_path = {wsp_path}')
 
 # winter modules
-from housekeeping import easygetdata as egd
+#from housekeeping import easygetdata as egd
 from telescope import pwi4
 
 

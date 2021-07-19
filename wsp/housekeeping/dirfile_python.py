@@ -25,8 +25,10 @@ DTYPE_DICT = dict({'FLOAT64' : 'd',
 class DFEntryType(object):
     def __init__(self,field, spf, dtype, units = None, label = None):
         self.field = field # field name
+        #print(f'{self.field}')
         self.spf = spf # sample freq
         self.fp = None # file pointer
+        #print(f'   dtype = {dtype}, type(dtype) = {type(dtype)}')
         self.dtype = dtype.upper() # data type
         self.units = units
         self.label = label
@@ -51,7 +53,7 @@ class Dirfile(object):
         
     def makeFormatFile(self):
         # write the format file, and create/open the raw data files */
-        self.format_file = open(dirname + '/format','w')
+        self.format_file = open(self.dirpath + '/format','w')
         
     def add_raw_entry(self,field, spf, dtype = "float64", units = None, label = None):
         """
@@ -168,6 +170,11 @@ class Dirfile(object):
         """
         # write the data point as a binary entry using struct
         for val in data:
+            # make sure the val is in the correct format:
+            if self.entries[field].dtype == 'FLOAT64':
+                val = float(val)
+            elif self.entries[field].dtype == 'INT64':
+                val = int(val)
             self.entries[field].fp.write(struct.pack(self.entries[field].ctype,val))
         
         # clear the write buffer. if you don't do this you can't check the file
@@ -184,43 +191,76 @@ if __name__ == '__main__':
     now = str(int(datetime.now().timestamp()))
     dirname = now + '.dm'
     
+    basedir = os.path.join(os.getenv("HOME"),'data')
+    dirpath = os.path.join(basedir, dirname)
+    linkpath = os.path.join(basedir, 'dm.lnk')
+    
     #/* make a link to the current dirfile - kst can read this to make life easy... */
     try:
-        os.symlink(dirname,'dm.lnk')
+        os.symlink(dirpath,linkpath)
     except FileExistsError:
         print('deleting existing symbolic link')
-        os.remove('dm.lnk')
-        os.symlink(dirname,'dm.lnk')
+        os.remove(linkpath)
+        os.symlink(dirpath,linkpath)
     
     # create the entries object
-    df = Dirfile(dirname)
+    df = Dirfile(dirpath)
     
+    spf = 10
     
     df.add_raw_entry(field = 'V0', 
-                     spf = 10, 
+                     spf = spf, 
                      dtype = "float64", 
                      units = 'V', 
                      label = 'Volts')
     
     df.add_raw_entry(field = 'Count',
-                     spf = 10,
+                     spf = spf,
                      dtype = "int64",
                      units = None,
                      label = None)
     
     #df.add_linterp_entry(field, input_field, LUT_file)
     
-    V0 = list(range(df.entries['V0'].spf))
-    Count = list(range(df.entries['Count'].spf))
+    #V0 = list(range(df.entries['V0'].spf))
+    #Count = list(range(df.entries['Count'].spf))
+    
+    V0 = []
+    Count = []
+    
+    i = 0
     
     print('running fake data loop')
     while True:
         try:
             
-            df.write_field('V0', V0)
+            
+            # update the count
+            Count.append(float(i))
+            
+            # make a cosine curve for V0
+            period = 30.0 # units = index units
+            V = np.cos((2*np.pi/period)*i/spf) # note the division by spf makes the period come out properly
+            V0.append(V)
+            
+            # if the vector is full, write it out and reset
+            if len(V0) == spf:
         
-            df.write_field('Count', Count)
-        
+                # write out the data
+                df.write_field('V0', V0)
+            
+                df.write_field('Count', Count)
+                
+                # reset the vectors
+                V0 = []
+                Count = []
+            else:
+                pass
+            
+            # update the index
+            i += 1
+            
+            
             
             time.sleep(0.1)
             

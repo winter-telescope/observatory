@@ -51,6 +51,7 @@ from utils import logging_setup
 # import the alert handler
 from alerts import alert_handler
 
+import small_chiller_alarm_parser
 
 
 class ReconnectHandler(object):
@@ -250,7 +251,7 @@ class StatusMonitor(QtCore.QObject):
     alert_error = QtCore.pyqtSignal(object)  
     
     
-    def __init__(self, config, logger = None, verbose = False, alertHandler  = None):
+    def __init__(self, config, logger = None, verbose = False, alertHandler  = None, chillerAlarmParser = None):
         super(StatusMonitor, self).__init__()
         
         self.config = config
@@ -261,6 +262,7 @@ class StatusMonitor(QtCore.QObject):
         # dictionary that holds all the registers to query
         self.com_dict = self.config['commands']
         
+        #
 
         self.logger = logger
         self.connection_timeout = self.config['serial_params']['timeout'] # time to allow each connection attempt to take
@@ -271,6 +273,9 @@ class StatusMonitor(QtCore.QObject):
         # set up alerts
         self.alertHandler = alertHandler
         self.alert_error.connect(self.broadcast_alert)
+        
+        # set up something to parse the chiller alarms
+        self.chillerAlarmParser = chillerAlarmParser
         
         # set up the state dictionary
         self.setup_state_dict()
@@ -480,7 +485,14 @@ class StatusMonitor(QtCore.QObject):
                                         print("alarm says: ", reply)
                                         err_name = 'Chiller alarm triggered'
                                         err_content = reply
+                                        
+                                        
+                                        # use the alarm parser to figure out what's going on
+                                        parsed_error_msg = self.chillerAlarmParser.parse_alarm_code(err_content)
+                                        
                                         self.broadcast_alert(err_name, err_content)
+                                        self.broadcast_alrt(err_name, parsed_error_msg)
+                                        
                                 else:
                                     val = reply[14:19]
                                     #print('temp_val', val)
@@ -644,12 +656,13 @@ class StatusThread(QtCore.QThread):
     #doReconnect = QtCore.pyqtSignal()
     
     
-    def __init__(self, config, logger = None, verbose = False, alertHandler = None):
+    def __init__(self, config, logger = None, verbose = False, alertHandler = None, chillerAlarmParser = None):
         super(QtCore.QThread, self).__init__()
         self.config = config
         self.logger = logger
         self.verbose = verbose
         self.alertHandler = alertHandler
+        self.chillerAlarmParser = chillerAlarmParser
         
         
         # check the update time is okay! will be bad if the loop time takes longer than the total poll time
@@ -678,7 +691,7 @@ class StatusThread(QtCore.QThread):
             self.newReply.emit(reply)
         
         self.timer= QtCore.QTimer()
-        self.statusMonitor = StatusMonitor(self.config, logger = self.logger, verbose = self.verbose, alertHandler= self.alertHandler)
+        self.statusMonitor = StatusMonitor(self.config, logger = self.logger, verbose = self.verbose, alertHandler= self.alertHandler, chillerAlarmParser = self.chillerAlarmParser)
         
         self.statusMonitor.newStatus.connect(SignalNewStatus)
         self.statusMonitor.doReconnect.connect(SignalDoReconnect)
@@ -756,7 +769,7 @@ class Chiller(QtCore.QObject):
     #statusRequest = QtCore.pyqtSignal(object)
     commandRequest = QtCore.pyqtSignal(object)
     
-    def __init__(self, config, logger = None, verbose = False, alertHandler=None):
+    def __init__(self, config, logger = None, verbose = False, alertHandler=None, chillerAlarmParser = None):
         super(Chiller, self).__init__()
         # attributes describing the internet address of the dome server
         self.config = config
@@ -764,8 +777,9 @@ class Chiller(QtCore.QObject):
         self.state = dict()
         self.verbose = verbose
         self.alertHandler = alertHandler
+        self.chillerAlarmParser = chillerAlarmParser
         
-        self.statusThread = StatusThread(  config = self.config, logger = self.logger, verbose = self.verbose, alertHandler = self.alertHandler )
+        self.statusThread = StatusThread(  config = self.config, logger = self.logger, verbose = self.verbose, alertHandler = self.alertHandler, chillerAlarmParser = self.chillerAlarmParser)
         # self.commandThread = CommandThread(config = self.config, logger = self.logger, verbose = self.verbose)
         # connect the signals and slots
         
@@ -943,13 +957,14 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, config, logger = None, verbose = False, alertHandler = None, parent=None ):            
+    def __init__(self, config, logger = None, verbose = False, alertHandler = None, chillerAlarmParser = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
 
         self.config = config
         self.logger = logger
         self.verbose = verbose
         self.alertHandler = alertHandler
+        self.chillerAlarmParser = chillerAlarmParser
         
         msg = f'(Thread {threading.get_ident()}: Starting up Chiller Daemon '
         if logger is None:
@@ -962,7 +977,8 @@ class PyroGUI(QtCore.QObject):
         self.chiller = Chiller(config = self.config,
                                logger = self.logger,
                                verbose = self.verbose,
-                               alertHandler = self.alertHandler)
+                               alertHandler = self.alertHandler,
+                               chillerAlarmParser = chillerAlarmParser)
         
               
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.chiller, name = 'chiller')
@@ -1063,8 +1079,13 @@ if __name__ == "__main__":
     alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
     print("alert handler", alertHandler, type(alertHandler))
     
+    # import the alarm configuration
+    alarm_config = yaml.load(open(os.path.join(wsp_path, 'chiller', 'small_chiller_alarm_key.yaml')), yaml.FullLoader)
+    # set up the chiller alarm parser
+    chillerAlarmParser = small_chiller_alarm_parser.ChillerAlarmParser(alarm_config = alarm_config, verbose = False)
+    
     # set up the main app. note that verbose is set above
-    main = PyroGUI(config = config, logger = logger, verbose = verbose, alertHandler = alertHandler)
+    main = PyroGUI(config = config, logger = logger, verbose = verbose, alertHandler = alertHandler, chillerAlarmParser = chillerAlarmParser)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)
