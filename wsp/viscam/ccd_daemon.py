@@ -125,7 +125,7 @@ class CCD(QtCore.QObject):
         
         # create a QTimer which will allow regular polling of the status
         self.pollTimer = QtCore.QTimer()
-        self.pollTimer.setInterval(10000)
+        self.pollTimer.setInterval(30000)
         self.pollTimer.setSingleShot(False)
         self.pollTimer.timeout.connect(self.pollStatus)
         
@@ -134,6 +134,9 @@ class CCD(QtCore.QObject):
         # is a poll currently happening?
         self.doing_poll = False
         
+        # NOTE: NPL 7-12-21 it looks like somebody commented out the connections below...
+        # that means the camera won't actually take an image... so not sure why. I'm  uncommenting
+        # it again.
         
         # exposure timer
         self.expTimer = QtCore.QTimer()
@@ -144,7 +147,6 @@ class CCD(QtCore.QObject):
         self.readTimer = QtCore.QTimer()
         self.readTimer.setSingleShot(True)
         self.readTimer.timeout.connect(self.fetchImg)
-        
         
         # set up poll status thread
         self.statusThread = data_handler.daq_loop(func = self.pollStatus, 
@@ -186,7 +188,7 @@ class CCD(QtCore.QObject):
     
     def pollStatus(self):
         
-        if self.doPolling:
+        if self.doPolling and False:
             self.log('polling status')
             self.doing_poll = True
             
@@ -242,19 +244,11 @@ class CCD(QtCore.QObject):
     def setexposure(self, seconds):
         self.log(f'setting exposure to {seconds}s')
         #self.exptime_nom = seconds
-        
-        #self.pollTimer.stop()
-        
         self.exptime_nom = seconds
-        
-        
         time_in_ccd_units = int(seconds*40000000)
-        
-        self.cc.setexposure(self.camnum, time_in_ccd_units)
-        #camserver['setexposure'](camera_id,exposure*40000000/1000)
-        
-        #self.pollTimer.start()
-        
+        self.cc.setexposure(self.camnum, time_in_ccd_units,readback=True)
+        time.sleep(0.10)
+        print("ACK EXPOSURE TIME: {}".format(self.cc._result[self.camnum]))   
         pass
     
     @Pyro5.server.expose
@@ -471,7 +465,7 @@ class CCD(QtCore.QObject):
         #filepath = os.path.join(self.imagepath, )
         
         self.log(f'done getting image?')
-        time.sleep(27)
+        time.sleep(40)
         # re-enable the polling
         self.allowPollingSignal.emit()
         
