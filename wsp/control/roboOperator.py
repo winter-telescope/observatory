@@ -30,7 +30,7 @@ sys.path.insert(1, wsp_path)
 from utils import utils
 from schedule import schedule
 from schedule import ObsWriter
-
+from focuser import summerFocusLoop
 
 class TimerThread(QtCore.QThread):
     '''
@@ -638,19 +638,23 @@ class RoboOperator(QtCore.QObject):
         
         """
         
-        filter_range = range(self.focuser_config['filt_limits']['u_lower'], self.focuser_config['filt_limits']['u_upper'], self.focuser_config['focus_loop_param']['interval'])
+        filter_range = range(self.config['filt_limits']['u_lower'], self.config['filt_limits']['u_upper'], self.config['focus_loop_param']['interval'])
         images = []
+        current_filter = self.config['focus_loop_param']['filter']
+        loop = summerFocusLoop.Focus_loop(current_filter, self.config)
         
         for dist in filter_range:
             #Collimate and take exposure
             self.telescope.focuser_goto(dist)
             self.ccd.doExposure()
+            images.append(loop.get_Recent_File())
+        
+        focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
+            
+            
             
             #
             #Load recent image track
-            recent_imgs = glob.glob(self.focuser_config['focus_loop_param']['recent_path'] + self.focuser_config['focus_loop_param']['file_type'])
-            #Add most recent image to list of images to use in focusing
-            images.append(max(recent_imgs, key=os.path.getctime))
             
         
         

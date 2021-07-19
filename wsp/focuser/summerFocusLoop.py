@@ -10,7 +10,7 @@ import glob
 from genstats import get_img_fwhm
 from astropy.io import fits
 
-class fit_curve:
+class Fit_curve:
     
     def __init__(self, A, B, x, x0):
         self.A = A
@@ -23,7 +23,7 @@ class fit_curve:
     
     #def fit_curve(self):
 
-class focus_loop:
+class Focus_loop:
     
     def __init__(self, filt, config): 
         self.config = config
