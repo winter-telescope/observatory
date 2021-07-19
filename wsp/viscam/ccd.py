@@ -193,6 +193,17 @@ class local_ccd(QtCore.QObject):
             self.remote_object.doExposure(header = self.hk_state)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
+    
+    def doExposureNoShutter(self):
+        # first get the housekeeping state
+        self.update_hk_state()
+        
+        # now dispatch the observation
+        
+        try:
+            self.remote_object.doExposureNoShutter(header = self.hk_state)
+        except Exception as e:
+            print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
             
     def tecStart(self):
         self.remote_object.tecStart()
