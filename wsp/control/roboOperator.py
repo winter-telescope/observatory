@@ -622,7 +622,7 @@ class RoboOperator(QtCore.QObject):
     def take_darks(self):
         numPics=self.config(['darks']['num_pics'])
         exposuresList=self.config(['darks']['exposures'])
-        for i in range(numPics)
+        for i in range(numPics):
             self.do('ccd_set_exposure'+exposuresList[i])
             self.do('ccd_do_exposure')
    
