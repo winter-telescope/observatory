@@ -289,9 +289,13 @@ flats:
     num_pics: 5
     exposure: 60
     filters: ['u','r']
+    dither_alt: [0,10,0,-20,0]
+    dither_az: [0,-10,20,0,-20]
+
 calibration_focus_levels:
     r: 10200
     u: 10250
+
 
 # default value for housekeeping fields
 default_value: -999
