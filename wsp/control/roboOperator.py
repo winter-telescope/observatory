@@ -635,14 +635,34 @@ class RoboOperator(QtCore.QObject):
     def take_flats(self):
         numPics=self.config(['flats']['num_pics'])
         filterList=self.config(['flats']['filters'])
-        exposuresList=self.config(['flats']['exposures'])
+        exposure=self.config(['flats']['exposure'])
+        alt=self.config(['flats']['dither_alt'][0])
+        az=self.config(['flats']['dither_az'][0])
         self.do('mount_goto_alt_az 45 90')
         self.do('dome_goto 90')
-        for i in range(numPics-1):
+        for i in filterList:
             self.do('command_filter_wheel'+str(filterList[i]))
             self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
-            self.do('ccd_set_exposure '+exposuresList[i])
+            self.do('ccd_set_exposure '+exposure)
             self.do('ccd_do_exposure')
+            image_file='viscam_2021-06-12T11_36_50.423_Camera00.fits'
+            image_data = fits.getdata(image_file)
+            mean=np.mean(image_data[0:-1])
+            while mean<10000 or mean>50000:
+                if mean<10000:
+                    exposure+=5
+                elif mean>50000:
+                    exposure-=5
+                self.do('ccd_set_exposure '+exposure)
+                self.do('ccd_do_exposure')
+                image_file='viscam_2021-06-12T11_36_50.423_Camera00.fits'
+                image_data = fits.getdata(image_file)
+                mean=np.mean(image_data[0:-1])
+            for i in numPics:
+                self.do('mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i])+' '+str(self.config(['flats']['dither_az'][i]))
+                self.do('ccd_do_exposure')
+
+
     
     def do_calibration(self):
         
