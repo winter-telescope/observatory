@@ -189,40 +189,58 @@ class CCD(QtCore.QObject):
     
     def pollStatus(self):
         
-        if self.doPolling and False:
+        #if self.doPolling and False: # for muting the polling during tests/dev
+        if self.doPolling:
             self.log('polling status')
             self.doing_poll = True
             
             try:
-                
+                #self.log(f'polling exposure time')
                 self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
-                print(f"EXPOSURE TIME = {self.exptime}")
+                #print(f"EXPOSURE TIME = {self.exptime}")
                 self.state.update({'exptime' : self.exptime})
                 time.sleep(2)
-                
+            except Exception as e:
+                self.log(f'badness while polling exposure time: {e}')
+            
+            try:
+                #self.log(f'polling ccd temp')
                 self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
                 self.state.update({'tec_temp' : self.tec_temp})
                 time.sleep(1)
-                
+            except Exception as e:
+                self.log(f'badness while polling ccd temp: {e}')
+            
+            try:
+                #self.log('polling tec setpoint')
                 self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
                 self.state.update({'tec_setpoint' : self.tec_setpoint})
                 time.sleep(1)
-                
+            except Exception as e:
+                self.log(f'badness while polling tec setpoint: {e}')
+            
+            try:
+                #self.log('polling pcb temp')
                 self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
                 self.state.update({'pcb_temp' : self.pcb_temp})
                 time.sleep(1)
-                
+            except Exception as e:
+                self.log(f'badness while polling pcb temp: {e}')
+
+            try:
+                #self.log('polling tec status')
                 fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
                 self.tec_status = int(fpgastatus_str[0])
                 self.state.update({'tec_status' : self.tec_status})
-                
-                # record this update time
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            except Exception as e:
+                self.log(f'badness while polling tec status: {e}')
+
+            # record this update time
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
                 
                 
                 #print(f'>> TEC TEMP = {self.tec_temp}')
-            except Exception as e:
-                self.log(f'BADNESS WHILE POLLING STATUS: {e}')
+            
             
             # done with the current poll
             self.doing_poll = False
@@ -344,7 +362,7 @@ class CCD(QtCore.QObject):
         
         # then start the exposure timer
         if True: #self.exptime is None:
-            waittime = self.exptime_nom * 1000
+            waittime = self.exptime * 1000
             
         
         else:
@@ -523,7 +541,9 @@ class CCD(QtCore.QObject):
             #    '00' = continuous parallel dump
             #    '01' = software trigger (use this when integrating)
             #camdict['settrigmode']('all','00')
-            self.cc.settrigmode(self.camnum, '00')
+            
+            #NPL 7-15-21: deprecated.  DON"T DO THIS ANYMORE
+            #self.cc.settrigmode(self.camnum, '00')
             
             #self.startStatusLoop.emit()
             
@@ -629,7 +649,11 @@ class PyroGUI(QtCore.QObject):
 def sigint_handler( *args):
     """Handler for the SIGINT signal."""
     sys.stderr.write('\r')
-    
+    try:
+        # shutdown the camera client nicely
+        main.ccd.cc._shutdown()
+    except:
+        pass
     #main.counter.daqloop.quit()
     
     QtCore.QCoreApplication.quit()

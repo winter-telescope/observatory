@@ -2112,6 +2112,9 @@ class Wintercmd(QtCore.QObject):
 
         #sys.exit()#sigint_handler()
         
+        # try to kill the ccd huaso_server
+        # we don't have a path from loacl to remote for this yet.
+        
         # kill all the daemons
         self.daemonlist.kill_all()
         

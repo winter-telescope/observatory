@@ -466,9 +466,9 @@ class StatusMonitor(QtCore.QObject):
                                     self.state['last_poll_time'].update({'PumpStatusFlag': timestamp})
                                     self.state['last_poll_time'].update({'AlarmStatusFlag'  : timestamp})
                                     self.state['last_poll_time'].update({'WarningStatusFlag' : timestamp})
-                                    if int(val[3]) == 0: #NPL 7-12-21 updated with the recast since val is a string
+                                    if int(val[3]) == 1: #NPL 7-12-21 updated with the recast since val is a string
                                     #if val[3] == 1:
-                                        print("Chiller alarm!")
+                                        print(f"Chiller alarm!: val[3] = {val[3]}, type(val[3]) = {type(val[3])}")
                                         command_string = '.0166rAlrmBit'
                                         check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
                                         if len(check_sum) == 1:
@@ -823,7 +823,8 @@ class Chiller(QtCore.QObject):
                 time_since_last_poll = timestamp - self.state['last_poll_time'][reg]
                 self.state['last_poll_dt'].update({reg : time_since_last_poll})
             except Exception as e:
-                print(f'Could not update dt for {reg}, error: {e}')
+                if self.verbose:
+                    print(f'Could not update dt for {reg}, error: {e}')
                 pass
             
     def updateCommandReply(self, reply):
