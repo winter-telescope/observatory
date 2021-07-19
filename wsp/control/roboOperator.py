@@ -659,7 +659,7 @@ class RoboOperator(QtCore.QObject):
                 image_data = fits.getdata(image_file)
                 mean=np.mean(image_data[0:-1])
             for i in numPics:
-                self.do('mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i])+' '+str(self.config(['flats']['dither_az'][i]))
+                self.do('mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i]))+' '+str(self.config(['flats']['dither_az'][i]))
                 self.do('ccd_do_exposure')
 
 
