@@ -281,14 +281,14 @@ weather_limits:
         
 #calibration
 darks:
-    num_pics: 6
-    exposures: [10,20,30,40,50,60]
+    num_pics: 5
+    exposure: 60
 biases:
-    num_pics: 6
+    num_pics: 5
 flats:
-    num_pics: 6
-    exposures: [10,10,30,30,60,60]
-    filters: ['u','r','u','r','u','r']
+    num_pics: 5
+    exposure: 60
+    filters: ['u','r']
 calibration_focus_levels:
     r: 10200
     u: 10250
