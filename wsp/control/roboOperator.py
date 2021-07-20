@@ -20,6 +20,7 @@ import logging
 import threading
 import astropy.time
 import astropy.coordinates
+import glob
 import astropy.units as u
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -619,6 +620,10 @@ class RoboOperator(QtCore.QObject):
         self.announce(':greentick: startup complete!')
     
     ### Calibration ###
+    def get_Recent_File(self):
+        list_of_files = glob.glob(path)
+        return max(list_of_files, key=os.path.getctime)
+
     def take_darks(self):
         numPics=self.config(['darks']['num_pics'])
         exposuresList=self.config(['darks']['exposures'])
@@ -655,7 +660,7 @@ class RoboOperator(QtCore.QObject):
                     exposure-=5
                 self.do('ccd_set_exposure '+exposure)
                 self.do('ccd_do_exposure')
-                image_file='viscam_2021-06-12T11_36_50.423_Camera00.fits'
+                image_file=self.get_Recent_File
                 image_data = fits.getdata(image_file)
                 mean=np.mean(image_data[0:-1])
             for i in numPics:
