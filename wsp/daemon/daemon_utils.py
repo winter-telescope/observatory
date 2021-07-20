@@ -30,6 +30,7 @@ import signal
 import subprocess
 import psutil
 import threading
+import time
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -101,6 +102,7 @@ class daemon_list():
                 print(f'> killing {key} process...')
                 #os.kill(self.pids[key], signal.SIGKILL)
                 os.kill(self.daemons[key].process.pid, signal.SIGKILL)
+                time.sleep(0.5)
             except Exception as e:
                 print(f'could not kill {key} daemon, {e}')
                 

@@ -190,7 +190,7 @@ class local_ccd(QtCore.QObject):
         # now dispatch the observation
         
         try:
-            self.remote_object.doExposure(header = self.hk_state)
+            self.remote_object.doExposure(state = self.hk_state)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
             
@@ -203,7 +203,10 @@ class local_ccd(QtCore.QObject):
     def getExposure(self):
         exptime = self.remote_object.getExposure()
     
-        print(f'exposure time = {exptime}')
+        #print(f'exposure time = {exptime}')
+    
+    def shutdownCameraClient(self):
+        self.remote_object.shutdownCameraClient()
 '''
     def setSetpoint(self, temperature):
         #print(f'ccd: trying to set the set point to {temperature}')

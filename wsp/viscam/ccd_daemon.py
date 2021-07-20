@@ -28,6 +28,10 @@ import time
 from datetime import datetime
 import pathlib
 from astropy.time import Time
+import astropy.units as u
+import astropy.coordinates
+import astropy.io.fits as fits
+import pytz
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -66,6 +70,8 @@ class CCD(QtCore.QObject):
     imageAcquired = QtCore.pyqtSignal()
     imageSaved = QtCore.pyqtSignal()
     
+    #shutdownCameraClientSignal = QtCore.pyqtSignal()
+    
     """
     # these are signals to start timers which are kept in the main PyroGUI object
     WHY? Well this is a workaround because when I tried to put the QTimers in
@@ -98,11 +104,17 @@ class CCD(QtCore.QObject):
         
         # for now, just hardcode the image path and prefix
         #self.imagepath = os.path.join(os.getenv("HOME"), 'data','viscam', '20210610')
-        self.image_prefix = 'viscam_'
+        self.camname = 'SUMMER_'
         #self.default_imagepath = os.path.join(os.getenv("HOME"), self.config['image_directory'],)
+        
+        # local timezone for writing timestamps in local time
+        self.local_timezone = pytz.timezone(self.config['site']['timezone'])
         
         # init the state dictionary
         self.state = dict()
+        
+        # empty dictionary that will hold things that get passed into the fits header
+        self.imagestate = dict()
         
         # init the viscam (ie the shutter)
         self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
@@ -191,50 +203,73 @@ class CCD(QtCore.QObject):
         
         #if self.doPolling and False: # for muting the polling during tests/dev
         if self.doPolling:
-            self.log('polling status')
+            #self.log('polling status')
             self.doing_poll = True
             
             try:
+                #print('polling exposure time')
                 #self.log(f'polling exposure time')
                 self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
+                
+                t = 0
+                dt = 0.1
+                timeout = 2.0
+                while True:
+                    status = self.cc.getsocketstatus()
+                    #self.log(f'status = {status}')
+                    if status != 'IDLE':
+                        time.sleep(dt)
+                        t = t+dt
+                    else:
+                        #self.log(f'command done.')
+                        break
+                    if t>timeout:
+                        #self.log(f'command timed out')
+                        break
+                
+                
                 #print(f"EXPOSURE TIME = {self.exptime}")
                 self.state.update({'exptime' : self.exptime})
-                time.sleep(2)
+                time.sleep(0.1)
             except Exception as e:
                 self.log(f'badness while polling exposure time: {e}')
             
             try:
+                #print('polling ccd temp')
                 #self.log(f'polling ccd temp')
                 self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
                 self.state.update({'tec_temp' : self.tec_temp})
-                time.sleep(1)
+                time.sleep(0.1)
             except Exception as e:
                 self.log(f'badness while polling ccd temp: {e}')
             
             try:
+                #print('polling tec setpoint')
                 #self.log('polling tec setpoint')
                 self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
                 self.state.update({'tec_setpoint' : self.tec_setpoint})
-                time.sleep(1)
+                time.sleep(.1)
             except Exception as e:
                 self.log(f'badness while polling tec setpoint: {e}')
             
             try:
+                #print('polling pcb temp')
                 #self.log('polling pcb temp')
                 self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
                 self.state.update({'pcb_temp' : self.pcb_temp})
-                time.sleep(1)
+                time.sleep(.1)
             except Exception as e:
                 self.log(f'badness while polling pcb temp: {e}')
 
             try:
+                #print('polling tec status')
                 #self.log('polling tec status')
                 fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
                 self.tec_status = int(fpgastatus_str[0])
                 self.state.update({'tec_status' : self.tec_status})
             except Exception as e:
                 self.log(f'badness while polling tec status: {e}')
-
+            
             # record this update time
             self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
                 
@@ -262,6 +297,14 @@ class CCD(QtCore.QObject):
     @Pyro5.server.expose
     def setexposure(self, seconds):
         self.log(f'setting exposure to {seconds}s')
+        
+        """self.preventPollingSignal.emit()
+        
+        # wait for the current poll to be finished
+        while self.doing_poll:
+            time.sleep(0.5)
+            self.log('poll still happening, waiting 0.5 seconds')"""
+        
         #self.exptime_nom = seconds
         self.exptime_nom = seconds
         """
@@ -271,8 +314,35 @@ class CCD(QtCore.QObject):
         time.sleep(0.10)
         print("ACK EXPOSURE TIME: {}".format(self.cc._result[self.camnum]))   
         """
-        self.ccd.setexposure(self.camnum, self.exptime_nom)
+        self.cc.setexposure(self.camnum, self.exptime_nom)
+        """# ohhhh gosh we probably don't need all this nonsense.
+        self.log('waiting for the exposure time to be set...')
+        t = 0
+        dt = 0.1
+        timeout = 2.0
+        while True:
+            status = self.cc.getsocketstatus()
+            self.log(f'status = {status}')
+            if status != 'IDLE':
+                time.sleep(dt)
+                t = t+dt
+            else:
+                self.log(f'command done.')
+                break
+            if t>timeout:
+                self.log(f'command timed out')
+                break
+        
         pass
+        # re-enable the polling
+        self.allowPollingSignal.emit()"""
+    
+    @Pyro5.server.expose
+    def shutdownCameraClient(self):
+        # Client is responsible for closing down the connection cleanly
+        # otherwise it can hang.
+        self.log(f'SHUTTING DOWN CCD CAMERA CLIENT SESSION')
+        self.cc._shutdown()
     
     @Pyro5.server.expose
     def getExposure(self):
@@ -306,7 +376,9 @@ class CCD(QtCore.QObject):
             pathlib.Path(self.image_directory).mkdir(parents = True, exist_ok = True)
             self.log(f'making image directory: {image_directory}')
             
+        elif image_directory == '':
             
+            self.image_directory = '/home/winter/data/images/tmp_unfiled'
             
         else:
             self.image_directory = image_directory
@@ -317,58 +389,134 @@ class CCD(QtCore.QObject):
         try:
             os.symlink(self.image_directory, image_link_path)
         except FileExistsError:
-            print('deleting existing symbolic link')
+            self.log('deleting existing symbolic link to current image directory')
             os.remove(image_link_path)
             os.symlink(self.image_directory, image_link_path)
             
+
+        pass
+    
+    def makeSymLink_lastImage(self):
+        # make a symbolic link to the last image taken: self.lastfilename
         
+        last_image_link_path = os.path.join(os.getenv("HOME"), self.config['image_data_link_directory'],self.config['image_last_taken_link'])
         
+        last_image_path = os.path.join(self.image_directory, self.lastfilename)
+        
+        try:
+            os.symlink(last_image_path, last_image_link_path)
+        except FileExistsError:
+            self.log('deleting existing symbolic link to last image taken')
+            os.remove(last_image_link_path)
+            os.symlink(last_image_path, last_image_link_path)
+        
+    def getDefaultHeader(self, state):
+        
+        # state should be the housekeeping state of the full observatory
+        
+        # make an empty header LIST: EACH ENTRY WILL BE A fits.Card object
+        header =list()
+        
+        # populate the header. this would be better done driven by a config file
+        
+        # add the image acquisition timestamp to the fits header
+        fits_timestamp = Time(self.image_starttime_utc).fits
+        header.append(fits.Card('UTC', fits_timestamp, 'Time of observation'))
+        
+        #add the filename to the header
+        header.append(fits.Card('FILENAME', self.lastfilename, 'File name'))
+        header.append(fits.Card('ORIGNAME', self.lastfilename, 'Original filename'))
+        
+        # TELESCOPE PARAMETERS
+        ra_hours = state.get('mount_ra_j2000_hours', 0)
+        ra_obj = astropy.coordinates.Angle(ra_hours * u.hour)
+        header.append(fits.Card('RA', ra_obj.to_string(unit = u.deg, sep = ':'), 'Requested right ascension (deg:m:s)'))
+        
+        dec_deg = state.get('mount_dec_j2000_deg', 0)
+        dec_obj = astropy.coordinates.Angle(dec_deg * u.deg)
+        header.append(fits.Card('DEC', dec_obj.to_string(unit = u.deg, sep = ':'), 'Requested declination (deg:m:s)'))
+        
+        # SHUTTER PARAMETERS
+        if self.shutter_open_timestamp != 0.0:
+            SHUTOPEN = datetime.fromtimestamp(self.shutter_open_timestamp).strftime('%Y-%m-%d %H:%M:%S.%f')
+            header.append(fits.Card('SHUTOPEN', SHUTOPEN, 'Shutter Open Time (UTC)'))
+        else:
+            header.append(fits.Card('SHUTOPEN', 0.0, 'Shutter Open Time (UTC)'))
+    
+        if self.shutter_close_timestamp != 0.0:
+            SHUTCLSD = datetime.fromtimestamp(self.shutter_close_timestamp).strftime('%Y-%m-%d %H:%M:%S.%f')
+            header.append(fits.Card('SHUTCLSD', SHUTCLSD, 'Shutter Open Time (UTC)'))
+        else:
+            header.append(fits.Card('SHUTCLSD', 0.0, 'Shutter Open Time (UTC)'))                       
+        
+        # CAMERA PARAMETERS
+        header.append(fits.Card('AEXPTIME', self.exptime_actual, 'Actual exposure time (sec)'))
+                 
+        return header
+    
+    def makeLastImgLink(self):
+        # make a symbolic link so we can easily open the last image taken
         pass
     
     
-    
     @Pyro5.server.expose
-    def doExposure(self, header = None, image_suffix = None):
-        
+    def doExposure(self, state = {}, image_suffix = None):
+        """
+        self.cc.downloadimg(self.camnum, 
+                            image_path = self.image_directory,
+                            image_prefix = image_prefix,
+                            image_suffix = self.image_suffix,
+                            metadata = self.header)"""
         self.preventPollingSignal.emit()
+        
+        # record the instrument state when image was triggered
+        self.imagestate = state
         
         # wait for the current poll to be finished
         while self.doing_poll:
             time.sleep(0.5)
             self.log('poll still happening, waiting 0.5 seconds')
         
-        
-        # update the header info and image suffix (some note) that got passed in
-        if header is None:
-            self.header = dict()
-        else:
-            self.header = header
-            
         if image_suffix is None:
             self.image_suffix = ''
         else:
             self.image_suffix = image_suffix
         
+        self.image_starttime_utc = datetime.now(pytz.utc)
+        
+        filename_timestamp = self.image_starttime_utc.astimezone(self.local_timezone).strftime('%Y%m%d_%H%M%S')
+        
+        
+        # set up the image prefix with the local time for easy filename lookup
+        self.image_prefix = self.camname + f'{filename_timestamp}'
+        
+        self.log(f'IMAGE PATH: {self.image_directory}')
+        self.log(f'IMAGE PREFIX: {self.image_prefix}')
+        self.log(f'IMAGE SUFFIX: {self.image_suffix}')
+        
+        if self.image_suffix == '':
+            suffix_to_use = ''
+        else:
+            suffix_to_use = f'_{self.image_suffix}'
+        self.lastfilename = f'{self.image_prefix}_Camera{int(self.camnum)}{suffix_to_use}.fits'
+        self.log(f'IMAGE WILL BE SAVED TO: {self.lastfilename}')
+
+        
         self.log(f'starting an exposure!')
         self.log(f'doExposure is being called in thread {threading.get_ident()}')
-        #self.pollTimer.stop()
         
+        # set up the exposure timer waittime
+        waittime = self.cc._exposure[self.camnum] * 1000
         
+        # set up the image acquisition buffer
+        self.cc.acquireimg(self.camnum)
+
+        # This settrigmode is absolutely essential, otherwise
+        # the camera freezes up.  Every exposure.
+        self.cc.settrigmode(self.camnum, '01', readback=False)
         
-        self.cc.acquireimg('00')
-        self.cc.settrigmode(self.camnum, '01')
-        
-        
-        
-        # then start the exposure timer
-        if True: #self.exptime is None:
-            waittime = self.exptime * 1000
-            
-        
-        else:
-            waittime = self.exptime*1000
-        
-        self.log(f'starting {self.exptime_nom}s timer to wait for exposure to finish')
+        # then start the exposure timer            
+        self.log(f'starting {waittime}s timer to wait for exposure to finish')
         #self.expTimer.start(int(waittime))
         self.startExposureTimer.emit(waittime)
         
@@ -377,6 +525,8 @@ class CCD(QtCore.QObject):
         self.viscam.send_shutter_command(1)
         
         self.shutter_open_timestamp = datetime.utcnow().timestamp()
+        # add the shutter open timestamp to the imagestate snapshot dictionary
+        self.imagestate.update({'shutter_open_timestamp' : self.shutter_open_timestamp})
         
         self.log('got to the end of the doExposure method')
         pass
@@ -388,10 +538,14 @@ class CCD(QtCore.QObject):
         self.viscam.send_shutter_command(0)
         
         self.shutter_close_timestamp = datetime.utcnow().timestamp()
+        # add the shutter close time to the imagestate snapshot dictionary
+        self.imagestate.update({'shutter_close_timestamp' : self.shutter_close_timestamp})
         
         self.exptime_actual = self.shutter_close_timestamp - self.shutter_open_timestamp
-        
+        # add the exposure time actual to the state dict for monitoring
         self.state.update({'exptime_actual' : self.exptime_actual})
+        # add the exposure time actual to the image state snapshot to record in the fits header
+        self.imagestate.update({'exptime_actual' : self.exptime_actual})
         
         # double check the readout time
         self.getReadoutTime()
@@ -404,6 +558,9 @@ class CCD(QtCore.QObject):
         
         # emit a signal that we're done acquiring the image. useful for roboOperator
         self.imageAcquired.emit()
+        
+        # create a symlink to the last image taken
+        self.makeSymLink_lastImage()
         pass
     
     def fetchImg(self):
@@ -414,26 +571,41 @@ class CCD(QtCore.QObject):
         self.log(f'downloading image to directory: {self.image_directory}')
         # download the image from the cam buffer
         
-        timestamp = Time(datetime.utcnow()).isot
-        image_prefix = self.image_prefix + f'{timestamp}'
-        
-        # add in the camera state info to the FITS header
-        self.header.update(self.state)
-        
+        self.log(f'Image Prefix = {self.image_prefix}, type = {type(self.image_prefix)}')
         self.log(f'Image Suffix = {self.image_suffix}, type = {type(self.image_suffix)}')
+        
+        
+        # update the header info and image suffix (some note) that got passed in
+        self.header = self.getDefaultHeader(self.imagestate)
         
         self.cc.downloadimg(self.camnum, 
                             image_path = self.image_directory,
-                            image_prefix = image_prefix,
+                            image_prefix = self.image_prefix,
                             image_suffix = self.image_suffix,
                             metadata = self.header)
         
+        
+
+        #self.cc.downloadimg(cameras,metadata=metadata,image_prefix=image_prefix,image_path=image_path,image_suffix=image_suffix)
+        
+        time.sleep(0.5)
+        t=0
+        while (t < 5):
+            if(self.cc._imageState == self.cc.ImageState.REQUESTED):
+                break
+            else:
+                time.sleep(0.5)
+                t+=0.5
+                
+        self.cc._printMsg("Exposure Complete")
+    
+    
         # make a symbolic link to the last image
         #filename = image_prefix + self.
         #filepath = os.path.join(self.imagepath, )
         
-        self.log(f'done getting image?')
-        time.sleep(40)
+        self.log(f'Exposure Complete')
+        #time.sleep(40)
         # re-enable the polling
         self.allowPollingSignal.emit()
         
@@ -465,7 +637,24 @@ class CCD(QtCore.QObject):
     
     def getReadoutTime(self):
         self.log(f'trying to get readout time, note: readout clock = {self.readoutclock}, type(readout clock) = {type(self.readoutclock)}')
-        self.readoutTime = (2049 * 2048)/self.readoutclock
+        #self.readoutTime = (2049 * 2048)/self.readoutclock
+        
+        # The download request comes early and
+        # seems unreliable for exposure times below
+        # ~5 seconds, for reasons that aren't fully clear.
+        # This fixes the problem, at the expense of unfavorable
+        # overheads for exposures < about 3 secs, which is
+        # probably OK.
+        if (self.cc._exposure[self.camnum] > 5):
+            timebuffer = 0.5
+        else:
+            timebuffer = 2
+        
+        readouttime =  self.cc._naxis1[self.camnum] * self.cc._naxis2[self.camnum] \
+                       / self.cc._readoutclock[self.camnum]
+        
+        self.readoutTime = readouttime + timebuffer
+        self.log(f'setting readout waittime to {readouttime} (readout) + {timebuffer} (buffer) = {self.readoutTime}')
         
     # Return the Current Status (the status is updated on its own)
     @Pyro5.server.expose
@@ -517,7 +706,7 @@ class CCD(QtCore.QObject):
                 #self.cc = cameraClient.CameraClient('huaso_server', ('localhost', 43322))
                 #self.connected = self.cc._connect()
                 # 7-15-21 updating with Rob's new huaso_server client approach
-                self.cc = cameraClient.CameraClient('SUMMER', ('localhost', 43322))
+                self.cc = cameraClient.CameraClient('SUMMER', ('localhost', 43322), verbose = False)
                 self.connected = self.cc._connect()
             except:
                 self.connected = False

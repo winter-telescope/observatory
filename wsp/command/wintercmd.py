@@ -2109,7 +2109,13 @@ class Wintercmd(QtCore.QObject):
         if self.promptThread and self.execThread:
             self.promptThread.stop()
             self.execThread.stop()
-
+        
+        # try to shut down the ccd camera server
+        try:
+            self.parse('ccd_shutdown_client')
+            time.sleep(1)
+        except Exception as e:
+            print(f'could not shut down ccd camera client. {type(e)}: {e}')
         #sys.exit()#sigint_handler()
         
         # try to kill the ccd huaso_server
@@ -2209,6 +2215,12 @@ class Wintercmd(QtCore.QObject):
     def ccd_tec_stop(self):
         self.defineCmdParser('Stop ccd tec')
         sigcmd = signalCmd('tecStop')
+        self.ccd.newCommand.emit(sigcmd)
+        
+    @cmd
+    def ccd_shutdown_client(self):
+        self.defineCmdParser('shut down the camera client session')
+        sigcmd = signalCmd('shutdownCameraClient')
         self.ccd.newCommand.emit(sigcmd)
                 
         """

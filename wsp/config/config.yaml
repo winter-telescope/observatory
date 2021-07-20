@@ -8,7 +8,7 @@ site:
     # height (site altitude). height is a number, units are something that can be parsed with astropy.units.Unit()
     height: 1706
     height_units: 'm'
-
+    timezone: 'America/Los_Angeles'
 
 
 ########## SERIAL BUS DEVICES ##########

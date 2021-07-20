@@ -914,11 +914,12 @@ class RoboOperator(QtCore.QObject):
         #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
         self.exptime = 1.0
         self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
-        self.ccd.setexposure(self.exptime)
+        #self.ccd.setexposure(self.exptime)
+        self.do(f'ccd_set_exposure {self.exptime}')
         time.sleep(0.5)
 
         self.logger.info(f'robo: telling ccd to take exposure!')
-        self.ccd.doExposure()
+        self.do(f'ccd_do_exposure')
     
     
     def old_do_observing(self):
