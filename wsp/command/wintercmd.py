@@ -187,8 +187,8 @@ class Wintercmd(QtCore.QObject):
         return max(list_of_files, key=os.path.getctime)
 
     def take_darks_print(self):
-        numPics=self.config('darks_num_pics')
-        exposuresList=self.config('darks_exposure')
+        numPics=self.config['darks_num_pics']
+        exposuresList=self.config['darks_exposure']
         for i in range(numPics):
             print('ccd_set_exposure'+exposuresList[i])
             #self.do('ccd_set_exposure'+exposuresList[i])
@@ -196,7 +196,7 @@ class Wintercmd(QtCore.QObject):
             #self.do('ccd_do_exposure_no_shutter')
    
     def take_biases_print(self):
-        numPics=self.config(['biases_num_pics'])
+        numPics=self.config['biases_num_pics']
         for i in range(numPics):
             print('ccd_set_exposure 0')
             #self.do('ccd_set_exposure 0') 
@@ -204,11 +204,11 @@ class Wintercmd(QtCore.QObject):
             #self.do('ccd_do_exposure_no_shutter')
 
     def take_flats_print(self):
-        numPics=self.config('flats_num_pics')
-        filterList=self.config('flats_filters')
-        exposure=self.config('flats_exposure')
-        alt=self.config('flats_dither_alt'[0])
-        az=self.config('flats_dither_az'[0])
+        numPics=self.config['flats_num_pics']
+        filterList=self.config['flats_filters']
+        exposure=self.config['flats_exposure']
+        alt=self.config['flats_dither_alt'][0]
+        az=self.config['flats_dither_az'][0]
         print('mount_goto_alt_az 45 90')
         #self.do('mount_goto_alt_az 45 90')
         print('dome_goto 90')
@@ -216,7 +216,7 @@ class Wintercmd(QtCore.QObject):
         for i in filterList:
             #self.do('command_filter_wheel'+str(filterList[i]))
             print('command_filter_wheel'+str(filterList[i]))
-            print('m2_focuser_goto '+ self.config('calibration_focus_levels'[filterList[i]]))
+            print('m2_focuser_goto '+ self.config['calibration_focus_levels'][filterList[i]])
             #self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
             print('ccd_set_exposure '+str(exposure))
             #self.do('ccd_set_exposure '+exposure)
