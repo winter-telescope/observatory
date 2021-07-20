@@ -218,7 +218,7 @@ class Wintercmd(QtCore.QObject):
             print('command_filter_wheel'+str(filterList[i]))
             print('m2_focuser_goto '+ self.config('calibration_focus_levels'[filterList[i]]))
             #self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
-            print('ccd_set_exposure '+str(exposure)
+            print('ccd_set_exposure '+str(exposure))
             #self.do('ccd_set_exposure '+exposure)
             print('ccd_do_exposure')
             #self.do('ccd_do_exposure')
