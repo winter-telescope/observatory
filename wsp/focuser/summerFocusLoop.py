@@ -7,7 +7,7 @@ The focus loop object class
 """
 import os
 import glob
-from genstats import get_img_fwhm
+from focuser import genstats
 from astropy.io import fits
 
 class Fit_curve:
@@ -28,15 +28,15 @@ class Focus_loop:
     def __init__(self, filt, config): 
         self.config = config
         self.interval = self.config['focus_loop_param']['micron_interval']
-      
-        self.pixscale = self.config['focus_loop_param']['pixscale']
-        self.filter_range = range(self.config['filt_limits'][filt]['lower'],self.config['filt_limits'][filt]['upper'],self.interval)
         
-        self.path = self.config['focus_loop_param']['recent_path']
+        self.pixscale = self.config['focus_loop_param']['pixscale']
+        self.filter_range = range(self.config['filt_limits'][filt]['lower'],self.config['filt_limits'][filt]['upper']+self.interval,self.interval)
+        
+        self.path = self.config['focus_loop_param']['recent_path']+ "*"
 
     def analyze_img_focus(self, imgname):
-    	img = fits.open(imgname)
-        mean, med, std = get_img_fwhm(imgname, pixscale,exclude = False)
+        img = fits.open(imgname)
+        mean, med, std = get_img_fwhm(img, self.pixscale,exclude = False)
         return med
     
     def rate_imgs(self,imglist):
@@ -44,9 +44,12 @@ class Focus_loop:
         medlist = []
         
         for imgname in imglist:
-            medlist.append(analyze_img_focus(self,imglist))
+            medlist.append(analyze_img_focus(self,imgname))
         
         return medlist
+    
+    def return_Range(self):
+        return self.filter_range
     
     def get_Recent_File(self):
         list_of_files = glob.glob(path)

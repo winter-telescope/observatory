@@ -637,24 +637,39 @@ class RoboOperator(QtCore.QObject):
         size of objects in the image. Will collimate mirror at optimal position.
         
         """
-        
-        filter_range = range(self.config['filt_limits']['u_lower'], self.config['filt_limits']['u_upper'], self.config['focus_loop_param']['interval'])
+        import shutil, os
         images = []
-        current_filter = self.config['focus_loop_param']['filter']
+        current_filter = self.config['focus_loop_param']['current_filter']
         loop = summerFocusLoop.Focus_loop(current_filter, self.config)
+        filter_range = loop.return_Range()
+        system = 'ccd'
+        try:
+            for dist in filter_range:
+                #shutil.move(file_items,self.config['focus_loop_param']['recent_path'])
+                
+                #Collimate and take exposure
+                self.do("m2_focuser_goto %s" %(dist))
+                self.do("ccd_do_exposure")
+                images.append(loop.get_Recent_File())
+                print("running")
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            print(msg)
+            
+        system = 'focuser'
+        try:
+            self.do("m2_focuser_goto %s" %(filter_range[0]))
         
-        for dist in filter_range:
-            #Collimate and take exposure
-            self.telescope.focuser_goto(dist)
-            self.ccd.doExposure()
-            images.append(loop.get_Recent_File())
+            focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
         
-        focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
+            self.do("m2_focuser_goto %s" %(focuser_pos))
             
+            return focuser_pos
+        
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            print(msg)
             
-            
-            #
-            #Load recent image track
             
         
         

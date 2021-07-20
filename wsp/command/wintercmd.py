@@ -66,6 +66,7 @@ print(f'wintercmd: wsp_path = {wsp_path}')
 from command import commandParser
 from utils import logging_setup
 from utils import utils
+from focuser import summerFocusLoop
 
 # GLOBAL VARS
 
@@ -179,7 +180,7 @@ class Wintercmd(QtCore.QObject):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.defineParser()
-    
+        
     def throwTimeoutError(self):
         msg = "command took too long to execute!"
         self.logger.warning(msg)
@@ -591,6 +592,50 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 break 
 
+    @cmd
+    def do_focusLoop(self):
+        """
+        Runs a focus loop for a given filter by taking a set of images and collecting the relative
+        size of objects in the image. Will collimate mirror at optimal position.
+        
+        """
+        file_items = ['Desktop/20210622/viscam_2021-06-22T04:26:23.448_Camera00.fits','Desktop/20210622/viscam_2021-06-22T04:28:33.448_Camera00.fits','Desktop/20210622/viscam_2021-06-22T04:30:33.448_Camera00.fits', 'Desktop/20210622/viscam_2021-06-22T04:32:00.448_Camera00.fits', 'Desktop/20210622/viscam_2021-06-22T04:33:45.448_Camera00.fits']
+        import shutil, os
+        images = []
+        current_filter = self.config['focus_loop_param']['current_filter']
+        loop = summerFocusLoop.Focus_loop(current_filter, self.config)
+        filter_range = loop.return_Range()
+        system = 'ccd'
+        try:
+            n = -1
+            for dist in filter_range:
+                n += 1
+                #Collimate and take exposure
+                #self.do("m2_focuser_goto %s" %(dist))
+                #self.do("ccd_do_exposure")
+                print("focuser goto %"%(dist))
+                print("ccd doing exposure")
+                shutil.move(file_items[n],self.config['focus_loop_param']['recent_path'])
+                images.append(loop.get_Recent_File())
+                print("running")
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            print(msg)
+            
+        system = 'focuser'
+        try:
+            #self.do("m2_focuser_goto %s" %(filter_range[0]))
+            print("focuser going to final %s"%(filter_range[0]))
+            focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
+        
+            #self.do("m2_focuser_goto %s" %(focuser_pos))
+            print('focuser_going to final %s'%(focuser_pos))
+            return focuser_pos
+        
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            print(msg)
+    
     @cmd
     def mount_stop(self):
         self.defineCmdParser('STOP TELESCOPE MOTION')
@@ -1957,7 +2002,6 @@ class Wintercmd(QtCore.QObject):
         if pdu_num == 1:
             self.pdu1.on(chan_num)
              
-    
     @cmd
     def do_routine(self):
         """
