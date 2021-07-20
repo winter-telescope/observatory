@@ -212,7 +212,7 @@ class Wintercmd(QtCore.QObject):
         print('mount_goto_alt_az 45 90')
         #self.do('mount_goto_alt_az 45 90')
         print('dome_goto 90')
-        #self.do('dome_goto 90')
+        self.do('dome_goto 90')
         for i in filterList:
             #self.do('command_filter_wheel'+str(filterList[i]))
             print('command_filter_wheel'+str(filterList[i]))
