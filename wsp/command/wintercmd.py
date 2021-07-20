@@ -204,6 +204,7 @@ class Wintercmd(QtCore.QObject):
             #self.do('ccd_do_exposure_no_shutter')
 
     def take_flats_print(self):
+        echo "hello dude"
         numPics=self.config(['flats']['num_pics'])
         filterList=self.config(['flats']['filters'])
         exposure=self.config(['flats']['exposure'])
