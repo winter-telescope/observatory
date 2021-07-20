@@ -291,7 +291,7 @@ class Wintercmd(QtCore.QObject):
                 #image_file=self.get_Recent_File
                 #image_data = fits.getdata(image_file)
                 #mean=np.mean(image_data[0:-1])
-            for i in numPics:
+            for i in range(numPics):
                 print(('mount_goto_alt_az ')+str(self.config('flats_dither_alt'[i]))+' '+str(self.config(['flats']['dither_az'][i])))
                 #self.do('mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i]))+' '+str(self.config(['flats']['dither_az'][i]))
                 print('ccd_do_exposure')
