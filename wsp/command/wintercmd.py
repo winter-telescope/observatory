@@ -190,7 +190,7 @@ class Wintercmd(QtCore.QObject):
         numPics=self.config['darks_num_pics']
         exposure=self.config['darks_exposure']
         for i in range(numPics):
-            print('ccd_set_exposure'+str(exposure))
+            print('ccd_set_exposure '+str(exposure))
             #self.do('ccd_set_exposure'+exposuresList[i])
             print('ccd_do_exposure_no_shutter')
             #self.do('ccd_do_exposure_no_shutter')
