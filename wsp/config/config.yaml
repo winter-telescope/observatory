@@ -280,17 +280,14 @@ weather_limits:
 
         
 #calibration
-darks:
-    num_pics: 5
-    exposure: 60
-biases:
-    num_pics: 5
-flats:
-    num_pics: 5
-    exposure: 60
-    filters: ['u','r']
-    dither_alt: [0,10,0,-20,0]
-    dither_az: [0,-10,20,0,-20]
+darks_num_pics: 5
+darks_exposure: 60  
+biases_num_pics: 5
+flats_num_pics: 5
+flats_exposure: 60
+flats_filters: ['u','r']
+flats_dither_alt: [0,10,0,-20,0]
+flats_dither_az: [0,-10,20,0,-20]
 
 calibration_focus_levels:
     r: 10200
