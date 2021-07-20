@@ -185,20 +185,20 @@ class Wintercmd(QtCore.QObject):
         list_of_files = glob.glob(path)
         return max(list_of_files, key=os.path.getctime)
 
-    def take_darks_print(self):
+    def take_darks(self):
         numPics=self.config['darks_num_pics']
         exposure=self.config['darks_exposure']
         for i in range(numPics):
             self.parse('ccd_set_exposure '+str(exposure))
             self.parse('ccd_do_exposure_no_shutter')
    
-    def take_biases_print(self):
+    def take_biases(self):
         numPics=self.config['biases_num_pics']
         for i in range(numPics):
             self.parse('ccd_set_exposure 0') 
             self.parse('ccd_do_exposure_no_shutter')
 
-    def take_flats_print(self):
+    def take_flats(self):
         numPics=self.config['flats_num_pics']
         filterList=self.config['flats_filters']
         exposure=self.config['flats_exposure']
@@ -229,6 +229,16 @@ class Wintercmd(QtCore.QObject):
             for i in range(numPics):
                 self.parse('mount_goto_alt_az '+str(self.config['flats_dither_alt'][i])+' '+str(self.config['flats_dither_az'][i]))
                 self.parse('ccd_do_exposure')
+    
+    def do_calibration(self):
+        
+        context = 'do_calibration'
+        
+        self.logger.info('robo: doing calibration routine. for now this does nothing.')
+        self.take_biases
+        self.take_darks
+        self.take_flats
+        self.calibration_complete = True
      
      
      
