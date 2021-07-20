@@ -204,9 +204,7 @@ class Wintercmd(QtCore.QObject):
         exposure=self.config['flats_exposure']
         alt=self.config['flats_dither_alt'][0]
         az=self.config['flats_dither_az'][0]
-        print('mount_goto_alt_az 45 90')
-        #self.do('mount_goto_alt_az 45 90')
-        print('dome_goto 90')
+        self.parse('mount_goto_alt_az 45 90')
         self.parse('dome_goto 90')
         for i in filterList:
             self.parse('command_filter_wheel '+str(i))
