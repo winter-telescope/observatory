@@ -624,7 +624,7 @@ class RoboOperator(QtCore.QObject):
         list_of_files = glob.glob(path)
         return max(list_of_files, key=os.path.getctime)
 
-    def take_darks(self):
+    def take_darks_print(self):
         numPics=self.config(['darks']['num_pics'])
         exposuresList=self.config(['darks']['exposures'])
         for i in range(numPics):
@@ -633,7 +633,7 @@ class RoboOperator(QtCore.QObject):
             print('ccd_do_exposure_no_shutter')
             #self.do('ccd_do_exposure_no_shutter')
    
-    def take_biases(self):
+    def take_biases_print(self):
         numPics=self.config(['biases']['num_pics'])
         for i in range(numPics):
             print('ccd_set_exposure 0')
@@ -641,7 +641,7 @@ class RoboOperator(QtCore.QObject):
             print("ccd_do_exposure_no_shutter")
             #self.do('ccd_do_exposure_no_shutter')
 
-    def take_flats(self):
+    def take_flats_print(self):
         numPics=self.config(['flats']['num_pics'])
         filterList=self.config(['flats']['filters'])
         exposure=self.config(['flats']['exposure'])
@@ -681,7 +681,7 @@ class RoboOperator(QtCore.QObject):
 
 
     
-    def do_calibration(self):
+    def do_calibration_print(self):
         
         context = 'do_calibration'
         
