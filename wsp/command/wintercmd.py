@@ -627,11 +627,13 @@ class Wintercmd(QtCore.QObject):
         system = 'focuser'
         try:
             #self.do("m2_focuser_goto %s" %(filter_range[0]))
-            print("focuser going to final %s"%(filter_range[0]))
+            #print("focuser going to final %s"%(filter_range[0]))
+            self.m2_focuser_goto(filter_range[0])
             focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
         
             #self.do("m2_focuser_goto %s" %(focuser_pos))
-            print('focuser_going to final %s'%(focuser_pos))
+            #print('focuser_going to final %s'%(focuser_pos))
+            self.m2_focuser_goto(filter_range[0])
             return focuser_pos
         
         except Exception as e:
