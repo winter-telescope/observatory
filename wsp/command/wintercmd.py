@@ -599,25 +599,27 @@ class Wintercmd(QtCore.QObject):
         size of objects in the image. Will collimate mirror at optimal position.
         
         """
-        file_items = ['Desktop/20210622/viscam_2021-06-22T04:26:23.448_Camera00.fits','Desktop/20210622/viscam_2021-06-22T04:28:33.448_Camera00.fits','Desktop/20210622/viscam_2021-06-22T04:30:33.448_Camera00.fits', 'Desktop/20210622/viscam_2021-06-22T04:32:00.448_Camera00.fits', 'Desktop/20210622/viscam_2021-06-22T04:33:45.448_Camera00.fits']
-        import shutil, os
+        #file_items = ['one.fits', 'two.fits', 'three.fits', 'four.fits', 'five.fits']
+        #import os
         images = []
         current_filter = self.config['focus_loop_param']['current_filter']
         loop = summerFocusLoop.Focus_loop(current_filter, self.config)
         filter_range = loop.return_Range()
+        
         system = 'ccd'
         try:
-            n = -1
             for dist in filter_range:
-                n += 1
                 #Collimate and take exposure
                 #self.do("m2_focuser_goto %s" %(dist))
                 #self.do("ccd_do_exposure")
-                print("focuser goto %"%(dist))
-                print("ccd doing exposure")
-                shutil.move(file_items[n],self.config['focus_loop_param']['recent_path'])
+                #print("focuser goto %s"%(dist))
+                #print("ccd doing exposure")
+                #os.replace(r'/home/Documents/' + file_items[n],self.config['focus_loop_param']['recent_path'] + file_items[n])
+                #n+=1
+                self.m2_focuser_goto(dist)
+                self.ccd_do_exposure()
                 images.append(loop.get_Recent_File())
-                print("running")
+                #print("running")
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)

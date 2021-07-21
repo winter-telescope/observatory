@@ -292,10 +292,10 @@ labjacks:
 
 focus_loop_param:
     micron_interval: 50
-    recent_path: '/home/tonight_images/'
+    recent_path: '/data/tonight_images.lnk'
     file_type: '\*fits'
     pixscale: 0.466
-    current_filter: 'rband'
+    current_filter: 'uband'
 
 filt_limits:
     uband:

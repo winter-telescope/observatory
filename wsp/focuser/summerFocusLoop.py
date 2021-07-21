@@ -35,8 +35,7 @@ class Focus_loop:
         self.path = self.config['focus_loop_param']['recent_path']+ "*"
 
     def analyze_img_focus(self, imgname):
-        img = fits.open(imgname)
-        mean, med, std = get_img_fwhm(img, self.pixscale,exclude = False)
+        mean, med, std = get_img_fwhm(imgname, self.pixscale,exclude = False)
         return med
     
     def rate_imgs(self,imglist):
@@ -52,7 +51,7 @@ class Focus_loop:
         return self.filter_range
     
     def get_Recent_File(self):
-        list_of_files = glob.glob(path)
+        list_of_files = glob.glob(self.path)
         return max(list_of_files, key=os.path.getctime)
             
             
