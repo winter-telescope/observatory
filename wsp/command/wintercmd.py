@@ -2217,7 +2217,7 @@ class Wintercmd(QtCore.QObject):
         self.mirror_cover_open()
         
     @cmd
-    def total_shutdown():
+    def total_shutdown(self):
         self.mount_home()
         self.dome_go_home()
         #self.ccd_tec_stop()
@@ -2233,7 +2233,7 @@ class Wintercmd(QtCore.QObject):
         self.m2_focuser_disable()
         self.dome_givecontrol()    
     @cmd
-    def total_restart():
+    def total_restart(self):
         self.total_shutdown()
         self.total_startup()
 
