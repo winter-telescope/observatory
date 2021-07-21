@@ -98,10 +98,11 @@ class daemon_list():
                 
     def kill_all(self):
         for key in self.daemons.keys():
+            pid = self.daemons[key].process.pid
             try:
-                print(f'> killing {key} process...')
+                print(f'> killing {key} process with PID {pid}...')
                 #os.kill(self.pids[key], signal.SIGKILL)
-                os.kill(self.daemons[key].process.pid, signal.SIGKILL)
+                os.kill(pid, signal.SIGKILL)
                 time.sleep(0.5)
             except Exception as e:
                 print(f'could not kill {key} daemon, {e}')
@@ -188,7 +189,7 @@ def killPIDS(pidlist, logger = None):
     for pid in pidlist:
         try:
             msg = f'>> killing process with PID {pid}'
-            os.kill(pid, signal.SIGKILL)
+            os.kill(pid, signal.SIGTERM)
         except:
             msg = f'could not kill process with PID {pid}'
         

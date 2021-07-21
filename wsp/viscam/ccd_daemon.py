@@ -343,6 +343,12 @@ class CCD(QtCore.QObject):
         # otherwise it can hang.
         self.log(f'SHUTTING DOWN CCD CAMERA CLIENT SESSION')
         self.cc._shutdown()
+        
+    @Pyro5.server.expose
+    def killServer(self):
+        daemon_utils.killPIDS(self.huaso_server_pids, logger = self.logger)
+        
+    
     
     @Pyro5.server.expose
     def getExposure(self):
@@ -664,7 +670,8 @@ class CCD(QtCore.QObject):
         
         return self.state
         
-    
+
+    @Pyro5.server.expose
     def reconnect(self):
         #self.pollTimer.stop()
         try:

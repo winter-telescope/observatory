@@ -66,7 +66,7 @@ class local_ephem(object):
             self.parse_state()  
 
         except Exception as e:
-            print(f'Could not update remote status: {e}')
+            self.logger.error(f'Could not update remote status: {e}')
 
     def parse_state(self):
         # get the timestamp of the last update from the ephem daemon

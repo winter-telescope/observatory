@@ -76,7 +76,7 @@ class local_dome(QtCore.QObject):
         
         
         # initialize a home azimuth & an azimuth goal
-        self.home_az = self.config['telescope']['home_az_degs']
+        self.home_az = self.config['dome_home_az_degs']
         self.az_goal = self.home_az
         self.az_error = 0.0
         

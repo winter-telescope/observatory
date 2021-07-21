@@ -207,6 +207,12 @@ class local_ccd(QtCore.QObject):
     
     def shutdownCameraClient(self):
         self.remote_object.shutdownCameraClient()
+        
+    def reconnectServer(self):
+        self.remote_object.reconnect()
+        
+    def killServer(self):
+        self.remote_object.killServer()
 '''
     def setSetpoint(self, temperature):
         #print(f'ccd: trying to set the set point to {temperature}')

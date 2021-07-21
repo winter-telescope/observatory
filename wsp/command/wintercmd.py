@@ -66,6 +66,7 @@ print(f'wintercmd: wsp_path = {wsp_path}')
 from command import commandParser
 from utils import logging_setup
 from utils import utils
+from daemon import daemon_utils
 
 # GLOBAL VARS
 
@@ -2110,12 +2111,20 @@ class Wintercmd(QtCore.QObject):
             self.promptThread.stop()
             self.execThread.stop()
         
-        # try to shut down the ccd camera server
+        # try to shut down the ccd camera client
         try:
             self.parse('ccd_shutdown_client')
             time.sleep(1)
         except Exception as e:
             print(f'could not shut down ccd camera client. {type(e)}: {e}')
+        
+        # try to shut down the ccd camera server
+        """try:
+            self.parse('ccd_killServer')
+            time.sleep(1)
+        except Exception as e:
+            print(f'could not shut down ccd camera huaso server. {type(e)}: {e}')"""
+        
         #sys.exit()#sigint_handler()
         
         # try to kill the ccd huaso_server
@@ -2123,6 +2132,12 @@ class Wintercmd(QtCore.QObject):
         
         # kill all the daemons
         self.daemonlist.kill_all()
+        
+        # kill any dangling instances of huaso_server
+        huaso_server_pids = daemon_utils.getPIDS('huaso_server')
+        for pid in huaso_server_pids:
+            print(f'killing huaso_server instance with PID {pid}')
+            os.kill(pid, signal.SIGKILL)
         
         # kill the program
         QtCore.QCoreApplication.quit()
@@ -2222,7 +2237,21 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('shut down the camera client session')
         sigcmd = signalCmd('shutdownCameraClient')
         self.ccd.newCommand.emit(sigcmd)
-                
+    
+    @cmd
+    def ccd_reconnectServer(self):
+        self.defineCmdParser('restart the huaso server')
+        sigcmd = signalCmd('reconnectServer')
+        self.ccd.newCommand.emit(sigcmd)
+    
+    @cmd
+    def ccd_killServer(self):
+        self.defineCmdParser('shut down the huaso server')
+        sigcmd = signalCmd('killServer')
+        self.ccd.newCommand.emit(sigcmd)
+        
+
+    
         """
 class ManualCmd(Wintercmd):
 
