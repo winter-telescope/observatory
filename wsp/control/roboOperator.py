@@ -29,7 +29,7 @@ sys.path.insert(1, wsp_path)
 from utils import utils
 from schedule import schedule
 from schedule import ObsWriter
-
+from ephem import ephem_utils
 
 class TimerThread(QtCore.QThread):
     '''
@@ -962,15 +962,41 @@ class RoboOperator(QtCore.QObject):
         # test method for making sure the roboOperator can communicate with the CCD daemon
         # 3: trigger image acquisition
         #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
-        self.exptime = 1.0
-        self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
-        #self.ccd.setexposure(self.exptime)
-        self.do(f'ccd_set_exposure {self.exptime}')
-        time.sleep(0.5)
+        
+        
+        # first check if okay to expose
+        self.log('checking that target is not too close to ephemeris bodies')
+        ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.state['mount_alt_deg'],
+                                                    target_az = self.state['mount_az_deg'])
+        
+        if not ephem_inview:
+            self.log('ephemeris not too close to target')
+        
 
         self.logger.info(f'robo: telling ccd to take exposure!')
         self.do(f'ccd_do_exposure')
+        self.log(f'exposure complete!')
+        
+    def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
+        # check if any of the ephemeris bodies are too close to the given target alt/az
+        inview = list()
+        for body in self.config['ephem']['min_target_separation']:
+            mindist = self.config['ephem']['min_target_separation'][body]
+            dist = ephem_utils.getTargetEphemDist_AltAz(target_alt = target_alt,
+                                                        target_az = target_az,
+                                                        body = body,
+                                                        location = self.ephem.site,
+                                                        obstime = obstime,
+                                                        time_format = time_format)
+            if dist < mindist:
+                inview.append(True)
+            else:
+                inview.append(False)
     
+        if any(inview):
+            return True
+        else:
+            return False
     
     def old_do_observing(self):
         '''

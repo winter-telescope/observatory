@@ -89,6 +89,13 @@ class local_ephem(object):
         #self.update_state()
         #print(f'Local Object: {self.msg}')
         print(f'state = {self.state}')
+    
+    def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
+        # send a query to the ephemeris daemon to ask if the specified target is too close to ephemeris bodies
+        
+        inview = self.remote_object.ephemInViewTarget_AltAz(target_alt, target_az, obstime, time_format)
+        
+        return inview
         
 # Try it out
 if __name__ == '__main__':
