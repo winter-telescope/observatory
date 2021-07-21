@@ -2225,13 +2225,19 @@ class Wintercmd(QtCore.QObject):
         self.dome_tracking_off()
         self.parse('rotator_home')
         self.mirror_cover_close()
-        waitForCondition('mount_is_slewing', 0)
+        self.waitForCondition('mount_is_slewing', 0)
         self.parse('rotator_disable')
         self.mount_az_off()
         self.dome_close()
         self.mount_alt_off()
         self.m2_focuser_disable()
         self.dome_givecontrol()    
+    @cmd
+    def total_restart():
+        self.total_shutdown()
+        self.total_startup()
+
+
         """
 class ManualCmd(Wintercmd):
 
