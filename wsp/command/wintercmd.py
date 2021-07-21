@@ -2185,12 +2185,6 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('Start ccd exposure')
         sigcmd = signalCmd('doExposure')
         self.ccd.newCommand.emit(sigcmd)
-    
-    @cmd
-    def ccd_do_exposure_no_shutter(self):
-        self.defineCmdParser('Start ccd exposure')
-        sigcmd = signalCmd('doExposureNoShutter')
-        self.ccd.newCommand.emit(sigcmd)
         
     @cmd
     def ccd_tec_start(self):

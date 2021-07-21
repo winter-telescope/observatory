@@ -278,20 +278,7 @@ weather_limits:
         MIN: 7 # 30pct covered
         MAX: 10 # CLEAR
 
-        
-#calibration
-darks:
-    num_pics: 6
-    exposures: [10,20,30,40,50,60]
-biases:
-    num_pics: 6
-flats:
-    num_pics: 6
-    exposures: [10,10,30,30,60,60]
-    filters: ['u','r','u','r','u','r']
-calibration_focus_levels:
-    r: 10200
-    u: 10250
+
 
 # default value for housekeeping fields
 default_value: -999
@@ -300,6 +287,8 @@ default_value: -999
 labjacks:
     lj0:
         config: 'labjack0_config.yaml'
+        
+
 
 
 
@@ -833,8 +822,6 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state["autofocus.tolerance"]
-    
-    
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud_index:
