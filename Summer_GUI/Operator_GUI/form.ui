@@ -29,7 +29,7 @@
     </sizepolicy>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="Main">
     <attribute name="title">
@@ -336,10 +336,20 @@
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="2" column="0">
+       <item row="4" column="1">
         <widget class="QPlainTextEdit" name="output_display_2"/>
        </item>
-       <item row="0" column="0">
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_11">
+         <property name="text">
+          <string>Current Housekeeping Statuses</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
         <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
           <widget class="QLabel" name="label_10">
@@ -367,13 +377,10 @@
          </item>
         </layout>
        </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_11">
+       <item row="2" column="1">
+        <widget class="QPushButton" name="update_button">
          <property name="text">
-          <string>Current Housekeeping Statuses</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
+          <string>Update</string>
          </property>
         </widget>
        </item>

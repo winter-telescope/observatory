@@ -117,9 +117,6 @@ def chiller_start():
 def run_shutdown_script():
     send('total_shutdown')
 
-
-
-
 def run_startup_script():
     # init the state getter
     monitor = StateGetter()
@@ -220,4 +217,5 @@ if __name__ == "__main__":
     window.dome_tracking_toggle.stateChanged.connect(toggle_dome_tracking)
     window.mount_tracking_toggle.stateChanged.connect(toggle_mount_tracking)
     window.command_execute.pressed.connect(command_entry)
+    window.update_button.pressed.connect(timer_handlings)
     sys.exit(app.exec())
