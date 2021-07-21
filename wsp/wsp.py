@@ -34,7 +34,7 @@ from power import power
 from telescope import pwi4
 #from telescope import telescope
 from command import commandServer_multiClient
-#from housekeeping import easygetdata
+from housekeeping import easygetdata
 from control import systemControl
 from utils import utils
 from utils import logging_setup

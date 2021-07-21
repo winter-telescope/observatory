@@ -20,7 +20,6 @@ import logging
 import threading
 import astropy.time
 import astropy.coordinates
-import glob
 import astropy.units as u
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -628,65 +627,16 @@ class RoboOperator(QtCore.QObject):
         self.startup_complete = True
             
         self.announce(':greentick: startup complete!')
-    
-    ### Calibration ###
-    def get_Recent_File(self):
-        list_of_files = glob.glob(path)
-        return max(list_of_files, key=os.path.getctime)
-
-    def take_darks(self):
-        numPics=self.config(['darks']['num_pics'])
-        exposuresList=self.config(['darks']['exposures'])
-        for i in range(numPics):
-            self.do('ccd_set_exposure'+exposuresList[i])
-            self.do('ccd_do_exposure_no_shutter')
-   
-    def take_biases(self):
-        numPics=self.config(['biases']['num_pics'])
-        for i in range(numPics):
-            self.do('ccd_set_exposure 0') 
-            self.do('ccd_do_exposure_no_shutter')
-
-    def take_flats(self):
-        numPics=self.config(['flats']['num_pics'])
-        filterList=self.config(['flats']['filters'])
-        exposure=self.config(['flats']['exposure'])
-        alt=self.config(['flats']['dither_alt'][0])
-        az=self.config(['flats']['dither_az'][0])
-        self.do('mount_goto_alt_az 45 90')
-        self.do('dome_goto 90')
-        for i in filterList:
-            self.do('command_filter_wheel'+str(filterList[i]))
-            self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
-            self.do('ccd_set_exposure '+exposure)
-            self.do('ccd_do_exposure')
-            image_file='viscam_2021-06-12T11_36_50.423_Camera00.fits'
-            image_data = fits.getdata(image_file)
-            mean=np.mean(image_data[0:-1])
-            while mean<10000 or mean>50000:
-                if mean<10000:
-                    exposure+=5
-                elif mean>50000:
-                    exposure-=5
-                self.do('ccd_set_exposure '+exposure)
-                self.do('ccd_do_exposure')
-                image_file=self.get_Recent_File
-                image_data = fits.getdata(image_file)
-                mean=np.mean(image_data[0:-1])
-            for i in numPics:
-                self.do('mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i]))+' '+str(self.config(['flats']['dither_az'][i]))
-                self.do('ccd_do_exposure')
-
-
-    
+        
     def do_calibration(self):
         
         context = 'do_calibration'
         
         self.logger.info('robo: doing calibration routine. for now this does nothing.')
-        self.take_biases
-        self.take_darks
-        self.take_flats
+        ### Take darks ###
+        # Nothing here yet
+        
+        
         self.calibration_complete = True
     
     def do_currentObs(self):

@@ -20,6 +20,7 @@ import time
 from datetime import datetime
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import pathlib
+from labjack import ljm
 import logging
 import pathlib
 """
