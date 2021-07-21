@@ -56,4 +56,3 @@ def getTargetEphemDist_J200radec( target_ra, target_dec, body, location, obstime
     dist = getTargetEphemDist_AltAz(local_alt_deg, local_az_deg, body, obstime = obstime, time_format = time_format)
     return dist
 
-
