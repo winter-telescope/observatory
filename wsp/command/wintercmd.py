@@ -180,6 +180,138 @@ class Wintercmd(QtCore.QObject):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.defineParser()
+     
+     ### Calibration ###
+    def get_Recent_File(self):
+        list_of_files = glob.glob(path)
+        return max(list_of_files, key=os.path.getctime)
+
+    def take_darks(self):
+        numPics=self.config['darks_num_pics']
+        exposure=self.config['darks_exposure']
+        for i in range(numPics):
+            self.parse('ccd_set_exposure '+str(exposure))
+            self.parse('ccd_do_exposure_no_shutter')
+   
+    def take_biases(self):
+        numPics=self.config['biases_num_pics']
+        for i in range(numPics):
+            self.parse('ccd_set_exposure 0') 
+            self.parse('ccd_do_exposure_no_shutter')
+
+    def take_flats(self):
+        numPics=self.config['flats_num_pics']
+        filterList=self.config['flats_filters']
+        exposure=self.config['flats_exposure']
+        alt=self.config['flats_dither_alt'][0]
+        az=self.config['flats_dither_az'][0]
+        self.parse('mount_goto_alt_az 45 90')
+        self.parse('dome_goto 90')
+        for i in filterList:
+            self.parse('command_filter_wheel '+str(i))
+            self.parse('m2_focuser_goto '+ str(self.config['calibration_focus_levels'][i]))
+            self.parse('ccd_set_exposure '+str(exposure))
+            self.parse('ccd_do_exposure')
+            #image_file=self.get_Recent_File
+            #image_data = fits.getdata(image_file)
+            #mean=np.mean(image_data[0:-1])
+            #while mean<10000 or mean>50000:
+                #if mean<10000:
+                    #exposure+=5
+                #elif mean>50000:
+                    #exposure-=5
+                #self.do('ccd_set_exposure '+exposure)
+                #self.do('ccd_do_exposure')
+                #image_file=self.get_Recent_File
+                #image_data = fits.getdata(image_file)
+                #mean=np.mean(image_data[0:-1])
+            for i in range(numPics):
+                self.parse('mount_goto_alt_az '+str(self.config['flats_dither_alt'][i])+' '+str(self.config['flats_dither_az'][i]))
+                self.parse('ccd_do_exposure')
+    
+    def do_calibration(self):
+        
+        context = 'do_calibration'
+        
+        self.logger.info('robo: doing calibration routine. for now this does nothing.')
+        self.take_biases
+        self.take_darks
+        self.take_flats
+        self.calibration_complete = True
+     
+     
+     
+     ### Calibration Prints ###
+    def get_Recent_File(self):
+        list_of_files = glob.glob(path)
+        return max(list_of_files, key=os.path.getctime)
+
+    def take_darks_print(self):
+        numPics=self.config['darks_num_pics']
+        exposure=self.config['darks_exposure']
+        for i in range(numPics):
+            print('ccd_set_exposure '+str(exposure))
+            #self.do('ccd_set_exposure'+exposuresList[i])
+            print('ccd_do_exposure_no_shutter')
+            #self.do('ccd_do_exposure_no_shutter')
+   
+    def take_biases_print(self):
+        numPics=self.config['biases_num_pics']
+        for i in range(numPics):
+            print('ccd_set_exposure 0')
+            #self.do('ccd_set_exposure 0') 
+            print("ccd_do_exposure_no_shutter")
+            #self.do('ccd_do_exposure_no_shutter')
+
+    def take_flats_print(self):
+        numPics=self.config['flats_num_pics']
+        filterList=self.config['flats_filters']
+        exposure=self.config['flats_exposure']
+        alt=self.config['flats_dither_alt'][0]
+        az=self.config['flats_dither_az'][0]
+        print('mount_goto_alt_az 45 90')
+        #self.do('mount_goto_alt_az 45 90')
+        print('dome_goto 90')
+        self.parse('dome_goto 90')
+        for i in filterList:
+            #self.do('command_filter_wheel'+str(filterList[i]))
+            print('command_filter_wheel '+str(i))
+            print('m2_focuser_goto '+ str(self.config['calibration_focus_levels'][i]))
+            #self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
+            print('ccd_set_exposure '+str(exposure))
+            #self.do('ccd_set_exposure '+exposure)
+            print('ccd_do_exposure')
+            #self.do('ccd_do_exposure')
+            #image_file=self.get_Recent_File
+            #image_data = fits.getdata(image_file)
+            #mean=np.mean(image_data[0:-1])
+            #while mean<10000 or mean>50000:
+                #if mean<10000:
+                    #exposure+=5
+                #elif mean>50000:
+                    #exposure-=5
+                #self.do('ccd_set_exposure '+exposure)
+                #self.do('ccd_do_exposure')
+                #image_file=self.get_Recent_File
+                #image_data = fits.getdata(image_file)
+                #mean=np.mean(image_data[0:-1])
+            for i in range(numPics):
+                print(('mount_goto_alt_az ')+str(self.config['flats_dither_alt'][i])+' '+str(self.config['flats_dither_az'][i]))
+                #self.do('mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i]))+' '+str(self.config(['flats']['dither_az'][i]))
+                print('ccd_do_exposure')
+                #self.do('ccd_do_exposure')
+
+
+    
+    def do_calibration_print(self):
+        
+        context = 'do_calibration'
+        
+        self.logger.info('robo: doing calibration routine. for now this does nothing.')
+        self.take_biases
+        self.take_darks
+        self.take_flats
+        self.calibration_complete = True
     
     def throwTimeoutError(self):
         msg = "command took too long to execute!"
@@ -2218,6 +2350,12 @@ class Wintercmd(QtCore.QObject):
     def ccd_do_exposure(self):
         self.defineCmdParser('Start ccd exposure')
         sigcmd = signalCmd('doExposure')
+        self.ccd.newCommand.emit(sigcmd)
+    
+    @cmd
+    def ccd_do_exposure_no_shutter(self):
+        self.defineCmdParser('Start ccd exposure')
+        sigcmd = signalCmd('doExposureNoShutter')
         self.ccd.newCommand.emit(sigcmd)
         
         

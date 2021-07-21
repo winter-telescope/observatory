@@ -29,7 +29,7 @@ sys.path.insert(1, wsp_path)
 from utils import utils
 from schedule import schedule
 from schedule import ObsWriter
-from ephem import ephem_utils
+
 
 class TimerThread(QtCore.QThread):
     '''
@@ -71,13 +71,6 @@ class RoboOperatorThread(QtCore.QThread):
     
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
-    
-    # this signal is typically emitted by wintercmd and is connected to the RoboOperator's do_currentObs method
-    do_currentObs_Signal = QtCore.pyqtSignal()
-    
-    # this signal is typically emitted by wintercmd, it connected to RoboOperator's doExposure method.
-    # this really just replicates calling ccd_do_exposure directly, but tests out all the connections between roboOperator and the ccd_daemon
-    doExposureSignal = QtCore.pyqtSignal()
     
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover):
         super(QtCore.QThread, self).__init__()
@@ -122,9 +115,6 @@ class RoboOperatorThread(QtCore.QThread):
         self.restartRoboSignal.connect(self.robo.restart_robo)
         ## change schedule
         self.changeSchedule.connect(self.robo.change_schedule)
-        ## do an exposure with the ccd
-        self.doExposureSignal.connect(self.robo.doExposure)
-        
         # Start the event loop
         self.exec_()
 
@@ -634,52 +624,64 @@ class RoboOperator(QtCore.QObject):
         list_of_files = glob.glob(path)
         return max(list_of_files, key=os.path.getctime)
 
-    def take_darks(self):
+    def take_darks_print(self):
         numPics=self.config(['darks']['num_pics'])
         exposuresList=self.config(['darks']['exposures'])
         for i in range(numPics):
-            self.do('ccd_set_exposure'+exposuresList[i])
-            self.do('ccd_do_exposure_no_shutter')
+            print('ccd_set_exposure'+exposuresList[i])
+            #self.do('ccd_set_exposure'+exposuresList[i])
+            print('ccd_do_exposure_no_shutter')
+            #self.do('ccd_do_exposure_no_shutter')
    
-    def take_biases(self):
+    def take_biases_print(self):
         numPics=self.config(['biases']['num_pics'])
         for i in range(numPics):
-            self.do('ccd_set_exposure 0') 
-            self.do('ccd_do_exposure_no_shutter')
+            print('ccd_set_exposure 0')
+            #self.do('ccd_set_exposure 0') 
+            print("ccd_do_exposure_no_shutter")
+            #self.do('ccd_do_exposure_no_shutter')
 
-    def take_flats(self):
+    def take_flats_print(self):
         numPics=self.config(['flats']['num_pics'])
         filterList=self.config(['flats']['filters'])
         exposure=self.config(['flats']['exposure'])
         alt=self.config(['flats']['dither_alt'][0])
         az=self.config(['flats']['dither_az'][0])
-        self.do('mount_goto_alt_az 45 90')
-        self.do('dome_goto 90')
+        print('mount_goto_alt_az 45 90')
+        #self.do('mount_goto_alt_az 45 90')
+        print('dome_goto 90')
+        #self.do('dome_goto 90')
         for i in filterList:
-            self.do('command_filter_wheel'+str(filterList[i]))
-            self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
-            self.do('ccd_set_exposure '+exposure)
-            self.do('ccd_do_exposure')
-            image_file='viscam_2021-06-12T11_36_50.423_Camera00.fits'
-            image_data = fits.getdata(image_file)
-            mean=np.mean(image_data[0:-1])
-            while mean<10000 or mean>50000:
-                if mean<10000:
-                    exposure+=5
-                elif mean>50000:
-                    exposure-=5
-                self.do('ccd_set_exposure '+exposure)
-                self.do('ccd_do_exposure')
-                image_file=self.get_Recent_File
-                image_data = fits.getdata(image_file)
-                mean=np.mean(image_data[0:-1])
+            #self.do('command_filter_wheel'+str(filterList[i]))
+            print('command_filter_wheel'+str(filterList[i]))
+            print('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
+            #self.do('m2_focuser_goto '+ self.config(['calibration_focus_levels'][filterList[i]]))
+            print('ccd_set_exposure '+exposure)
+            #self.do('ccd_set_exposure '+exposure)
+            print('ccd_do_exposure')
+            #self.do('ccd_do_exposure')
+            #image_file=self.get_Recent_File
+            #image_data = fits.getdata(image_file)
+            #mean=np.mean(image_data[0:-1])
+            #while mean<10000 or mean>50000:
+                #if mean<10000:
+                    #exposure+=5
+                #elif mean>50000:
+                    #exposure-=5
+                #self.do('ccd_set_exposure '+exposure)
+                #self.do('ccd_do_exposure')
+                #image_file=self.get_Recent_File
+                #image_data = fits.getdata(image_file)
+                #mean=np.mean(image_data[0:-1])
             for i in numPics:
-                self.do('mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i]))+' '+str(self.config(['flats']['dither_az'][i]))
-                self.do('ccd_do_exposure')
+                print(''mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i]))+' '+str(self.config(['flats']['dither_az'][i]))')
+                #self.do('mount_goto_alt_az ')+str(self.config(['flats']['dither_alt'][i]))+' '+str(self.config(['flats']['dither_az'][i]))
+                print('ccd_do_exposure')
+                #self.do('ccd_do_exposure')
 
 
     
-    def do_calibration(self):
+    def do_calibration_print(self):
         
         context = 'do_calibration'
         
@@ -863,7 +865,6 @@ class RoboOperator(QtCore.QObject):
         else:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
             self.restart_robo()
-            
     def gotoNext(self): 
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
@@ -956,48 +957,7 @@ class RoboOperator(QtCore.QObject):
     def log_timer_finished(self):
         self.logger.info('robo: exposure timer finished.')
         self.waiting_for_exposure = False
-    
-    
-    def doExposure(self):
-        # test method for making sure the roboOperator can communicate with the CCD daemon
-        # 3: trigger image acquisition
-        #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
         
-        
-        # first check if okay to expose
-        self.log('checking that target is not too close to ephemeris bodies')
-        ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.state['mount_alt_deg'],
-                                                    target_az = self.state['mount_az_deg'])
-        
-        if not ephem_inview:
-            self.log('ephemeris not too close to target')
-        
-
-        self.logger.info(f'robo: telling ccd to take exposure!')
-        self.do(f'ccd_do_exposure')
-        self.log(f'exposure complete!')
-        
-    def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
-        # check if any of the ephemeris bodies are too close to the given target alt/az
-        inview = list()
-        for body in self.config['ephem']['min_target_separation']:
-            mindist = self.config['ephem']['min_target_separation'][body]
-            dist = ephem_utils.getTargetEphemDist_AltAz(target_alt = target_alt,
-                                                        target_az = target_az,
-                                                        body = body,
-                                                        location = self.ephem.site,
-                                                        obstime = obstime,
-                                                        time_format = time_format)
-            if dist < mindist:
-                inview.append(True)
-            else:
-                inview.append(False)
-    
-        if any(inview):
-            return True
-        else:
-            return False
-    
     def old_do_observing(self):
         '''
         This function must contain all of the database manipulation code to remain threadsafe and prevent
