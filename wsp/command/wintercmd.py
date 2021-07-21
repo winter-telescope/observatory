@@ -618,6 +618,8 @@ class Wintercmd(QtCore.QObject):
                 #n+=1
                 self.m2_focuser_goto(dist)
                 self.ccd_do_exposure()
+                #self.ccd.state['exptime']+2
+                time.sleep(10)
                 images.append(loop.get_Recent_File())
                 #print("running")
         except Exception as e:
