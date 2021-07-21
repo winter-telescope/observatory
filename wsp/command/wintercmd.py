@@ -2220,7 +2220,7 @@ class Wintercmd(QtCore.QObject):
     def total_shutdown():
         self.mount_home()
         self.dome_go_home()
-        self.ccd_tec_stop()
+        #self.ccd_tec_stop()
         self.mount_tracking_off()
         self.dome_tracking_off()
         self.parse('rotator_home')
