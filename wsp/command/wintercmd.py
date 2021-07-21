@@ -2213,7 +2213,7 @@ class Wintercmd(QtCore.QObject):
         self.dome_go_home()
         self.m2_focuser_enable()
         self.mirror_cover_connect()
-        self.dome_open()
+        #self.dome_open()
         self.mirror_cover_open()
         
     @cmd
