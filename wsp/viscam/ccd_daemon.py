@@ -136,15 +136,20 @@ class CCD(QtCore.QObject):
         self.imageSaved.connect(self.raiseImageSavedFlag)
         
         # create a QTimer which will allow regular polling of the status
+        self.pollTimer_dt = 10000
+        """
         self.pollTimer = QtCore.QTimer()
-        self.pollTimer.setInterval(30000)
+        self.pollTimer.setInterval(self.pollTimer_dt)
         self.pollTimer.setSingleShot(False)
         self.pollTimer.timeout.connect(self.pollStatus)
-        
+        """
         # start with the do polling flag true
         self.doPolling = True
         # is a poll currently happening?
         self.doing_poll = False
+        
+        # doing an exposure?
+        self.doing_exposure = False
         
         # NOTE: NPL 7-12-21 it looks like somebody commented out the connections below...
         # that means the camera won't actually take an image... so not sure why. I'm  uncommenting
@@ -163,7 +168,7 @@ class CCD(QtCore.QObject):
         """
         # set up poll status thread
         self.statusThread = data_handler.daq_loop(func = self.pollStatus, 
-                                                       dt = 10000,
+                                                       dt = self.pollTimer_dt,
                                                        name = 'ccd_status_loop'
                                                        )
         
@@ -200,6 +205,12 @@ class CCD(QtCore.QObject):
         self.pollTimer.start()
     
     def pollStatus(self):
+        
+        # things that don't require asking anything of the camera server
+        self.state.update({'doing_exposure' : self.doing_exposure})
+        
+        
+
         
         #if self.doPolling and False: # for muting the polling during tests/dev
         if self.doPolling:
@@ -270,6 +281,12 @@ class CCD(QtCore.QObject):
             except Exception as e:
                 self.log(f'badness while polling tec status: {e}')
             
+            try:
+                self.getExposureTimeout()
+                self.state.update({'exposureTimeout' : self.exposureTimeout})
+            except Exception as e:
+                self.log(f'badness while calculating exposure sequence timeout: {e}')
+                
             # record this update time
             self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
                 
@@ -464,6 +481,11 @@ class CCD(QtCore.QObject):
         # make a symbolic link so we can easily open the last image taken
         pass
     
+    def getExposureTimeout(self):
+        # estimate the total exposure timeout
+        timeout_buffer = self.pollTimer_dt/1000
+        self.getReadoutTime()
+        self.exposureTimeout = self.cc._exposure[self.camnum] + self.readoutTime + timeout_buffer
     
     @Pyro5.server.expose
     def doExposure(self, state = {}, image_suffix = None):
@@ -473,7 +495,17 @@ class CCD(QtCore.QObject):
                             image_prefix = image_prefix,
                             image_suffix = self.image_suffix,
                             metadata = self.header)"""
+        
+        # first update the timeout so that we properly timeout when calling this function
+        self.getExposureTimeout()
+        self.state.update({'exposureTimeout' : self.exposureTimeout})
+
+        
         self.preventPollingSignal.emit()
+        
+        # record that we are doing an exposure
+        self.doing_exposure = True
+        self.state.update({'doing_exposure' : self.doing_exposure})
         
         # record the instrument state when image was triggered
         self.imagestate = state
@@ -482,6 +514,7 @@ class CCD(QtCore.QObject):
         while self.doing_poll:
             time.sleep(0.5)
             self.log('poll still happening, waiting 0.5 seconds')
+        
         
         if image_suffix is None:
             self.image_suffix = ''
@@ -506,13 +539,16 @@ class CCD(QtCore.QObject):
             suffix_to_use = f'_{self.image_suffix}'
         self.lastfilename = f'{self.image_prefix}_Camera{int(self.camnum)}{suffix_to_use}.fits'
         self.log(f'IMAGE WILL BE SAVED TO: {self.lastfilename}')
-
+        
+        # set up the exposure timer waittime
+        waittime = self.cc._exposure[self.camnum] * 1000
+        
+        
         
         self.log(f'starting an exposure!')
         self.log(f'doExposure is being called in thread {threading.get_ident()}')
         
-        # set up the exposure timer waittime
-        waittime = self.cc._exposure[self.camnum] * 1000
+        
         
         # set up the image acquisition buffer
         self.cc.acquireimg(self.camnum)
@@ -618,6 +654,10 @@ class CCD(QtCore.QObject):
         # send out signal that the image has been saved to the directory
         self.imageSaved.emit()
         
+        # update the state dictionary
+        self.doing_exposure = False
+        self.state.update({'doing_exposure' : self.doing_exposure})
+        
         pass
     
     
@@ -642,7 +682,7 @@ class CCD(QtCore.QObject):
         pass
     
     def getReadoutTime(self):
-        self.log(f'trying to get readout time, note: readout clock = {self.readoutclock}, type(readout clock) = {type(self.readoutclock)}')
+        #self.log(f'trying to get readout time, note: readout clock = {self.readoutclock}, type(readout clock) = {type(self.readoutclock)}')
         #self.readoutTime = (2049 * 2048)/self.readoutclock
         
         # The download request comes early and
@@ -660,7 +700,8 @@ class CCD(QtCore.QObject):
                        / self.cc._readoutclock[self.camnum]
         
         self.readoutTime = readouttime + timebuffer
-        self.log(f'setting readout waittime to {readouttime} (readout) + {timebuffer} (buffer) = {self.readoutTime}')
+        #self.log(f'setting readout waittime to {readouttime} (readout) + {timebuffer} (buffer) = {self.readoutTime}')
+        
         
     # Return the Current Status (the status is updated on its own)
     @Pyro5.server.expose

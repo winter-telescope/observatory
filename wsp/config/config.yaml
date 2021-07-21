@@ -1623,6 +1623,20 @@ fields:
         dtype: float64
         rate: slow
         var: 'ccd.state["last_update_timestamp"]'
+    ccd_exposureTimeout:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: 'ccd.state["exposureTimeout"]'
+    ccd_doing_exposure:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: 'ccd.state["doing_exposure"]'
     
     Pi_State:
         ftype: raw
