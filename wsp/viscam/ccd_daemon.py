@@ -309,7 +309,26 @@ class CCD(QtCore.QObject):
     def raiseImageSavedFlag(self):
         self.imageSavedFlag = True
         self.state.update({'imageSavedFlag' : self.imageSavedFlag})
-        
+    
+    def cc_waitTilDone(self, timeout, dt = 0.1, verbose = False):
+        t = 0
+        #time.sleep(dt)
+        while True:
+            status = self.cc.getsocketstatus()
+            if verbose:
+                self.log(f'ccd socket status = {status}')
+            if status != 'IDLE':
+                time.sleep(dt)
+                t = t+dt
+            else:
+                if verbose:
+                    self.log(f'command done.')
+                return True
+                #break
+            if t>timeout:
+                if verbose:
+                    self.log(f'command timed out')
+                return False
 
     @Pyro5.server.expose
     def setexposure(self, seconds):
@@ -332,6 +351,14 @@ class CCD(QtCore.QObject):
         print("ACK EXPOSURE TIME: {}".format(self.cc._result[self.camnum]))   
         """
         self.cc.setexposure(self.camnum, self.exptime_nom)
+        
+        completed = self.waitTilDone(2, verbose = True)
+        self.log(f'set exposure completed = {completed}')
+        
+        # update the state
+        self.log(f'robo: updating the exptime')
+        self.state.update({'exptime' : self.cc._exposure[self.camnum]})
+        
         """# ohhhh gosh we probably don't need all this nonsense.
         self.log('waiting for the exposure time to be set...')
         t = 0

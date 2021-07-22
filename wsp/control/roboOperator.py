@@ -741,6 +741,24 @@ class RoboOperator(QtCore.QObject):
                     self.gotoNext()
                     return
                 
+                # now check if the target alt and az are too near the tracked ephemeris bodies
+                 # first check if any ephemeris bodies are near the target
+                self.log('checking that target is not too close to ephemeris bodies')
+                ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.local_alt_deg,
+                                                            target_az = self.local_az_deg)
+                
+                if not ephem_inview:
+                    self.log('ephem check okay: no ephemeris bodies in the field of view.')
+                    
+                    pass
+                else:
+                    msg = f'>> ephemeris body is too close to target! skipping...'
+                    self.log(msg)
+                    self.alertHandler.slack_log(msg, group = 'sudo')
+                    self.gotoNext()
+                    return
+                
+                
                 """
                 # Launder the alt and az scheduled to RA/DEC
                 self.lastcmd = 'convert_alt-az_to_ra-dec'
@@ -792,11 +810,20 @@ class RoboOperator(QtCore.QObject):
             # 3: trigger image acquisition
             self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
             self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
-            self.ccd.setexposure(self.exptime)
+            #self.ccd.setexposure(self.exptime)
+            
+            # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
+            if self.exptime == self.state['ccd_exptime']:
+                self.log('requested exposure time matches current setting')
+                pass
+            else:
+                self.do(f'ccd_set_exposure {self.exptime}')
+                
             time.sleep(0.5)
 
             self.logger.info(f'robo: telling ccd to take exposure!')
-            self.ccd.doExposure()
+            self.do(f'ccd_do_exposure')
+            self.log(f'exposure complete!')
             
             """
             # 4: start exposure timer
@@ -914,18 +941,25 @@ class RoboOperator(QtCore.QObject):
         #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
         
         
-        # first check if okay to expose
+        # first check if any ephemeris bodies are near the target
         self.log('checking that target is not too close to ephemeris bodies')
         ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.state['mount_alt_deg'],
                                                     target_az = self.state['mount_az_deg'])
         
         if not ephem_inview:
-            self.log('ephemeris not too close to target')
+            self.log('ephem check okay: no ephemeris bodies in the field of view.')
+            self.logger.info(f'robo: telling ccd to take exposure!')
+            self.do(f'ccd_do_exposure')
+            self.log(f'exposure complete!')
+            pass
+        else:
+            msg = f'>> ephemeris body is too close to target! skipping...'
+            self.log(msg)
+            self.alertHandler.slack_log(msg, group = 'sudo')
+            self.gotoNext()
+            return
         
-
-        self.logger.info(f'robo: telling ccd to take exposure!')
-        self.do(f'ccd_do_exposure')
-        self.log(f'exposure complete!')
+        
         
     def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
         # check if any of the ephemeris bodies are too close to the given target alt/az
