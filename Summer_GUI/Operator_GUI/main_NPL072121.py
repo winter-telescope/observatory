@@ -1,8 +1,18 @@
 # This Python file uses the following encoding: utf-8
 import sys
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QFile, QIODevice
+import pandas as pd
+try:
+    from PyQt5 import uic
+    from PyQt5.QtWidgets import QApplication
+    from PyQt5.QtCore import QFile
+    QT = 'PyQt5'
+except:
+    from PySide6.QtUiTools import QUiLoader
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtCore import QFile
+    from PySide6.QtCore import QIODevice
+    QT = 'PySide6'
+
 import time
 import socket
 import os
@@ -11,9 +21,9 @@ import Pyro5.server
 import json
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
+
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
-
 
 class StateGetter(QtCore.QObject):
 
@@ -65,8 +75,9 @@ class StateGetter(QtCore.QObject):
                 pass
 
     def print_state(self):
-        # print out the state in a pretty format
         window.output_display_2.setPlainText(json.dumps(self.state, indent = 2))
+
+
 
 def timer_handlings():
     # init the state getter
@@ -74,8 +85,9 @@ def timer_handlings():
 
     # get the current housekeeping state
     monitor.update_state()
-    monitor.print_state()
     state = monitor.state
+    monitor.print_state()
+
     if state['ccd_tec_status'] == -999:
         change_ccd_indicator_red()
     else:
@@ -85,9 +97,11 @@ def timer_handlings():
     else:
         change_chiller_indicator_red()
     if state['dome_close_status'] == 1:
-        change_dome_indicator_red()
-    else:
+        #change_dome_indicator_red()
+        # when the dome status is 1 that means its open, which should be green I think (ie good for observing)
         change_dome_indicator_green()
+    else:
+        change_dome_indicator_red()
     
 def send(cmd):
     # now that the connection is established, data can be sent with sendall() and received with recv()
@@ -199,13 +213,17 @@ if __name__ == "__main__":
     sock.connect(server_address)
     app = QApplication(sys.argv)
     ui_file_name = "form.ui"
-    ui_file = QFile(ui_file_name)
-    loader = QUiLoader()
-    window = loader.load(ui_file)
-    ui_file.close()
+    if QT == 'PySide6':
+        ui_file = QFile(ui_file_name)
+        loader = QUiLoader()
+        window = loader.load(ui_file)
+        ui_file.close()
+    elif QT == 'PyQt5':
+        window = uic.loadUi(ui_file_name)
     window.show()
     update_timer = QTimer()
-    update_timer.timeout.connect(test)
+    #update_timer.timeout.connect(test)
+    update_timer.timeout.connect(timer_handlings)
     update_timer.start(1000)
     window.startup_button.pressed.connect(run_startup_script)
     window.shutdown_button.pressed.connect(run_shutdown_script)

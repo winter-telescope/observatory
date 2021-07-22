@@ -336,16 +336,10 @@
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="4" column="1">
-        <widget class="QPlainTextEdit" name="output_display_2"/>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="label_11">
+       <item row="2" column="1">
+        <widget class="QPushButton" name="update_button">
          <property name="text">
-          <string>Current Housekeeping Statuses</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
+          <string>Update</string>
          </property>
         </widget>
        </item>
@@ -377,10 +371,29 @@
          </item>
         </layout>
        </item>
-       <item row="2" column="1">
-        <widget class="QPushButton" name="update_button">
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_11">
          <property name="text">
-          <string>Update</string>
+          <string>Current Housekeeping Statuses</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QPlainTextEdit" name="output_display_2"/>
+       </item>
+       <item row="5" column="1">
+        <widget class="QPlainTextEdit" name="output_display_3">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
         </widget>
        </item>

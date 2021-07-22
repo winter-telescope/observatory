@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.15.2, 2021-07-21T13:57:14. -->
+<!-- Written by QtCreator 4.15.2, 2021-07-22T04:30:34. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -176,16 +176,16 @@
     <valuelist type="QVariantList" key="CustomOutputParsers"/>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">/home/joshua/Summer_GUI/Operator_GUI/main.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration./home/joshua/Summer_GUI/Operator_GUI/main.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">/home/joshua/Summer_GUI/Operator_GUI/main.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">/home/joshua/code/Summer_GUI/Operator_GUI/main_NPL072121.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration./home/joshua/code/Summer_GUI/Operator_GUI/main_NPL072121.py</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">/home/joshua/code/Summer_GUI/Operator_GUI/main_NPL072121.py</value>
     <value type="QString" key="PythonEditor.RunConfiguation.Interpreter">{883ef6a6-e05a-4d48-ac11-312b58f7a873}</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">/home/joshua/Summer_GUI/Operator_GUI/main.py</value>
+    <value type="QString" key="PythonEditor.RunConfiguation.Script">/home/joshua/code/Summer_GUI/Operator_GUI/main_NPL072121.py</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">/home/joshua/Summer_GUI/Operator_GUI</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">/home/joshua/code/Summer_GUI/Operator_GUI</value>
    </valuemap>
    <value type="int" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
   </valuemap>
