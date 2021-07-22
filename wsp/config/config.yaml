@@ -8,7 +8,7 @@ site:
     # height (site altitude). height is a number, units are something that can be parsed with astropy.units.Unit()
     height: 1706
     height_units: 'm'
-
+    timezone: 'America/Los_Angeles'
 
 
 ########## SERIAL BUS DEVICES ##########
@@ -78,10 +78,10 @@ alert_handler:
 
 # define update times (ms)
 daq_dt:
-    hk: 100
-    fast: 500
-    slow: 500
-    very_slow: 2000
+    hk: 100.0
+    fast: 500.0
+    slow: 500.0
+    very_slow: 2000.0
 
 # this will crash if this is not greater than or equal to the max daq_dt
 #write_dt: 500.0
@@ -104,7 +104,7 @@ telescope:
     host: "thor"
     port: 8220
     home_alt_degs: 45.0
-    home_az_degs: 169.0
+    home_az_degs: 349.0
     min_alt: 15.0
     max_alt: 89.0
     rotator_home_degs: -25.0
@@ -158,6 +158,8 @@ telescope_shutter:
 ########### DOME SET UP ##########
 # dome tracking error allowed in degrees
 dome_tracking_error_threshold: 0.1
+
+dome_home_az_degs: 169
 
 Dome_Status_Dict:
     ## Palomar Command Server
@@ -241,6 +243,8 @@ Dome_Status_Dict:
             msg: 'Drive Bad Encoder'
             field: 'Fault_Drive_Bad_Encoder'
 
+########### WEATHER SET UP ##########
+
 # weather limits
 weather_limits:
     TEMP_OUT:
@@ -278,6 +282,18 @@ weather_limits:
         MIN: 7 # 30pct covered
         MAX: 10 # CLEAR
 
+########### EPHEMERIS SET UP ##########
+ephem:
+    # note that changing these will not update the housekeeping fields, that must be done manually
+    min_target_separation:
+        moon: 45.0
+        mercury: 5
+        venus: 5
+        mars: 5
+        jupiter: 5
+        saturn: 5
+
+########### HOUSEKEEPING STATE + DIRFILE SET UP ##########
 
 
 # default value for housekeeping fields
@@ -1607,6 +1623,20 @@ fields:
         dtype: float64
         rate: slow
         var: 'ccd.state["last_update_timestamp"]'
+    ccd_exposureTimeout:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: 'ccd.state["exposureTimeout"]'
+    ccd_doing_exposure:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: 'ccd.state["doing_exposure"]'
     
     Pi_State:
         ftype: raw

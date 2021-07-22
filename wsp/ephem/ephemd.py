@@ -14,18 +14,21 @@ its own daemon
 import os
 import Pyro5.core
 import Pyro5.server
-import time
-from PyQt5 import uic, QtCore, QtGui, QtWidgets
-from astropy.io import fits
-import numpy as np
+#import time
+from PyQt5 import QtCore
+#from PyQt5, uic, QtGui, QtWidgets
+#from astropy.io import fits
+#import numpy as np
 import sys
 import signal
-import queue
+#import queue
 import threading
 import astropy.coordinates
 import astropy.units as u
 from datetime import datetime
 import json
+import logging
+
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -36,20 +39,22 @@ print(f'wsp_path = {wsp_path}')
 from housekeeping import data_handler
 from daemon import daemon_utils
 from utils import utils
+import ephem_utils
+from utils import logging_setup
 
 
 
-
-@Pyro5.server.expose
 class EphemMon(object):
-    def __init__(self, config, dt = 1000, name = 'ephem', verbose = False):
+    def __init__(self, config, dt = 1000, name = 'ephem', verbose = False, logger = None):
         
         self.config = config
         self.name = name
+        self.logger = logger
         self.dt = dt
         self.sunalt = 0.0
         self.verbose = verbose
         self.state = dict()
+        self.observatoryState = dict() # this will hold the current state of the FULL instrument
         
         # set up site
         lat = astropy.coordinates.Angle(self.config['site']['lat'])
@@ -59,37 +64,93 @@ class EphemMon(object):
         self.site = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
         # this gives the same result as using the of_site('Palomar') definition
         
+        # set up dictionary of tracked ephem distances
+        self.ephem_dist_dict = dict()
+        self.ephem_in_view = False
+        
+        # set up the remote object to poll the observatory state
+        self.init_remote_object()
         
         
         if verbose:
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name, print_thread_name_in_update = True, thread_numbering = 'norm')
         else:
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name)
+    
+    def log(self, msg, level = logging.INFO):
         
-    def update(self):
+        msg = f'ephemd: {msg}'
         
-        time_utc = datetime.utcnow()
-        timestamp = time_utc.timestamp()
-        self.state.update({'timestamp' : timestamp})
-        
-        # get sun altitude
-        self.sunalt = self.get_sun_alt(obstime = time_utc, time_format = 'datetime')
-        self.moonalt, self.moonaz = self.get_moon_altaz(obstime = time_utc, time_format = 'datetime')
-        self.state.update({'sunalt' : self.sunalt})
-        self.state.update({'moonalt' : self.moonalt})
-        self.state.update({'moonaz' : self.moonaz})
-        
-        # is the sun  below the horizon?
-        if self.sunalt < 0:
-            self.sun_below_horizon = True
-        
+        if self.logger is None:
+                print(msg)
         else:
-            self.sun_below_horizon = False
-        self.state.update({'sun_below_horizon' : self.sun_below_horizon})
-        
-        if self.verbose:
-            self.printState()
-        pass
+            self.logger.log(level = level, msg = msg)
+    
+    # observatory state polling:
+    def init_remote_object(self):
+        # init the remote object
+        try:
+            self.remote_object = Pyro5.client.Proxy("PYRONAME:state")
+            self.connected = True
+        except:
+            self.connected = False
+            pass
+        '''
+        except Exception:
+            self.logger.error('connection with remote object failed', exc_info = True)
+        '''
+    def update_observatoryState(self):
+        # poll the state, if we're not connected try to reconnect
+        # this should reconnect down the line if we get disconnected
+        if not self.connected:
+            self.init_remote_object()
+            
+        else:
+            try:
+                self.observatoryState = self.remote_object.GetStatus()
+                self.current_alt = self.observatoryState['mount_alt_deg']
+                self.current_az = self.observatoryState['mount_az_deg']
+                
+            except Exception as e:
+                if self.verbose:
+                    print(f'ephemd: could not update observatory state: {e}')
+                pass
+    
+    def update(self):
+        try:
+            time_utc = datetime.utcnow()
+            timestamp = time_utc.timestamp()
+            self.state.update({'timestamp' : timestamp})
+            
+            # get the observatory state from the pyro5 server
+            self.update_observatoryState()
+            
+            # update the distance to the ephemeris
+            self.updateCurrentEphemDist()
+            
+            # update the flag for ephemeris in view
+            self.state.update({'ephem_in_view' : self.ephemInViewCurrent()})
+            
+            # get sun altitude
+            self.sunalt = self.get_sun_alt(obstime = time_utc, time_format = 'datetime')
+            self.moonalt, self.moonaz = self.get_moon_altaz(obstime = time_utc, time_format = 'datetime')
+            self.state.update({'sunalt' : self.sunalt})
+            self.state.update({'moonalt' : self.moonalt})
+            self.state.update({'moonaz' : self.moonaz})
+            
+            # is the sun  below the horizon?
+            if self.sunalt < 0:
+                self.sun_below_horizon = True
+            
+            else:
+                self.sun_below_horizon = False
+            self.state.update({'sun_below_horizon' : self.sun_below_horizon})
+            
+            if self.verbose:
+                self.printState()
+            pass
+        except:
+            pass
     
     def get_sun_alt(self, obstime = 'now', time_format = 'datetime'):
         
@@ -124,6 +185,75 @@ class EphemMon(object):
         az = coords.az.value
         return alt, az
     
+    """
+    def setup_ephem_dist_dict(self):
+        # first handle the moon
+        self.ephem_dist_dict = dict()
+        self.ephem_dist_dict.update({'moon' : {'mindist' : self.config['ephem']['moon_target_separation']}})
+    
+        # now go through any other objects in the list
+        for body in self.config['ephem']['bodies']:
+            self.ephem_dist_dict.update({body : {'mindist' : self.config['ephem']['general_min_separation']}})
+    """
+        
+    def updateCurrentEphemDist(self):
+        # get the current distance to all tracked ephemeris objects
+        # call: getTargetEphemDist_AltAz( target_alt, target_az, body, location, obstime = 'now', time_format = 'datetime'):
+        # first handle the moon
+        
+        
+        for body in self.config['ephem']['min_target_separation']:
+            
+            dist = ephem_utils.getTargetEphemDist_AltAz(target_alt = self.current_alt,
+                                                        target_az = self.current_az,
+                                                        body = body,
+                                                        location = self.site)
+            
+            self.state.update({f'ephem_dist_{body}' : dist})
+            self.ephem_dist_dict.update({body : dist})
+        pass
+    
+    
+    def ephemInViewCurrent(self):
+        # check if any of the ephemeris bodies are too close
+        inview = list()
+        for body in self.config['ephem']['min_target_separation']:
+            mindist = self.config['ephem']['min_target_separation'][body]
+            dist = self.ephem_dist_dict[body]
+            if dist < mindist:
+                inview.append(True)
+            else:
+                inview.append(False)
+    
+        if any(inview):
+            return True
+        else:
+            return False
+    
+    @Pyro5.server.expose
+    def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
+        # check if any of the ephemeris bodies are too close to the given target alt/az
+        inview = list()
+        for body in self.config['ephem']['min_target_separation']:
+            mindist = self.config['ephem']['min_target_separation'][body]
+            dist = ephem_utils.getTargetEphemDist_AltAz(target_alt = target_alt,
+                                                        target_az = target_az,
+                                                        body = body,
+                                                        location = self.site,
+                                                        obstime = obstime,
+                                                        time_format = time_format)
+            if dist < mindist:
+                inview.append(True)
+            else:
+                inview.append(False)
+    
+        if any(inview):
+            return True
+        else:
+            return False
+    
+    
+    @Pyro5.server.expose
     def getState(self):
         return self.state
     
@@ -135,11 +265,11 @@ class EphemMon(object):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, config, verbose = False, parent=None ):            
+    def __init__(self, config, verbose = False, logger = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
-        self.ephem = EphemMon(config = config, dt = 200, name = 'ephem', verbose = verbose)
+        self.ephem = EphemMon(config = config, dt = 200, name = 'ephem', verbose = verbose, logger = logger)
                 
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.ephem, name = 'ephem')
         self.pyro_thread.start()
@@ -173,7 +303,7 @@ if __name__ == "__main__":
     
     # set the defaults
     verbose = False
-
+    doLogging = True
     
     #print(f'args = {args}')
     
@@ -190,6 +320,9 @@ if __name__ == "__main__":
                 if opt == 'v':
                     print(modes[arg])
                     verbose = True
+                elif opt == 'p':
+                    print(modes[arg])
+                    doLogging = False
 
             else:
                 print(f'Invalid mode {arg}')
@@ -204,7 +337,13 @@ if __name__ == "__main__":
     config_file = base_directory + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
-    main = PyroGUI(config, verbose = verbose)
+    # set up the logger
+    if doLogging:
+        logger = logging_setup.setup_logger(base_directory, config)    
+    else:
+        logger = None
+    
+    main = PyroGUI(config, verbose = verbose, logger = logger)
 
     
     signal.signal(signal.SIGINT, sigint_handler)

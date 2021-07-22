@@ -28,7 +28,7 @@ sys.path.insert(1, wsp_path)
 from utils import utils
 from schedule import schedule
 from schedule import ObsWriter
-
+from ephem import ephem_utils
 
 class TimerThread(QtCore.QThread):
     '''
@@ -70,6 +70,13 @@ class RoboOperatorThread(QtCore.QThread):
     
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
+    
+    # this signal is typically emitted by wintercmd and is connected to the RoboOperator's do_currentObs method
+    do_currentObs_Signal = QtCore.pyqtSignal()
+    
+    # this signal is typically emitted by wintercmd, it connected to RoboOperator's doExposure method.
+    # this really just replicates calling ccd_do_exposure directly, but tests out all the connections between roboOperator and the ccd_daemon
+    doExposureSignal = QtCore.pyqtSignal()
     
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover):
         super(QtCore.QThread, self).__init__()
@@ -114,6 +121,9 @@ class RoboOperatorThread(QtCore.QThread):
         self.restartRoboSignal.connect(self.robo.restart_robo)
         ## change schedule
         self.changeSchedule.connect(self.robo.change_schedule)
+        ## do an exposure with the ccd
+        self.doExposureSignal.connect(self.robo.doExposure)
+        
         # Start the event loop
         self.exec_()
 
@@ -731,6 +741,24 @@ class RoboOperator(QtCore.QObject):
                     self.gotoNext()
                     return
                 
+                # now check if the target alt and az are too near the tracked ephemeris bodies
+                 # first check if any ephemeris bodies are near the target
+                self.log('checking that target is not too close to ephemeris bodies')
+                ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.local_alt_deg,
+                                                            target_az = self.local_az_deg)
+                
+                if not ephem_inview:
+                    self.log('ephem check okay: no ephemeris bodies in the field of view.')
+                    
+                    pass
+                else:
+                    msg = f'>> ephemeris body is too close to target! skipping...'
+                    self.log(msg)
+                    self.alertHandler.slack_log(msg, group = 'sudo')
+                    self.gotoNext()
+                    return
+                
+                
                 """
                 # Launder the alt and az scheduled to RA/DEC
                 self.lastcmd = 'convert_alt-az_to_ra-dec'
@@ -782,11 +810,20 @@ class RoboOperator(QtCore.QObject):
             # 3: trigger image acquisition
             self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
             self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
-            self.ccd.setexposure(self.exptime)
+            #self.ccd.setexposure(self.exptime)
+            
+            # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
+            if self.exptime == self.state['ccd_exptime']:
+                self.log('requested exposure time matches current setting')
+                pass
+            else:
+                self.do(f'ccd_set_exposure {self.exptime}')
+                
             time.sleep(0.5)
 
             self.logger.info(f'robo: telling ccd to take exposure!')
-            self.ccd.doExposure()
+            self.do(f'ccd_do_exposure')
+            self.log(f'exposure complete!')
             
             """
             # 4: start exposure timer
@@ -803,6 +840,7 @@ class RoboOperator(QtCore.QObject):
         else:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
             self.restart_robo()
+            
     def gotoNext(self): 
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
@@ -895,7 +933,55 @@ class RoboOperator(QtCore.QObject):
     def log_timer_finished(self):
         self.logger.info('robo: exposure timer finished.')
         self.waiting_for_exposure = False
+    
+    
+    def doExposure(self):
+        # test method for making sure the roboOperator can communicate with the CCD daemon
+        # 3: trigger image acquisition
+        #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
         
+        
+        # first check if any ephemeris bodies are near the target
+        self.log('checking that target is not too close to ephemeris bodies')
+        ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.state['mount_alt_deg'],
+                                                    target_az = self.state['mount_az_deg'])
+        
+        if not ephem_inview:
+            self.log('ephem check okay: no ephemeris bodies in the field of view.')
+            self.logger.info(f'robo: telling ccd to take exposure!')
+            self.do(f'ccd_do_exposure')
+            self.log(f'exposure complete!')
+            pass
+        else:
+            msg = f'>> ephemeris body is too close to target! skipping...'
+            self.log(msg)
+            self.alertHandler.slack_log(msg, group = 'sudo')
+            self.gotoNext()
+            return
+        
+        
+        
+    def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
+        # check if any of the ephemeris bodies are too close to the given target alt/az
+        inview = list()
+        for body in self.config['ephem']['min_target_separation']:
+            mindist = self.config['ephem']['min_target_separation'][body]
+            dist = ephem_utils.getTargetEphemDist_AltAz(target_alt = target_alt,
+                                                        target_az = target_az,
+                                                        body = body,
+                                                        location = self.ephem.site,
+                                                        obstime = obstime,
+                                                        time_format = time_format)
+            if dist < mindist:
+                inview.append(True)
+            else:
+                inview.append(False)
+    
+        if any(inview):
+            return True
+        else:
+            return False
+    
     def old_do_observing(self):
         '''
         This function must contain all of the database manipulation code to remain threadsafe and prevent

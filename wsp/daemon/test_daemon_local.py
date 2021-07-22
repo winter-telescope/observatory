@@ -14,22 +14,22 @@ import os
 import sys
 import Pyro5.core
 import Pyro5.server
-import time
+import logging
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
 
-
-
+from utils import logging_setup
+from utils import utils
 
 
 class local_counter(object):
     
-    def __init__(self, base_directory):
+    def __init__(self, base_directory, logger = None):
         self.base_directory = base_directory
         
         
-        
+        self.logger = logger
         self.msg = 'local initial value'
         self.count = None
         self.state = dict()
@@ -37,7 +37,15 @@ class local_counter(object):
         self.init_remote_object()
         self.update_state()
         
+    def log(self, msg, level = logging.INFO):
         
+        msg = f'counter: {msg}'
+        
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)
+    
     def run_timer(self):
         self.remote_object.run_timer()
         
@@ -47,7 +55,7 @@ class local_counter(object):
             self.remote_object = Pyro5.client.Proxy("PYRONAME:counter")
         
         except Exception as e:
-            self.logger.error('connection with remote object failed', exc_info = True)
+            self.log('connection with remote object failed', exc_info = True)
     
     def update_state(self):
         try:
@@ -57,7 +65,7 @@ class local_counter(object):
             #print(f'state = {self.state}')
 
         except Exception as e:
-            print(f'Could not update remote status: {e}')
+            self.log(f'Could not update remote status: {e}')
 
         
     def print_state(self):
@@ -67,8 +75,11 @@ class local_counter(object):
         
 # Try it out
 if __name__ == '__main__':
-
-    counter = local_counter(wsp_path)
+    # load the config
+    config_file = base_directory + '/config/config.yaml'
+    config = utils.loadconfig(config_file)
+    logger = logging_setup.setup_logger(wsp_path, config)
+    counter = local_counter(wsp_path, logger = logger)
     """while True:
         try:
             counter = local_counter(wsp_path)

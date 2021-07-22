@@ -66,6 +66,7 @@ print(f'wintercmd: wsp_path = {wsp_path}')
 from command import commandParser
 from utils import logging_setup
 from utils import utils
+from daemon import daemon_utils
 
 # GLOBAL VARS
 
@@ -2065,6 +2066,16 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('start the robotic operator')
         if self.roboThread.isRunning():
             self.roboThread.restartRoboSignal.emit()
+    
+    @cmd
+    def robo_do_currentObs(self):
+        self.defineCmdParser('do the current observation')
+        self.roboThread.do_currentObs_Signal.emit()
+        
+    @cmd
+    def robo_do_exposure(self):
+        self.defineCmdParser('tell the robotic operator to take an image with the camera')
+        self.roboThread.doExposureSignal.emit()
         
     # General Shut Down
     @cmd
@@ -2099,11 +2110,34 @@ class Wintercmd(QtCore.QObject):
         if self.promptThread and self.execThread:
             self.promptThread.stop()
             self.execThread.stop()
-
+        
+        # try to shut down the ccd camera client
+        try:
+            self.parse('ccd_shutdown_client')
+            time.sleep(1)
+        except Exception as e:
+            print(f'could not shut down ccd camera client. {type(e)}: {e}')
+        
+        # try to shut down the ccd camera server
+        """try:
+            self.parse('ccd_killServer')
+            time.sleep(1)
+        except Exception as e:
+            print(f'could not shut down ccd camera huaso server. {type(e)}: {e}')"""
+        
         #sys.exit()#sigint_handler()
+        
+        # try to kill the ccd huaso_server
+        # we don't have a path from loacl to remote for this yet.
         
         # kill all the daemons
         self.daemonlist.kill_all()
+        
+        # kill any dangling instances of huaso_server
+        huaso_server_pids = daemon_utils.getPIDS('huaso_server')
+        for pid in huaso_server_pids:
+            print(f'killing huaso_server instance with PID {pid}')
+            os.kill(pid, signal.SIGKILL)
         
         # kill the program
         QtCore.QCoreApplication.quit()
@@ -2166,6 +2200,32 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('setexposure', secs)
         self.ccd.newCommand.emit(sigcmd)
         
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 15
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested exptime = {secs}, but it is {self.state["ccd_exptime"]}')
+            
+            stop_condition = ( (self.state['ccd_exptime'] == secs) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: ccd_exptime set successfully. Current Exptime = {self.state["ccd_exptime"]}')
+                break 
         
     @cmd
     def ccd_set_tec_sp(self):
@@ -2185,6 +2245,34 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('Start ccd exposure')
         sigcmd = signalCmd('doExposure')
         self.ccd.newCommand.emit(sigcmd)
+        
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = self.state['ccd_exposureTimeout']
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = ( (self.state['ccd_doing_exposure'] == False) & (self.state['ccd_image_saved_flag']))
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
+                break 
         
     @cmd
     def ccd_tec_start(self):

@@ -28,7 +28,7 @@ from utils import utils
 import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
-
+import astropy.visualization 
 
 
 def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None):
@@ -54,7 +54,15 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     header = hdu_list[0].header
     plt.title('Last Image Taken:')
     
-    plt.imshow(image_data[xmin:xmax, ymin:ymax],cmap = 'gray')
+    image = image_data[xmin:xmax, ymin:ymax]
+    
+    #norm = astropy.visualization.simple_norm(image, 'sqrt')
+    
+    norm = astropy.visualization.ImageNormalize(image, 
+                                             interval = astropy.visualization.ZScaleInterval(),
+                                             stretch = astropy.visualization.SqrtStretch())
+    
+    plt.imshow(image, cmap = 'gray', origin = 'lower', norm = norm)
     plt.show(block = False)
     plt.pause(0.1)
     return header, image_data
@@ -68,7 +76,10 @@ data = np.transpose(data)
 hdu = fits.PrimaryHDU(data = data)
 """
 
-name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
+#name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
+
+name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
+
 #hdu.writeto(name,overwrite = True)
 
 
@@ -76,6 +87,6 @@ header, data = plotFITS(name, xmax = 2048, ymax = 2048)
 
 # reading some stuff from the header.
 ## the header is an astropy.io.fits.header.Header object, but it can be queried like a dict
-
-print(f'Az Scheduled = {header["az_scheduled"]}')
-print(f'Az Actual = {header["az"]}')
+print(f'FILENAME = {header["FILENAME"]}')
+print(f'RA = {header["RA"]}')
+print(f'DEC  = {header["DEC"]}')
