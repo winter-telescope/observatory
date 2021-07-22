@@ -121,7 +121,6 @@ def connect_to_server():
     sock.connect(server_address)
     window.server_connect_button.setStyleSheet("background-color:green;")
     window.server_connect_button.setText("WINTER Connected")
-    print('connected_to_server')
     timer_handlings()
 def chiller_start():
     send('chiller_start')
@@ -161,7 +160,8 @@ def do_exposure_script():
     exp = window.exposure_input.text()
     send('command_filter_wheel ' + str(wheel))
     window.output_display.appendPlainText("Taking a " + exp + " second exposure with " + filter_selection + " at coordinates " + ra + " , " + dec)
-    send('ccd_do_exposure '+ exp)
+    send('ccd_set_exposure '+ exp)
+    send('ccd_do_exposure')
 def goto_coordinate_script():
     ra = window.RA_input.text()
     dec = window.DEC_input.text()

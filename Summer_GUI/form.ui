@@ -29,7 +29,7 @@
     </sizepolicy>
    </property>
    <property name="currentIndex">
-    <number>1</number>
+    <number>0</number>
    </property>
    <widget class="QWidget" name="Main">
     <attribute name="title">
@@ -84,6 +84,9 @@
        </item>
        <item row="0" column="0" colspan="2">
         <widget class="QPushButton" name="server_connect_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
          <property name="text">
           <string>Connect To WINTER</string>
          </property>
@@ -94,6 +97,9 @@
        </item>
        <item row="0" column="2">
         <widget class="QPushButton" name="chiller_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
          <property name="text">
           <string>Turn On Chiller</string>
          </property>
