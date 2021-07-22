@@ -2287,25 +2287,45 @@ class Wintercmd(QtCore.QObject):
         self.ccd.newCommand.emit(sigcmd)
         
     @cmd
-    def ccd_shutdown_client(self):
-        self.defineCmdParser('shut down the camera client session')
-        sigcmd = signalCmd('shutdownCameraClient')
-        self.ccd.newCommand.emit(sigcmd)
-    
-    @cmd
-    def ccd_reconnectServer(self):
-        self.defineCmdParser('restart the huaso server')
-        sigcmd = signalCmd('reconnectServer')
-        self.ccd.newCommand.emit(sigcmd)
-    
-    @cmd
-    def ccd_killServer(self):
-        self.defineCmdParser('shut down the huaso server')
-        sigcmd = signalCmd('killServer')
-        self.ccd.newCommand.emit(sigcmd)
+    def total_startup(self):
         
+        self.ccd_tec_start()
+        self.dome_takecontrol()
+        self.mount_connect()
+        self.mount_tracking_off()
+        self.parse('rotator_enable')
+        self.parse('rotator_home')
+        self.mount_az_on()
+        self.mount_alt_on()
+        self.mount_home()
+        self.dome_go_home()
+        self.m2_focuser_enable()
+        self.mirror_cover_connect()
+        #self.dome_open()
+        self.mirror_cover_open()
+        
+    @cmd
+    def total_shutdown(self):
+        self.mount_home()
+        self.dome_go_home()
+        #self.ccd_tec_stop()
+        self.mount_tracking_off()
+        self.dome_tracking_off()
+        self.parse('rotator_home')
+        self.mirror_cover_close()
+        self.waitForCondition('mount_is_slewing', 0)
+        self.parse('rotator_disable')
+        self.mount_az_off()
+        self.dome_close()
+        self.mount_alt_off()
+        self.m2_focuser_disable()
+        self.dome_givecontrol()    
+    @cmd
+    def total_restart(self):
+        self.total_shutdown()
+        self.total_startup()
 
-    
+
         """
 class ManualCmd(Wintercmd):
 
