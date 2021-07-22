@@ -128,12 +128,7 @@ class control(QtCore.QObject):
                 pass
             
             # housekeeping data logging daemon (hkd = housekeeping daemon)
-            if '--gd' in opts:
-                print(f'control: USING THE DIRFILE WRITER FROM GETDATA')
-                self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/dirfiled.py")
-            else:
-                print(f'control: USING THE PYTHON-ONLY DIRFILE WRITER')
-                self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py")
+            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
             self.daemonlist.add_daemon(self.hkd)
             
         if mode in ['r','m']:

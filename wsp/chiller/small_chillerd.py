@@ -471,7 +471,8 @@ class StatusMonitor(QtCore.QObject):
                                     self.state['last_poll_time'].update({'PumpStatusFlag': timestamp})
                                     self.state['last_poll_time'].update({'AlarmStatusFlag'  : timestamp})
                                     self.state['last_poll_time'].update({'WarningStatusFlag' : timestamp})
-                                    if val[3] == 1:
+                                    if int(val[3]) == 0: #NPL 7-12-21 updated with the recast since val is a string
+                                    #if val[3] == 1:
                                         print("Chiller alarm!")
                                         command_string = '.0166rAlrmBit'
                                         check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
