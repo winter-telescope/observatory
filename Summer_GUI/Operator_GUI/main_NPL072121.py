@@ -161,7 +161,8 @@ def do_exposure_script():
     exp = window.exposure_input.text()
     send('command_filter_wheel ' + str(wheel))
     window.output_display.appendPlainText("Taking a " + exp + " second exposure with " + filter_selection + " at coordinates " + ra + " , " + dec)
-    send('ccd_do_exposure '+ exp)
+    send('ccd_set_exposure '+ exp)
+    send('ccd_do_exposure')
 def goto_coordinate_script():
     ra = window.RA_input.text()
     dec = window.DEC_input.text()
