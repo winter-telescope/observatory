@@ -25,6 +25,15 @@ from PyQt5.QtCore import QTimer
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 
+#This bit handles the update of the dictionary table in a nice HTML format, and saves the scrollbar position, setting the scrollbar back where it was after the text updates. There is a slight deviation downwards from the initial position
+#because of rounding, but this rounding is necessary to set the positional value, and it's not very disruptive, so I've deemed it 'good enough'.
+def print_html_table_state(state):
+    df = pd.DataFrame.from_dict(state, orient='index')
+    vsb = window.output_display_2.verticalScrollBar()
+    old_pos_ratio = vsb.value() / (vsb.maximum() or 1)
+    window.output_display_2.setHtml(df.to_html(header=False))
+    vsb.setValue(round(old_pos_ratio * vsb.maximum()))
+
 class StateGetter(QtCore.QObject):
 
     """
@@ -75,34 +84,29 @@ class StateGetter(QtCore.QObject):
                 pass
 
     def print_state(self):
-        window.output_display_2.setPlainText(json.dumps(self.state, indent = 2))
-
+        #window.output_display_2.setText(json.dumps(self.state, indent = 2))
+        print_html_table_state(self.state)
 
 
 def timer_handlings():
-    # init the state getter
-    monitor = StateGetter()
-
     # get the current housekeeping state
     monitor.update_state()
     state = monitor.state
     monitor.print_state()
-
-    if state['ccd_tec_status'] == -999:
-        change_ccd_indicator_red()
-    else:
+    window.ccd_temp_display.display(state['ccd_tec_temp'])
+    if state['ccd_tec_status'] == 1:
         change_ccd_indicator_green()
-    if state['chiller_is_running'] == 1:
+    else:
+        change_ccd_indicator_red()
+    if state['small_chiller_isRunning'] == 1:
         change_chiller_indicator_green()
     else:
         change_chiller_indicator_red()
     if state['dome_close_status'] == 1:
-        #change_dome_indicator_red()
-        # when the dome status is 1 that means its open, which should be green I think (ie good for observing)
-        change_dome_indicator_green()
-    else:
         change_dome_indicator_red()
-    
+    else:
+        change_dome_indicator_green()
+
 def send(cmd):
     # now that the connection is established, data can be sent with sendall() and received with recv()
     sock.sendall(bytes(cmd,"utf-8"))
@@ -131,8 +135,7 @@ def run_shutdown_script():
     send('total_shutdown')
 
 def run_startup_script():
-    # init the state getter
-    monitor = StateGetter()
+
 
     # get the current housekeeping state
     monitor.update_state()
@@ -222,9 +225,10 @@ if __name__ == "__main__":
         window = uic.loadUi(ui_file_name)
     window.show()
     update_timer = QTimer()
-    #update_timer.timeout.connect(test)
     update_timer.timeout.connect(timer_handlings)
-    update_timer.start(1000)
+    update_timer.start(5000)
+    # init the state getter
+    monitor = StateGetter()
     window.startup_button.pressed.connect(run_startup_script)
     window.shutdown_button.pressed.connect(run_shutdown_script)
     window.restart_button.pressed.connect(run_restart_script)
