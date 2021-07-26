@@ -820,10 +820,24 @@ class RoboOperator(QtCore.QObject):
                 self.do(f'ccd_set_exposure {self.exptime}')
                 
             time.sleep(0.5)
-
+            
+            # do the exposure and wrap with appropriate error handling
+            system = 'ccd'
             self.logger.info(f'robo: telling ccd to take exposure!')
-            self.do(f'ccd_do_exposure')
+            try:
+                self.do(f'ccd_do_exposure')
+            except Exception as e:
+                msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                return
+            
+            # if we get to here then we have successfully saved the image
             self.log(f'exposure complete!')
+            
+            # it is now okay to trigger going to the next observation
+            self.log_observation_and_gotoNext()
             
             """
             # 4: start exposure timer
