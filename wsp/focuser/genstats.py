@@ -12,13 +12,13 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
 import time
 
-astrom_scamp = 'sex_config/scamp.conf'
-astrom_sex = 'sex_config/astrom.sex'
-astrom_param = r'/Palomar/code/wsp/focuser/sex_config/astrom.param'
-astrom_filter = 'sex_config/default.conv'
-astrom_swarp = 'sex_config/config.swarp'
-astrom_nnw = 'sex_config/default.nnw'
-photom_sex = 'sex_config/photomCat.sex'
+astrom_scamp = 'focuser/sex_config/scamp.conf'
+astrom_sex = 'focuser/sex_config/astrom.sex'
+astrom_param = 'focuser/sex_config/astrom.param'
+astrom_filter = 'focuser/sex_config/default.conv'
+astrom_swarp = 'focuser/sex_config/config.swarp'
+astrom_nnw = 'focuser/sex_config/default.nnw'
+photom_sex = 'focuser/sex_config/photomCat.sex'
 
 
 def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='weight.fits'):
