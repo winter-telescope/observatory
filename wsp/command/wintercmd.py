@@ -2200,38 +2200,59 @@ class Wintercmd(QtCore.QObject):
     
     @cmd
     def total_startup(self):
-        
-        self.ccd_tec_start()
-        self.dome_takecontrol()
-        self.mount_connect()
-        self.mount_tracking_off()
-        self.parse('rotator_enable')
-        self.parse('rotator_home')
-        self.mount_az_on()
-        self.mount_alt_on()
-        self.mount_home()
-        self.dome_go_home()
-        self.m2_focuser_enable()
-        self.mirror_cover_connect()
-        #self.dome_open()
-        self.mirror_cover_open()
-        
+        try:
+            
+            self.dome_takecontrol()
+        except Exception:
+            print('Could not take control of dome')
+        try:
+            self.mount_connect()
+            self.mount_tracking_off()
+            self.mount_az_on()
+            self.mount_alt_on()
+            self.dome_tracking_off()
+            self.mount_home()
+            self.parse('rotator_enable')
+            self.parse('rotator_home')
+            self.m2_focuser_enable()
+            self.mirror_cover_connect()
+            self.mirror_cover_open()
+            self.dome_go_home()
+            self.waitForCondition('mount_is_slewing', 0)
+        except Exception:
+            print('Problem during connection phase')
+        try:
+            self.dome_open()
+        except Exception:
+            print('Could not open dome')
     @cmd
     def total_shutdown(self):
-        self.mount_home()
-        self.dome_go_home()
-        #self.ccd_tec_stop()
-        self.mount_tracking_off()
-        self.dome_tracking_off()
-        self.parse('rotator_home')
-        self.mirror_cover_close()
-        self.waitForCondition('mount_is_slewing', 0)
-        self.parse('rotator_disable')
-        self.mount_az_off()
-        self.dome_close()
-        self.mount_alt_off()
-        self.m2_focuser_disable()
-        self.dome_givecontrol()   
+        try:
+            self.mount_tracking_off()
+            self.dome_tracking_off()
+            self.mount_home()
+            self.dome_go_home()
+            self.mirror_cover_close()
+            time.sleep(20)
+        except Exception:
+            print('Could not go home')
+        try:
+            #self.ccd_tec_stop()
+            self.waitForCondition('mount_is_slewing', 0)
+        except Exception:
+            print('Failed before mount stopped slewing')
+        try:   
+            self.rotator_home()
+            time.sleep(10)
+            self.rotator_disable()
+            self.mount_alt_off()
+            self.mount_az_off()
+            self.m2_focuser_disable()
+            self.dome_close()
+            time.sleep(20)
+            self.dome_givecontrol()
+        except Exception:
+            print('Failed during closing and disabling step')
 
     @cmd
     def total_restart(self):
