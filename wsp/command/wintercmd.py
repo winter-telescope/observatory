@@ -630,7 +630,7 @@ class Wintercmd(QtCore.QObject):
         #	textfile.write(element + "\n")
         #textfile.close()
         images = ['/home/cruzss/Desktop/20210722/viscam_2021-06-29T04:26:24.448_Camera00.fits']
-        images = ['/home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits']
+        #images = ['/home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits']
         system = 'focuser'
         try:
             #self.do("m2_focuser_goto %s" %(filter_range[0]))

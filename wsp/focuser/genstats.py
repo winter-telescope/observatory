@@ -21,12 +21,11 @@ astrom_nnw = 'focuser/sex_config/default.nnw'
 photom_sex = 'focuser/sex_config/photomCat.sex'
 
 
-def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='weight.fits'):
+def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='focuser/weight.fits'):
 	#Run sextractor on the proc image file
 	try:
 		command = 'sex -c ' + astrom_sex + ' ' + imgname + ' ' + '-CATALOG_NAME ' + imgname + '.cat' + ' -CATALOG_TYPE FITS_LDAC ' + '-PARAMETERS_NAME ' + astrom_param + ' ' + '-FILTER_NAME ' + astrom_filter + ' ' + '-STARNNW_NAME ' + astrom_nnw + ' ' + '-WEIGHT_TYPE NONE -CHECKIMAGE_TYPE NONE -PIXEL_SCALE ' + str(pixscale) + ' -DETECT_THRESH 10 -ANALYSIS_THRESH 10 -SATUR_LEVEL 60000 -WEIGHT_TYPE MAP_WEIGHT -WEIGHT_IMAGE ' + weightimg + ' -CHECKIMAGE_NAME '+imgname+'.seg,'+imgname+'.bkg,'+imgname+'.bkg.rms'
 		print('Executing command : %s'%(command))
-		#os.system('sex -c sex_config/astrom.sex /home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits -CATALOG_NAME /home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits.cat -CATALOG_TYPE FITS_LDAC -PARAMETERS_NAME sex_config/astrom.param -FILTER_NAME sex_config/default.conv -STARNNW_NAME sex_config/default.nnw -WEIGHT_TYPE NONE -CHECKIMAGE_TYPE NONE -PIXEL_SCALE 0.466 -DETECT_THRESH 10 -ANALYSIS_THRESH 10 -SATUR_LEVEL 60000 -WEIGHT_TYPE MAP_WEIGHT -WEIGHT_IMAGE weight.fits -CHECKIMAGE_NAME /home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits.seg,/home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits.bkg,/home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits.bkg.rms')
 		rval = subprocess.run(command.split(),check=True,capture_output=True)
 		print('Process completed')
 		print(rval.stdout.decode())
