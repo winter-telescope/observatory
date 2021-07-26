@@ -44,7 +44,7 @@ def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='focuser/weight.
 
 
 
-def get_img_fwhm(imgname,pixscale=0.47,weightimg='weight.fits',xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
+def get_img_fwhm(imgname,pixscale=0.47,weightimg='focuser/weight.fits',xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
 	if not os.path.exists(imgname+'.cat'):
 		run_sextractor(imgname,pixscale,weightimg=weightimg)
 
@@ -59,7 +59,7 @@ def get_img_fwhm(imgname,pixscale=0.47,weightimg='weight.fits',xlolim=10,xuplim=
 	return mean,median, std
 
 
-def gen_map(imgname,pixscale=0.466,weightimg='weight.fits',regions=False):
+def gen_map(imgname,pixscale=0.466,weightimg='focuser/weight.fits',regions=False):
 	npix = 2000
 	x_inds = np.linspace(0,npix,5)
 	y_inds = np.linspace(0,npix,5)

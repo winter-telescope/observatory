@@ -629,18 +629,18 @@ class Wintercmd(QtCore.QObject):
         #for element in images:
         #	textfile.write(element + "\n")
         #textfile.close()
-        images = ['/home/cruzss/Desktop/20210722/viscam_2021-06-29T04:26:24.448_Camera00.fits']
+        #images = ['/home/cruzss/Desktop/20210722/viscam_2021-06-29T04:26:24.448_Camera00.fits']
         #images = ['/home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits']
         system = 'focuser'
         try:
             #self.do("m2_focuser_goto %s" %(filter_range[0]))
             print("focuser going to final %s"%(filter_range[0]))
             #self.telescope.focuser_goto(target = filter_range[0])
-            from focuser import genstats
-            mean, med, std = genstats.get_img_fwhm(images[0], pixscale = 0.466, exclude = False)
-            print(med)
-            #med_rates = loop.rate_imgs(images)
-            #focuser_pos = filter_range[med_rates.index(min(med_rates))]
+            #from focuser import genstats
+            #mean, med, std = genstats.get_img_fwhm(images[0], pixscale = 0.466, exclude = False)
+            #print(med)
+            med_rates = loop.rate_imgs(images)
+            focuser_pos = filter_range[med_rates.index(min(med_rates))]
         
             #self.do("m2_focuser_goto %s" %(focuser_pos))
             print('focuser is going to final %s'%(focuser_pos))

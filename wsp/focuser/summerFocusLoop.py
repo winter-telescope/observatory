@@ -35,7 +35,7 @@ class Focus_loop:
         self.path = self.config['focus_loop_param']['recent_path']
 
     def analyze_img_focus(self, imgname):
-        mean, med, std = get_img_fwhm(imgname = imgname, pixscale = self.pixscale,exclude = False)
+        mean, med, std = genstats.get_img_fwhm(imgname = imgname, pixscale = self.pixscale,exclude = False)
         return med
     
     def rate_imgs(self,imglist):
@@ -53,7 +53,3 @@ class Focus_loop:
     def get_Recent_File(self):
         list_of_files = glob.glob('/home/cruzss/Desktop/20210722/*')      
         return str(max(list_of_files, key=os.path.getctime))
-        
-    def fix_Filepath(self, file):
-    	file = file[12:]
-    	return file
