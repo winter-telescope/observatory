@@ -605,7 +605,7 @@ class Wintercmd(QtCore.QObject):
         current_filter = self.config['focus_loop_param']['current_filter']
         loop = summerFocusLoop.Focus_loop(current_filter, self.config)
         filter_range = loop.return_Range()
-        
+        filter_range = [10002]
         system = 'ccd'
         try:
             for dist in filter_range:
@@ -616,30 +616,39 @@ class Wintercmd(QtCore.QObject):
                 #print("ccd doing exposure")
                 #os.replace(r'/home/Documents/' + file_items[n],self.config['focus_loop_param']['recent_path'] + file_items[n])
                 #n+=1
-                self.m2_focuser_goto(dist)
-                self.ccd_do_exposure()
+                #self.telescope.focuser_goto(target = dist)
+                #self.ccd_do_exposure()
                 #self.ccd.state['exptime']+2
-                time.sleep(10)
+                time.sleep(3)
                 images.append(loop.get_Recent_File())
                 #print("running")
         except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
-            
+        #textfile = open("a_file.txt", "w")
+        #for element in images:
+        #	textfile.write(element + "\n")
+        #textfile.close()
+        images = ['/home/cruzss/Desktop/20210722/viscam_2021-06-29T04:26:24.448_Camera00.fits']
+        images = ['/home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits']
         system = 'focuser'
         try:
             #self.do("m2_focuser_goto %s" %(filter_range[0]))
-            #print("focuser going to final %s"%(filter_range[0]))
-            self.m2_focuser_goto(filter_range[0])
-            focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
+            print("focuser going to final %s"%(filter_range[0]))
+            #self.telescope.focuser_goto(target = filter_range[0])
+            from focuser import genstats
+            mean, med, std = genstats.get_img_fwhm(images[0], pixscale = 0.466, exclude = False)
+            print(med)
+            #med_rates = loop.rate_imgs(images)
+            #focuser_pos = filter_range[med_rates.index(min(med_rates))]
         
             #self.do("m2_focuser_goto %s" %(focuser_pos))
-            #print('focuser_going to final %s'%(focuser_pos))
-            self.m2_focuser_goto(filter_range[0])
+            print('focuser is going to final %s'%(focuser_pos))
+            #self.telescope.focuser_goto(target = focuser_pos)
             return focuser_pos
         
         except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
     
     @cmd
