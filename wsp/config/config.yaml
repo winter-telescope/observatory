@@ -41,6 +41,7 @@ wintercmd_trusted_hosts:
 # TODO, move this somewhere cleaner
 viscam_url: 'http://192.168.1.228:5001/'
 
+viscam_platescale_as: 0.466
 
 ########## SCHEDULING ##########
 # location of the schedule files (home + this directory)
@@ -293,18 +294,9 @@ ephem:
         jupiter: 5
         saturn: 5
 
-########### HOUSEKEEPING STATE + DIRFILE SET UP ##########
 
-
-# default value for housekeeping fields
-default_value: -999
-
-### Labjack Definitions ###
-labjacks:
-    lj0:
-        config: 'labjack0_config.yaml'
         
-# Focuser Loop Param
+########### FOCUSER LOOP PARAM ###########
 
 focus_loop_param:
     micron_interval: 200
@@ -320,6 +312,43 @@ filt_limits:
     rband:
         upper: 10400
         lower: 10200
+        
+########### POINTING MODEL PARAMETERS ###########
+# Construct a grid of 3 x 6 = 18 Alt-Az points
+# ranging from 20 to 80 degrees Altitude, and from
+# 5 to 355 degrees Azimuth.
+#points = create_point_list(3, 20, 80, 6, 5, 355)
+pointing_model:
+    grid_points:
+        num_alt: 3
+        min_alt: 20
+        max_alt: 80
+        num_az: 6
+        min_az: 5
+        max_az: 355
+        
+    # filepath of pointlist to use by default in home directory
+    default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
+        
+    # path prefix is HOME
+    ps3cli_path: ps3cli
+    catalog_path: Kepler
+    
+    
+###############################################################################    
+##################### ONLY HOUSEKEEPING DATA BELOW THIS!! #####################     
+###############################################################################
+
+########### HOUSEKEEPING STATE + DIRFILE SET UP ##########
+
+
+# default value for housekeeping fields
+default_value: -999
+
+### Labjack Definitions ###
+labjacks:
+    lj0:
+        config: 'labjack0_config.yaml'
 
 # define fields.
 # Note: each rate must have a corresponding "daq_rate" as given above

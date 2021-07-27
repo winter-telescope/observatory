@@ -12,6 +12,8 @@ import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
 import astropy.visualization 
+import astropy.coordinates
+import astropy.units as u
 
 import sys
 
@@ -110,6 +112,20 @@ ra_j2000_hours = plateSolver.results.get('ra_j2000_hours')
 dec_j2000_degrees = plateSolver.results.get('dec_j2000_degrees')
 platescale = plateSolver.results.get('arcsec_per_pixel')
 field_angle = plateSolver.results.get('rot_angle_degs')
+
+ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
+dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
+
 print()
-print(f'Astrometry Solution: RA = {ra_j2000_hours} hours, DEC = {dec_j2000_degrees} deg')
-print(f'Platescale = {platescale} arcsec/pix, Field Angle = {field_angle} deg')
+print(f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}')
+
+astrometryNet_ra_j2000 = astropy.coordinates.Angle(324.718667275 * u.deg)
+astrometryNet_dec_2000 = astropy.coordinates.Angle(57.4977710915 * u.deg)
+astrometryNet_platescale = 0.466266
+astrometryNet_field_angle = 264.5
+print(f'Astrometry.net Solution:        RA = {astrometryNet_ra_j2000.to_string("hour")}, DEC = {astrometryNet_dec_2000.to_string("deg")}')
+
+print()
+print(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
+print(f'Astrometry.net: Platescale = {astrometryNet_platescale:.4f} arcsec/pix, Field Angle = {astrometryNet_field_angle:.4f} deg')
+

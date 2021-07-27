@@ -29,6 +29,7 @@ from utils import utils
 from schedule import schedule
 from schedule import ObsWriter
 from ephem import ephem_utils
+from telescope import pointingModelBuilder
 
 class TimerThread(QtCore.QThread):
     '''
@@ -262,7 +263,9 @@ class RoboOperator(QtCore.QObject):
         if self.mode == 'r':
             # start the robo?
             self.restart_robo()        # make a timer that will control the cadence of checking the conditions
-            
+        
+        ### SET UP POINTING MODEL BUILDER ###
+        self.pointingModelBuilder = pointingModelBuilder.PointingModelBuilder()
         
     def broadcast_hardware_error(self, error):
         msg = f':redsiren: *{error.system.upper()} ERROR* ocurred when attempting command: *_{error.cmd}_*, {error.msg}'
