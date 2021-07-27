@@ -20,7 +20,7 @@ wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.
 sys.path.insert(1, wsp_path)
 print(f'control: wsp_path = {wsp_path}')
 
-from telescope import platesolve
+from telescope import platesolver
 
 def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None):
     plt.close('all')
@@ -102,12 +102,14 @@ print(f'RA = {header["RA"]}')
 print(f'DEC  = {header["DEC"]}')
 """
 #%%
-match = platesolve.platesolve(imagefile, 0.47)
+plateSolver = platesolver.PlateSolver()
 
-ra_j2000_hours = match['ra_j2000_hours']
-dec_j2000_degrees = match['dec_j2000_degrees']
-platescale = match['arcsec_per_pixel']
-field_angle = match['rot_angle_degs']
+plateSolver.platesolve(imagefile, 0.47)
+
+ra_j2000_hours = plateSolver.results.get('ra_j2000_hours')
+dec_j2000_degrees = plateSolver.results.get('dec_j2000_degrees')
+platescale = plateSolver.results.get('arcsec_per_pixel')
+field_angle = plateSolver.results.get('rot_angle_degs')
 print()
 print(f'Astrometry Solution: RA = {ra_j2000_hours} hours, DEC = {dec_j2000_degrees} deg')
 print(f'Platescale = {platescale} arcsec/pix, Field Angle = {field_angle} deg')
