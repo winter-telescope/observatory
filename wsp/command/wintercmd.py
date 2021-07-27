@@ -67,6 +67,7 @@ from command import commandParser
 from utils import logging_setup
 from utils import utils
 from daemon import daemon_utils
+from focuser import summerFocusLoop
 
 # GLOBAL VARS
 
@@ -1244,6 +1245,57 @@ class Wintercmd(QtCore.QObject):
     
     
     # Telescope Focuser Stuff
+        @cmd
+    def do_focusLoop(self):
+        """
+        Runs a focus loop for a given filter by taking a set of images and collecting the relative
+        size of objects in the image. Will collimate mirror at optimal position.
+        
+        """
+        #file_items = ['one.fits', 'two.fits', 'three.fits', 'four.fits', 'five.fits']
+        #import os
+        images = []
+        current_filter = self.config['focus_loop_param']['current_filter']
+        loop = summerFocusLoop.Focus_loop(current_filter, self.config)
+        filter_range = loop.return_Range()
+        
+        system = 'ccd'
+        try:
+            for dist in filter_range:
+                #Collimate and take exposure
+                #self.do("m2_focuser_goto %s" %(dist))
+                #self.do("ccd_do_exposure")
+                #print("focuser goto %s"%(dist))
+                #print("ccd doing exposure")
+                #os.replace(r'/home/Documents/' + file_items[n],self.config['focus_loop_param']['recent_path'] + file_items[n])
+                #n+=1
+                self.telescope.focuser_goto(target = dist)
+                time.sleep(2)
+                self.ccd_do_exposure()
+                #self.ccd.state['exptime']+2
+                time.sleep(3)
+                images.append(loop.get_Recent_File())
+                #print("running")
+        except Exception as e:
+            msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
+            print(msg)
+            
+        system = 'focuser'
+        try:
+            #self.do("m2_focuser_goto %s" %(filter_range[0]))
+            #print("focuser going to final %s"%(filter_range[0]))
+            self.telescope.focuser_goto(target = filter_range[0])
+            focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
+        
+            #self.do("m2_focuser_goto %s" %(focuser_pos))
+            print('focuser_going to final %s'%(focuser_pos))
+            self.telescope.focuser_goto(target = focuser_pos)
+            return focuser_pos
+        
+        except Exception as e:
+            msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
+            print(msg)
+            
     @cmd
     def m2_focuser_enable(self):
         """

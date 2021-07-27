@@ -1,0 +1,65 @@
+-------------------------------------------------------------------------
+-------------------- ~ Installing SExtractor ~ --------------------------
+-------------------------------------------------------------------------
+
+1. Install fftw3 (for plotting fourier transforms) using:
+	
+	sudo apt-get update -y
+	sudo apt-get install -y fftw3-dev
+
+Note that if you have a directory in mind, use PREFIX== after the
+second command or do the following in your intended directory:
+
+	git clone https://github.com/FFTW/fftw3.git
+
+2.Download OpenBLAS:
+	
+	git clone https://github.com/xianyi/OpenBLAS.git
+
+make sure you have GNU GCC installed by running:
+
+	sudo apt-get gfortran
+
+cd into OpenBLAS and run:
+
+	make FC=gfortran
+
+if that doesn't work, then run:
+
+	sudo apt-get install libopenblas-dev
+
+3. Clone source SExtractor code:
+
+	git clone https://github.com/astromatic/sextractor
+
+and then cd into the sextractor folder you made to run:
+
+	sh autogen.sh
+	./configure --enable-openblas
+
+This will likely throw an error saying openblas headers have
+not been found. In this case, just run it again without the
+flag:
+
+	./configure
+
+
+4.If this still fails and gives the error "ATLAS Header files not found",
+you need to run psuedo-ATLAS (some packages from ATLAS that the program
+can run). Run these four lines:
+
+	sudo add-apt-repository universe
+	sudo add-apt-repository main
+	sudo apt-get update 
+
+	sudo apt-get install libatlas-base-dev liblapack-dev libblas-dev
+
+and then run the configure command with no flags again
+
+5.Run:
+
+	make -j
+
+and
+
+	sudo make install
