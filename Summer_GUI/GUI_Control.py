@@ -25,8 +25,15 @@ from PyQt5.QtCore import QTimer
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 
-#This bit handles the update of the dictionary table in a nice HTML format, and saves the scrollbar position, setting the scrollbar back where it was after the text updates. There is a slight deviation downwards from the initial position
-#because of rounding, but this rounding is necessary to set the positional value, and it's not very disruptive, so I've deemed it 'good enough'.
+"""
+This bit handles the update of the dictionary table in a nice HTML
+format, and saves the scrollbar position, setting the scrollbar back
+where it was after the text updates. There is a slight deviation
+downwards from the initial position because of rounding, but this
+rounding is necessary to set the positional value, and it's not
+very disruptive, so I've deemed it 'good enough'.
+"""
+
 def print_html_table_state(state):
     df = pd.DataFrame.from_dict(state, orient='index')
     vsb = window.output_display_2.verticalScrollBar()
@@ -141,7 +148,7 @@ def run_startup_script():
     monitor.update_state()
     monitor.print_state()
     state = monitor.state
-    if monitor.state['ccd_tec_temp'] < -55:
+    if monitor.state['ccd_tec_temp'] < 15:
         send('total_startup')
 
 def run_restart_script():
