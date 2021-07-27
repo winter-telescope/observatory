@@ -3,6 +3,22 @@ import platform
 from subprocess import Popen, PIPE
 import tempfile
 
+"""
+Author: Kevin Ivarsen
+Updated: 7-26-21 Nate Lourie
+Updated paths to be more platform independent.
+Also added options to enable running on unix (eg Mac)
+
+Note: to run on mac, must install mono here: https://www.mono-project.com/download/stable/
+Use the Stable Version, not the Visual Studio Version (at least that's what I tested on).
+By default the mono build will not be added to the path, so to run it from everywhere,
+edit (as root) the path file: /etc/paths, by adding a line at the end with:
+    /Library/Frameworks/Mono.framework/Versions/Current/bin
+Source: https://stackoverflow.com/a/33003816
+"""
+
+
+
 # Point this to the location of the "ps3cli.exe" executable
 #PS3CLI_EXE = os.path.expanduser("~/ps3cli/ps3cli.exe")
 PS3CLI_EXE = os.path.join(os.getenv("HOME"),'ps3cli','ps3cli.exe')

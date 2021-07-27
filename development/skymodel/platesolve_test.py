@@ -102,4 +102,12 @@ print(f'RA = {header["RA"]}')
 print(f'DEC  = {header["DEC"]}')
 """
 #%%
-match = platesolve.platesolve(imagefile, 0.46)
+match = platesolve.platesolve(imagefile, 0.47)
+
+ra_j2000_hours = match['ra_j2000_hours']
+dec_j2000_degrees = match['dec_j2000_degrees']
+platescale = match['arcsec_per_pixel']
+field_angle = match['rot_angle_degs']
+print()
+print(f'Astrometry Solution: RA = {ra_j2000_hours} hours, DEC = {dec_j2000_degrees} deg')
+print(f'Platescale = {platescale} arcsec/pix, Field Angle = {field_angle} deg')
