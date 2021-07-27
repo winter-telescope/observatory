@@ -102,4 +102,4 @@ print(f'RA = {header["RA"]}')
 print(f'DEC  = {header["DEC"]}')
 """
 #%%
-match = platesolve.platesolve(imagefile, 4.7)
+match = platesolve.platesolve(imagefile, 0.46)
