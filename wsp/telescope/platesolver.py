@@ -1,12 +1,12 @@
 import os.path
 import platform
-#from subprocess import Popen, PIPE
 import subprocess
 import tempfile
 
 """
-Author: Kevin Ivarsen
-Updated: 7-26-21 Nate Lourie
+Orig Author: Kevin Ivarsen
+Modified by Nate Lourie
+Updated: NPL 7-26-21
 Updated paths to be more platform independent.
 Also added options to enable running on unix (eg Mac)
 
