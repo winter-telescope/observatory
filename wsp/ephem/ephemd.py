@@ -45,7 +45,7 @@ from utils import logging_setup
 
 
 class EphemMon(object):
-    def __init__(self, config, dt = 1000, name = 'ephem', verbose = False, logger = None):
+    def __init__(self, config, dt = 1000, name = 'ephemd', verbose = False, logger = None):
         
         self.config = config
         self.name = name
@@ -71,11 +71,18 @@ class EphemMon(object):
         # set up the remote object to poll the observatory state
         self.init_remote_object()
         
-        
+        # Start QTimer which updates state
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(False)
+        self.timer.timeout.connect(self.update)
+        self.timer.start(self.dt)
+        """
+        # if you oupdate the state in a different thread than it will need a more sophisticated communication approach between threads
         if verbose:
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name, print_thread_name_in_update = True, thread_numbering = 'norm')
         else:
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name)
+        """
     
     def log(self, msg, level = logging.INFO):
         
@@ -92,8 +99,9 @@ class EphemMon(object):
         try:
             self.remote_object = Pyro5.client.Proxy("PYRONAME:state")
             self.connected = True
-        except:
+        except Exception as e:
             self.connected = False
+            self.logger.error(f'ephemd: connection with remote object failed', exc_info = True)
             pass
         '''
         except Exception:
@@ -108,14 +116,16 @@ class EphemMon(object):
         else:
             try:
                 self.observatoryState = self.remote_object.GetStatus()
-                self.current_alt = self.observatoryState['mount_alt_deg']
-                self.current_az = self.observatoryState['mount_az_deg']
+                
                 
             except Exception as e:
                 if self.verbose:
                     print(f'ephemd: could not update observatory state: {e}')
                 pass
-    
+            
+        self.current_alt = self.observatoryState.get('mount_alt_deg', None)
+        self.current_az = self.observatoryState.get('mount_az_deg', None)
+            
     def update(self):
         try:
             time_utc = datetime.utcnow()
@@ -138,6 +148,7 @@ class EphemMon(object):
             self.state.update({'moonalt' : self.moonalt})
             self.state.update({'moonaz' : self.moonaz})
             
+            
             # is the sun  below the horizon?
             if self.sunalt < 0:
                 self.sun_below_horizon = True
@@ -149,7 +160,8 @@ class EphemMon(object):
             if self.verbose:
                 self.printState()
             pass
-        except:
+        except Exception as e:
+            #print(f'ephemd: error in update: {e}')
             pass
     
     def get_sun_alt(self, obstime = 'now', time_format = 'datetime'):
@@ -200,17 +212,31 @@ class EphemMon(object):
         # get the current distance to all tracked ephemeris objects
         # call: getTargetEphemDist_AltAz( target_alt, target_az, body, location, obstime = 'now', time_format = 'datetime'):
         # first handle the moon
+        #print(f'current alt = {self.current_alt}, current az = {self.current_az}')
         
-        
-        for body in self.config['ephem']['min_target_separation']:
+        if (self.current_alt is None) or (self.current_alt == self.config['default_value']) or (self.current_az is None) or (self.current_az == self.config['default_value']):
+            # we don't know where the telescope is pointing! 
+            self.telemetry_connected = False
+            # protect the instrument by reporting zero distance to all bodies
+            dist = 0.0
+            for body in self.config['ephem']['min_target_separation']:
+                self.state.update({f'ephem_dist_{body}' : dist})
+                self.ephem_dist_dict.update({body : dist})
             
-            dist = ephem_utils.getTargetEphemDist_AltAz(target_alt = self.current_alt,
-                                                        target_az = self.current_az,
-                                                        body = body,
-                                                        location = self.site)
             
-            self.state.update({f'ephem_dist_{body}' : dist})
-            self.ephem_dist_dict.update({body : dist})
+        else:
+            self.telemetry_connected = True
+            for body in self.config['ephem']['min_target_separation']:
+                
+                dist = ephem_utils.getTargetEphemDist_AltAz(target_alt = self.current_alt,
+                                                            target_az = self.current_az,
+                                                            body = body,
+                                                            location = self.site)
+                
+                self.state.update({f'ephem_dist_{body}' : dist})
+                self.ephem_dist_dict.update({body : dist})
+        # update whether we're getting telemetry data
+        self.state.update({'telemetry_connected' : self.telemetry_connected})
         pass
     
     

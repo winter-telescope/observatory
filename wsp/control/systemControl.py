@@ -183,7 +183,7 @@ class control(QtCore.QObject):
         self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope)
         
         # init the ephemeris
-        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config)
+        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
         # init the weather by creating a local object that interfaces with the remote object from the weather daemon
         

@@ -448,7 +448,76 @@ fields:
         dtype: float64
         rate: slow
         var: "ephem.state['sunalt']"
-    
+    moon_alt:
+        ftype: raw
+        label: 'Alt'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['moonalt']"
+    moon_az:
+        ftype: raw
+        label: 'Az'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['moonaz']"
+    ephem_dist_moon:
+        ftype: raw
+        label: 'Dist'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['ephem_dist_moon']"
+    ephem_dist_mercury:
+        ftype: raw
+        label: 'Dist'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['ephem_dist_mercury']"
+    ephem_dist_venus:
+        ftype: raw
+        label: 'Dist'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['ephem_dist_venus']"
+    ephem_dist_mars:
+        ftype: raw
+        label: 'Dist'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['ephem_dist_mars']"
+    ephem_dist_jupiter:
+        ftype: raw
+        label: 'Dist'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['ephem_dist_jupiter']"
+    ephem_dist_saturn:
+        ftype: raw
+        label: 'Dist'
+        units: deg
+        dtype: float64
+        rate: slow
+        var: "ephem.state['ephem_dist_saturn']"
+    ephem_in_view:
+        ftype: raw
+        label: 'State'
+        units: deg
+        dtype: int64
+        rate: slow
+        var: "ephem.state['ephem_in_view']"
+    ephem_telemetry_connected:
+        ftype: raw
+        label: 'State'
+        units: deg
+        dtype: int64
+        rate: slow
+        var: "ephem.state['telemetry_connected']"
     
     
 #schedule
