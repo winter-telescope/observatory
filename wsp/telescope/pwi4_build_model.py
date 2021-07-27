@@ -121,7 +121,7 @@ def map_point(pwi4, alt_degs, azm_degs):
         print(ex.message)
         return
 
-    pwi4.mount_model_add_point(match["ra_j2000_hours"], match["dec_j2000_degrees"])
+    #pwi4.mount_model_add_point(match["ra_j2000_hours"], match["dec_j2000_degrees"])
     print("Added point")
 
 if __name__ == "__main__":
