@@ -87,7 +87,7 @@ hdu = fits.PrimaryHDU(data = data)
 
 #name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
 
-imagefile = os.path.join(wsp_path,'telescope/sample_platesolve_image.fits')
+imagefile = 'sample_platesolve_image.fits'
 
 #hdu.writeto(name,overwrite = True)
 
