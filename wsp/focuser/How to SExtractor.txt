@@ -18,12 +18,18 @@ second command or do the following in your intended directory:
 
 make sure you have GNU GCC installed by running:
 
-	sudo apt-get gfortran
+	sudo apt-get install gfortran
 
 cd into OpenBLAS and run:
 
 	make FC=gfortran
 
+then:
+
+	mkdir installation
+	
+	make PREFIX=/path/to/installation/ install
+	
 if that doesn't work, then run:
 
 	sudo apt-get install libopenblas-dev
@@ -35,6 +41,16 @@ if that doesn't work, then run:
 and then cd into the sextractor folder you made to run:
 
 	sh autogen.sh
+
+You may get errors to install libtool and autogen, you do that by running:
+
+	sudo apt-get install autoconf
+	sudo apt-get install libtool
+	
+and rerunning autogen.
+	
+Then run:
+
 	./configure --enable-openblas
 
 This will likely throw an error saying openblas headers have
@@ -63,3 +79,5 @@ and then run the configure command with no flags again
 and
 
 	sudo make install
+	
+	
