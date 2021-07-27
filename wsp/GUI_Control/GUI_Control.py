@@ -148,7 +148,7 @@ def run_startup_script():
     monitor.update_state()
     monitor.print_state()
     state = monitor.state
-    if monitor.state['ccd_tec_temp'] < 15:
+    if monitor.state['ccd_tec_temp'] < 25:
         send('total_startup')
 
 def run_restart_script():

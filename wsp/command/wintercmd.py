@@ -1245,7 +1245,7 @@ class Wintercmd(QtCore.QObject):
     
     
     # Telescope Focuser Stuff
-        @cmd
+    @cmd
     def do_focusLoop(self):
         """
         Runs a focus loop for a given filter by taking a set of images and collecting the relative
@@ -1382,7 +1382,7 @@ class Wintercmd(QtCore.QObject):
         self.telescope.rotator_disable()
         
         ## Wait until end condition is satisfied, or timeout ##
-        condition = False
+        condition = True
         timeout = 5.0
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
@@ -2399,10 +2399,13 @@ class Wintercmd(QtCore.QObject):
             self.waitForCondition('mount_is_slewing', 0)
         except Exception:
             print('Failed before mount stopped slewing')
-        try:   
+        try:
             self.rotator_home()
             time.sleep(10)
             self.rotator_disable()
+        except Exception:
+            print('Failed in disabling rotator')
+        try:
             self.mount_alt_off()
             self.mount_az_off()
             self.m2_focuser_disable()
