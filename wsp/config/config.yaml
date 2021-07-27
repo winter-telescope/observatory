@@ -304,9 +304,22 @@ labjacks:
     lj0:
         config: 'labjack0_config.yaml'
         
+# Focuser Loop Param
 
+focus_loop_param:
+    micron_interval: 50
+    recent_path: '/home/winter/data/tonight_images.lnk/*'
+    file_type: '\*fits'
+    pixscale: 0.466
+    current_filter: 'uband'
 
-
+filt_limits:
+    uband:
+        upper: 10300
+        lower: 9900
+    rband:
+        upper: 10400
+        lower: 10200
 
 # define fields.
 # Note: each rate must have a corresponding "daq_rate" as given above
