@@ -1276,6 +1276,9 @@ class Wintercmd(QtCore.QObject):
                 time.sleep(3)
                 images.append(loop.get_Recent_File())
                 #print("running")
+        except FileNotFoundError:
+            print("You are trying to modify a catalog file or an image with no stars")
+            pass
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
