@@ -29,7 +29,7 @@
     </sizepolicy>
    </property>
    <property name="currentIndex">
-    <number>2</number>
+    <number>0</number>
    </property>
    <widget class="QWidget" name="Main">
     <attribute name="title">
@@ -103,7 +103,7 @@
           <string>Connect To WINTER</string>
          </property>
          <property name="checkable">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -116,7 +116,7 @@
           <string>Turn On Chiller</string>
          </property>
          <property name="checkable">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -134,6 +134,9 @@
          </property>
         </widget>
        </item>
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="RA_input"/>
+       </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_2">
          <property name="text">
@@ -144,7 +147,7 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="2">
+       <item row="2" column="3">
         <widget class="QPushButton" name="goto_button">
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
@@ -154,13 +157,16 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>RA (J2000)</string>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="DEC_input"/>
+       </item>
+       <item row="3" column="3">
+        <widget class="QPushButton" name="exposure_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
          </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
+         <property name="text">
+          <string>DO EXPOSURE</string>
          </property>
         </widget>
        </item>
@@ -173,12 +179,6 @@
           <set>Qt::AlignCenter</set>
          </property>
         </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="DEC_input"/>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="RA_input"/>
        </item>
        <item row="0" column="1">
         <widget class="QComboBox" name="filter_selection">
@@ -200,29 +200,105 @@
        <item row="3" column="1">
         <widget class="QLineEdit" name="exposure_input"/>
        </item>
-       <item row="3" column="2">
-        <widget class="QPushButton" name="exposure_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label">
          <property name="text">
-          <string>DO EXPOSURE</string>
+          <string>RA (J2000)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
-       <item row="0" column="2">
-        <widget class="QCheckBox" name="mount_tracking_toggle">
-         <property name="text">
-          <string>Mount Tracking</string>
-         </property>
-        </widget>
+       <item row="0" column="3">
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <item>
+          <widget class="QSlider" name="mount_tracking_toggle">
+           <property name="styleSheet">
+            <string notr="true">QSlider::groove:vertical {
+    background: black;
+    position: absolute; 
+    left: 4px; right: 4px;
+}
+
+QSlider::handle:vertical {
+    height: 10px;
+    background: red;
+    margin: 0 -4px; 
+}
+
+QSlider::add-page:vertical {
+    background: black;
+}
+
+QSlider::sub-page:vertical {
+    background: black;
+}</string>
+           </property>
+           <property name="maximum">
+            <number>1</number>
+           </property>
+           <property name="pageStep">
+            <number>1</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_12">
+           <property name="text">
+            <string>Mount Tracking</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
-       <item row="1" column="2">
-        <widget class="QCheckBox" name="dome_tracking_toggle">
-         <property name="text">
-          <string>Dome Tracking</string>
-         </property>
-        </widget>
+       <item row="1" column="3">
+        <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <item>
+          <widget class="QSlider" name="dome_tracking_toggle">
+           <property name="styleSheet">
+            <string notr="true">QSlider::groove:vertical {
+    background: black;
+    position: absolute; 
+    left: 4px; right: 4px;
+}
+
+QSlider::handle:vertical {
+    height: 10px;
+    background: red;
+    margin: 0 -4px; 
+}
+
+QSlider::add-page:vertical {
+    background: black;
+}
+
+QSlider::sub-page:vertical {
+    background: black;
+}</string>
+           </property>
+           <property name="maximum">
+            <number>1</number>
+           </property>
+           <property name="pageStep">
+            <number>1</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="label_13">
+           <property name="text">
+            <string>Dome Tracking</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>
@@ -438,42 +514,10 @@
      </item>
     </layout>
    </widget>
-   <widget class="QWidget" name="tab">
+   <widget class="QWidget" name="Last_Image">
     <attribute name="title">
-     <string>Log</string>
+     <string>Last Image</string>
     </attribute>
-    <widget class="QWidget" name="verticalLayoutWidget">
-     <property name="geometry">
-      <rect>
-       <x>-3</x>
-       <y>0</y>
-       <width>511</width>
-       <height>501</height>
-      </rect>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_3">
-      <property name="sizeConstraint">
-       <enum>QLayout::SetMaximumSize</enum>
-      </property>
-      <item>
-       <widget class="QLabel" name="label_12">
-        <property name="text">
-         <string>Winter Command Log</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QTextEdit" name="log_readout">
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
    </widget>
   </widget>
  </widget>

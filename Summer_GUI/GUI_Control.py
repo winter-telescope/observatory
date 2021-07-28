@@ -37,9 +37,9 @@ very disruptive, so I've deemed it 'good enough'.
 def print_html_table_state(state):
     df = pd.DataFrame.from_dict(state, orient='index')
     vsb = window.output_display_2.verticalScrollBar()
-    old_pos_ratio = vsb.value() / (vsb.maximum() or 1)
+    old_pos = vsb.value()
     window.output_display_2.setHtml(df.to_html(header=False))
-    vsb.setValue(round(old_pos_ratio * vsb.maximum()))
+    vsb.setValue(old_pos)
 
 class StateGetter(QtCore.QObject):
 
@@ -107,12 +107,23 @@ def timer_handlings():
         change_ccd_indicator_red()
     if state['small_chiller_isRunning'] == 1:
         change_chiller_indicator_green()
+        window.chiller_button.setStyleSheet("background-color:green;")
+        window.chiller_button.setText("Chiller Started")
     else:
         change_chiller_indicator_red()
     if state['dome_close_status'] == 1:
-        change_dome_indicator_red()
-    else:
         change_dome_indicator_green()
+    else:
+        change_dome_indicator_red()
+    if state['mount_is_tracking'] == 1:
+        window.mount_tracking_toggle.setValue(1)
+    else:
+        window.mount_tracking_toggle.setValue(0)
+    if state['dome_tracking_status'] == 1:
+        window.dome_tracking_toggle.setValue(1)
+    else:
+        window.dome_tracking_toggle.setValue(0)
+
 
 def send(cmd):
     # now that the connection is established, data can be sent with sendall() and received with recv()
@@ -125,14 +136,23 @@ def test():
 # In this section, all of the scripts attached to the frontend are defined
 
 def connect_to_server():
-    # create a TCP/IP socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # connect the socket ot the port where the server is listening
-    server_address = ('localhost', 7000)
-    sock.connect(server_address)
-    window.server_connect_button.setStyleSheet("background-color:green;")
-    window.server_connect_button.setText("WINTER Connected")
-    timer_handlings()
+    try:
+        # create a TCP/IP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # connect the socket ot the port where the server is listening
+        server_address = ('localhost', 7000)
+        sock.connect(server_address)
+        window.server_connect_button.setStyleSheet("background-color:green;")
+        window.server_connect_button.setText("WINTER Connected")
+        if timer_start == False:
+            # init the state getter
+            monitor = StateGetter()
+            update_timer = QTimer()
+            update_timer.timeout.connect(timer_handlings)
+            update_timer.start(1000)
+    except Exception:
+        window.output_display.appendPlainText("Could not connect to WSP")
+        sock.close()
 def chiller_start():
     send('chiller_start')
     window.chiller_button.setStyleSheet("background-color:green;")
@@ -142,8 +162,6 @@ def run_shutdown_script():
     send('total_shutdown')
 
 def run_startup_script():
-
-
     # get the current housekeeping state
     monitor.update_state()
     monitor.print_state()
@@ -169,15 +187,19 @@ def do_exposure_script():
     dec = window.DEC_input.text()
     exp = window.exposure_input.text()
     send('command_filter_wheel ' + str(wheel))
-    window.output_display.appendPlainText("Taking a " + exp + " second exposure with " + filter_selection + " at coordinates " + ra + " , " + dec)
+    while monitor.state['filter_wheel_position'] != str(wheel):
+        time.sleep(1)
     send('ccd_set_exposure '+ exp)
+    while monitor.state['ccd_exptime'] != str(exp):
+        time.sleep(1)
+    window.output_display.appendPlainText("Taking a " + exp + " second exposure with " + filter_selection + " at coordinates " + ra + " , " + dec)
     send('ccd_do_exposure')
 def goto_coordinate_script():
     ra = window.RA_input.text()
     dec = window.DEC_input.text()
     window.output_display.appendPlainText("Moved to " + ra + " , " + dec)
     send('mount_goto_ra_dec_j2000 ' + ra + " " + dec)
-    
+
 def change_chiller_indicator_red():
     window.chiller_status_light.setStyleSheet("background-color:red;")
 
@@ -197,14 +219,14 @@ def change_ccd_indicator_green():
     window.ccd_status_light.setStyleSheet("background-color:green;")
     
 def toggle_dome_tracking():
-    if window.dome_tracking_toggle.isChecked()==True:
+    if window.dome_tracking_toggle.value() == 1:
         window.output_display.appendPlainText("Dome Tracking On")
         send('dome_tracking_on')
     else:
         window.output_display.appendPlainText("Dome Tracking Off")
         send('dome_tracking_off')
 def toggle_mount_tracking():
-    if window.mount_tracking_toggle.isChecked()==True:
+    if window.mount_tracking_toggle.value() == 1:
         window.output_display.appendPlainText("Mount Tracking On")
         send('mount_tracking_on')
     else:
@@ -216,11 +238,6 @@ def command_entry():
 # In this section, the application is started, and the methods of the different widgets are linked to functions.
 
 if __name__ == "__main__":
-    # create a TCP/IP socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # connect the socket ot the port where the server is listening
-    server_address = ('localhost', 7000)
-    sock.connect(server_address)
     app = QApplication(sys.argv)
     ui_file_name = "form.ui"
     if QT == 'PySide6':
@@ -231,11 +248,26 @@ if __name__ == "__main__":
     elif QT == 'PyQt5':
         window = uic.loadUi(ui_file_name)
     window.show()
-    update_timer = QTimer()
-    update_timer.timeout.connect(timer_handlings)
-    update_timer.start(5000)
-    # init the state getter
-    monitor = StateGetter()
+    try:
+        # create a TCP/IP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # connect the socket ot the port where the server is listening
+        server_address = ('localhost', 7000)
+        sock.connect(server_address)
+        timer_start = True
+        window.server_connect_button.setStyleSheet("background-color:green;")
+        window.server_connect_button.setText("WINTER Connected")
+        print("connected")
+    except Exception:
+        timer_start = False
+        sock.close()
+        print("Could not connect to WSP")
+    if timer_start == True:
+        # init the state getter
+        monitor = StateGetter()
+        update_timer = QTimer()
+        update_timer.timeout.connect(timer_handlings)
+        update_timer.start(1000)
     window.startup_button.pressed.connect(run_startup_script)
     window.shutdown_button.pressed.connect(run_shutdown_script)
     window.restart_button.pressed.connect(run_restart_script)
@@ -243,8 +275,8 @@ if __name__ == "__main__":
     window.server_connect_button.pressed.connect(connect_to_server)
     window.chiller_button.pressed.connect(chiller_start)
     window.goto_button.pressed.connect(goto_coordinate_script)
-    window.dome_tracking_toggle.stateChanged.connect(toggle_dome_tracking)
-    window.mount_tracking_toggle.stateChanged.connect(toggle_mount_tracking)
+    window.dome_tracking_toggle.sliderReleased.connect(toggle_dome_tracking)
+    window.mount_tracking_toggle.sliderReleased.connect(toggle_mount_tracking)
     window.command_execute.pressed.connect(command_entry)
     window.update_button.pressed.connect(timer_handlings)
     sys.exit(app.exec())
