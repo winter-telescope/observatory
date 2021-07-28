@@ -96,10 +96,14 @@ class StateGetter(QtCore.QObject):
 
 
 def timer_handlings():
-    # get the current housekeeping state
-    monitor.update_state()
-    state = monitor.state
-    monitor.print_state()
+    try:
+        # get the current housekeeping state
+        monitor.update_state()
+        state = monitor.state
+        monitor.print_state()
+    except Exception:
+        timer_start = False
+        update_timer.stop()
     window.ccd_temp_display.display(state['ccd_tec_temp'])
     if state['ccd_tec_status'] == 1:
         change_ccd_indicator_green()
@@ -127,9 +131,14 @@ def timer_handlings():
 
 def send(cmd):
     # now that the connection is established, data can be sent with sendall() and received with recv()
-    sock.sendall(bytes(cmd,"utf-8"))
-    reply = sock.recv(1024).decode("utf-8")
-    window.output_display.appendPlainText(f"received message back from server: '{reply}'\n")
+    if timer_start == True:
+        try:
+            sock.sendall(bytes(cmd,"utf-8"))
+            reply = sock.recv(1024).decode("utf-8")
+            window.output_display.appendPlainText(f"received message back from server: '{reply}'\n")
+        except Exception:
+            timer_start = False
+            update_timer.stop()
 def test():
     print('please')
 
@@ -154,20 +163,25 @@ def connect_to_server():
         window.output_display.appendPlainText("Could not connect to WSP")
         sock.close()
 def chiller_start():
-    send('chiller_start')
-    window.chiller_button.setStyleSheet("background-color:green;")
-    window.chiller_button.setText("Chiller Started")
-
+    if timer_start == True:
+        send('chiller_start')
+        window.chiller_button.setStyleSheet("background-color:green;")
+        window.chiller_button.setText("Chiller Started")
 def run_shutdown_script():
-    send('total_shutdown')
-
+    if timer_start == True:
+        send('total_shutdown')
+    else:
+        window.output_display.appendPlainText("Could not initiate shutdown sequence, not connected to WSP")
 def run_startup_script():
-    # get the current housekeeping state
-    monitor.update_state()
-    monitor.print_state()
-    state = monitor.state
-    if monitor.state['ccd_tec_temp'] < 15:
-        send('total_startup')
+    if timer_start == True:
+        # get the current housekeeping state
+        monitor.update_state()
+        monitor.print_state()
+        state = monitor.state
+        if monitor.state['ccd_tec_temp'] < 15:
+            send('total_startup')
+    else:
+        window.output_display.appendPlainText("Could not initiate startup sequence, not connected to WSP")
 
 def run_restart_script():
     restart_type = window.restart_selection.currentText()
