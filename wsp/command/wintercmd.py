@@ -53,7 +53,9 @@ import shlex
 import astropy.coordinates
 import astropy.time 
 import astropy.units as u
+from astropy.io import fits
 
+from PIL import Image
 
 
 # add the wsp directory to the PATH
@@ -620,7 +622,7 @@ class Wintercmd(QtCore.QObject):
                 #self.ccd_do_exposure()
                 #self.ccd.state['exptime']+2
                 time.sleep(3)
-                images.append(loop.get_Recent_File())
+                #images.append(loop.get_Recent_File())
                 #print("running")
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -633,6 +635,27 @@ class Wintercmd(QtCore.QObject):
         #images = ['/home/Palomar/code/wsp/focuser/images/viscam_2021-06-29T04:26:24.448_Camera00.fits']
         system = 'focuser'
         try:
+            images = ['/home/sylvie/Downloads/test/SUMMER_20210728_014827_Camera0.fits']
+            img = fits.open(images[0])
+            data = img[0].data
+            w = data.shape[1]
+            h = data.shape[0]
+    
+            fits.writeto('/home/sylvie/Downloads/doned.fits', data.astype(np.int16))
+            #outputArray = np.array(data, dtype=np.int64)
+
+            #outputArray = outputArray.astype(np.int16)
+            #output = Image.fromarray(outputArray.reshape((h, w)), "I;16")
+            #print(output)
+            #newpath = '/home/sylvie/Downloads/done2.fits'
+            #output.save(newpath)
+    
+            images = ['/home/sylvie/Downloads/doned.fits']
+            #print(images)
+
+
+            #t.write('/home/sylvie/Downloads/test_table.fits')
+            
             #self.do("m2_focuser_goto %s" %(filter_range[0]))
             print("focuser going to final %s"%(filter_range[0]))
             #self.telescope.focuser_goto(target = filter_range[0])
