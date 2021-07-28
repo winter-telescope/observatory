@@ -462,6 +462,7 @@ class CCD(QtCore.QObject):
         
     def getDefaultHeader(self, state):
         
+        
         # state should be the housekeeping state of the full observatory
         
         # make an empty header LIST: EACH ENTRY WILL BE A fits.Card object
@@ -501,7 +502,8 @@ class CCD(QtCore.QObject):
         
         # CAMERA PARAMETERS
         header.append(fits.Card('AEXPTIME', self.exptime_actual, 'Actual exposure time (sec)'))
-                 
+        
+        
         return header
     
     def makeLastImgLink(self):

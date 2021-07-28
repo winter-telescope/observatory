@@ -1275,7 +1275,8 @@ class Wintercmd(QtCore.QObject):
                 #self.ccd.state['exptime']+2
                 time.sleep(2)
                 images.append(loop.return_Path())
-                print(images[:])
+                #print(images[:])
+                #images = ['/home/winter/data/test/viscam_2021-06-29T04:50:54.447_Camera00.fits']
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
@@ -2358,7 +2359,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = self.state['ccd_exposureTimeout']
+        timeout = self.state['ccd_exposureTimeout'] + 10
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]

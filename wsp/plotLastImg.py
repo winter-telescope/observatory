@@ -37,8 +37,10 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     
     header = hdu_list[0].header
     image = image_data[xmin:xmax, ymin:ymax]
-    
-    filename = header["FILENAME"]
+    try:
+        filename = header["FILENAME"]
+    except:
+        filename = 'last image'
     median_counts = np.median(image)
     stddev = np.std(image)
     
@@ -82,6 +84,6 @@ header, data = plotFITS(name, xmax = 2048, ymax = 2048)
 
 # reading some stuff from the header.
 ## the header is an astropy.io.fits.header.Header object, but it can be queried like a dict
-print(f'FILENAME = {header["FILENAME"]}')
-print(f'RA = {header["RA"]}')
-print(f'DEC  = {header["DEC"]}')
+#print(f'FILENAME = {header["FILENAME"]}')
+#print(f'RA = {header["RA"]}')
+#print(f'DEC  = {header["DEC"]}')
