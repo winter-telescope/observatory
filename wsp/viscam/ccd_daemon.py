@@ -241,37 +241,37 @@ class CCD(QtCore.QObject):
                 
                 #print(f"EXPOSURE TIME = {self.exptime}")
                 self.state.update({'exptime' : self.exptime})
-                time.sleep(0.1)
+                time.sleep(1)
             except Exception as e:
-                self.log(f'badness while polling exposure time: {e}')
-            
+                #self.log(f'badness while polling exposure time: {e}')
+                pass
             try:
                 #print('polling ccd temp')
                 #self.log(f'polling ccd temp')
                 self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
                 self.state.update({'tec_temp' : self.tec_temp})
-                time.sleep(0.1)
+                time.sleep(1)
             except Exception as e:
-                self.log(f'badness while polling ccd temp: {e}')
-            
+                #self.log(f'badness while polling ccd temp: {e}')
+                pass
             try:
                 #print('polling tec setpoint')
                 #self.log('polling tec setpoint')
                 self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
                 self.state.update({'tec_setpoint' : self.tec_setpoint})
-                time.sleep(.1)
+                time.sleep(1)
             except Exception as e:
-                self.log(f'badness while polling tec setpoint: {e}')
-            
+                #self.log(f'badness while polling tec setpoint: {e}')
+                pass
             try:
                 #print('polling pcb temp')
                 #self.log('polling pcb temp')
                 self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
                 self.state.update({'pcb_temp' : self.pcb_temp})
-                time.sleep(.1)
+                time.sleep(1)
             except Exception as e:
-                self.log(f'badness while polling pcb temp: {e}')
-
+                #self.log(f'badness while polling pcb temp: {e}')
+                pass
             try:
                 #print('polling tec status')
                 #self.log('polling tec status')
@@ -279,14 +279,14 @@ class CCD(QtCore.QObject):
                 self.tec_status = int(fpgastatus_str[0])
                 self.state.update({'tec_status' : self.tec_status})
             except Exception as e:
-                self.log(f'badness while polling tec status: {e}')
-            
+                #self.log(f'badness while polling tec status: {e}')
+                pass
             try:
                 self.getExposureTimeout()
                 self.state.update({'exposureTimeout' : self.exposureTimeout})
             except Exception as e:
-                self.log(f'badness while calculating exposure sequence timeout: {e}')
-                
+                #self.log(f'badness while calculating exposure sequence timeout: {e}')
+                pass
             # record this update time
             self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
                 

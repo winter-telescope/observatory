@@ -61,7 +61,7 @@ class Telescope(pwi4_client.PWI4):
         self.state = dict()
         self.config = config
         self.signals = TelescopeSignals()
-        self.wrap_check_enabled = False
+        self.wrap_check_enabled = True#False
         self.wrap_status = False
         
     def status_text_to_dict_parse(self, response):

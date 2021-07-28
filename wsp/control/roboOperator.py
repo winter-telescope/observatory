@@ -509,7 +509,7 @@ class RoboOperator(QtCore.QObject):
         # now update the keys with actual vals with their actual vals
         data.update({'dist2Moon'    : self.getDist2Moon(),
                      'expMJD'       : self.getMJD(),
-                     'visitExpTime' : self.waittime, 
+                     'visitExpTime' : self.exptime,# self.waittime, 
                      'altitude'     : self.state['mount_az_deg'], 
                      'azimuth'      : self.state['mount_alt_deg']
                      })
@@ -1116,6 +1116,7 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(msg, group = 'sudo')
             return            
         
+        
         ### SLEW THE DOME ###
         # start with the dome because it can take forever
         
@@ -1137,46 +1138,9 @@ class RoboOperator(QtCore.QObject):
             return
             
             
-        ### SLEW THE TELESCOPE    
         
-        system = 'telescope'
-        try:
-            
-            
-            
-            # turn tracking back on
-            self.do(f'rotator_enable')
-            
-            # TURN ON WRAP CHECK 
-            self.do('rotator_wrap_check_enable')
-            
-            # slew the telscope
-            self.do(f'mount_goto_alt_az {self.alt_scheduled} {self.az_scheduled}')
-            
-            # if we're supposed to be tracking, enable tracking
-            if tracking:
-                self.do(f'mount_tracking_on')
-            
-            # point the rotator to the desired field angle position
-            self.do(f'rotator_goto_field {self.target_field_angle}')
-            
-            
-        except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
         
-        system = 'dome'
-        try:
-            self.do(f'dome_goto {self.local_az_deg}')
-        except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
+        
         
         
         
@@ -1189,18 +1153,7 @@ class RoboOperator(QtCore.QObject):
         # and get the info from the database, etc
         
         # 3: trigger image acquisition
-        self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
-        self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
-        #self.ccd.setexposure(self.exptime)
         
-        # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
-        if self.exptime == self.state['ccd_exptime']:
-            self.log('requested exposure time matches current setting')
-            pass
-        else:
-            self.do(f'ccd_set_exposure {self.exptime}')
-            
-        time.sleep(0.5)
         
         # do the exposure and wrap with appropriate error handling
         system = 'ccd'

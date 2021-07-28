@@ -1518,7 +1518,7 @@ class Wintercmd(QtCore.QObject):
                                     help = '<target_degs>')
         
         self.getargs()
-        target = self.args.position[0]
+        target = float(self.args.position[0])
         self.telescope.rotator_goto_field(target_degs = target)
         
         ## Wait until end condition is satisfied, or timeout ##
@@ -1821,7 +1821,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 100
+        timeout = 300
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
