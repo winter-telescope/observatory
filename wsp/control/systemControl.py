@@ -180,7 +180,7 @@ class control(QtCore.QObject):
                                                       config = self.config, logger = self.logger)
         
         # init the dome
-        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope)
+        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, logger = self.logger)
         
         # init the ephemeris
         self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, logger = self.logger)

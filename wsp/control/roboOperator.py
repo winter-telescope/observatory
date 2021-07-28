@@ -1031,12 +1031,16 @@ class RoboOperator(QtCore.QObject):
         #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
         self.check_ok_to_observe(logcheck = True)
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
+        
+        #TODO Uncomment this, for now it's commented out so that we can test with the dome closed
+        # NPL 7-28-21
+        """
         if self.ok_to_observe:
             pass
         else:
             
             return
-        
+        """
         ### Validate the observation ###
         # just make it lowercase to avoid any case issues
         obstype = obstype.lower()
@@ -1138,7 +1142,30 @@ class RoboOperator(QtCore.QObject):
             return
             
             
+        ### SLEW THE TELESCOPE ###
+        # start with the dome because it can take forever
         
+        system = 'telescope'
+        try:
+            
+            if obstype == 'altaz':
+                # slew to the requested alt/az
+                self.do(f'mount_goto_alt_az {self.target_alt} {self.target_az}')
+            
+                        
+            # slew the rotator
+            self.do(f'rotator_goto_field {self.target_field_angle}')
+            
+            # turn on tracking
+            if tracking:
+                self.do(f'mount_tracking_on')
+                
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
         
         
         

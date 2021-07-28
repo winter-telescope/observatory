@@ -1539,8 +1539,12 @@ class Wintercmd(QtCore.QObject):
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+                
+            # put the angle between 0-360
+            rotator_field_angle_norm = np.mod(self.state['rotator_field_angle'], 360)
+            target_norm = np.mod(target, 360)
             
-            stop_condition = (self.state['rotator_is_slewing'] == False) & (np.abs(self.state['rotator_field_angle'] - target) < 0.05)
+            stop_condition = (self.state['rotator_is_slewing'] == False) & (np.abs(rotator_field_angle_norm - target_norm) < 0.05)
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
