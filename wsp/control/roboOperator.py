@@ -1026,6 +1026,8 @@ class RoboOperator(QtCore.QObject):
         # tag the context for any error messages
         context = 'do_observation'
         
+        self.log(f'doing observation: obstype = {obstype}, target = {target}, tracking = {tracking}, field_angle = {field_angle}')
+        
         #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
         self.check_ok_to_observe(logcheck = True)
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
