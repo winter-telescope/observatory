@@ -315,10 +315,16 @@ class local_dome(QtCore.QObject):
         # if we're supposed to be tracking, see if we're within the allowed error from the telescope az
         if self.tracking:
             try:
-                # try to calculate the az error
                 
-                if self.az_error > self.tracking_error_threshold:
-                    self.moveDome.emit(self.telescope_az)
+                # if the telescope is slewing we don't need to update the tracking
+                if self.telescope.state["mount.is_slewing"]:
+                    pass
+                else:
+                    # try to calculate the az error
+                    # we want the az_goal to always be within the tracking threshold of the telescope az
+                    # self.az_error = abs(self.telescope_az - self.az_goal) <-- calculated in self.parse_state
+                    if self.az_error > self.tracking_error_threshold:
+                        self.moveDome.emit(self.telescope_az)
                 
             except:
                 # could not calcualte the az error

@@ -79,6 +79,9 @@ class RoboOperatorThread(QtCore.QThread):
     # this really just replicates calling ccd_do_exposure directly, but tests out all the connections between roboOperator and the ccd_daemon
     doExposureSignal = QtCore.pyqtSignal()
     
+    # a generic do command signal for executing any command in robothread
+    newCommand = QtCore.pyqtSignal(object)
+    
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover):
         super(QtCore.QThread, self).__init__()
         
@@ -124,6 +127,9 @@ class RoboOperatorThread(QtCore.QThread):
         self.changeSchedule.connect(self.robo.change_schedule)
         ## do an exposure with the ccd
         self.doExposureSignal.connect(self.robo.doExposure)
+        # do a command in the roboOperator thread
+        # connect the signals and slots
+        self.newCommand.connect(self.robo.doCommand)
         
         # Start the event loop
         self.exec_()
@@ -278,6 +284,24 @@ class RoboOperator(QtCore.QObject):
     def announce(self, msg):
         self.logger.info(f'robo: {msg}')
         self.alertHandler.slack_log(msg, group = None)
+    
+    def doCommand(self, cmd_obj):
+        """
+        This is connected to the newCommand signal. It parses the command and
+        then executes the corresponding command from the list below
+
+        using this as a reference: (source: https://stackoverflow.com/questions/6321940/how-to-launch-getattr-function-in-python-with-additional-parameters)     
+        
+        """
+        #print(f'dome: caught doCommand signal: {cmd_obj.cmd}')
+        cmd = cmd_obj.cmd
+        args = cmd_obj.args
+        kwargs = cmd_obj.kwargs
+        
+        try:
+            getattr(self, cmd)(*args, **kwargs)
+        except:
+            pass
     
     def rotator_stop_and_reset(self):
         # turn off tracking
@@ -857,7 +881,7 @@ class RoboOperator(QtCore.QObject):
         else:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
             self.restart_robo()
-            
+    
     def gotoNext(self): 
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
@@ -976,7 +1000,224 @@ class RoboOperator(QtCore.QObject):
             self.gotoNext()
             return
         
+    def do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
+        """
+        A GENERIC OBSERVATION FUNCTION
         
+        INPUTS:
+            obstype: description of the observation type. can be any ONE of:
+                'schedule'  : observes whatever the current observation in the schedule queue is
+                                - exposure time and other parameters are set according to the current obs from the schedule file
+                                
+                'altaz'     : observes the specified target = (alt_degs, az_degs):
+                                - exposure time is NOT set, whatever the current time is set to is used
+                                - tracking is turned on by default
+                                - if tracking is on, field angle is set to config['telescope']['rotator_field_angle_zeropoint']
+                'radec'     : observes the specified target = (ra_j2000_hours, dec_j2000_deg)
+                                - exposure time is NOT set, whatever the current time is set to is used                
+                                - tracking is turned on by default
+                                - if tracking is on, field angle is set to config['telescope']['rotator_field_angle_zeropoint']
+            
+            in all cases a check is done to make sure that:
+                - it is okay to observe (eg dome/weather/sun/etc status)
+                - there are no ephemeris bodies (from the tracked list) within the field of view margins
+                
+        """
+        # tag the context for any error messages
+        context = 'do_observation'
+        
+        #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
+        self.check_ok_to_observe(logcheck = True)
+        self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
+        if self.ok_to_observe:
+            pass
+        else:
+            
+            return
+        
+        ### Validate the observation ###
+        # just make it lowercase to avoid any case issues
+        obstype = obstype.lower()
+        
+        # first do some quality checks on the request
+        # observation type
+        #allowed_obstypes = ['schedule', 'altaz', 'radec']
+        # for now only allow altaz, and we'll add on more as we go
+        allowed_obstypes = ['altaz']
+        
+        # raise an exception is the type isn't allwed
+        assert (obstype in allowed_obstypes), f'improper observation type {obstype}, must be one of {allowed_obstypes}'
+        
+        # raise an exception if tracking isn't a bool or 'auto'
+        assert ((not type(tracking) is bool) or (tracking.lower() != 'auto')), f'tracking option must be bool or "auto", got {tracking}'
+        
+        # raise an exception if field_angle isn't a float or 'auto'
+        assert ((not type(field_angle) is float) or (field_angle.lower() != 'auto')), f'field_angle option must be float or "auto", got {field_angle}'
+        
+        # now check that the target is appropriate to the observation type
+        if obstype == 'altaz':
+            # make sure it's a tuple
+            assert (type(target) is tuple), f'for {obstype} observation, target must be a tuple. got type = {type(target)}'
+            
+            # make sure it's the right length
+            assert (len(target) == 2), f'for {obstype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
+            
+            # make sure they're floats
+            assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {obstype} observation, target vars must be floats'
+            
+            # get the target alt and az
+            self.target_alt = target[0]
+            self.target_az  = target[1]
+            
+            if tracking.lower() == 'auto':
+                tracking = True
+            else:
+                pass
+            
+            
+        else:
+            # we shouldn't ever get here because of the upper asserts
+            return
+        
+        
+        # handle the field angle
+        if field_angle.lower() == 'auto':
+            self.target_field_angle = self.config['telescope']['rotator_field_angle_zeropoint']
+        else:
+            self.target_field_angle = field_angle
+        
+        
+        #### Validate the observation ###
+        # check if alt and az are in allowed ranges
+        in_view = (self.target_alt >= self.config['telescope']['min_alt']) & (self.target_alt <= self.config['telescope']['max_alt'])
+        if in_view:
+            pass
+        else:
+            msg = f'>> target not within view! skipping...'
+            self.log(msg)
+            self.alertHandler.slack_log(msg, group = 'sudo')
+            return
+        
+        # now check if the target alt and az are too near the tracked ephemeris bodies
+        # first check if any ephemeris bodies are near the target
+        self.log('checking that target is not too close to ephemeris bodies')
+        ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.target_alt,
+                                                    target_az = self.target_az)
+        
+        if not ephem_inview:
+            self.log('ephem check okay: no ephemeris bodies in the field of view.')
+            
+            pass
+        else:
+            msg = f'>> ephemeris body is too close to target! skipping...'
+            self.log(msg)
+            self.alertHandler.slack_log(msg, group = 'sudo')
+            return            
+        
+        ### SLEW THE DOME ###
+        # start with the dome because it can take forever
+        
+        system = 'dome'
+        try:
+            # turn off dome tracking while slewing
+            self.do('dome_tracking_off')
+            
+            self.do(f'dome_goto {self.target_az}')
+            
+            # turn tracking back on
+            self.do('dome_tracking_on')
+            
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+            
+            
+        ### SLEW THE TELESCOPE    
+        
+        system = 'telescope'
+        try:
+            
+            
+            
+            # turn tracking back on
+            self.do(f'rotator_enable')
+            
+            # TURN ON WRAP CHECK 
+            self.do('rotator_wrap_check_enable')
+            
+            # slew the telscope
+            self.do(f'mount_goto_alt_az {self.alt_scheduled} {self.az_scheduled}')
+            
+            # if we're supposed to be tracking, enable tracking
+            if tracking:
+                self.do(f'mount_tracking_on')
+            
+            # point the rotator to the desired field angle position
+            self.do(f'rotator_goto_field {self.target_field_angle}')
+            
+            
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        
+        system = 'dome'
+        try:
+            self.do(f'dome_goto {self.local_az_deg}')
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        
+        
+        
+            
+            
+        ### DO THE EXPOSURE ###
+        
+        # 2: create the log dictionary & FITS header. save log dict to self.lastObs_record
+        # for now this is happeningin the ccd_daemon, but we need to make this better
+        # and get the info from the database, etc
+        
+        # 3: trigger image acquisition
+        self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
+        self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
+        #self.ccd.setexposure(self.exptime)
+        
+        # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
+        if self.exptime == self.state['ccd_exptime']:
+            self.log('requested exposure time matches current setting')
+            pass
+        else:
+            self.do(f'ccd_set_exposure {self.exptime}')
+            
+        time.sleep(0.5)
+        
+        # do the exposure and wrap with appropriate error handling
+        system = 'ccd'
+        self.logger.info(f'robo: telling ccd to take exposure!')
+        try:
+            self.do(f'ccd_do_exposure')
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        
+        # if we get to here then we have successfully saved the image
+        self.log(f'exposure complete!')
+        
+
+        
+ 
         
     def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
         # check if any of the ephemeris bodies are too close to the given target alt/az
