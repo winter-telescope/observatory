@@ -159,6 +159,7 @@ def connect_to_server():
             update_timer = QTimer()
             update_timer.timeout.connect(timer_handlings)
             update_timer.start(1000)
+            timer_start = True
     except Exception:
         window.output_display.appendPlainText("Could not connect to WSP")
         sock.close()
