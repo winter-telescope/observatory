@@ -48,7 +48,11 @@ class Focus_loop:
     
     def return_Range(self):
         return self.filter_range
-    
+
+    def return_Path(self):
+        real_path = os.readlink(self.path)
+        return real_path   
+
     def get_Recent_File(self):
         list_of_files = glob.glob(self.path)
         return max(list_of_files, key=os.path.getctime)

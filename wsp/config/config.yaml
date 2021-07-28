@@ -300,8 +300,8 @@ ephem:
 ########### FOCUSER LOOP PARAM ###########
 
 focus_loop_param:
-    micron_interval: 200
-    recent_path: '/home/winter/data/tonight_images.lnk/*'
+    micron_interval: 400
+    recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'
     pixscale: 0.466
     current_filter: 'uband'

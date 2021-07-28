@@ -1273,12 +1273,9 @@ class Wintercmd(QtCore.QObject):
                 time.sleep(2)
                 self.ccd_do_exposure()
                 #self.ccd.state['exptime']+2
-                time.sleep(3)
-                images.append(loop.get_Recent_File())
-                #print("running")
-        except FileNotFoundError:
-            print("You are trying to modify a catalog file or an image with no stars")
-            pass
+                time.sleep(2)
+                images.append(loop.return_Path())
+                print(images[:])
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
@@ -1294,7 +1291,11 @@ class Wintercmd(QtCore.QObject):
             print('focuser_going to final %s'%(focuser_pos))
             self.telescope.focuser_goto(target = focuser_pos)
             return focuser_pos
-        
+
+        except FileNotFoundError:
+            print("You are trying to modify a catalog file or an image with no stars")
+            pass
+
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)

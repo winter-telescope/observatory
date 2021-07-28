@@ -723,6 +723,9 @@ class CCD(QtCore.QObject):
         else:
             timebuffer = 2
         
+        #JUST FOR TESTING: NPL 7-27-21
+        timebuffer = 10
+        
         readouttime =  self.cc._naxis1[self.camnum] * self.cc._naxis2[self.camnum] \
                        / self.cc._readoutclock[self.camnum]
         

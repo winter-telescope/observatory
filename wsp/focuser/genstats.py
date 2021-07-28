@@ -12,16 +12,16 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
 
 
-astrom_scamp = 'sex_config/scamp.conf'
-astrom_sex = 'sex_config/astrom.sex'
-astrom_param = 'sex_config/astrom.param'
-astrom_filter = 'sex_config/default.conv'
-astrom_swarp = 'sex_config/config.swarp'
-astrom_nnw = 'sex_config/default.nnw'
-photom_sex = 'sex_config/photomCat.sex'
+astrom_scamp = 'focuser/sex_config/scamp.conf'
+astrom_sex = 'focuser/sex_config/astrom.sex'
+astrom_param = 'focuser/sex_config/astrom.param'
+astrom_filter = 'focuser/sex_config/default.conv'
+astrom_swarp = 'focuser/sex_config/config.swarp'
+astrom_nnw = 'focuser/sex_config/default.nnw'
+photom_sex = 'focuser/sex_config/photomCat.sex'
 
 
-def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='weight.fits'):
+def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='focuser/weight.fits'):
 	#Run sextractor on the proc image file
 	try:
 		command = 'sex -c ' + astrom_sex + ' ' + imgname + ' ' + '-CATALOG_NAME ' + imgname + '.cat' + ' -CATALOG_TYPE FITS_LDAC ' + '-PARAMETERS_NAME ' + astrom_param + ' ' + '-FILTER_NAME ' + astrom_filter + ' ' + '-STARNNW_NAME ' + astrom_nnw + ' ' + '-WEIGHT_TYPE NONE -CHECKIMAGE_TYPE NONE -PIXEL_SCALE ' + str(pixscale) + ' -DETECT_THRESH 10 -ANALYSIS_THRESH 10 -SATUR_LEVEL 60000 -WEIGHT_TYPE MAP_WEIGHT -WEIGHT_IMAGE ' + weightimg + ' -CHECKIMAGE_NAME '+imgname+'.seg,'+imgname+'.bkg,'+imgname+'.bkg.rms'
@@ -44,7 +44,7 @@ def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='weight.fits'):
 
 
 
-def get_img_fwhm(imgname,pixscale=0.47,weightimg='weight.fits',xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
+def get_img_fwhm(imgname,pixscale=0.47,weightimg='focuser/weight.fits',xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
 	if not os.path.exists(imgname+'.cat'):
 		run_sextractor(imgname,pixscale,weightimg=weightimg)
 
@@ -59,7 +59,7 @@ def get_img_fwhm(imgname,pixscale=0.47,weightimg='weight.fits',xlolim=10,xuplim=
 	return mean,median, std
 
 
-def gen_map(imgname,pixscale=0.466,weightimg='weight.fits',regions=False):
+def gen_map(imgname,pixscale=0.466,weightimg='focuser/weight.fits',regions=False):
 	npix = 2000
 	x_inds = np.linspace(0,npix,5)
 	y_inds = np.linspace(0,npix,5)

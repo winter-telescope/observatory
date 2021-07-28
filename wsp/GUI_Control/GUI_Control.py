@@ -37,10 +37,9 @@ very disruptive, so I've deemed it 'good enough'.
 def print_html_table_state(state):
     df = pd.DataFrame.from_dict(state, orient='index')
     vsb = window.output_display_2.verticalScrollBar()
-    old_pos_ratio = vsb.value() / (vsb.maximum() or 1)
+    old_pos = vsb.value()
     window.output_display_2.setHtml(df.to_html(header=False))
-    vsb.setValue(round(old_pos_ratio * vsb.maximum()))
-
+    vsb.setValue(old_pos)
 class StateGetter(QtCore.QObject):
 
     """
@@ -110,9 +109,9 @@ def timer_handlings():
     else:
         change_chiller_indicator_red()
     if state['dome_close_status'] == 1:
-        change_dome_indicator_red()
-    else:
         change_dome_indicator_green()
+    else:
+        change_dome_indicator_red()
 
 def send(cmd):
     # now that the connection is established, data can be sent with sendall() and received with recv()
@@ -169,8 +168,10 @@ def do_exposure_script():
     dec = window.DEC_input.text()
     exp = window.exposure_input.text()
     send('command_filter_wheel ' + str(wheel))
+    time.sleep(5)
     window.output_display.appendPlainText("Taking a " + exp + " second exposure with " + filter_selection + " at coordinates " + ra + " , " + dec)
     send('ccd_set_exposure '+ exp)
+    time.sleep(10)
     send('ccd_do_exposure')
 def goto_coordinate_script():
     ra = window.RA_input.text()
@@ -233,7 +234,7 @@ if __name__ == "__main__":
     window.show()
     update_timer = QTimer()
     update_timer.timeout.connect(timer_handlings)
-    update_timer.start(5000)
+    update_timer.start(1000)
     # init the state getter
     monitor = StateGetter()
     window.startup_button.pressed.connect(run_startup_script)
