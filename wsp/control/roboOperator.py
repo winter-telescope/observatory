@@ -244,7 +244,7 @@ class RoboOperator(QtCore.QObject):
         # override the dome.ok_to_open flag
         self.dome_override = False
         # override the sun altitude flag
-        self.sun_override = True
+        self.sun_override = False
         
         # some variables that hold the state of the sequences
         self.startup_complete = False
