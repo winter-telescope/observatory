@@ -2183,7 +2183,7 @@ class Wintercmd(QtCore.QObject):
                            tracking = 'auto',
                            field_angle = 'auto')
         
-        self.robo.newCommand.emit(sigcmd)
+        self.roboThread.newCommand.emit(sigcmd)
         
     # General Shut Down
     @cmd
