@@ -131,14 +131,9 @@ def timer_handlings():
 
 def send(cmd):
     # now that the connection is established, data can be sent with sendall() and received with recv()
-    if timer_start == True:
-        try:
-            sock.sendall(bytes(cmd,"utf-8"))
-            reply = sock.recv(1024).decode("utf-8")
-            window.output_display.appendPlainText(f"received message back from server: '{reply}'\n")
-        except Exception:
-            timer_start = False
-            update_timer.stop()
+    sock.sendall(bytes(cmd,"utf-8"))
+    reply = sock.recv(1024).decode("utf-8")
+    window.output_display.appendPlainText(f"received message back from server: '{reply}'\n")
 def test():
     print('please')
 
