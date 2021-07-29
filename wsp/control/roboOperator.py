@@ -192,7 +192,7 @@ class RoboOperator(QtCore.QObject):
         # set attribute to indicate if robo operator is running (
         ## this flag is used to pause the schedule execution if we want to. 
         ## ie we want to stop the schedule even though it's okay to observe
-        self.running = True
+        self.running = False
         
         # set an attribute to indicate if we are okay to observe
         ## ie, if startup is complete, the calibration is complete, and the weather/dome is okay
