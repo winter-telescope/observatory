@@ -271,7 +271,7 @@ class housekeeping():
             
             # add an item to the state dictionary, initialize with zeros
             self.state.update({field : None})
-            print(f'housekeeping: adding field "{field}"')
+            #print(f'housekeeping: adding field "{field}"')
             
             #NPL 6-1-21: removing the dirfile handling from wsp
             """
