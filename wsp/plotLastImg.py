@@ -16,7 +16,7 @@ import  astropy.time
 from datetime import datetime
 
 
-def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None, hist = True):
+def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None, hist = True, min_bin_counts = 1):
     plt.close('all')
     
     
@@ -52,7 +52,12 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     median_counts = np.median(image)
     stddev = np.std(image)
     
-    title = f'Last Image Taken: {filename}\nMedian Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}'
+    if "AEXPTIME" in header.keys():
+        exptime_str = f'{header["AEXPTIME"]:0.1f}'
+    else:
+        exptime_str = '?'
+    
+    title = f'Last Image Taken: {filename}\nMedian Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s'
     
     if "UTC" in header:
         tstr = header['UTC']
@@ -98,8 +103,7 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     ax0.set_xlabel('X [pixels]')
     ax0.set_ylabel('Y [pixels]')
     #plt.colorbar()
-    """plt.show()#block = False)
-    plt.pause(0.1)"""
+    
     
     
     # PLOT THE HISTOGRAM
@@ -121,7 +125,7 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
         
         # now remake the histogram to only make bins that have some minimum number of counts
         
-        threshold = 10
+        threshold = min_bin_counts
         full_bins = bin_left_edges0[n0>threshold]
         
         lowerlim = np.min(full_bins)
@@ -135,6 +139,10 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
         axarr[1].set_xlabel('Counts')
         axarr[1].set_ylabel('Nbins')
     
+    
+    plt.show()#block = False)
+    plt.pause(0.1)
+    
     return header, image_data
 
 
@@ -146,14 +154,14 @@ data = np.transpose(data)
 hdu = fits.PrimaryHDU(data = data)
 """
 
-name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
+#name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
 
-#name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
+name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
 
 #hdu.writeto(name,overwrite = True)
 
 
-header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = True)
+header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = True, min_bin_counts = 1)
 
 # reading some stuff from the header.
 ## the header is an astropy.io.fits.header.Header object, but it can be queried like a dict

@@ -245,19 +245,26 @@ class CCD(QtCore.QObject):
             #self.log('polling status')
             self.doing_poll = True
             
-            if self.exptime is None:
-                try:
-                    #print('polling exposure time')
-                    #self.log(f'polling exposure time')
+            
+            try:
+                #print('polling exposure time')
+                #self.log(f'polling exposure time')
+                
+                if self.exptime is None:
+                    # USE THIS IF YOU WANT TO ACTUALLY READ FROM CAMERA
                     self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
                     self.waitForClientIdle()
                     
-                    #print(f"EXPOSURE TIME = {self.exptime}")
-                    self.state.update({'exptime' : self.exptime})
-                    time.sleep(1)
-                except Exception as e:
-                    #self.log(f'badness while polling exposure time: {e}')
-                    self.log(e)
+                else:
+                   # just read from client register
+                    self.exptime = self.cc._exposure[self.camnum]
+                
+                #print(f"EXPOSURE TIME = {self.exptime}")
+                self.state.update({'exptime' : self.exptime})
+                time.sleep(1)
+            except Exception as e:
+                #self.log(f'badness while polling exposure time: {e}')
+                self.log(e)
                 
             try:
                 #print('polling ccd temp')
@@ -376,8 +383,10 @@ class CCD(QtCore.QObject):
         """
         self.cc.setexposure(self.camnum, self.exptime_nom)
         
-        completed = self.waitTilDone(2, verbose = True)
+        completed = self.cc_waitTilDone(2, verbose = True)
         self.log(f'set exposure completed = {completed}')
+        
+        
         
         # update the state
         self.log(f'robo: updating the exptime')
