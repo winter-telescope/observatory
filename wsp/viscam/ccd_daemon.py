@@ -102,6 +102,15 @@ class CCD(QtCore.QObject):
         self.logger = logger
         self.verbose = verbose
         
+        # empty var initialization
+        # there will be issues on startup if these don't exist!
+        self.exptime = None
+        self.tec_temp = None
+        self.tec_setpoint = None
+        self.pcb_temp = None
+        self.tec_status = None
+        
+        
         # for now, just hardcode the image path and prefix
         #self.imagepath = os.path.join(os.getenv("HOME"), 'data','viscam', '20210610')
         self.camname = 'SUMMER_'
@@ -136,7 +145,7 @@ class CCD(QtCore.QObject):
         self.imageSaved.connect(self.raiseImageSavedFlag)
         
         # create a QTimer which will allow regular polling of the status
-        self.pollTimer_dt = 10000
+        self.pollTimer_dt = 20*1000
         """
         self.pollTimer = QtCore.QTimer()
         self.pollTimer.setInterval(self.pollTimer_dt)
@@ -204,6 +213,25 @@ class CCD(QtCore.QObject):
     def startPollingStatus(self):
         self.pollTimer.start()
     
+    def waitForClientIdle(self, dt = 0.1, timeout = 2.0, raiseException = True):
+        t = 0
+        
+        while True:
+            status = self.cc.getsocketstatus()
+            #self.log(f'status = {status}')
+            if status != 'IDLE':
+                time.sleep(dt)
+                t = t+dt
+            else:
+                #self.log(f'command done.')
+                break
+            if t>timeout:
+                #self.log(f'command timed out')
+                if raiseException:
+                    raise TimeoutError(f'command timed out')
+                else:
+                    break
+            
     def pollStatus(self):
         
         # things that don't require asking anything of the camera server
@@ -217,76 +245,72 @@ class CCD(QtCore.QObject):
             #self.log('polling status')
             self.doing_poll = True
             
-            try:
-                #print('polling exposure time')
-                #self.log(f'polling exposure time')
-                self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
+            if self.exptime is None:
+                try:
+                    #print('polling exposure time')
+                    #self.log(f'polling exposure time')
+                    self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
+                    self.waitForClientIdle()
+                    
+                    #print(f"EXPOSURE TIME = {self.exptime}")
+                    self.state.update({'exptime' : self.exptime})
+                    time.sleep(1)
+                except Exception as e:
+                    #self.log(f'badness while polling exposure time: {e}')
+                    self.log(e)
                 
-                t = 0
-                dt = 0.1
-                timeout = 2.0
-                while True:
-                    status = self.cc.getsocketstatus()
-                    #self.log(f'status = {status}')
-                    if status != 'IDLE':
-                        time.sleep(dt)
-                        t = t+dt
-                    else:
-                        #self.log(f'command done.')
-                        break
-                    if t>timeout:
-                        #self.log(f'command timed out')
-                        break
-                
-                
-                #print(f"EXPOSURE TIME = {self.exptime}")
-                self.state.update({'exptime' : self.exptime})
-                time.sleep(1)
-            except Exception as e:
-                #self.log(f'badness while polling exposure time: {e}')
-                pass
             try:
                 #print('polling ccd temp')
                 #self.log(f'polling ccd temp')
                 self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
+                self.waitForClientIdle()
                 self.state.update({'tec_temp' : self.tec_temp})
                 time.sleep(1)
             except Exception as e:
                 #self.log(f'badness while polling ccd temp: {e}')
-                pass
+                self.log(e)
+                
             try:
                 #print('polling tec setpoint')
                 #self.log('polling tec setpoint')
                 self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
+                self.waitForClientIdle()
                 self.state.update({'tec_setpoint' : self.tec_setpoint})
                 time.sleep(1)
             except Exception as e:
                 #self.log(f'badness while polling tec setpoint: {e}')
-                pass
+                self.log(e)
+            
             try:
                 #print('polling pcb temp')
                 #self.log('polling pcb temp')
                 self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
+                self.waitForClientIdle()
                 self.state.update({'pcb_temp' : self.pcb_temp})
                 time.sleep(1)
             except Exception as e:
                 #self.log(f'badness while polling pcb temp: {e}')
-                pass
+                self.log(e)
+
             try:
                 #print('polling tec status')
                 #self.log('polling tec status')
                 fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
+                self.waitForClientIdle()
                 self.tec_status = int(fpgastatus_str[0])
                 self.state.update({'tec_status' : self.tec_status})
+                time.sleep(1)
             except Exception as e:
                 #self.log(f'badness while polling tec status: {e}')
-                pass
+                self.log(e)
+            
             try:
                 self.getExposureTimeout()
                 self.state.update({'exposureTimeout' : self.exposureTimeout})
             except Exception as e:
                 #self.log(f'badness while calculating exposure sequence timeout: {e}')
-                pass
+                self.log(e)
+                
             # record this update time
             self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
                 
@@ -462,7 +486,6 @@ class CCD(QtCore.QObject):
         
     def getDefaultHeader(self, state):
         
-        
         # state should be the housekeeping state of the full observatory
         
         # make an empty header LIST: EACH ENTRY WILL BE A fits.Card object
@@ -502,8 +525,7 @@ class CCD(QtCore.QObject):
         
         # CAMERA PARAMETERS
         header.append(fits.Card('AEXPTIME', self.exptime_actual, 'Actual exposure time (sec)'))
-        
-        
+                 
         return header
     
     def makeLastImgLink(self):
@@ -725,9 +747,6 @@ class CCD(QtCore.QObject):
         else:
             timebuffer = 2
         
-        #JUST FOR TESTING: NPL 7-27-21
-        timebuffer = 10
-        
         readouttime =  self.cc._naxis1[self.camnum] * self.cc._naxis2[self.camnum] \
                        / self.cc._readoutclock[self.camnum]
         
@@ -786,7 +805,7 @@ class CCD(QtCore.QObject):
                 #self.cc = cameraClient.CameraClient('huaso_server', ('localhost', 43322))
                 #self.connected = self.cc._connect()
                 # 7-15-21 updating with Rob's new huaso_server client approach
-                self.cc = cameraClient.CameraClient('SUMMER', ('localhost', 43322), verbose = False)
+                self.cc = cameraClient.CameraClient('SUMMER', ('localhost', 43322), verbose = False, debug = False)
                 self.connected = self.cc._connect()
             except:
                 self.connected = False
@@ -805,6 +824,7 @@ class CCD(QtCore.QObject):
             
             self.log(">> successfully connected to huaso_server!")
             
+            
             # Download current trigger mode:
             # gettrigmode return byte array, LSB is what we switch
             #    '00' = continuous parallel dump
@@ -820,7 +840,15 @@ class CCD(QtCore.QObject):
             self.readoutclock = self.cc.getreadoutclock(self.camnum)[self.camnum]
             
             #self.startStatusLoop.emit()
+            # wait a few seconds before starting up the housekeeping loop
+            waittime = 5
             
+            # poll the initial status
+            self.pollStatus()
+            
+            self.log(f">> waiting to {waittime} s to start camera polling")
+            time.sleep(waittime)
+            self.statusThread.start()
         else:
             self.log(">> error: Could not connect to huaso_server")
             
