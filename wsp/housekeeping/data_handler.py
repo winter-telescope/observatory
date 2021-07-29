@@ -392,7 +392,7 @@ class daq_loop(QtCore.QThread):
     It is meant for polling different sensors or instruments or servers
     each in their own thread so they don't bog each other down.
     """
-    def __init__(self, func, dt, name = '', print_thread_name_in_update = False, thread_numbering = 'PyQt', *args, **kwargs):
+    def __init__(self, func, dt, name = '', print_thread_name_in_update = False, thread_numbering = 'PyQt', autostart = True, *args, **kwargs):
         QtCore.QThread.__init__(self)
 
         self.index = 0
@@ -412,7 +412,8 @@ class daq_loop(QtCore.QThread):
         self._thread_numbering_ = thread_numbering.lower()
         
         # start the thread itself
-        self.start()
+        if autostart:
+            self.start()
     
     
     def run(self):

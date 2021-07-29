@@ -296,7 +296,8 @@ class DirfileWriter(QtCore.QObject):
             
             # add an item to the state dictionary, initialize with zeros
             self.state.update({field : None})
-            print(f'dirfiled: adding field "{field}"')
+            if self.verbose:
+                print(f'dirfiled: adding field "{field}"')
             
             # add a numpy array item to the curframe dictionary
             #spf = self.spf[self.config['fields'][field]['rate']]
