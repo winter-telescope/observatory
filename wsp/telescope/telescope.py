@@ -155,7 +155,7 @@ class Telescope(pwi4_client.PWI4):
         min_angle = self.config['telescope']['rotator_min_degs']
         max_angle = self.config['telescope']['rotator_max_degs']
         self.wrap_status = (angle <= min_angle) or (angle >= max_angle)
-        #print(f'{angle} in range ({min_angle}, {max_angle})? {self.wrap_status}')
+        #print(f'Wrap Check: Current Field Angle {angle} outside range ({min_angle}, {max_angle})? {self.wrap_status}')
         
         self.state.update({'wrap_status' : self.wrap_status})
         if self.wrap_check_enabled:

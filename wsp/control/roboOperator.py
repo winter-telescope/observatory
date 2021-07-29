@@ -304,6 +304,7 @@ class RoboOperator(QtCore.QObject):
             pass
     
     def rotator_stop_and_reset(self):
+        self.log(f'stopping rotator and resetting to home position')
         # turn off tracking
         self.doTry('mount_tracking_off')
         self.doTry('rotator_home')
@@ -318,6 +319,7 @@ class RoboOperator(QtCore.QObject):
         err = roboError(context, cmd, system, msg)
         # directly broadcast the error rather than use an event to keep it all within this event
         self.broadcast_hardware_error(err)
+        self.log(msg)
         
         # STOP THE ROTATOR
         self.rotator_stop_and_reset()
@@ -887,7 +889,11 @@ class RoboOperator(QtCore.QObject):
         self.check_ok_to_observe(logcheck = True)
         if not self.ok_to_observe:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
-            self.restart_robo()
+            if self.running:
+                # if the robo operator is running then restart, if not just pass
+                self.restart_robo()
+            else:
+                pass
             return
             
         if self.schedule.currentObs is not None and self.running:
@@ -1198,7 +1204,30 @@ class RoboOperator(QtCore.QObject):
         self.log(f'exposure complete!')
         
 
+    def remakePointingModel(self):
         
+        # clear the current pointing model
+        self.do('mount_model_clear_points')
+        
+        time.sleep(2)
+        
+        # load up the points
+        pointlist_filepath = os.path.join(os.getenv("HOME"), self.config['pointing_model']['default_pointlist'])
+        self.pointingModelBuilder.load_point_list(pointlist_filepath)
+        
+        # now go through the list one by one, and observe each point!
+        
+        #TODO: Remove
+        # For now, just limit it to a few points so that we can test it out
+        maxpoints = 3
+        self.pointingModelBuilder.altaz_points = self.pointingModelBuilder.altaz_points[0:maxpoints]
+        
+        for altaz_point in self.pointingModelBuilder.altaz_points:
+            target_alt = altaz_point[0]
+            target_az  = altaz_point[1]
+            
+        
+            
  
         
     def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
