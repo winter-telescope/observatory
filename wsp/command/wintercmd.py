@@ -1298,12 +1298,13 @@ class Wintercmd(QtCore.QObject):
             #find the ideal focuser position
             print('focuser re-aligning at %s microns'%(filter_range[0]))
             self.telescope.focuser_goto(target = filter_range[0])
-            focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
+            med_values = loop.rate_images(images)
+            focuser_pos = filter_range[med_values.index(min(med_values))]
         
             #
             print('focuser_going to final position at %s microns'%(focuser_pos))
             self.telescope.focuser_goto(target = focuser_pos)
-            return focuser_pos
+            
 
         except FileNotFoundError:
             print("You are trying to modify a catalog file or an image with no stars")
@@ -1312,6 +1313,9 @@ class Wintercmd(QtCore.QObject):
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
+        
+        if plotting:
+            loop.plot(med_fwhm = med_values)
             
 
             

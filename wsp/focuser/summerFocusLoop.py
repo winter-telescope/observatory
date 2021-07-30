@@ -3,26 +3,14 @@
 """
 The focus loop object class
 
-@author: cruzss
+@author: C. Soto and V. Karambelkar
 """
 import os
 import glob
 from focuser import genstats
 from astropy.io import fits
 import numpy as np
-
-class Fit_curve:
-    
-    def __init__(self, A, B, x, x0):
-        self.A = A
-        self.B = B
-        self.x = x
-        self.x0 = x0
-        
-    def parabola_curve(self):
-        return self.A + self.B*(self.x-self.x0)**2
-    
-    #def fit_curve(self):
+from plot_curve import *
 
 class Focus_loop:
     
@@ -35,8 +23,12 @@ class Focus_loop:
         
         self.path = self.config['focus_loop_param']['recent_path']
 
+        self.med_fwhms = []
+        self.std_fwhms = []
     def analyze_img_focus(self, imgname):
         mean, med, std = genstats.get_img_fwhm(imgname, self.pixscale,exclude = False)
+        self.med_fwhm = med*self.pixscale
+        self.std_fwhm = std*self.pixscale
         return med
     
     def rate_imgs(self,imglist):
@@ -83,8 +75,25 @@ class Focus_loop:
             print(msg)
             
         return images_16
-            
+    
+    def plot(self):
         
+        filter_range = np.array(self.filter_range)
+        med_fwhm = np.array(self.med_fwhms)
+        std_fwhm = np.array(self.std_fwhms)
+        
+        curve = fit_Curve()
+        popt = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
+        
+        plt.figure()
+		plt.errorbar(focus_vals,fwhms,yerr=stds,fmt='.',c='red')
+		plotfoc = np.linspace(np.min(focus_vals),np.max(focus_vals),20)
+		print(popt)
+		plt.plot(plotfoc,parabola(plotfoc,popt[0],popt[1],popt[2]))
+		plt.title('Best FWHM : %.1f arcsec'%(np.min(fwhms)))
+		plt.savefig('focusloop.pdf',bbox_inches='tight')
+        
+        return popt
         
         
         
