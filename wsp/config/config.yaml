@@ -107,7 +107,7 @@ telescope:
     home_alt_degs: 45.0
     home_az_degs: 349.0
     min_alt: 15.0
-    max_alt: 89.0
+    max_alt: 85.0
     rotator_field_angle_zeropoint: 155.0 
     rotator_home_degs: -25.0
     #rotator_max_degs: 20.0

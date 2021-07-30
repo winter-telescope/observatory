@@ -139,7 +139,8 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
         axarr[1].set_xlabel('Counts')
         axarr[1].set_ylabel('Nbins')
     
-    
+        axarr[1].set_yscale('log')
+        
     plt.show()#block = False)
     plt.pause(0.1)
     
@@ -155,13 +156,14 @@ hdu = fits.PrimaryHDU(data = data)
 """
 
 #name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
+name = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
 
-name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
+#name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
 
 #hdu.writeto(name,overwrite = True)
 
 
-header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = True, min_bin_counts = 1)
+header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = True, min_bin_counts = 10)
 
 # reading some stuff from the header.
 ## the header is an astropy.io.fits.header.Header object, but it can be queried like a dict

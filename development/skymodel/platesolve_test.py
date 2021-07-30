@@ -22,7 +22,11 @@ wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.
 sys.path.insert(1, wsp_path)
 print(f'control: wsp_path = {wsp_path}')
 
-from telescope import platesolver
+try:
+    
+    from telescope import platesolver
+except:
+    import platesolver
 
 def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None):
     plt.close('all')
@@ -87,9 +91,11 @@ hdu = fits.PrimaryHDU(data = data)
 
 #name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
 
-#name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
+imagefile = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
 
-imagefile = 'sample_platesolve_image.fits'
+#imagefile = 'sample_platesolve_image.fits'
+
+
 
 #hdu.writeto(name,overwrite = True)
 
@@ -116,9 +122,15 @@ field_angle = plateSolver.results.get('rot_angle_degs')
 ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
 dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
 
+ra_j2000_nom = astropy.coordinates.Angle(header["RA"], unit = 'deg')
+dec_j2000_nom = astropy.coordinates.Angle(header["DEC"], unit = 'deg')
+
 print()
 print(f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}')
+print(f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}')
+print(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
 
+"""
 astrometryNet_ra_j2000 = astropy.coordinates.Angle(324.718667275 * u.deg)
 astrometryNet_dec_2000 = astropy.coordinates.Angle(57.4977710915 * u.deg)
 astrometryNet_platescale = 0.466266
@@ -126,6 +138,5 @@ astrometryNet_field_angle = 264.5
 print(f'Astrometry.net Solution:        RA = {astrometryNet_ra_j2000.to_string("hour")}, DEC = {astrometryNet_dec_2000.to_string("deg")}')
 
 print()
-print(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
-print(f'Astrometry.net: Platescale = {astrometryNet_platescale:.4f} arcsec/pix, Field Angle = {astrometryNet_field_angle:.4f} deg')
-
+#print(f'Astrometry.net: Platescale = {astrometryNet_platescale:.4f} arcsec/pix, Field Angle = {astrometryNet_field_angle:.4f} deg')
+"""

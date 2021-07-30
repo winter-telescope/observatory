@@ -1538,7 +1538,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 25.0
+        timeout = 60.0
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
@@ -2208,22 +2208,24 @@ class Wintercmd(QtCore.QObject):
     
     @cmd
     def robo_observe_radec(self):
-        """Usage: robo_observe_radec <ra_j2000_hours> <dec_j2000_deg>"""
-        self.defineCmdParser('tell the robotic operator to execute on observation of the specified ra(hours) and dec (deg) j2000')
+        """Usage: robo_observe_radec <ra> <dec>"""
+        self.defineCmdParser('move telescope to specified j2000 ra (hours)/dec (deg) ')
         self.cmdparser.add_argument('position',
                                     nargs = 2,
                                     action = None,
                                     type = float,
-                                    help = '<alt_deg> <az_deg>')
+                                    help = '<ra_hours> <dec_degs>')
         self.getargs()
         ra_j2000_hours = self.args.position[0]
         dec_j2000_degs = self.args.position[1]
+        
+        target = (ra_j2000_hours,dec_j2000_degs)
         
         # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
 
         sigcmd = signalCmd('do_observation',
                            obstype = 'radec',
-                           target = (ra_j2000_hours,dec_j2000_degs),
+                           target = target,
                            tracking = 'auto',
                            field_angle = 'auto')
         
@@ -2255,6 +2257,14 @@ class Wintercmd(QtCore.QObject):
                            field_angle = 'auto')
         
         self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_remakePointingModel(self):
+        self.defineCmdParser('start the robotic operator')
+        
+        sigcmd = signalCmd('remakePointingModel')
+        self.roboThread.newCommand.emit(sigcmd)
+        
         
     # General Shut Down
     @cmd

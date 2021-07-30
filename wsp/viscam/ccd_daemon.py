@@ -612,7 +612,9 @@ class CCD(QtCore.QObject):
         
         # set up the image acquisition buffer
         self.cc.acquireimg(self.camnum)
-
+        # NPL 7-30-21: added this sleep to avoid badness. settrigmode was timeing out,
+        # and once this happened the camera would get stuck and require WSP reboot.
+        time.sleep(0.5)
         # This settrigmode is absolutely essential, otherwise
         # the camera freezes up.  Every exposure.
         self.cc.settrigmode(self.camnum, '01', readback=False)
@@ -755,6 +757,9 @@ class CCD(QtCore.QObject):
             timebuffer = 5
         else:
             timebuffer = 5
+        
+        #OVERWRITE TIME BUFFER TO MAKE SURE THERE'S ENOUGH LAG TO GET THE IMAGE
+        timebuffer = 10
         
         readouttime =  self.cc._naxis1[self.camnum] * self.cc._naxis2[self.camnum] \
                        / self.cc._readoutclock[self.camnum]
