@@ -9,6 +9,8 @@ import os
 import glob
 from focuser import genstats
 from astropy.io import fits
+import numpy as np
+
 class Fit_curve:
     
     def __init__(self, A, B, x, x0):
@@ -56,8 +58,31 @@ class Focus_loop:
     def get_Recent_File(self):
         list_of_files = glob.glob(self.path)
         return max(list_of_files, key=os.path.getctime)
+    
+    def fits_64_to_16(self, images, filter_range):
+        images_16 = []
+        try:
+            for index in range(0, len(images)):
+                64_file = fits.open(images[index])
+                data = 64_file[0].data
+                head = 64_file[0].header
+                
+                try:
+                    filename = '/home/winter/data/images/focusing/' + head['FILENAME']
+                    
+                except Exception as e:
+                    msg = 'Error in header format, saving with temporary filename'
+                    print(msg)
+                    filename = '/home/winter/data/images/focusing/' + filter_range[index] + '.fits'
+                    pass
+                
+                fits.writeto(filename, data.astype(np.int16))
+        
+        except Exception as e:
+            msg = f'wintercmd: Focuser could not convert images due to {e.__class__.__name__}, {e}'
+            print(msg)
             
-            
+        return images_16
             
         
         

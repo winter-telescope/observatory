@@ -1252,44 +1252,56 @@ class Wintercmd(QtCore.QObject):
         size of objects in the image. Will collimate mirror at optimal position.
         
         """
-        #file_items = ['one.fits', 'two.fits', 'three.fits', 'four.fits', 'five.fits']
-        #import os
+        
+        self.defineCmdParser('retrieve whether or not a plot will be displayed based on img fwhm')
+        self.cmdparser.add_argument('plot',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<position_steps>')
+        
+        self.getargs()
+        
+        plotting = False
+        
+        if self.args.plot[0] == "plot":
+            plotting = True
+        
         images = []
+        
         current_filter = self.config['focus_loop_param']['current_filter']
         loop = summerFocusLoop.Focus_loop(current_filter, self.config)
+        
         filter_range = loop.return_Range()
         
+        
         system = 'ccd'
+        
         try:
             for dist in filter_range:
                 #Collimate and take exposure
-                #self.do("m2_focuser_goto %s" %(dist))
-                #self.do("ccd_do_exposure")
-                #print("focuser goto %s"%(dist))
-                #print("ccd doing exposure")
-                #os.replace(r'/home/Documents/' + file_items[n],self.config['focus_loop_param']['recent_path'] + file_items[n])
-                #n+=1
                 self.telescope.focuser_goto(target = dist)
                 time.sleep(2)
                 self.ccd_do_exposure()
-                #self.ccd.state['exptime']+2
                 time.sleep(2)
                 images.append(loop.return_Path())
-                #print(images[:])
-                #images = ['/home/winter/data/test/viscam_2021-06-29T04:50:54.447_Camera00.fits']
+                
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
             
+        #images_16 = loop.fits_64_to_16(self, images, filter_range)
+          
+        
         system = 'focuser'
+        
         try:
-            #self.do("m2_focuser_goto %s" %(filter_range[0]))
-            #print("focuser going to final %s"%(filter_range[0]))
+            #find the ideal focuser position
+            print('focuser re-aligning at %s microns'%(filter_range[0]))
             self.telescope.focuser_goto(target = filter_range[0])
             focuser_pos = filter_range[images.index(min(loop.rate_imgs(images)))]
         
-            #self.do("m2_focuser_goto %s" %(focuser_pos))
-            print('focuser_going to final %s'%(focuser_pos))
+            #
+            print('focuser_going to final position at %s microns'%(focuser_pos))
             self.telescope.focuser_goto(target = focuser_pos)
             return focuser_pos
 
@@ -1300,6 +1312,8 @@ class Wintercmd(QtCore.QObject):
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
+            
+
             
     @cmd
     def m2_focuser_enable(self):
