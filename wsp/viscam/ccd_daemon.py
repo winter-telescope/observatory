@@ -752,9 +752,9 @@ class CCD(QtCore.QObject):
         # overheads for exposures < about 3 secs, which is
         # probably OK.
         if (self.cc._exposure[self.camnum] > 5):
-            timebuffer = 0.5
+            timebuffer = 5
         else:
-            timebuffer = 2
+            timebuffer = 5
         
         readouttime =  self.cc._naxis1[self.camnum] * self.cc._naxis2[self.camnum] \
                        / self.cc._readoutclock[self.camnum]

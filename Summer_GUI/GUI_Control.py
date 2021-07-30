@@ -197,10 +197,10 @@ def do_exposure_script():
     dec = window.DEC_input.text()
     exp = window.exposure_input.text()
     send('command_filter_wheel ' + str(wheel))
-    while monitor.state['filter_wheel_position'] != str(wheel):
+    while monitor.state['Viscam_Filter_Wheel_Position'] != wheel:
         time.sleep(1)
     send('ccd_set_exposure '+ exp)
-    while monitor.state['ccd_exptime'] != str(exp):
+    while monitor.state['ccd_exptime'] != float(exp):
         time.sleep(1)
     window.output_display.appendPlainText("Taking a " + exp + " second exposure with " + filter_selection + " at coordinates " + ra + " , " + dec)
     send('ccd_do_exposure')
