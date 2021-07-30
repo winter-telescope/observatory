@@ -1055,14 +1055,18 @@ class RoboOperator(QtCore.QObject):
         # observation type
         #allowed_obstypes = ['schedule', 'altaz', 'radec']
         # for now only allow altaz, and we'll add on more as we go
-        allowed_obstypes = ['altaz']
+        allowed_obstypes = ['altaz', 'object', 'radec']
         
         # raise an exception is the type isn't allwed
-        assert (obstype in allowed_obstypes), f'improper observation type {obstype}, must be one of {allowed_obstypes}'
+        if not (obstype in allowed_obstypes):
+            self.log(f'improper observation type {obstype}, must be one of {allowed_obstypes}')
+            return
         
+        self.log('checking tracking')
         # raise an exception if tracking isn't a bool or 'auto'
         assert ((not type(tracking) is bool) or (tracking.lower() != 'auto')), f'tracking option must be bool or "auto", got {tracking}'
         
+        self.log('checking field_angle')
         # raise an exception if field_angle isn't a float or 'auto'
         assert ((not type(field_angle) is float) or (field_angle.lower() != 'auto')), f'field_angle option must be float or "auto", got {field_angle}'
         
@@ -1085,8 +1089,66 @@ class RoboOperator(QtCore.QObject):
                 tracking = True
             else:
                 pass
+        elif obstype == 'radec':
+            # make sure it's a tuple
+            assert (type(target) is tuple), f'for {obstype} observation, target must be a tuple. got type = {type(target)}'
             
+            # make sure it's the right length
+            assert (len(target) == 2), f'for {obstype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
             
+            # make sure they're floats
+            assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {obstype} observation, target vars must be floats'
+            
+            # get the target RA (hours) and DEC (degs)
+            self.target_ra_j2000_hours = target[0]
+            self.target_dec_j2000_deg = target[1]
+            
+            #j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
+            j2000_ra = self.target_ra_j2000_hours * u.hour
+            j2000_dec = self.target_dec_j2000_deg * u.deg
+            j2000_coords = astropy.coordinates.SkyCoord(ra = j2000_ra, dec = j2000_dec, frame = 'icrs')
+            
+            obstime = astropy.time.Time(datetime.utcnow())
+            lat = astropy.coordinates.Angle(self.config['site']['lat'])
+            lon = astropy.coordinates.Angle(self.config['site']['lon'])
+            height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
+                                            
+            site = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
+            frame = astropy.coordinates.AltAz(obstime = obstime, location = site)
+            local_coords = j2000_coords.transform_to(frame)
+            self.target_alt = local_coords.alt.deg
+            self.target_az = local_coords.az.deg
+        
+        elif obstype == 'object':
+            # do some asserts
+            # TODO
+            self.log(f'handling object observations')
+            # make sure it's a string
+            if not (type(target[0]) is str):
+                self.log(f'for object observation, target must be a string object name, got type = {type(target)}')
+                return
+            
+            try:
+                obj = target
+                
+                j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
+                self.target_ra_j2000_hours = j2000_coords.ra.hour
+                self.target_dec_j2000_deg = j2000_coords.dec.deg
+                
+                obstime = astropy.time.Time(datetime.utcnow())
+                lat = astropy.coordinates.Angle(self.config['site']['lat'])
+                lon = astropy.coordinates.Angle(self.config['site']['lon'])
+                height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
+                                                
+                site = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
+                frame = astropy.coordinates.AltAz(obstime = obstime, location = site)
+                local_coords = j2000_coords.transform_to(frame)
+                self.target_alt = local_coords.alt.deg
+                self.target_az = local_coords.az.deg
+            except Exception as e:
+                self.log(f'error getting object coord: {e}')
+        
+        
         else:
             # we shouldn't ever get here because of the upper asserts
             return
@@ -1158,7 +1220,10 @@ class RoboOperator(QtCore.QObject):
                 # slew to the requested alt/az
                 self.do(f'mount_goto_alt_az {self.target_alt} {self.target_az}')
             
-                        
+            elif obstype in ['radec', 'object']:
+                # slew to the requested ra/dec
+                self.do(f'mount_goto_ra_dec_j2000 {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
+                      
             # slew the rotator
             self.do(f'rotator_goto_field {self.target_field_angle}')
             

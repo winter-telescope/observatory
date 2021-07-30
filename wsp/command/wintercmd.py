@@ -2190,6 +2190,56 @@ class Wintercmd(QtCore.QObject):
                            field_angle = 'auto')
         
         self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_observe_radec(self):
+        """Usage: robo_observe_radec <ra_j2000_hours> <dec_j2000_deg>"""
+        self.defineCmdParser('tell the robotic operator to execute on observation of the specified ra(hours) and dec (deg) j2000')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<alt_deg> <az_deg>')
+        self.getargs()
+        ra_j2000_hours = self.args.position[0]
+        dec_j2000_degs = self.args.position[1]
+        
+        # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
+
+        sigcmd = signalCmd('do_observation',
+                           obstype = 'radec',
+                           target = (ra_j2000_hours,dec_j2000_degs),
+                           tracking = 'auto',
+                           field_angle = 'auto')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+    @cmd
+    def robo_observe_object(self):
+        """ Usage: mount_goto_object <object_name> """
+        # points to an object that is in the astropy object library
+        # before slewing makes sure that the altitude and azimuth as viewed from palomar are okay unless its overridden
+        self.defineCmdParser('move telescope to object from astropy catalog')
+        self.cmdparser.add_argument('object_name',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<object name>')
+        
+        self.getargs()
+        #print(f'wintercmd: args = {self.args}')
+        
+        obj = self.args.object_name[0]
+        self.logger.info(f'setting up observation of object_name = {obj}')
+        # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
+
+        sigcmd = signalCmd('do_observation',
+                           obstype = 'object',
+                           target = obj,
+                           tracking = 'auto',
+                           field_angle = 'auto')
+        
+        self.roboThread.newCommand.emit(sigcmd)
         
     # General Shut Down
     @cmd
