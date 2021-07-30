@@ -1265,6 +1265,7 @@ class Wintercmd(QtCore.QObject):
         
         if self.args.plot[0] == "plot":
             plotting = True
+            print('I am plotting this time!')
         
         images = []
         
@@ -1275,36 +1276,35 @@ class Wintercmd(QtCore.QObject):
         
         
         system = 'ccd'
-        
+        '''
         try:
             for dist in filter_range:
-                #Collimate and take exposure
+                Collimate and take exposure
                 self.telescope.focuser_goto(target = dist)
                 time.sleep(2)
                 self.ccd_do_exposure()
                 time.sleep(2)
                 images.append(loop.return_Path())
-                
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
-            
+           ''' 
         #images_16 = loop.fits_64_to_16(self, images, filter_range)
-          
+        images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
         
         system = 'focuser'
         
         try:
             #find the ideal focuser position
-            print('focuser re-aligning at %s microns'%(filter_range[0]))
+            print('Focuser re-aligning at %s microns'%(filter_range[0]))
             self.telescope.focuser_goto(target = filter_range[0])
             med_values = loop.rate_images(images)
             focuser_pos = filter_range[med_values.index(min(med_values))]
-        
-            #
-            print('focuser_going to final position at %s microns'%(focuser_pos))
+
+            print('Focuser_going to final position at %s microns'%(focuser_pos))
             self.telescope.focuser_goto(target = focuser_pos)
-            
+            if plotting:
+                loop.plot_focus_curve()
 
         except FileNotFoundError:
             print("You are trying to modify a catalog file or an image with no stars")
@@ -1314,10 +1314,7 @@ class Wintercmd(QtCore.QObject):
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
         
-        if plotting:
-            loop.plot(med_fwhm = med_values)
-            
-
+        return focuser_pos
             
     @cmd
     def m2_focuser_enable(self):

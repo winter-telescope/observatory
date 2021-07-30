@@ -300,11 +300,11 @@ ephem:
 ########### FOCUSER LOOP PARAM ###########
 
 focus_loop_param:
-    micron_interval: 300
+    micron_interval: 50
     recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'
     pixscale: 0.466
-    current_filter: 'uband'
+    current_filter: 'rband'
     save_dir: 'home/winter/data/images/focusing/'
 
 filt_limits:
@@ -313,7 +313,7 @@ filt_limits:
         lower: 10000
     rband:
         upper: 10400
-        lower: 10200
+        lower: 10100
         
 ########### POINTING MODEL PARAMETERS ###########
 # Construct a grid of 3 x 6 = 18 Alt-Az points
