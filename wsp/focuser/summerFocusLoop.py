@@ -50,14 +50,14 @@ class Focus_loop:
     def get_Recent_File(self):
         list_of_files = glob.glob(self.path)
         return max(list_of_files, key=os.path.getctime)
-    '''
+    
     def fits_64_to_16(self, images, filter_range):
         images_16 = []
         try:
             for index in range(0, len(images)):
-                64_file = fits.open(images[index])
-                data = 64_file[0].data
-                head = 64_file[0].header
+                sf_file = fits.open(images[index])
+                data = sf_file[0].data
+                head = sf_file[0].header
                 
                 try:
                     filename = '/home/winter/data/images/focusing/' + head['FILENAME']
@@ -75,7 +75,7 @@ class Focus_loop:
             print(msg)
             
         return images_16
-    '''
+    
     def plot(self):
         
         filter_range = np.array(self.filter_range)
