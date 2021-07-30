@@ -10,7 +10,7 @@ import glob
 from focuser import genstats
 from astropy.io import fits
 import numpy as np
-from plot_curve import *
+from focuser import plot_curve
 
 class Focus_loop:
     
@@ -79,19 +79,17 @@ class Focus_loop:
     def plot(self):
         
         filter_range = np.array(self.filter_range)
-        med_fwhm = np.array(self.med_fwhms)
-        std_fwhm = np.array(self.std_fwhms)
+        med_fwhms = np.array(self.med_fwhms)
+        std_fwhms = np.array(self.std_fwhms)
         
-        curve = fit_Curve()
         popt = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
-        
         plt.figure()
-		plt.errorbar(focus_vals,fwhms,yerr=stds,fmt='.',c='red')
-		plotfoc = np.linspace(np.min(focus_vals),np.max(focus_vals),20)
-		print(popt)
-		plt.plot(plotfoc,parabola(plotfoc,popt[0],popt[1],popt[2]))
-		plt.title('Best FWHM : %.1f arcsec'%(np.min(fwhms)))
-		plt.savefig('focusloop.pdf',bbox_inches='tight')
+        plt.errorbar(filter_range,med_fwhm,yerr=std_fwhms,fmt='.',c='red')
+        plotfoc = np.linspace(np.min(filter_range),np.max(filter_range),20)
+        print(popt)
+        plot(plotfoc,plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
+        plt.title('Best FWHM : %.1f arcsec'%(np.min(fwhms)))
+        plt.savefig('focusloop.pdf',bbox_inches='tight')
         
         return popt
         
