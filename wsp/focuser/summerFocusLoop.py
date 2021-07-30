@@ -84,7 +84,7 @@ class Focus_loop:
         
         popt = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
         plt.figure()
-        plt.errorbar(filter_range,med_fwhm,yerr=std_fwhms,fmt='.',c='red')
+        plt.errorbar(filter_range,med_fwhms,yerr=std_fwhms,fmt='.',c='red')
         plotfoc = np.linspace(np.min(filter_range),np.max(filter_range),20)
         print(popt)
         plot(plotfoc,plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
