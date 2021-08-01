@@ -1,0 +1,25 @@
+-------------------------------------------------------------------------
+-------------------- ~ Focuser Documentation ~ --------------------------
+-------------------------------------------------------------------------
+
+1. The focus loop mainly relies on the method of minimizing fwhm, or 
+full width half max of a gaussian. It does so by running the get fwhm
+procedure in genstats, and will generate a catalog and .stats file and/or
+use pregenerated versions of those files if the method has been run more
+than once. All "sextractor could not" failures are the result of operations
+in this file but are more likely the result of sextractor itself failing or
+it not being fed appropriate information. For this reason, genstats is best
+not modified and left alone. 
+
+For the plot generation, there is a plot_curve file that is called upon by
+summerfocusloop, another python file which has a plotting method that works
+with plot_curve to generate the best fit parabola and display it. 
+
+Summerfocusloop manages the focus loop object, and is responsible for intaking
+image files, feeding them to genstats, collecting the median fwhm of objects
+in an image, and getting std of the fwhm values, both of which are saved to
+the object and outputted to the console.
+
+Any parameters, notably the bounds of a respective filter range, are modified
+in the focus loop section of the config file. pixel scale and filepaths can
+also be edited here.
