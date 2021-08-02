@@ -68,7 +68,7 @@ from utils import logging_setup
 from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
-
+from housekeeping import StateGetter
 
 # GLOBAL VARS
 
@@ -1283,8 +1283,7 @@ class Wintercmd(QtCore.QObject):
         
         images = []
         
-        
-        current_filter = self.config['focus_loop_param']['current_filter']
+        current_filter = self.state['focuser_position']
         loop = summerFocusLoop.Focus_loop(current_filter, self.config)
         
         filter_range = loop.return_Range()
