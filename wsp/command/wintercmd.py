@@ -68,7 +68,6 @@ from utils import logging_setup
 from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
-from housekeeping import StateGetter
 
 # GLOBAL VARS
 
