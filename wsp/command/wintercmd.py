@@ -69,6 +69,7 @@ from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
 
+
 # GLOBAL VARS
 
 # load the config
@@ -1281,6 +1282,7 @@ class Wintercmd(QtCore.QObject):
             print('I am plotting this time!')
         
         images = []
+        
         
         current_filter = self.config['focus_loop_param']['current_filter']
         loop = summerFocusLoop.Focus_loop(current_filter, self.config)

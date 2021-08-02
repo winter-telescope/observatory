@@ -40,8 +40,8 @@ class Focus_loop:
 
         for imgname in imglist:
             med, std = self.analyze_img_focus(imgname = imgname)
-            medlist.append(med)
-            stdlist.append(std)
+            medlist.append(med*self.pixscale)
+            stdlist.append(std*self.pixscale)
 
         self.med_fwhms = medlist
         self.std_fwhms = stdlist
