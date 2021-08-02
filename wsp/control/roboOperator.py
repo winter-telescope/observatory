@@ -33,6 +33,9 @@ from schedule import ObsWriter
 from ephem import ephem_utils
 from telescope import pointingModelBuilder
 
+class TargetError(Exception):
+    pass
+
 class TimerThread(QtCore.QThread):
     '''
     This is a thread that just counts up the timeout and then emits a 
@@ -551,7 +554,33 @@ class RoboOperator(QtCore.QObject):
         else:
             self.logger.log(level = level, msg = msg)
     
-    
+    def waitForCondition(self, condition, timeout = 60):
+        ## Wait until end condition is satisfied, or timeout ##
+        
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_slewing'])
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == True for entry in stop_condition_buffer):
+                break 
     def doTry(self, cmd, context = '', system = ''):
         """
         This does the command by calling wintercmd.parse.
@@ -571,7 +600,6 @@ class RoboOperator(QtCore.QObject):
             self.log(msg)
             err = roboError(context, cmd, system, msg)
             self.hardware_error.emit(err)
-        
     
     def do(self, cmd):
         """
@@ -1035,6 +1063,8 @@ class RoboOperator(QtCore.QObject):
         # 3: trigger image acquisition
         #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
         
+        self.logger.info(f'robo: running ccd_do_exposure in thread {threading.get_ident()}')
+
         
         # first check if any ephemeris bodies are near the target
         self.log('checking that target is not too close to ephemeris bodies')
@@ -1239,9 +1269,10 @@ class RoboOperator(QtCore.QObject):
         else:
             msg = f'>> target not within view! skipping...'
             self.log(msg)
-            self.alertHandler.slack_log(msg, group = None)
-            raise Exception(msg)
-            return
+            #self.alertHandler.slack_log(msg, group = None)
+            self.target_ok = False
+            raise TargetError(msg)
+            #return
         
         # now check if the target alt and az are too near the tracked ephemeris bodies
         # first check if any ephemeris bodies are near the target
@@ -1257,9 +1288,12 @@ class RoboOperator(QtCore.QObject):
             msg = f'>> ephemeris body is too close to target! skipping...'
             self.log(msg)
             self.alertHandler.slack_log(msg, group = None)
-            raise Exception(msg)
-            return            
-        
+            self.target_ok = False
+            raise TargetError(msg)
+            #return            
+       
+        # if we get here the target is okay
+        self.target_ok = True
         
         ### SLEW THE DOME ###
         # start with the dome because it can take forever
@@ -1270,6 +1304,8 @@ class RoboOperator(QtCore.QObject):
             self.do('dome_tracking_off')
             
             self.do(f'dome_goto {self.target_az}')
+            
+            time.sleep(5)
             
             # turn tracking back on
             self.do('dome_tracking_on')
@@ -1295,14 +1331,47 @@ class RoboOperator(QtCore.QObject):
             
             elif obstype in ['radec', 'object']:
                 # slew to the requested ra/dec
+                self.logger.info(f'robo: mount_goto_ra_dec_j2000 running in thread {threading.get_ident()}')
                 self.do(f'mount_goto_ra_dec_j2000 {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
-                      
-            # slew the rotator
-            #self.do(f'rotator_goto_field {self.target_field_angle}')
             
             # turn on tracking
             if tracking:
                 self.do(f'mount_tracking_on')
+            """
+            #I SHOULDN'T HAVE TO WAIT FOR ALL THIS HERE!
+            ## Wait until end condition is satisfied, or timeout ##
+            timeout = 60
+            # wait for the telescope to stop moving before returning
+            # create a buffer list to hold several samples over which the stop condition must be true
+            n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+            stop_condition_buffer = [(False) for i in range(n_buffer_samples)]
+    
+            # get the current timestamp
+            start_timestamp = datetime.utcnow().timestamp()
+            while True:
+                #print('entering loop')
+                time.sleep(self.config['cmd_status_dt'])
+                timestamp = datetime.utcnow().timestamp()
+                dt = (timestamp - start_timestamp)
+                #print(f'wintercmd: wait time so far = {dt}')
+                if dt > timeout:
+                    raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+                
+                stop_condition = (self.telescope.state["mount.is_slewing"] != True)
+                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+                # now replace the last element
+                stop_condition_buffer[-1] = stop_condition
+                print(f'stop conition = {stop_condition}')
+                if all(entry == True for entry in stop_condition_buffer):
+                    break 
+            
+            #time.sleep(3)
+            """
+            # slew the rotator
+            #self.do(f'rotator_goto_field {self.target_field_angle}')
+            
+            
                 
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -1331,6 +1400,8 @@ class RoboOperator(QtCore.QObject):
         self.logger.info(f'robo: telling ccd to take exposure!')
         try:
             self.do(f'ccd_do_exposure')
+            
+            
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
@@ -1376,51 +1447,56 @@ class RoboOperator(QtCore.QObject):
                 # do the observation
                 self.do(f'robo_observe_altaz {target_alt} {target_az}')
                 
-                # ADD A CASE TO HANDLE SITUATIONS WHERE THE OBSERVATION DOESN'T WORK
+                if self.target_ok:
                     
-                # platesolve the image
-                #TODO: fill this in from the config instead of hard coding
-                #lastimagefile = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
-                lastimagefile = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
+                    #time.sleep(10)
+                    # ADD A CASE TO HANDLE SITUATIONS WHERE THE OBSERVATION DOESN'T WORK
+                        
+                    # platesolve the image
+                    #TODO: fill this in from the config instead of hard coding
+                    lastimagefile = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
+                    lastimagefile = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
+                    msg = f'running platesolve on image: {lastimagefile}'
+                    self.log(msg)
+                    print(msg)
+                    self.pointingModelBuilder.plateSolver.platesolve(lastimagefile, 0.47)
                     
-                self.pointingModelBuilder.plateSolver.platesolve(lastimagefile, 0.47)
-                
-                ra_j2000_hours = self.pointingModelBuilder.plateSolver.results.get('ra_j2000_hours')
-                dec_j2000_degrees = self.pointingModelBuilder.plateSolver.results.get('dec_j2000_degrees')
-                platescale = self.pointingModelBuilder.plateSolver.results.get('arcsec_per_pixel')
-                field_angle = self.pointingModelBuilder.plateSolver.results.get('rot_angle_degs')
-                
-                ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
-                dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
-                
-                ######################################################################
-                ### RUN IN SIMULATION MODE ###
-                # Get the nominal RA/DEC from the fits header. Could do this different ways.
-                #TODO: is this the approach we want? should it calculate it from the current position instead?
-                hdu_list = fits.open(lastimagefile,ignore_missing_end = True)
-                header = hdu_list[0].header
-                
-                ra_j2000_nom = astropy.coordinates.Angle(header["RA"], unit = 'deg')
-                dec_j2000_nom = astropy.coordinates.Angle(header["DEC"], unit = 'deg')
-                ######################################################################
-                
-                self.log('RUNNING PLATESOLVE ON LAST IMAGE')
-                self.log(f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}')
-                self.log(f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}')
-                self.log(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
-                
-                #TODO: REMOVE THIS
-                # overwrite the solution with the nominal values so we can actually get a model
-                ra_j2000_hours = self.target_ra_j2000_hours
-                dec_j2000_degrees = self.target_dec_j2000_deg
-                
-                msg = f'Adding model point (alt,az) = ({self.target_alt:0.1f}, {self.target_az:0.1f}) --> (ra,dec) = ({ra_j2000_hours:0.1f}, {dec_j2000_degrees:0.1f})'
-                self.alertHandler.slack_log(msg, group = None)
-                # add the RA_hours and DEC_deg point to the telescope pointing model
-                #self.doTry(f'mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}')
-
-                radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
-                altaz_mapped.append((self.target_alt, self.target_az))
+                    ra_j2000_hours = self.pointingModelBuilder.plateSolver.results.get('ra_j2000_hours')
+                    dec_j2000_degrees = self.pointingModelBuilder.plateSolver.results.get('dec_j2000_degrees')
+                    platescale = self.pointingModelBuilder.plateSolver.results.get('arcsec_per_pixel')
+                    field_angle = self.pointingModelBuilder.plateSolver.results.get('rot_angle_degs')
+                    
+                    ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
+                    dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
+                    
+                    ######################################################################
+                    ### RUN IN SIMULATION MODE ###
+                    # Get the nominal RA/DEC from the fits header. Could do this different ways.
+                    #TODO: is this the approach we want? should it calculate it from the current position instead?
+                    hdu_list = fits.open(lastimagefile,ignore_missing_end = True)
+                    header = hdu_list[0].header
+                    
+                    ra_j2000_nom = astropy.coordinates.Angle(header["RA"], unit = 'deg')
+                    dec_j2000_nom = astropy.coordinates.Angle(header["DEC"], unit = 'deg')
+                    ######################################################################""
+                    
+                    self.log('RUNNING PLATESOLVE ON LAST IMAGE')
+                    self.log(f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}')
+                    self.log(f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}')
+                    self.log(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
+                    """
+                    #TODO: REMOVE THIS
+                    # overwrite the solution with the nominal values so we can actually get a model
+                    ra_j2000_hours = self.target_ra_j2000_hours
+                    dec_j2000_degrees = self.target_dec_j2000_deg
+                    """
+                    msg = f'Adding model point (alt,az) = ({self.target_alt:0.1f}, {self.target_az:0.1f}) --> (ra,dec) = ({ra_j2000_hours:0.1f}, {dec_j2000_degrees:0.1f})'
+                    self.alertHandler.slack_log(msg, group = None)
+                    # add the RA_hours and DEC_deg point to the telescope pointing model
+                    #self.doTry(f'mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}')
+    
+                    radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
+                    altaz_mapped.append((self.target_alt, self.target_az))
                 
             except Exception as e:
                 msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'

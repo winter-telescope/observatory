@@ -156,9 +156,9 @@ hdu = fits.PrimaryHDU(data = data)
 """
 
 #name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
-name = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
+#name = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
 
-#name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
+name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
 
 #hdu.writeto(name,overwrite = True)
 

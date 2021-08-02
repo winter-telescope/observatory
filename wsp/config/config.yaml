@@ -64,7 +64,7 @@ dither_file: 'config/dither_list.conf'
 
 # commanding (seconds)
 cmd_timeout: 10.0
-cmd_status_dt: 0.25 # time between checks to see if status is verified
+cmd_status_dt: 0.5 # time between checks to see if status is verified
 cmd_satisfied_N_samples: 3 # number of samples to make sure that status is verified
 
 ########### ALERTS ##########

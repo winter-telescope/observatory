@@ -334,6 +334,8 @@ class CCD(QtCore.QObject):
         
     @Pyro5.server.expose
     def resetImageSavedFlag(self):
+        # pause for a few seconds to leave the image high
+        time.sleep(1)
         self.imageSavedFlag = False
         self.state.update({'imageSavedFlag' : self.imageSavedFlag})
     

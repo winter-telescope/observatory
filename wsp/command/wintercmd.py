@@ -53,7 +53,7 @@ import shlex
 import astropy.coordinates
 import astropy.time 
 import astropy.units as u
-
+import threading
 
 
 # add the wsp directory to the PATH
@@ -126,7 +126,8 @@ def cmd(func):
             '''
             msg = (f'wintercmd: Could not execute command {func.__name__}: {e}')
             LOGGER.info(msg)
-            
+            #NPL 8-2-21: adding these because some exceptions are getting lost (ie TargetError)
+            raise Exception(e)
             
             
             pass
@@ -718,7 +719,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
-            stop_condition = (self.state['mount_is_slewing'])
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1))
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -753,6 +754,7 @@ class Wintercmd(QtCore.QObject):
 
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
+        self.logger.info(f'wintercmd: mount_goto_ra_dec_j2000 running in thread {threading.get_ident()}')
         while True:
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
@@ -761,8 +763,12 @@ class Wintercmd(QtCore.QObject):
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
-            
-            stop_condition = ( (not self.state['mount_is_slewing']) & (self.state['mount_az_dist_to_target'] < 0.1) & (self.state['mount_alt_dist_to_target'] < 0.1))
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: count = {self.state["count"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: mount_is_slewing: {self.state["mount_is_slewing"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: alt_dist_to_target: {self.state["mount_alt_dist_to_target"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: az_dist_to_target: {self.state["mount_az_dist_to_target"]}')
+            self.logger.info('')
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1))
 
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -811,7 +817,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
-            stop_condition = ( (not self.state['mount_is_slewing']) & (self.state['mount_az_dist_to_target'] < 0.1) & (self.state['mount_alt_dist_to_target'] < 0.1))
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1))
 
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -993,8 +999,15 @@ class Wintercmd(QtCore.QObject):
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            dist = ( (alt - self.state["mount_alt_deg"])**2 + (az - self.state["mount_az_deg"])**2 )**0.5
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: count = {self.state["count"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: mount_is_slewing: {self.state["mount_is_slewing"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: alt_dist_to_target: {self.state["mount_alt_dist_to_target"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: az_dist_to_target: {self.state["mount_az_dist_to_target"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: dist_to_target: {dist} deg')
+            self.logger.info('')
             
-            stop_condition = ( (not self.state['mount_is_slewing']) & (self.state['mount_az_dist_to_target'] < 0.1) & (self.state['mount_alt_dist_to_target'] < 0.1))
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1) & (dist < 0.1))
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -2435,12 +2448,17 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('doExposure')
         self.ccd.newCommand.emit(sigcmd)
         
+        self.logger.info(f'wintercmd: running ccd_do_exposure in thread {threading.get_ident()}')
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
         timeout = self.state['ccd_exposureTimeout'] + 10
         # create a buffer list to hold several samples over which the stop condition must be true
-        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        
+        
+        #n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        # Change this to trigger on 1 True sample, since the flag is on for a short time and may get skipped
+        n_buffer_samples = 1
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
 
         # get the current timestamp
@@ -2454,6 +2472,9 @@ class Wintercmd(QtCore.QObject):
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
             stop_condition = ( (self.state['ccd_doing_exposure'] == False) & (self.state['ccd_image_saved_flag']))
+            self.logger.info(f'count = {self.state["count"]}')
+            self.logger.info(f'wintercmd: ccd_doing_exposure = {self.state["ccd_doing_exposure"]}, ccd_image_saved_flag = {self.state["ccd_image_saved_flag"]}')
+            self.logger.info('')
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
