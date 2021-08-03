@@ -664,12 +664,10 @@ class RoboOperator(QtCore.QObject):
             
             # turn on the rotator
             self.do('rotator_enable')
-            
-            # NO DON'T DO THIS turn on tracking
-            #self.do('mount_tracking_on')
-            
+
             # TURN ON WRAP CHECK 
-            self.do('rotator_wrap_check_enable')
+            # NPL 08-03-21 turning this off, it's causing an error.
+            #self.do('rotator_wrap_check_enable')
             
             
         
