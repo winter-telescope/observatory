@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
+import subprocess
 
 class Focus_loop:
     
@@ -84,22 +85,44 @@ class Focus_loop:
             
         return images_16
     
-    def plot_focus_curve(self):
-        print("got in")
+    def plot_focus_curve(self, plotting):
         filter_range = np.array(self.filter_range)
         med_fwhms = np.array(self.med_fwhms)
         std_fwhms = np.array(self.std_fwhms)
         
         popt = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
-        plt.figure()
-        plt.errorbar(filter_range,med_fwhms,yerr=std_fwhms,fmt='.',c='red')
+        #fig = plt.figure()
+        #plt.ion()
+        #plt.errorbar(filter_range,med_fwhms,yerr=std_fwhms,fmt='.',c='red')
         plotfoc = np.linspace(np.min(filter_range),np.max(filter_range),20)
-        print(popt)
-        plt.plot(plotfoc,plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
-        plt.title('Best FWHM : %.1f arcsec'%(np.min(fwhms)))
-        plt.savefig('/home/winter/data/plots_focuser/latest_focusloop.pdf',bbox_inches='tight')
+        #plt.plot(plotfoc,plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
+        #plt.ioff()
+        #plt.title('Best FWHM : %.1f arcsec'%(np.min(med_fwhms)))
+        #plt.show()
+        #plt.savefig('/home/winter/data/plots_focuser/latest_focusloop.pdf', bbox_inches='tight')
+        if plotting:
+            data = {'x':list(plotfoc), 'y':list(plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))}
+            df = pd.DataFrame(data)
+            path = '/home/winter/data/df_focuser/x_y.csv'
+            df.to_csv(path)
+            
+            data = {'med_fwhms': list(med_fwhms), 'std_fwhms':list(std_fwhms)}
+            df = pd.DataFrame(data)
+            path = '/home/winter/data/df_focuser/fwhm.csv'
+            df.to_csv(path)
+            
+            data = {'filter_range': list(filter_range)}
+            df = pd.DataFrame(data)
+            path = '/home/winter/data/df_focuser/filter_range.csv'
+            df.to_csv(path)
         
-        return popt
+            args = ['python', 'plot_support.py', '--p','/home/winter/data/df_focuser/']
+            process = subprocess.call(args)
+        
+        #pid = process.pid
+        
+        
+        return list(plotfoc), list(plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
         
         
         

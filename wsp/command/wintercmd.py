@@ -1259,7 +1259,7 @@ class Wintercmd(QtCore.QObject):
     
     # Telescope Focuser Stuff
     @cmd
-    def do_focusLoop(self):
+    def doFocusLoop(self):
         """
         Runs a focus loop for a given filter by taking a set of images and collecting the relative
         size of objects in the image. Will collimate mirror at optimal position.
@@ -1278,21 +1278,22 @@ class Wintercmd(QtCore.QObject):
         
         if self.args.plot[0] == "plot":
             plotting = True
-            print('I am plotting this time!')
+            print('I showing a plot this time!')
         
         images = []
         
-        current_filter = self.state['focuser_position']
-        loop = summerFocusLoop.Focus_loop(current_filter, self.config)
+        current_filter = str(self.state['Viscam_Filter_Wheel_Position'])
+        filt_numlist = {'1':'uband','3':'rband'}
+
+        loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config)
         
         filter_range = loop.return_Range()
         
-        
         system = 'ccd'
-        '''
+        
         try:
             for dist in filter_range:
-                Collimate and take exposure
+                #Collimate and take exposure
                 self.telescope.focuser_goto(target = dist)
                 time.sleep(2)
                 self.ccd_do_exposure()
@@ -1301,9 +1302,9 @@ class Wintercmd(QtCore.QObject):
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
-           ''' 
+            
         #images_16 = loop.fits_64_to_16(self, images, filter_range)
-        images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
+        #images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
         
         system = 'focuser'
         
@@ -1311,16 +1312,17 @@ class Wintercmd(QtCore.QObject):
             #find the ideal focuser position
             print('Focuser re-aligning at %s microns'%(filter_range[0]))
             self.telescope.focuser_goto(target = filter_range[0])
-            med_values = loop.rate_images(images)
-            focuser_pos = filter_range[med_values.index(min(med_values))]
-
+            loop.rate_images(images)
+            #focuser_pos = filter_range[med_values.index(min(med_values))]
+            
+            xvals, yvals = loop.plot_focus_curve(plotting)
+            focuser_pos = xvals[yvals.index(min(yvals))]
             print('Focuser_going to final position at %s microns'%(focuser_pos))
             self.telescope.focuser_goto(target = focuser_pos)
-            if plotting:
-                loop.plot_focus_curve()
+                
 
-        except FileNotFoundError:
-            print("You are trying to modify a catalog file or an image with no stars")
+        except FileNotFoundError as e:
+            print(f"You are trying to modify a catalog file or an image with no stars , {e}")
             pass
 
         except Exception as e:

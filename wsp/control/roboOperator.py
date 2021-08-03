@@ -1455,7 +1455,7 @@ class RoboOperator(QtCore.QObject):
                     # platesolve the image
                     #TODO: fill this in from the config instead of hard coding
                     lastimagefile = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
-                    lastimagefile = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
+                    #lastimagefile = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
                     msg = f'running platesolve on image: {lastimagefile}'
                     self.log(msg)
                     print(msg)
