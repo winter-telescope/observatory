@@ -139,7 +139,7 @@ def send(cmd):
     except socket.error:
         sock.close()
         window.output_display.appendPlainText(f"WSP has disconnected. Socket is closed until a manual reconnect. Did not send the command {cmd}")
-        window.server_connect_button.setStyleSheet("background-color:black;")
+        window.server_connect_button.setStyleSheet("background-color:grey;")
         window.server_connect_button.setText("Connect to WSP")
 def test():
     print('please')
