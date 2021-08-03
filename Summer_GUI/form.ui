@@ -137,7 +137,7 @@
        <item row="0" column="2">
         <widget class="QLineEdit" name="RA_input">
          <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
+          <enum>Qt::ClickFocus</enum>
          </property>
         </widget>
        </item>
@@ -154,7 +154,7 @@
        <item row="3" column="2">
         <widget class="QLineEdit" name="object_entry">
          <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
+          <enum>Qt::ClickFocus</enum>
          </property>
         </widget>
        </item>
@@ -191,7 +191,7 @@
        <item row="2" column="2">
         <widget class="QLineEdit" name="exposure_input">
          <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
+          <enum>Qt::ClickFocus</enum>
          </property>
         </widget>
        </item>
@@ -369,7 +369,7 @@ QSlider::sub-page:vertical {
        <item row="1" column="2">
         <widget class="QLineEdit" name="DEC_input">
          <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
+          <enum>Qt::ClickFocus</enum>
          </property>
         </widget>
        </item>
