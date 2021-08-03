@@ -106,7 +106,7 @@ def timer_handlings():
         window.server_connect_button.setText("Connect to WSP")
         return
     window.ccd_temp_display.display(state['ccd_tec_temp'])
-    window.exp_time_display.display(state['ccd_exp_time'])
+    window.exp_time_display.display(state['ccd_exptime'])
     window.sun_alt_display.display(state['sun_alt'])
     if state['ccd_tec_status'] == 1:
         change_ccd_indicator_green()
