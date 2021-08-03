@@ -37,7 +37,7 @@ def print_html_table_state(state):
     old_pos = vsb.value()
     window.output_display_2.setHtml(df.to_html(header=False))
     vsb.setValue(old_pos)
-timer_start = False
+
 class StateGetter(QtCore.QObject):
 
     """
@@ -98,15 +98,16 @@ def timer_handlings():
         monitor.update_state()
         state = monitor.state
         monitor.print_state()
+        window.server_connect_button.setStyleSheet("background-color:green;")
+        window.server_connect_button.setText("WINTER Connected")
+        timer_start = True
     except Exception:
         timer_start = False
-        update_timer.stop()
-        sock.close()
         window.server_connect_button.setStyleSheet("background-color:grey;")
         window.server_connect_button.setText("Connect to WSP")
         return
     window.ccd_temp_display.display(state['ccd_tec_temp'])
-    window.exp_time_display.display(state['ccd_exp_time'])
+    window.exp_time_display.display(state['ccd_exptime'])
     window.sun_alt_display.display(state['sun_alt'])
     if state['ccd_tec_status'] == 1:
         change_ccd_indicator_green()
@@ -168,13 +169,6 @@ def connect_to_server():
         sock.connect(server_address)
         window.server_connect_button.setStyleSheet("background-color:green;")
         window.server_connect_button.setText("WSP Connected")
-        if timer_start == False:
-            # init the state getter
-            monitor = StateGetter()
-            update_timer = QTimer()
-            update_timer.timeout.connect(timer_handlings)
-            update_timer.start(1000)
-            timer_start = True
     except Exception:
         window.output_display.appendPlainText("Could not connect to WSP")
         sock.close()
@@ -216,8 +210,6 @@ def do_exposure_script():
         while monitor.state['ccd_exptime'] != float(exp):
             time.sleep(1)
         send('ccd_do_exposure')
-    else:
-        window.output_display.appendPlainText("Could not take an exposure, not connected to WSP")
 
 def goto_coordinate_script():
     ra = window.RA_input.text()
