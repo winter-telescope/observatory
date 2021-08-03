@@ -34,6 +34,7 @@ from schedule import schedule
 from schedule import ObsWriter
 from ephem import ephem_utils
 from telescope import pointingModelBuilder
+from housekeeping import data_handler
 
 class TargetError(Exception):
     pass
@@ -74,7 +75,7 @@ class RoboOperatorThread(QtCore.QThread):
     """
     
     # this signal is connected to the RoboOperator's start_robo method
-    restartRoboSignal = QtCore.pyqtSignal()
+    restartRoboSignal = QtCore.pyqtSignal(str)
     
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
@@ -89,7 +90,7 @@ class RoboOperatorThread(QtCore.QThread):
     # a generic do command signal for executing any command in robothread
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -108,6 +109,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.viscam = viscam
         self.ccd = ccd
         self.mirror_cover = mirror_cover
+        self.robostate = robostate
     
     def run(self):           
         self.robo = RoboOperator(base_directory = self.base_directory, 
@@ -124,7 +126,8 @@ class RoboOperatorThread(QtCore.QThread):
                                      ephem = self.ephem,
                                      viscam = self.viscam,
                                      ccd = self.ccd,
-                                     mirror_cover = self.mirror_cover
+                                     mirror_cover = self.mirror_cover,
+                                     robostate = self.robostate
                                      )
         
         # Put all the signal/slot connections here:
@@ -169,7 +172,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -191,6 +194,12 @@ class RoboOperator(QtCore.QObject):
         self.viscam = viscam
         self.ccd = ccd
         self.mirror_cover = mirror_cover
+        self.robostate = robostate
+        
+        # create a state dictionary to store robo operation parameters. we want to pass this to housekeeping
+        self.state = dict()
+        
+        
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
@@ -205,6 +214,9 @@ class RoboOperator(QtCore.QObject):
         ## ie, if startup is complete, the calibration is complete, and the weather/dome is okay
         self.ok_to_observe = False
     
+        # a flag to indicate we're in a daylight test mode which will spoof some observations and trigger
+        ## off of schedule alt/az rather than ra/dec
+        self.test_mode = False
         
         ### SET UP THE WRITER ###
         # init the database writer
@@ -280,6 +292,14 @@ class RoboOperator(QtCore.QObject):
         ### SET UP POINTING MODEL BUILDER ###
         self.pointingModelBuilder = pointingModelBuilder.PointingModelBuilder()
         
+        
+        # set up poll status thread
+        self.updateThread = data_handler.daq_loop(func = self.update_state, 
+                                                       dt = 1000,
+                                                       name = 'robo_status_update'
+                                                       )
+        
+        
     def broadcast_hardware_error(self, error):
         msg = f':redsiren: *{error.system.upper()} ERROR* ocurred when attempting command: *_{error.cmd}_*, {error.msg}'
         group = 'sudo'
@@ -310,6 +330,19 @@ class RoboOperator(QtCore.QObject):
         except:
             pass
     
+    
+    def update_state(self):
+        fields = ['ok_to_observe', 'target_alt', 'target_az']
+        for field in fields:
+            try:
+                self.robostate.update({field : getattr(self, field)})
+            except Exception as e:
+                #print(f'error: {e}')
+                pass
+         
+        #print(json.dumps(self.robostate, indent = 2))
+            
+    
     def rotator_stop_and_reset(self):
         self.log(f'stopping rotator and resetting to home position')
         # turn off tracking
@@ -334,8 +367,17 @@ class RoboOperator(QtCore.QObject):
         # got to the next observation
         self.gotoNext()
     
-    def restart_robo(self):
+    def restart_robo(self, arg = 'auto'):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
+        
+        if arg == 'test':
+            # we're in test mode. turn on the sun override
+            self.sun_override = True
+            self.test_mode = True
+            
+        else:
+            self.sun_override = False
+            self.test_mode = False
         
         # if we're in this loop, the robotic schedule operator is running:
         self.running = True
@@ -790,9 +832,11 @@ class RoboOperator(QtCore.QObject):
                     
                 time.sleep(0.5)
                 
-                
-                
-                self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
+                # do the observation. what we do depends on if we're in test mode
+                if self.test_mode:
+                    self.do(f'robo_observe_altaz {self.local_alt_deg} {self.local_az_deg}')
+                else:
+                    self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
                 
                 # it is now okay to trigger going to the next observation
                 self.log_observation_and_gotoNext()
@@ -1009,8 +1053,13 @@ class RoboOperator(QtCore.QObject):
                 
     def log_observation_and_gotoNext(self):
         self.logger.info('robo: image timer finished, logging observation and then going to the next one')
+        
+        #TODO: Check behavior:
+        # NPL 08-03-21: commenting this out. we don't need to run the rotator to home between every observation 
+        """
         # first thing's first, stop and reset the rotator
         self.rotator_stop_and_reset()
+        """
         
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
@@ -1049,6 +1098,11 @@ class RoboOperator(QtCore.QObject):
             
             if not self.schedulefile_name is None:
                 self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
+                
+                #NPL 08-03-21: adding this here since I turned off the reset at the top of the function. 
+                # if there are no more observations, we can stow the rotator:
+                self.rotator_stop_and_reset()
+                
                 ## TODO: Code to close connections to the databases.
                 self.schedule.closeConnection()
                 self.writer.closeConnection()
@@ -1163,10 +1217,10 @@ class RoboOperator(QtCore.QObject):
             # get the target alt and az
             self.target_alt = target[0]
             self.target_az  = target[1]
-            msg = f'Observing Target @ (Alt, Az) = {self.target_alt:0.1f}, {self.target_az:0.1f}'
+            msg = f'Observing Target @ (Alt, Az) = {self.target_alt:0.2f}, {self.target_az:0.2f}'
             self.alertHandler.slack_log(msg, group = None)
 
-            self.log(f'target: (alt, az) = {self.target_alt:0.1f}, {self.target_az:0.1f}')
+            self.log(f'target: (alt, az) = {self.target_alt:0.2f}, {self.target_az:0.2f}')
             try:
                 # calculate the nominal target ra and dec
                 alt_object = astropy.coordinates.Angle(self.target_alt*u.deg)

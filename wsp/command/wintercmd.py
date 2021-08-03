@@ -1578,7 +1578,7 @@ class Wintercmd(QtCore.QObject):
             target_norm = np.mod(target, 360)
             
             dist = np.mod(np.abs(rotator_field_angle_norm - target_norm), 360.0)
-            print(f'rotator dist to target = {dist} deg, field angle (norm) = {rotator_field_angle_norm}, target (norm) = {target_norm}')
+            #self.logger.info(f'rotator dist to target = {dist} deg, field angle (norm) = {rotator_field_angle_norm}, target (norm) = {target_norm}')
             
             stop_condition = ( (self.state['rotator_is_slewing'] == False) & (dist < 0.5) )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
@@ -2192,13 +2192,20 @@ class Wintercmd(QtCore.QObject):
     def robo_run(self):
         self.defineCmdParser('start the robotic operator')
         if self.roboThread.isRunning():
-            self.roboThread.restartRoboSignal.emit()
+            self.roboThread.restartRoboSignal.emit('auto')
+    
+    @cmd
+    def robo_run_test(self):
+        self.defineCmdParser('start the robotic operator')
+        if self.roboThread.isRunning():
+            self.roboThread.restartRoboSignal.emit('test')
     
     @cmd
     def robo_do_currentObs(self):
         self.defineCmdParser('do the current observation')
         self.roboThread.do_currentObs_Signal.emit()
-        
+    
+    
     @cmd
     def robo_do_exposure(self):
         self.defineCmdParser('tell the robotic operator to take an image with the camera')

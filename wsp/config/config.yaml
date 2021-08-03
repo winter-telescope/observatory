@@ -1548,7 +1548,21 @@ fields:
         units: None
         dtype: int64
         rate: slow
-        var: weather.ok_to_observe
+        var: 'robostate["ok_to_observe"]'
+    robo_target_alt:
+        ftype: raw
+        label: 'Alt'
+        units: 'Deg'
+        dtype: float64
+        rate: slow
+        var: robostate["target_alt"]
+    robo_target_az:
+        ftype: raw
+        label: 'Az'
+        units: 'Deg'
+        dtype: float64
+        rate: slow
+        var: robostate["target_az"]
     
     ### LABJACK STUFF###
     V_LJ0_AIN0:

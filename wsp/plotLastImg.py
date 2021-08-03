@@ -206,11 +206,19 @@ name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
 #hdu.writeto(name,overwrite = True)
 
 # check if file exists
-"""namepath = pathlib.Path(name)
-while True:
-    file_exists = namepath.is_file()
-    print(f'File Exists? {file_exists}')
-    time.sleep(1)"""
+# check if file exists
+imgpath = pathlib.Path(name)
+timeout = 20
+dt = 0.5
+t_elapsed = 0
+while t_elapsed < timeout:
+    
+    file_exists = imgpath.is_file()
+    if file_exists:
+        break
+    else:
+        time.sleep(dt) 
+        t_elapsed += dt
 #%%
 
 header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = do_hist, min_bin_counts = 10)
