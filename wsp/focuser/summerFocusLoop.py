@@ -41,14 +41,23 @@ class Focus_loop:
 
         for imgname in imglist:
             med, std = self.analyze_img_focus(imgname = imgname)
-            medlist.append(med*self.pixscale)
-            stdlist.append(std*self.pixscale)
+            if self.nantest(med):
+                medlist.append(0)
+            else:
+                medlist.append(med*self.pixscale)
+            if self.nantest(std):
+                stdlist.append(0)
+            else:
+                stdlist.append(std*self.pixscale)
 
         self.med_fwhms = medlist
         self.std_fwhms = stdlist
         
         return medlist
     
+    def nantest(self, value):
+        return np.isnan([value])[0]
+        
     def return_Range(self):
         return self.filter_range
 

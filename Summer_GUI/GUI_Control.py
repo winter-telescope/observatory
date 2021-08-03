@@ -114,9 +114,9 @@ def timer_handlings():
     else:
         change_chiller_indicator_red()
     if state['dome_close_status'] == 1:
-        change_dome_indicator_green()
-    else:
         change_dome_indicator_red()
+    else:
+        change_dome_indicator_green()
     if state['mount_is_tracking'] == 1:
         window.mount_tracking_toggle.setValue(1)
     else:
@@ -250,12 +250,12 @@ def command_entry():
     send(window.command_entry.text())
     
 def plot_last_image():
-    os.system('python /wsp/plotLastImg.py')
+    os.system('python /home/winter/WINTER_GIT/code/wsp/plotLastImg.py')
 
 # In this section, the application is started, and the methods of the different widgets are linked to functions.
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    path_to_stylesheet = '/home/joshua/code/Summer_GUI/stylesheet.qss'
+    path_to_stylesheet = '/home/winter/WINTER_GIT/code/Summer_GUI/stylesheet.qss'
     with open(path_to_stylesheet) as file:
         str = file.readlines()
         str =''.join(str).strip('\n')
