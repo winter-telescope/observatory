@@ -512,7 +512,7 @@ QSlider::sub-page:vertical {
          <item>
           <widget class="QLabel" name="label_8">
            <property name="text">
-            <string>CCD On:</string>
+            <string>CCD Tec On:</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>

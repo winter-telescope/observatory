@@ -24,7 +24,7 @@ from PyQt5.QtCore import QTimer
 
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
-
+timer_start = False
 """
 This bit handles the update of the dictionary table in a nice HTML
 format, and saves the scrollbar position, setting the scrollbar back
@@ -101,6 +101,9 @@ def timer_handlings():
     except Exception:
         timer_start = False
         update_timer.stop()
+        sock.close()
+        window.server_connect_button.setStyleSheet("background-color:grey;")
+        window.server_connect_button.setText("Connect to WSP")
         return
     window.ccd_temp_display.display(state['ccd_tec_temp'])
     if state['ccd_tec_status'] == 1:
@@ -165,6 +168,8 @@ def connect_to_server():
     except Exception:
         window.output_display.appendPlainText("Could not connect to WSP")
         sock.close()
+        window.server_connect_button.setStyleSheet("background-color:grey;")
+        window.server_connect_button.setText("Connect to WSP")
 def chiller_start():
     send('chiller_start')
 
@@ -255,10 +260,16 @@ def plot_last_image():
 # In this section, the application is started, and the methods of the different widgets are linked to functions.
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    path_to_stylesheet = '/home/winter/WINTER_GIT/code/Summer_GUI/stylesheet.qss'
-    with open(path_to_stylesheet) as file:
-        str = file.readlines()
-        str =''.join(str).strip('\n')
+    try:
+        path_to_stylesheet = '/home/winter/WINTER_GIT/code/Summer_GUI/stylesheet.qss'
+        with open(path_to_stylesheet) as file:
+            str = file.readlines()
+            str =''.join(str).strip('\n')
+    except:
+        path_to_stylesheet = '/home/joshua/code/Summer_GUI/stylesheet.qss'
+        with open(path_to_stylesheet) as file:
+            str = file.readlines()
+            str =''.join(str).strip('\n')
     app.setStyleSheet(str)
     #app.setStyleSheet(qdarkstyle.load_stylesheet())
     ui_file_name = "form.ui"
