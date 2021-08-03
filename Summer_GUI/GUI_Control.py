@@ -255,7 +255,10 @@ def command_entry():
     send(window.command_entry.text())
     
 def plot_last_image():
-    os.system('python /home/winter/WINTER_GIT/code/wsp/plotLastImg.py')
+    os.system('python plotLastImg.py')
+
+def set_exposure():
+    send('ccd_set_exposure ' + window.exposure_input.text())
 
 # In this section, the application is started, and the methods of the different widgets are linked to functions.
 if __name__ == "__main__":
@@ -281,6 +284,7 @@ if __name__ == "__main__":
     elif QT == 'PyQt5':
         window = uic.loadUi(ui_file_name)
     window.show()
+
     try:
         # create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -295,6 +299,8 @@ if __name__ == "__main__":
         timer_start = False
         sock.close()
         print("Could not connect to WSP")
+        window.server_connect_button.setStyleSheet("background-color:grey;")
+        window.server_connect_button.setText("Connect to WSP")
     if timer_start == True:
         # init the state getter
         monitor = StateGetter()
@@ -313,5 +319,6 @@ if __name__ == "__main__":
     window.command_execute.pressed.connect(command_entry)
     window.observe_object_button.pressed.connect(observe_object)
     window.do_focus_loop.pressed.connect(focus_loop)
+    window.set_exposure_button.pressed.connect(set_exposure)
     window.update_button.pressed.connect(timer_handlings)
     sys.exit(app.exec())
