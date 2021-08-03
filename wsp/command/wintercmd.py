@@ -1285,6 +1285,8 @@ class Wintercmd(QtCore.QObject):
         
         images = []
         
+        image_log_path = self.config['focus_loop_param']['image_log_path']
+        
         current_filter = str(self.state['Viscam_Filter_Wheel_Position'])
         filt_numlist = {'1':'uband','3':'rband'}
 
@@ -1309,7 +1311,12 @@ class Wintercmd(QtCore.QObject):
         #images_16 = loop.fits_64_to_16(self, images, filter_range)
         #images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
         
+        data = {'images': images, 'focuser_pos' : list(filter_range)}
+        df = pd.DataFrame(data)
+        df.to_csv(image_log_path + 'focusLoop' + self.state['mount_timestamp_utc'] + '.csv')
+        
         system = 'focuser'
+        
         
         try:
             #find the ideal focuser position
