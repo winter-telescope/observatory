@@ -138,8 +138,8 @@ class PlateSolver(object):
             # if it does solve, assign the variables
             platesolve_results = self.parse_platesolve_output(self._platesolve_output_file_path)
             self.results = platesolve_results
-            
-        return platesolve_results
+            return True
+        #return platesolve_results
     
     
 

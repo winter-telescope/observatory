@@ -112,23 +112,27 @@ print(f'DEC  = {header["DEC"]}')
 #%%
 plateSolver = platesolver.PlateSolver()
 
-plateSolver.platesolve(imagefile, 0.47)
-
-ra_j2000_hours = plateSolver.results.get('ra_j2000_hours')
-dec_j2000_degrees = plateSolver.results.get('dec_j2000_degrees')
-platescale = plateSolver.results.get('arcsec_per_pixel')
-field_angle = plateSolver.results.get('rot_angle_degs')
-
-ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
-dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
-
-ra_j2000_nom = astropy.coordinates.Angle(header["RA"], unit = 'deg')
-dec_j2000_nom = astropy.coordinates.Angle(header["DEC"], unit = 'deg')
-
+completed = plateSolver.platesolve(imagefile, 0.47)
 print()
-print(f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}')
-print(f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}')
-print(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
+print(f'PLATESOLVE COMPLETED = {completed}')
+
+if completed:
+    ra_j2000_hours = plateSolver.results.get('ra_j2000_hours')
+    dec_j2000_degrees = plateSolver.results.get('dec_j2000_degrees')
+    platescale = plateSolver.results.get('arcsec_per_pixel')
+    field_angle = plateSolver.results.get('rot_angle_degs')
+    
+    ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
+    dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
+    
+    
+    ra_j2000_nom = astropy.coordinates.Angle(header.get("RA",0), unit = 'deg')
+    dec_j2000_nom = astropy.coordinates.Angle(header.get("DEC",0), unit = 'deg')
+    
+    print()
+    print(f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}')
+    print(f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}')
+    print(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
 
 """
 astrometryNet_ra_j2000 = astropy.coordinates.Angle(324.718667275 * u.deg)

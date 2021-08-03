@@ -22,6 +22,8 @@ import astropy.time
 import astropy.coordinates
 import astropy.units as u
 from astropy.io import fits
+import pathlib
+import subprocess
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -1186,7 +1188,7 @@ class RoboOperator(QtCore.QObject):
                 self.log(f'badness getting target nominal ra/dec: {e}')
             
             if tracking.lower() == 'auto':
-                tracking = False#True
+                tracking = True
             else:
                 pass
         elif obstype == 'radec':
@@ -1369,9 +1371,9 @@ class RoboOperator(QtCore.QObject):
             #time.sleep(3)
             """
             # slew the rotator
-            #self.do(f'rotator_goto_field {self.target_field_angle}')
+            self.do(f'rotator_goto_field {self.target_field_angle}')
             
-            
+            time.sleep(3)
                 
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -1413,6 +1415,8 @@ class RoboOperator(QtCore.QObject):
         # if we get to here then we have successfully saved the image
         self.log(f'exposure complete!')
         
+        # make a jpg of the last image and publish it to slack!
+        postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
 
     def remakePointingModel(self):
         context = 'Pointing Model'
@@ -1456,47 +1460,69 @@ class RoboOperator(QtCore.QObject):
                     #TODO: fill this in from the config instead of hard coding
                     lastimagefile = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
                     #lastimagefile = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
+                    
+                    # check if file exists
+                    imgpath = pathlib.Path(lastimagefile)
+                    timeout = 20
+                    dt = 0.5
+                    t_elapsed = 0
+                    self.log(f'waiting for image path {lastimagefile}')
+                    while t_elapsed < timeout:
+                        
+                        file_exists = imgpath.is_file()
+                        self.log(f'Last Image File Exists? {file_exists}')
+                        if file_exists:
+                            break
+                        else:
+                            time.sleep(dt) 
+                            t_elapsed += dt
+                    
+                    
                     msg = f'running platesolve on image: {lastimagefile}'
                     self.log(msg)
                     print(msg)
-                    self.pointingModelBuilder.plateSolver.platesolve(lastimagefile, 0.47)
-                    
-                    ra_j2000_hours = self.pointingModelBuilder.plateSolver.results.get('ra_j2000_hours')
-                    dec_j2000_degrees = self.pointingModelBuilder.plateSolver.results.get('dec_j2000_degrees')
-                    platescale = self.pointingModelBuilder.plateSolver.results.get('arcsec_per_pixel')
-                    field_angle = self.pointingModelBuilder.plateSolver.results.get('rot_angle_degs')
-                    
-                    ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
-                    dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
-                    
-                    ######################################################################
-                    ### RUN IN SIMULATION MODE ###
-                    # Get the nominal RA/DEC from the fits header. Could do this different ways.
-                    #TODO: is this the approach we want? should it calculate it from the current position instead?
-                    hdu_list = fits.open(lastimagefile,ignore_missing_end = True)
-                    header = hdu_list[0].header
-                    
-                    ra_j2000_nom = astropy.coordinates.Angle(header["RA"], unit = 'deg')
-                    dec_j2000_nom = astropy.coordinates.Angle(header["DEC"], unit = 'deg')
-                    ######################################################################""
-                    
-                    self.log('RUNNING PLATESOLVE ON LAST IMAGE')
-                    self.log(f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}')
-                    self.log(f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}')
-                    self.log(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
-                    """
-                    #TODO: REMOVE THIS
-                    # overwrite the solution with the nominal values so we can actually get a model
-                    ra_j2000_hours = self.target_ra_j2000_hours
-                    dec_j2000_degrees = self.target_dec_j2000_deg
-                    """
-                    msg = f'Adding model point (alt,az) = ({self.target_alt:0.1f}, {self.target_az:0.1f}) --> (ra,dec) = ({ra_j2000_hours:0.1f}, {dec_j2000_degrees:0.1f})'
-                    self.alertHandler.slack_log(msg, group = None)
-                    # add the RA_hours and DEC_deg point to the telescope pointing model
-                    #self.doTry(f'mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}')
-    
-                    radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
-                    altaz_mapped.append((self.target_alt, self.target_az))
+                    solved = self.pointingModelBuilder.plateSolver.platesolve(lastimagefile, 0.47)
+                    if solved:
+                        ra_j2000_hours = self.pointingModelBuilder.plateSolver.results.get('ra_j2000_hours')
+                        dec_j2000_degrees = self.pointingModelBuilder.plateSolver.results.get('dec_j2000_degrees')
+                        platescale = self.pointingModelBuilder.plateSolver.results.get('arcsec_per_pixel')
+                        field_angle = self.pointingModelBuilder.plateSolver.results.get('rot_angle_degs')
+                        
+                        ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
+                        dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
+                        
+                        ######################################################################
+                        ### RUN IN SIMULATION MODE ###
+                        # Get the nominal RA/DEC from the fits header. Could do this different ways.
+                        #TODO: is this the approach we want? should it calculate it from the current position instead?
+                        hdu_list = fits.open(lastimagefile,ignore_missing_end = True)
+                        header = hdu_list[0].header
+                        
+                        ra_j2000_nom = astropy.coordinates.Angle(header["RA"], unit = 'deg')
+                        dec_j2000_nom = astropy.coordinates.Angle(header["DEC"], unit = 'deg')
+                        ######################################################################""
+                        
+                        self.log('RUNNING PLATESOLVE ON LAST IMAGE')
+                        self.log(f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}')
+                        self.log(f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}')
+                        self.log(f'Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg')
+                        """
+                        #TODO: REMOVE THIS
+                        # overwrite the solution with the nominal values so we can actually get a model
+                        ra_j2000_hours = self.target_ra_j2000_hours
+                        dec_j2000_degrees = self.target_dec_j2000_deg
+                        """
+                        msg = f'Adding model point (alt, az) = ({self.target_alt:0.1f}, {self.target_az:0.1f}) --> (ra, dec) = ({ra_j2000_hours:0.2f}, {dec_j2000_degrees:0.2f}), Nominal (ra, dec) = ({ra_j2000_nom.hour:0.2f}, {dec_j2000_nom.deg:0.2f})'
+                        self.alertHandler.slack_log(msg, group = None)
+                        # add the RA_hours and DEC_deg point to the telescope pointing model
+                        self.doTry(f'mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}')
+        
+                        radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
+                        altaz_mapped.append((self.target_alt, self.target_az))
+                    else:
+                        msg = f'> platesolve could not find a solution :( '
+                        self.log(msg)
+                        self.alertHandler.slack_log(msg)
                 
             except Exception as e:
                 msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'

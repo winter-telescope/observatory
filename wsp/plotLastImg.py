@@ -14,6 +14,28 @@ import matplotlib.pyplot as plt
 import astropy.visualization 
 import  astropy.time
 from datetime import datetime
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import sys
+import pathlib
+import time
+import getopt
+import yaml
+
+wsp_path = os.path.dirname( os.path.abspath(__file__) )
+sys.path.insert(1, wsp_path)
+print(f'wsp_path = {wsp_path}')
+
+from alerts import alert_handler
+
+auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+user_config_file = wsp_path + '/credentials/alert_list.yaml'
+alert_config_file = wsp_path + '/config/alert_config.yaml'
+
+auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
+user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
+alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
+
+alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
 
 
 def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None, hist = True, min_bin_counts = 1):
@@ -21,10 +43,10 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     
     
     if hist:
-        f, axarr = plt.subplots(2,1, gridspec_kw = {'height_ratios' : [3,1]}, figsize = (6,8))
+        fig, axarr = plt.subplots(2,1, gridspec_kw = {'height_ratios' : [3,1]}, figsize = (6,8))
         ax0 = axarr[0]
     else:
-        f, axarr = plt.subplots(1,1, figsize = (6,6))
+        fig, axarr = plt.subplots(1,1, figsize = (6,6))
         ax0 = axarr
     
     image_file = filename
@@ -99,10 +121,15 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
                                              stretch = astropy.visualization.SqrtStretch())
     
     
-    ax0.imshow(image, cmap = 'gray', origin = 'lower', norm = norm)
+    im = ax0.imshow(image, cmap = 'gray', origin = 'lower', norm = norm)
     ax0.set_xlabel('X [pixels]')
     ax0.set_ylabel('Y [pixels]')
-    #plt.colorbar()
+    
+    # set up the colorbar. this is a pain in this format...
+    # source: https://stackoverflow.com/questions/32462881/add-colorbar-to-existing-axis
+    divider = make_axes_locatable(ax0)
+    cax = divider.append_axes('right', size = '5%', pad = 0.05)
+    fig.colorbar(im, cax = cax, orientation = 'vertical')
     
     
     
@@ -140,9 +167,12 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
         axarr[1].set_ylabel('Nbins')
     
         axarr[1].set_yscale('log')
-        
-    plt.show()#block = False)
-    plt.pause(0.1)
+    
+    plt.savefig(os.path.join(os.getenv("HOME"),'data','last_image.jpg'))
+
+    #plt.show()#block = False)
+    #plt.pause(0.1)
+    
     
     return header, image_data
 
@@ -155,15 +185,35 @@ data = np.transpose(data)
 hdu = fits.PrimaryHDU(data = data)
 """
 
+argv = sys.argv[1:]
+print(f'argv = {argv}')
+
+#optlist
+
+if ('-h' in argv) or ('-hist' in argv):
+    do_hist = True
+
+else:
+    do_hist = False
+    
+post_to_slack = True
+    
 #name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
 #name = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
-
+#%%
 name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
 
 #hdu.writeto(name,overwrite = True)
 
+# check if file exists
+"""namepath = pathlib.Path(name)
+while True:
+    file_exists = namepath.is_file()
+    print(f'File Exists? {file_exists}')
+    time.sleep(1)"""
+#%%
 
-header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = True, min_bin_counts = 10)
+header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = do_hist, min_bin_counts = 10)
 
 # reading some stuff from the header.
 ## the header is an astropy.io.fits.header.Header object, but it can be queried like a dict
@@ -173,6 +223,11 @@ try:
     print(f'DEC  = {header["DEC"]}')
 except:
     pass
-#%%
+#%% Post to slack !
+
+if post_to_slack:
+    lastimagejpg = os.path.join(os.getenv("HOME"), 'data','last_image.jpg')
+    alertHandler.slack_postImage(lastimagejpg)
+
 
  
