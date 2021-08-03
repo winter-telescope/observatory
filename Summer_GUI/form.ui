@@ -44,18 +44,58 @@
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="2" column="1">
-        <widget class="QPushButton" name="shutdown_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>Shutdown</string>
-         </property>
-        </widget>
+       <item row="0" column="0" colspan="4">
+        <layout class="QHBoxLayout" name="horizontalLayout_10">
+         <item>
+          <widget class="QPushButton" name="server_connect_button">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="text">
+            <string>Connect To WSP</string>
+           </property>
+           <property name="checkable">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="chiller_button">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="text">
+            <string>Turn On Chiller</string>
+           </property>
+           <property name="checkable">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
-       <item row="2" column="2">
-        <layout class="QHBoxLayout" name="horizontalLayout">
+       <item row="2" column="0" colspan="4">
+        <layout class="QHBoxLayout" name="horizontalLayout_11">
+         <item>
+          <widget class="QPushButton" name="startup_button">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="text">
+            <string>Startup</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="shutdown_button">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="text">
+            <string>Shutdown</string>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QComboBox" name="restart_selection">
            <property name="focusPolicy">
@@ -90,108 +130,18 @@
          </item>
         </layout>
        </item>
-       <item row="2" column="0">
-        <widget class="QPushButton" name="startup_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>Startup</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0" colspan="2">
-        <widget class="QPushButton" name="server_connect_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>Connect To WSP</string>
-         </property>
-         <property name="checkable">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="QPushButton" name="chiller_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>Turn On Chiller</string>
-         </property>
-         <property name="checkable">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
       </layout>
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="2" column="2">
-        <widget class="QLineEdit" name="DEC_input"/>
-       </item>
-       <item row="4" column="0">
-        <widget class="QPushButton" name="goto_button">
+       <item row="0" column="2">
+        <widget class="QLineEdit" name="RA_input">
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
-         <property name="text">
-          <string>Go To Coordinate</string>
-         </property>
         </widget>
        </item>
-       <item row="0" column="4" rowspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_7">
-         <item>
-          <widget class="QSlider" name="mount_tracking_toggle">
-           <property name="styleSheet">
-            <string notr="true">QSlider::groove:vertical {
-    background: black;
-    position: absolute; 
-    left: 4px; right: 4px;
-}
-
-QSlider::handle:vertical {
-    height: 10px;
-    background: red;
-    margin: 0 -4px; 
-}
-
-QSlider::add-page:vertical {
-    background: black;
-}
-
-QSlider::sub-page:vertical {
-    background: black;
-}</string>
-           </property>
-           <property name="maximum">
-            <number>1</number>
-           </property>
-           <property name="pageStep">
-            <number>1</number>
-           </property>
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_12">
-           <property name="text">
-            <string>Mount Tracking</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="3" column="2">
-        <widget class="QLineEdit" name="exposure_input"/>
-       </item>
-       <item row="2" column="0" colspan="2">
+       <item row="1" column="0" colspan="2">
         <widget class="QLabel" name="label_2">
          <property name="text">
           <string>DEC (J2000)</string>
@@ -201,70 +151,61 @@ QSlider::sub-page:vertical {
          </property>
         </widget>
        </item>
-       <item row="2" column="4" rowspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_8">
-         <item>
-          <widget class="QSlider" name="dome_tracking_toggle">
-           <property name="styleSheet">
-            <string notr="true">QSlider::groove:vertical {
-    background: black;
-    position: absolute; 
-    left: 4px; right: 4px;
-}
-
-QSlider::handle:vertical {
-    height: 10px;
-    background: red;
-    margin: 0 -4px; 
-}
-
-QSlider::add-page:vertical {
-    background: black;
-}
-
-QSlider::sub-page:vertical {
-    background: black;
-}</string>
-           </property>
-           <property name="maximum">
-            <number>1</number>
-           </property>
-           <property name="pageStep">
-            <number>1</number>
-           </property>
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_13">
-           <property name="text">
-            <string>Dome Tracking</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+       <item row="3" column="2">
+        <widget class="QLineEdit" name="object_entry">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+        </widget>
        </item>
-       <item row="4" column="2" colspan="3">
-        <layout class="QHBoxLayout" name="horizontalLayout_9">
-         <item>
-          <widget class="QPushButton" name="do_focus_loop">
-           <property name="text">
-            <string>Focus Loop</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="plot_option">
-           <property name="text">
-            <string>With Plot</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+       <item row="3" column="0" colspan="2">
+        <widget class="QLabel" name="label_14">
+         <property name="text">
+          <string>Object Name</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
        </item>
-       <item row="0" column="2">
+       <item row="3" column="4">
+        <widget class="QPushButton" name="observe_object_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="text">
+          <string>Observe Object</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="4">
+        <widget class="QPushButton" name="exposure_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="text">
+          <string>DO EXPOSURE</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QLineEdit" name="exposure_input">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>RA (J2000)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="4">
         <widget class="QComboBox" name="filter_selection">
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
@@ -281,17 +222,158 @@ QSlider::sub-page:vertical {
          </item>
         </widget>
        </item>
-       <item row="0" column="0" colspan="2">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Filter</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
+       <item row="4" column="0" colspan="5">
+        <layout class="QHBoxLayout" name="horizontalLayout_9">
+         <item>
+          <widget class="QPushButton" name="do_focus_loop">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="text">
+            <string>Focus Loop</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="plot_option">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="text">
+            <string>With Plot</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_7">
+             <item>
+              <widget class="QSlider" name="mount_tracking_toggle">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">QSlider::groove:vertical {
+    background: black;
+    position: absolute; 
+    left: 4px; right: 4px;
+}
+
+QSlider::handle:vertical {
+    height: 10px;
+    background: red;
+    margin: 0 -4px; 
+}
+
+QSlider::add-page:vertical {
+    background: black;
+}
+
+QSlider::sub-page:vertical {
+    background: black;
+}</string>
+               </property>
+               <property name="maximum">
+                <number>1</number>
+               </property>
+               <property name="pageStep">
+                <number>1</number>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_12">
+               <property name="text">
+                <string>Mount Tracking</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QSlider" name="dome_tracking_toggle">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="focusPolicy">
+              <enum>Qt::NoFocus</enum>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QSlider::groove:vertical {
+    background: black;
+    position: absolute; 
+    left: 4px; right: 4px;
+}
+
+QSlider::handle:vertical {
+    height: 10px;
+    background: red;
+    margin: 0 -4px; 
+}
+
+QSlider::add-page:vertical {
+    background: black;
+}
+
+QSlider::sub-page:vertical {
+    background: black;
+}</string>
+             </property>
+             <property name="maximum">
+              <number>1</number>
+             </property>
+             <property name="pageStep">
+              <number>1</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_13">
+             <property name="text">
+              <string>Dome Tracking</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <item row="1" column="2">
+        <widget class="QLineEdit" name="DEC_input">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
          </property>
         </widget>
        </item>
-       <item row="3" column="0" colspan="2">
+       <item row="2" column="0" colspan="2">
         <widget class="QLabel" name="label_4">
          <property name="text">
           <string>Exposure Time (seconds)</string>
@@ -301,48 +383,15 @@ QSlider::sub-page:vertical {
          </property>
         </widget>
        </item>
-       <item row="1" column="0" colspan="2">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>RA (J2000)</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QLineEdit" name="RA_input"/>
-       </item>
-       <item row="4" column="1">
-        <widget class="QPushButton" name="exposure_button">
+       <item row="1" column="4">
+        <widget class="QPushButton" name="goto_button">
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
-          <string>DO EXPOSURE</string>
+          <string>Go To Coordinate</string>
          </property>
         </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_14">
-         <property name="text">
-          <string>Object Name</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="2" colspan="3">
-        <widget class="QPushButton" name="observe_object_button">
-         <property name="text">
-          <string>Observe Object</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QLineEdit" name="object_entry"/>
        </item>
       </layout>
      </item>
