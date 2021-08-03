@@ -12,7 +12,7 @@ except:
     from PySide6.QtCore import QFile
     from PySide6.QtCore import QIODevice
     QT = 'PySide6'
-import qdarkstyle
+#import qdarkstyle
 import time
 import socket
 import os
@@ -251,7 +251,7 @@ def command_entry():
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyleSheet(qdarkstyle.load_stylesheet())
+    #app.setStyleSheet(qdarkstyle.load_stylesheet())
     ui_file_name = "form.ui"
     if QT == 'PySide6':
         ui_file = QFile(ui_file_name)
