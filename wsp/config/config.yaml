@@ -306,6 +306,7 @@ focus_loop_param:
     pixscale: 0.466
     current_filter: 'rband'
     save_dir: 'home/winter/data/images/focusing/'
+    image_log_path: 'home/winter/data/plots_focuser/img_logs/'
 
 filt_limits:
     uband:
