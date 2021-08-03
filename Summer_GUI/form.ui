@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>515</width>
-    <height>534</height>
+    <height>727</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <x>0</x>
      <y>0</y>
      <width>517</width>
-     <height>539</height>
+     <height>731</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -27,6 +27,12 @@
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>517</width>
+     <height>539</height>
+    </size>
    </property>
    <property name="currentIndex">
     <number>0</number>
@@ -100,7 +106,7 @@
           <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
-          <string>Connect To WINTER</string>
+          <string>Connect To WSP</string>
          </property>
          <property name="checkable">
           <bool>false</bool>
@@ -124,30 +130,10 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Exposure Time (seconds)</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
+       <item row="2" column="2">
+        <widget class="QLineEdit" name="DEC_input"/>
        </item>
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="RA_input"/>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>DEC (J2000)</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="3">
+       <item row="4" column="0">
         <widget class="QPushButton" name="goto_button">
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
@@ -157,60 +143,7 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="DEC_input"/>
-       </item>
-       <item row="3" column="3">
-        <widget class="QPushButton" name="exposure_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>DO EXPOSURE</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Filter</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QComboBox" name="filter_selection">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <item>
-          <property name="text">
-           <string>U Band Filter</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>R Band Filter</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="exposure_input"/>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>RA (J2000)</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="3">
+       <item row="0" column="4" rowspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_7">
          <item>
           <widget class="QSlider" name="mount_tracking_toggle">
@@ -255,7 +188,20 @@ QSlider::sub-page:vertical {
          </item>
         </layout>
        </item>
-       <item row="1" column="3">
+       <item row="3" column="2">
+        <widget class="QLineEdit" name="exposure_input"/>
+       </item>
+       <item row="2" column="0" colspan="2">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>DEC (J2000)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="4" rowspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_8">
          <item>
           <widget class="QSlider" name="dome_tracking_toggle">
@@ -300,14 +246,55 @@ QSlider::sub-page:vertical {
          </item>
         </layout>
        </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="0" colspan="9">
-        <widget class="QLabel" name="label_5">
+       <item row="4" column="2" colspan="3">
+        <layout class="QHBoxLayout" name="horizontalLayout_9">
+         <item>
+          <widget class="QPushButton" name="do_focus_loop">
+           <property name="text">
+            <string>Focus Loop</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="plot_option">
+           <property name="text">
+            <string>With Plot</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="0" column="2">
+        <widget class="QComboBox" name="filter_selection">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <item>
+          <property name="text">
+           <string>U Band Filter</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>R Band Filter</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Status Bar</string>
+          <string>Filter</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="2">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Exposure Time (seconds)</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
@@ -315,11 +302,58 @@ QSlider::sub-page:vertical {
         </widget>
        </item>
        <item row="1" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>RA (J2000)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QLineEdit" name="RA_input"/>
+       </item>
+       <item row="4" column="1">
+        <widget class="QPushButton" name="exposure_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="text">
+          <string>DO EXPOSURE</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_14">
+         <property name="text">
+          <string>Object Name</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="2" colspan="3">
+        <widget class="QPushButton" name="observe_object_button">
+         <property name="text">
+          <string>Observe Object</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QLineEdit" name="object_entry"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="1" column="4" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
          <item>
-          <widget class="QLabel" name="label_6">
+          <widget class="QLabel" name="label_8">
            <property name="text">
-            <string>Chiller On:</string>
+            <string>CCD On:</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -327,7 +361,7 @@ QSlider::sub-page:vertical {
           </widget>
          </item>
          <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
-          <widget class="QToolButton" name="chiller_status_light">
+          <widget class="QToolButton" name="ccd_status_light">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -362,30 +396,6 @@ QSlider::sub-page:vertical {
          </item>
         </layout>
        </item>
-       <item row="1" column="4" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <widget class="QLabel" name="label_8">
-           <property name="text">
-            <string>CCD On:</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
-          <widget class="QToolButton" name="ccd_status_light">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item row="1" column="6" colspan="3">
         <layout class="QHBoxLayout" name="horizontalLayout_5">
          <item>
@@ -409,7 +419,45 @@ QSlider::sub-page:vertical {
             <bool>false</bool>
            </property>
            <property name="styleSheet">
-            <string notr="true">background-color:yellow;</string>
+            <string notr="true">background:red;
+</string>
+           </property>
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="0" column="0" colspan="9">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Status Bar</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Chiller On:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
+          <widget class="QToolButton" name="chiller_status_light">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string/>
            </property>
           </widget>
          </item>
@@ -424,6 +472,9 @@ QSlider::sub-page:vertical {
          <width>791</width>
          <height>16777215</height>
         </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color:rgb(0, 255, 255)</string>
        </property>
        <property name="readOnly">
         <bool>true</bool>
