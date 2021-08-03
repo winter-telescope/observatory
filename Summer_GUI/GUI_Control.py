@@ -24,7 +24,7 @@ from PyQt5.QtCore import QTimer
 
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
-
+timer_start = False
 """
 This bit handles the update of the dictionary table in a nice HTML
 format, and saves the scrollbar position, setting the scrollbar back
@@ -101,8 +101,13 @@ def timer_handlings():
     except Exception:
         timer_start = False
         update_timer.stop()
+        sock.close()
+        window.server_connect_button.setStyleSheet("background-color:grey;")
+        window.server_connect_button.setText("Connect to WSP")
         return
     window.ccd_temp_display.display(state['ccd_tec_temp'])
+    window.exp_time_display.display(state['ccd_exp_time'])
+    window.sun_alt_display.display(state['sun_alt'])
     if state['ccd_tec_status'] == 1:
         change_ccd_indicator_green()
     else:
@@ -114,9 +119,17 @@ def timer_handlings():
     else:
         change_chiller_indicator_red()
     if state['dome_close_status'] == 1:
-        change_dome_indicator_red()
-    else:
         change_dome_indicator_green()
+    else:
+        change_dome_indicator_red()
+    if state['ok_to_observe'] == 1:
+        change_observation_indicator_green()
+    else:
+        change_observation_indicator_red()
+    if state['ok_to_observe'] == 1:
+        change_observation_indicator_green()
+    else:
+        change_observation_indicator_red()
     if state['mount_is_tracking'] == 1:
         window.mount_tracking_toggle.setValue(1)
     else:
@@ -165,6 +178,8 @@ def connect_to_server():
     except Exception:
         window.output_display.appendPlainText("Could not connect to WSP")
         sock.close()
+        window.server_connect_button.setStyleSheet("background-color:grey;")
+        window.server_connect_button.setText("Connect to WSP")
 def chiller_start():
     send('chiller_start')
 
@@ -227,6 +242,18 @@ def change_ccd_indicator_red():
 def change_ccd_indicator_green():
     window.ccd_status_light.setStyleSheet("background-color:green;")
     
+def change_observation_indicator_red():
+    window.observation_status_light.setStyleSheet("background-color:red;")
+
+def change_observation_indicator_green():
+    window.observation_status_light.setStyleSheet("background-color:green;")
+
+def change_exposing_indicator_red():
+    window.exposing_status_light.setStyleSheet("background-color:red;")
+
+def change_exposing_indicator_green():
+    window.exposing_status_light.setStyleSheet("background-color:green;")
+
 def toggle_dome_tracking():
     if window.dome_tracking_toggle.value() == 1:
         send('dome_tracking_on')
@@ -250,15 +277,24 @@ def command_entry():
     send(window.command_entry.text())
     
 def plot_last_image():
-    os.system('python /home/winter/WINTER_GIT/code/wsp/plotLastImg.py')
+    os.system('python plotLastImg.py')
+
+def set_exposure():
+    send('ccd_set_exposure ' + window.exposure_input.text())
 
 # In this section, the application is started, and the methods of the different widgets are linked to functions.
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    path_to_stylesheet = '/home/winter/WINTER_GIT/code/Summer_GUI/stylesheet.qss'
-    with open(path_to_stylesheet) as file:
-        str = file.readlines()
-        str =''.join(str).strip('\n')
+    try:
+        path_to_stylesheet = '/home/winter/WINTER_GIT/code/Summer_GUI/stylesheet.qss'
+        with open(path_to_stylesheet) as file:
+            str = file.readlines()
+            str =''.join(str).strip('\n')
+    except:
+        path_to_stylesheet = '/home/joshua/code/Summer_GUI/stylesheet.qss'
+        with open(path_to_stylesheet) as file:
+            str = file.readlines()
+            str =''.join(str).strip('\n')
     app.setStyleSheet(str)
     #app.setStyleSheet(qdarkstyle.load_stylesheet())
     ui_file_name = "form.ui"
@@ -270,6 +306,11 @@ if __name__ == "__main__":
     elif QT == 'PyQt5':
         window = uic.loadUi(ui_file_name)
     window.show()
+    change_chiller_indicator_red()
+    change_dome_indicator_red()
+    change_ccd_indicator_red()
+    change_observation_indicator_red()
+    change_exposing_indicator_red()
     try:
         # create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -284,6 +325,8 @@ if __name__ == "__main__":
         timer_start = False
         sock.close()
         print("Could not connect to WSP")
+        window.server_connect_button.setStyleSheet("background-color:grey;")
+        window.server_connect_button.setText("Connect to WSP")
     if timer_start == True:
         # init the state getter
         monitor = StateGetter()
@@ -302,5 +345,6 @@ if __name__ == "__main__":
     window.command_execute.pressed.connect(command_entry)
     window.observe_object_button.pressed.connect(observe_object)
     window.do_focus_loop.pressed.connect(focus_loop)
+    window.set_exposure_button.pressed.connect(set_exposure)
     window.update_button.pressed.connect(timer_handlings)
     sys.exit(app.exec())
