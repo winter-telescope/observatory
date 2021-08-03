@@ -106,6 +106,8 @@ def timer_handlings():
         window.server_connect_button.setText("Connect to WSP")
         return
     window.ccd_temp_display.display(state['ccd_tec_temp'])
+    window.exp_time_display.display(state['ccd_exp_time'])
+    window.sun_alt_display.display(state['sun_alt'])
     if state['ccd_tec_status'] == 1:
         change_ccd_indicator_green()
     else:
@@ -117,9 +119,17 @@ def timer_handlings():
     else:
         change_chiller_indicator_red()
     if state['dome_close_status'] == 1:
-        change_dome_indicator_red()
-    else:
         change_dome_indicator_green()
+    else:
+        change_dome_indicator_red()
+    if state['ok_to_observe'] == 1:
+        change_observation_indicator_green()
+    else:
+        change_observation_indicator_red()
+    if state['ok_to_observe'] == 1:
+        change_observation_indicator_green()
+    else:
+        change_observation_indicator_red()
     if state['mount_is_tracking'] == 1:
         window.mount_tracking_toggle.setValue(1)
     else:
@@ -232,6 +242,18 @@ def change_ccd_indicator_red():
 def change_ccd_indicator_green():
     window.ccd_status_light.setStyleSheet("background-color:green;")
     
+def change_observation_indicator_red():
+    window.observation_status_light.setStyleSheet("background-color:red;")
+
+def change_observation_indicator_green():
+    window.observation_status_light.setStyleSheet("background-color:green;")
+
+def change_exposing_indicator_red():
+    window.exposing_status_light.setStyleSheet("background-color:red;")
+
+def change_exposing_indicator_green():
+    window.exposing_status_light.setStyleSheet("background-color:green;")
+
 def toggle_dome_tracking():
     if window.dome_tracking_toggle.value() == 1:
         send('dome_tracking_on')
@@ -284,7 +306,11 @@ if __name__ == "__main__":
     elif QT == 'PyQt5':
         window = uic.loadUi(ui_file_name)
     window.show()
-
+    change_chiller_indicator_red()
+    change_dome_indicator_red()
+    change_ccd_indicator_red()
+    change_observation_indicator_red()
+    change_exposing_indicator_red()
     try:
         # create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
