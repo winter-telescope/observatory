@@ -54,7 +54,7 @@ import astropy.coordinates
 import astropy.time 
 import astropy.units as u
 import threading
-
+import pandas as pd
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
