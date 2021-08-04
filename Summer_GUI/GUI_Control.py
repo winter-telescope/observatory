@@ -124,10 +124,10 @@ def timer_handlings():
         change_observation_indicator_green()
     else:
         change_observation_indicator_red()
-    if state['ok_to_observe'] == 1:
-        change_observation_indicator_green()
+    if state['ccd_doing_exposure']:
+        change_exposing_indicator_green()
     else:
-        change_observation_indicator_red()
+        change_exposing_indicator_red()
     if state['mount_is_tracking'] == 1:
         window.mount_tracking_toggle.setValue(1)
     else:
@@ -193,20 +193,19 @@ def do_exposure_script():
     if exp == "":
         window.output_display.appendPlainText("Enter an exposure time")
         return
-    if update_timer.isActive():
-        filter_selection = window.filter_selection.currentText()
-        if filter_selection == 'U Band Filter':
-            wheel = 1
-        if filter_selection == 'R Band Filter':
-            wheel = 3
+    filter_selection = window.filter_selection.currentText()
+    if filter_selection == 'U Band Filter':
+        wheel = 1
+    if filter_selection == 'R Band Filter':
+        wheel = 3
 
-        send('command_filter_wheel ' + str(wheel))
-        while monitor.state['filter_wheel_position'] != wheel:
-            time.sleep(1)
-        send('ccd_set_exposure '+ exp)
-        while monitor.state['ccd_exptime'] != float(exp):
-            time.sleep(1)
-        send('ccd_do_exposure')
+    send('command_filter_wheel ' + str(wheel))
+    while monitor.state['filter_wheel_position'] != wheel:
+        time.sleep(1)
+    send('ccd_set_exposure '+ exp)
+    while monitor.state['ccd_exptime'] != float(exp):
+        time.sleep(1)
+    send('ccd_do_exposure')
 
 def goto_coordinate_script():
     ra = window.RA_input.text()

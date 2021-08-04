@@ -300,11 +300,11 @@ ephem:
 ########### FOCUSER LOOP PARAM ###########
 
 focus_loop_param:
-    micron_interval: 10
+    micron_interval: 50
     recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'
     pixscale: 0.466
-    current_filter: 'rband'
+    current_filter: 'uband'
     save_dir: 'home/winter/data/images/focusing/'
     image_log_path: 'home/winter/data/plots_focuser/img_logs/'
 
