@@ -24,7 +24,6 @@ from PyQt5.QtCore import QTimer
 
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
-timer_start = False
 """
 This bit handles the update of the dictionary table in a nice HTML
 format, and saves the scrollbar position, setting the scrollbar back
@@ -100,9 +99,7 @@ def timer_handlings():
         monitor.print_state()
         window.server_connect_button.setStyleSheet("background-color:green;")
         window.server_connect_button.setText("WINTER Connected")
-        timer_start = True
     except Exception:
-        timer_start = False
         window.server_connect_button.setStyleSheet("background-color:grey;")
         window.server_connect_button.setText("Connect to WSP")
         return
@@ -196,7 +193,7 @@ def do_exposure_script():
     if exp == "":
         window.output_display.appendPlainText("Enter an exposure time")
         return
-    if timer_start == True:
+    if update_timer.isActive():
         filter_selection = window.filter_selection.currentText()
         if filter_selection == 'U Band Filter':
             wheel = 1
@@ -311,20 +308,16 @@ if __name__ == "__main__":
         sock.connect(server_address)
         timer_start = True
         window.server_connect_button.setStyleSheet("background-color:green;")
-        window.server_connect_button.setText("WINTER Connected")
-        print("connected")
+        window.server_connect_button.setText("WSP Connected")
     except Exception:
-        timer_start = False
         sock.close()
-        print("Could not connect to WSP")
         window.server_connect_button.setStyleSheet("background-color:grey;")
         window.server_connect_button.setText("Connect to WSP")
-    if timer_start == True:
-        # init the state getter
-        monitor = StateGetter()
-        update_timer = QTimer()
-        update_timer.timeout.connect(timer_handlings)
-        update_timer.start(1000)
+    # init the state getter
+    monitor = StateGetter()
+    update_timer = QTimer()
+    update_timer.timeout.connect(timer_handlings)
+    update_timer.start(1000)
     window.startup_button.pressed.connect(run_startup_script)
     window.shutdown_button.pressed.connect(run_shutdown_script)
     window.restart_button.pressed.connect(run_restart_script)
