@@ -331,8 +331,8 @@ pointing_model:
         max_az: 355
         
     # filepath of pointlist to use by default in home directory
-    default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
-        
+    #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
+    default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'
     # path prefix is HOME
     ps3cli_path: ps3cli
     catalog_path: Kepler
@@ -1564,6 +1564,27 @@ fields:
         dtype: float64
         rate: slow
         var: robostate["target_az"]
+    robo_target_ra_j2000:
+        ftype: raw
+        label: 'RA'
+        units: 'Hours'
+        dtype: float64
+        rate: slow
+        var: robostate["target_ra_j2000_hours"]
+    robo_target_dec_j2000:
+        ftype: raw
+        label: 'DEC'
+        units: 'Deg'
+        dtype: float64
+        rate: slow
+        var: robostate["target_dec_j2000_deg"]
+    robo_obsHistID:
+        ftype: raw
+        label: 'ID'
+        units: None
+        dtype: float64
+        rate: slow
+        var: robostate["lastseen"]
     
     ### LABJACK STUFF###
     V_LJ0_AIN0:

@@ -196,10 +196,6 @@ class RoboOperator(QtCore.QObject):
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         
-        # create a state dictionary to store robo operation parameters. we want to pass this to housekeeping
-        self.state = dict()
-        
-        
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
@@ -332,7 +328,8 @@ class RoboOperator(QtCore.QObject):
     
     
     def update_state(self):
-        fields = ['ok_to_observe', 'target_alt', 'target_az']
+        fields = ['ok_to_observe', 'target_alt', 'target_az','target_ra_j2000_hours','target_dec_j2000_deg','lastSeen']
+
         for field in fields:
             try:
                 self.robostate.update({field : getattr(self, field)})
@@ -1256,6 +1253,9 @@ class RoboOperator(QtCore.QObject):
             # get the target RA (hours) and DEC (degs)
             self.target_ra_j2000_hours = target[0]
             self.target_dec_j2000_deg = target[1]
+            
+            msg = f'Observing Target @ (RA, DEC) = {self.target_ra_j2000_hours:0.2f}, {self.target_dec_j2000_deg:0.2f}'
+            self.alertHandler.slack_log(msg, group = None)
             
             #j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
             j2000_ra = self.target_ra_j2000_hours * u.hour
