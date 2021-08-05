@@ -78,13 +78,8 @@ class StateGetter(QtCore.QObject):
             self.init_remote_object()
 
         else:
-            try:
-                # get the state from the remote state object and make a local copy
-                self.state = self.remote_object.GetStatus()
-
-            except Exception as e:
-                print(f'StateGetter: could not update remote state: {e}')
-                pass
+            # get the state from the remote state object and make a local copy
+            self.state = self.remote_object.GetStatus()
 
     def print_state(self):
         #window.output_display_2.setText(json.dumps(self.state, indent = 2))
@@ -98,14 +93,18 @@ def timer_handlings():
         state = monitor.state
         monitor.print_state()
         window.server_connect_button.setStyleSheet("background-color:green;")
-        window.server_connect_button.setText("WINTER Connected")
+        window.server_connect_button.setText("WSP Connected")
     except Exception:
         window.server_connect_button.setStyleSheet("background-color:grey;")
         window.server_connect_button.setText("Connect to WSP")
+        update_timer.stop()
         return
-    window.ccd_temp_display.display(state['ccd_tec_temp'])
-    window.exp_time_display.display(state['ccd_exptime'])
-    window.sun_alt_display.display(state['sun_alt'])
+    try:
+        window.ccd_temp_display.display(state['ccd_tec_temp'])
+        window.exp_time_display.display(state['ccd_exptime'])
+        window.sun_alt_display.display(state['sun_alt'])
+    except:
+        return
     if state['ccd_tec_status'] == 1:
         change_ccd_indicator_green()
     else:
@@ -117,9 +116,9 @@ def timer_handlings():
     else:
         change_chiller_indicator_red()
     if state['dome_close_status'] == 1:
-        change_dome_indicator_green()
-    else:
         change_dome_indicator_red()
+    else:
+        change_dome_indicator_green()
     if state['ok_to_observe'] == 1:
         change_observation_indicator_green()
     else:
@@ -191,8 +190,7 @@ def run_restart_script():
 def do_exposure_script():
     exp = window.exposure_input.text()
     if exp == "":
-        window.output_display.appendPlainText("Enter an exposure time")
-        return
+        exp = state['ccd_exptime']
     filter_selection = window.filter_selection.currentText()
     if filter_selection == 'U Band Filter':
         wheel = 1
@@ -276,14 +274,14 @@ if __name__ == "__main__":
     try:
         path_to_stylesheet = '/home/winter/WINTER_GIT/code/Summer_GUI/stylesheet.qss'
         with open(path_to_stylesheet) as file:
-            str = file.readlines()
-            str =''.join(str).strip('\n')
+            sheet = file.readlines()
+            sheet =''.join(sheet).strip('\n')
     except:
         path_to_stylesheet = '/home/joshua/code/Summer_GUI/stylesheet.qss'
         with open(path_to_stylesheet) as file:
-            str = file.readlines()
-            str =''.join(str).strip('\n')
-    app.setStyleSheet(str)
+            sheet = file.readlines()
+            sheet =''.join(sheet).strip('\n')
+    app.setStyleSheet(sheet)
     #app.setStyleSheet(qdarkstyle.load_stylesheet())
     ui_file_name = "form.ui"
     if QT == 'PySide6':
