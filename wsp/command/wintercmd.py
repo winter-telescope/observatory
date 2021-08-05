@@ -2538,30 +2538,57 @@ class Wintercmd(QtCore.QObject):
         
     @cmd
     def total_startup(self):
-        try:
-            self.dome_takecontrol()
-        except Exception:
-            print('Could not take control of dome')
+        if self.state['dome_control_status'] == 0:
+            try:
+                self.dome_takecontrol()
+            except Exception:
+                print('Could not take control of dome')
+        elif self.state['dome_control_status']:
+            print('Dome control is remote, skipping take control step')
         try:
             self.mount_connect()
-            self.mount_tracking_off()
+            if self.state['mount_is_tracking']:
+                self.mount_tracking_off()
             self.mount_az_on()
             self.mount_alt_on()
-            self.dome_tracking_off()
             self.mount_home()
-            self.parse('rotator_enable')
-            self.parse('rotator_home')
+            self.waitForCondition('mount_is_slewing', False)
+            print('Mount is connected and homed')
+        except:
+            print('Could not home the mount')
+        if self.state['dome_tracking_status']:
+            self.dome_tracking_off()
+        try:
+            if self.state['rotator_is_enabled'] == 0:
+                self.rotator_enable()
+            self.rotator_home()
+            self.waitForCondition('rotator_is_slewing', 0)
+            print('Rotator is enabled and homed')
+        except:
+            print('Could not home the rotator')
+        try:
             self.m2_focuser_enable()
+            print('Focuser is enabled')
+        except:
+            print('Could not enable the focuser')
+        try:
             self.mirror_cover_connect()
             self.mirror_cover_open()
+            print('Mirror cover is connected and opened')
+        except:
+            print('Could not connect and open mirror cover')
+        try:
             self.dome_go_home()
-            self.waitForCondition('mount_is_slewing', 0)
-        except Exception:
-            print('Problem during connection phase')
+            self.waitForCondition('dome_home_status', 1)
+            print("Dome is home")
+        except:
+            print('Could not home the dome')
         try:
             self.dome_open()
+            print('Opening dome')
         except Exception:
             print('Could not open dome')
+        print('Startup has finished :-)')
     
     @cmd
     def total_shutdown(self):
@@ -2571,29 +2598,30 @@ class Wintercmd(QtCore.QObject):
             self.mount_home()
             self.dome_go_home()
             self.mirror_cover_close()
-            time.sleep(20)
+            self.waitForCondition('dome_home_status', 1)
+            self.waitForCondition('mount_is_slewing', False)
         except Exception:
-            print('Could not go home')
-        try:
-            #self.ccd_tec_stop()
-            self.waitForCondition('mount_is_slewing', 0)
-        except Exception:
-            print('Failed before mount stopped slewing')
+            print('Failed while going home')
         try:
             self.rotator_home()
-            time.sleep(10)
+            self.waitForCondition('rotator_is_slewing', 0)
             self.rotator_disable()
         except Exception:
-            print('Failed in disabling rotator')
+            print('Failed while disabling rotator')
         try:
             self.mount_alt_off()
             self.mount_az_off()
             self.m2_focuser_disable()
+        except:
+            print("Failed while disabling mount and focuser")
+        try:
             self.dome_close()
+            print ('Closing dome')
             time.sleep(20)
             self.dome_givecontrol()
+            print('Shutdown has finished :-)')
         except Exception:
-            print('Failed during closing and disabling step')
+            print('Failed during closing step')
 
     @cmd
     def total_restart(self):
