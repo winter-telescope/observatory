@@ -10,3 +10,6 @@ Modules for individual elements are found in their respective folders in this di
 	- Data Logging
 
 
+SUMMER observing log: https://docs.google.com/spreadsheets/d/1T02J6mENWuyfVsKLSRQaU3T8WyqNHpo1CIv9z_MWFUE/edit?usp=sharing
+
+Telescope safety spreadsheet: https://docs.google.com/spreadsheets/d/11prSf5hcZstUBdnIE6jI21oc_hM8oEyZR3MqmBQWJD0/edit?usp=sharing 
