@@ -316,6 +316,16 @@ filt_limits:
     rband:
         upper: 10400
         lower: 10100
+ 
+filters:
+      r:
+        camera: summer
+        nominal_focus: 10150
+        position: 3
+      u:
+        camera: summer
+        nominal_focus: 10200
+        position: 1
         
 ########### POINTING MODEL PARAMETERS ###########
 # Construct a grid of 3 x 6 = 18 Alt-Az points
