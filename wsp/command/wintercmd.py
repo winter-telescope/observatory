@@ -2554,7 +2554,7 @@ class Wintercmd(QtCore.QObject):
             self.mount_home()
             self.waitForCondition('mount_is_slewing', False)
             print('Mount is connected and homed')
-        except:
+        except Exception:
             print('Could not home the mount')
         if self.state['dome_tracking_status']:
             self.dome_tracking_off()
@@ -2564,25 +2564,28 @@ class Wintercmd(QtCore.QObject):
             self.rotator_home()
             self.waitForCondition('rotator_is_slewing', 0)
             print('Rotator is enabled and homed')
-        except:
+        except Exception:
             print('Could not home the rotator')
-        try:
-            self.m2_focuser_enable()
-            print('Focuser is enabled')
-        except:
-            print('Could not enable the focuser')
         try:
             self.mirror_cover_connect()
             self.mirror_cover_open()
             print('Mirror cover is connected and opened')
-        except:
+        except Exception:
             print('Could not connect and open mirror cover')
         try:
-            self.dome_go_home()
-            self.waitForCondition('dome_home_status', 1)
-            print("Dome is home")
-        except:
-            print('Could not home the dome')
+            self.m2_focuser_enable()
+            print('Focuser is enabled')
+        except Exception:
+            print('Could not enable the focuser')
+        if self.state['dome_home_status'] != 1:
+            try:
+                self.dome_go_home()
+                self.waitForCondition('dome_home_status', 1)
+                print("Dome is home")
+            except Exception:
+                print('Could not home the dome')
+        elif self.state['dome_home_status'] == 1:
+            print('Dome is already home')
         try:
             self.dome_open()
             print('Opening dome')
@@ -2612,7 +2615,7 @@ class Wintercmd(QtCore.QObject):
             self.mount_alt_off()
             self.mount_az_off()
             self.m2_focuser_disable()
-        except:
+        except Exception:
             print("Failed while disabling mount and focuser")
         try:
             self.dome_close()

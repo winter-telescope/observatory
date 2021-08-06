@@ -105,7 +105,8 @@ telescope:
     host: "thor"
     port: 8220
     home_alt_degs: 45.0
-    home_az_degs: 349.0
+    #home_az_degs: 349.0
+    home_az_degs: 0
     min_alt: 15.0
     max_alt: 85.0
     rotator_field_angle_zeropoint: 155.0 
@@ -332,7 +333,7 @@ pointing_model:
         
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
-    default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'
+    default_pointlist: 'data/pointing_model/50_point_denser_near_zenith_spaced_pointing_model_points.txt'
     # path prefix is HOME
     ps3cli_path: ps3cli
     catalog_path: Kepler

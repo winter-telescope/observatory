@@ -263,6 +263,10 @@ def command_entry():
 def plot_last_image():
     os.system('python plotLastImg.py')
 
+def restart_the_timer():
+    if update_timer.isActive() == False:
+    	update_timer.start(1000)
+
 def set_exposure():
     send('ccd_set_exposure ' + window.exposure_input.text())
 
@@ -326,5 +330,5 @@ if __name__ == "__main__":
     window.observe_object_button.pressed.connect(observe_object)
     window.do_focus_loop.pressed.connect(focus_loop)
     window.set_exposure_button.pressed.connect(set_exposure)
-    window.update_button.pressed.connect(timer_handlings)
+    window.update_button.pressed.connect(restart_the_timer)
     sys.exit(app.exec())
