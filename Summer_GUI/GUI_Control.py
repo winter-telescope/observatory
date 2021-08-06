@@ -92,8 +92,6 @@ def timer_handlings():
         monitor.update_state()
         state = monitor.state
         monitor.print_state()
-        window.server_connect_button.setStyleSheet("background-color:green;")
-        window.server_connect_button.setText("WSP Connected")
     except Exception:
         window.server_connect_button.setStyleSheet("background-color:grey;")
         window.server_connect_button.setText("Connect to WSP")
@@ -115,10 +113,10 @@ def timer_handlings():
         window.chiller_button.setText("Chiller Started")
     else:
         change_chiller_indicator_red()
-    if state['dome_close_status'] == 1:
-        change_dome_indicator_red()
-    else:
+    if state['dome_shutter_status'] == 1:
         change_dome_indicator_green()
+    else:
+        change_dome_indicator_red()
     if state['ok_to_observe'] == 1:
         change_observation_indicator_green()
     else:
