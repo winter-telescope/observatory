@@ -1282,7 +1282,7 @@ class Wintercmd(QtCore.QObject):
         
         if self.args.plot[0] == "plot":
             plotting = True
-            print('I showing a plot this time!')
+            print('I am showing a plot this time!')
         
         images = []
         
@@ -1300,22 +1300,27 @@ class Wintercmd(QtCore.QObject):
         try:
             for dist in filter_range:
                 #Collimate and take exposure
-                self.telescope.focuser_goto(target = dist)
-                time.sleep(2)
-                self.ccd_do_exposure()
-                time.sleep(2)
-                images.append(loop.return_Path())
+                #self.telescope.focuser_goto(target = dist)
+                #time.sleep(2)
+                #self.ccd_do_exposure()
+                #time.sleep(2)
+                #images.append(loop.return_Path())
+                print("done")
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
             
         #images_16 = loop.fits_64_to_16(self, images, filter_range)
         images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
+        try:
+            data = {'images': images, 'focuser_pos' : list(filter_range)}
+            df = pd.DataFrame(data)
+            df.to_csv(image_log_path + 'focusLoop' + self.state['mount_timestamp_utc'] + '.csv')
         
-        data = {'images': images, 'focuser_pos' : list(filter_range)}
-        df = pd.DataFrame(data)
-        df.to_csv(image_log_path + 'focusLoop' + self.state['mount_timestamp_utc'] + '.csv')
-        
+        except Exception as e:
+            msg = f'wintercmd: Unable to save files to focus csv due to {e.__class__.__name__}, {e}'
+            print(msg)
+            
         system = 'focuser'
         
         
@@ -1341,18 +1346,19 @@ class Wintercmd(QtCore.QObject):
             print(msg)
         
         try:
-            auth_config_file  = wsp_path + '/credentials/authentication.yaml'
-            user_config_file = wsp_path + '/credentials/alert_list.yaml'
-            alert_config_file = wsp_path + '/config/alert_config.yaml'
+            if plotting:
+                auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+                user_config_file = wsp_path + '/credentials/alert_list.yaml'
+                alert_config_file = wsp_path + '/config/alert_config.yaml'
 
-            auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
-            user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
-            alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
+                auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
+                user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
+                alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
 
-            alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
+                alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
             
-            focus_plot = os.path.join(os.getenv("HOME"), 'plots_focuser','latest_focusloop.jpg')
-            alertHandler.slack_postImage(focus_plot)
+                focus_plot = os.path.join(os.getenv("HOME"), 'plots_focuser','latest_focusloop.jpg')
+                alertHandler.slack_postImage(focus_plot)
         
         except Exception as e:
             msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
