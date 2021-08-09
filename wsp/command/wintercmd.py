@@ -1357,7 +1357,7 @@ class Wintercmd(QtCore.QObject):
 
                 alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
             
-                focus_plot = os.path.join(os.getenv("HOME"), 'plots_focuser','latest_focusloop.jpg')
+                focus_plot = '/home/winter/data/plots_focuser/latest_focusloop.jpg'
                 alertHandler.slack_postImage(focus_plot)
         
         except Exception as e:
