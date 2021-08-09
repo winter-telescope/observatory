@@ -196,7 +196,7 @@ def do_exposure_script():
         wheel = 3
 
     send('command_filter_wheel ' + str(wheel))
-    while monitor.state['filter_wheel_position'] != wheel:
+    while monitor.state['Viscam_Filter_Wheel_Position'] != wheel:
         time.sleep(1)
     send('ccd_set_exposure '+ exp)
     while monitor.state['ccd_exptime'] != float(exp):
