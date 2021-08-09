@@ -55,6 +55,7 @@ import astropy.time
 import astropy.units as u
 import threading
 import pandas as pd
+import yaml
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -68,7 +69,7 @@ from utils import logging_setup
 from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
-
+from alerts import alert_handler
 # GLOBAL VARS
 
 # load the config
@@ -1339,6 +1340,23 @@ class Wintercmd(QtCore.QObject):
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             print(msg)
         
+        try:
+            auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+            user_config_file = wsp_path + '/credentials/alert_list.yaml'
+            alert_config_file = wsp_path + '/config/alert_config.yaml'
+
+            auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
+            user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
+            alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
+
+            alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
+            
+            focus_plot = os.path.join(os.getenv("HOME"), 'plots_focuser','latest_focusloop.jpg')
+            alertHandler.slack_postImage(focus_plot)
+        
+        except Exception as e:
+            msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
+    
         return focuser_pos
             
     @cmd

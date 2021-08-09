@@ -31,4 +31,4 @@ if __name__ == '__main__':
     plt.errorbar(filter_range,med_fwhms,yerr=std_fwhms,fmt='.',c='red')
     plt.plot(x,y)
     plt.title('Best FWHM : %.1f arcsec'%(np.min(med_fwhms)))
-    plt.savefig('/home/winter/data/plots_focuser/latest_focusloop.pdf', bbox_inches='tight')
+    plt.savefig('/home/winter/data/plots_focuser/latest_focusloop.jpg', bbox_inches='tight')
