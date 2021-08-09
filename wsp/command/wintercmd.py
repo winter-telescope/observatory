@@ -1310,7 +1310,7 @@ class Wintercmd(QtCore.QObject):
             print(msg)
             
         #images_16 = loop.fits_64_to_16(self, images, filter_range)
-        #images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
+        images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
         
         data = {'images': images, 'focuser_pos' : list(filter_range)}
         df = pd.DataFrame(data)
