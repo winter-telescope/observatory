@@ -1347,6 +1347,7 @@ class Wintercmd(QtCore.QObject):
         
         try:
             if plotting:
+                print("plotting slack")
                 auth_config_file  = wsp_path + '/credentials/authentication.yaml'
                 user_config_file = wsp_path + '/credentials/alert_list.yaml'
                 alert_config_file = wsp_path + '/config/alert_config.yaml'
