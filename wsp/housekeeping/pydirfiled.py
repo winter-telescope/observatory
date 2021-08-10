@@ -144,7 +144,8 @@ class DirfileWriter(QtCore.QObject):
                 self.add_to_frame(self.state)
                 
             except Exception as e:
-                print(f'dirfiled: could not update remote state: {e}')
+                if self.verbose:
+                    print(f'dirfiled: could not update remote state: {e}')
                 pass
         
         self.samples_in_curframe += 1
@@ -295,7 +296,8 @@ class DirfileWriter(QtCore.QObject):
             
             # add an item to the state dictionary, initialize with zeros
             self.state.update({field : None})
-            print(f'dirfiled: adding field "{field}"')
+            if self.verbose:
+                print(f'dirfiled: adding field "{field}"')
             
             # add a numpy array item to the curframe dictionary
             #spf = self.spf[self.config['fields'][field]['rate']]

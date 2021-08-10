@@ -53,8 +53,9 @@ import shlex
 import astropy.coordinates
 import astropy.time 
 import astropy.units as u
-
-
+import threading
+import pandas as pd
+import yaml
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -66,7 +67,9 @@ print(f'wintercmd: wsp_path = {wsp_path}')
 from command import commandParser
 from utils import logging_setup
 from utils import utils
-
+from daemon import daemon_utils
+from focuser import summerFocusLoop
+from alerts import alert_handler
 # GLOBAL VARS
 
 # load the config
@@ -124,7 +127,8 @@ def cmd(func):
             '''
             msg = (f'wintercmd: Could not execute command {func.__name__}: {e}')
             LOGGER.info(msg)
-            
+            #NPL 8-2-21: adding these because some exceptions are getting lost (ie TargetError)
+            raise Exception(e)
             
             
             pass
@@ -716,7 +720,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
-            stop_condition = (self.state['mount_is_slewing'])
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1))
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -751,6 +755,7 @@ class Wintercmd(QtCore.QObject):
 
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
+        self.logger.info(f'wintercmd: mount_goto_ra_dec_j2000 running in thread {threading.get_ident()}')
         while True:
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
@@ -759,8 +764,14 @@ class Wintercmd(QtCore.QObject):
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
-            
-            stop_condition = ( (not self.state['mount_is_slewing']) & (self.state['mount_az_dist_to_target'] < 0.1) & (self.state['mount_alt_dist_to_target'] < 0.1))
+            """
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: count = {self.state["count"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: mount_is_slewing: {self.state["mount_is_slewing"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: alt_dist_to_target: {self.state["mount_alt_dist_to_target"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: az_dist_to_target: {self.state["mount_az_dist_to_target"]}')
+            self.logger.info('')
+            """
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1))
 
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -809,7 +820,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
-            stop_condition = ( (not self.state['mount_is_slewing']) & (self.state['mount_az_dist_to_target'] < 0.1) & (self.state['mount_alt_dist_to_target'] < 0.1))
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1))
 
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -991,8 +1002,16 @@ class Wintercmd(QtCore.QObject):
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
-            
-            stop_condition = ( (not self.state['mount_is_slewing']) & (self.state['mount_az_dist_to_target'] < 0.1) & (self.state['mount_alt_dist_to_target'] < 0.1))
+            dist = ( (alt - self.state["mount_alt_deg"])**2 + (az - self.state["mount_az_deg"])**2 )**0.5
+            """
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: count = {self.state["count"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: mount_is_slewing: {self.state["mount_is_slewing"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: alt_dist_to_target: {self.state["mount_alt_dist_to_target"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: az_dist_to_target: {self.state["mount_az_dist_to_target"]}')
+            self.logger.info(f'wintercmd (thread {threading.get_ident()}: dist_to_target: {dist} deg')
+            self.logger.info('')
+            """
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1) & (dist < 0.1))
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -1244,6 +1263,132 @@ class Wintercmd(QtCore.QObject):
     
     # Telescope Focuser Stuff
     @cmd
+    def focDither(self):
+        import random
+        k = 0
+        thresh = 0.015
+        
+        while k<120:
+            time.sleep(0.5)
+            print('exp')
+            self.ccd_do_exposure()
+            time.sleep(0.5)
+            k+=1
+            if k%5==0:
+                az = self.state['mount_az_deg']
+                alt = self.state['mount_alt_deg']
+                self.telescope.mount_goto_alt_az(alt_degs = alt+(random.uniform(-thresh,thresh)), az_degs = az+(random.uniform(-thresh,thresh)))
+                print('dithered')
+                time.sleep(1) 
+                self.mount_tracking_on()
+                time.sleep(1)
+            else:
+                print(k)
+    @cmd
+    def doFocusLoop(self):
+        """
+        Runs a focus loop for a given filter by taking a set of images and collecting the relative
+        size of objects in the image. Will collimate mirror at optimal position.
+        
+        """
+        
+        self.defineCmdParser('retrieve whether or not a plot will be displayed based on img fwhm')
+        self.cmdparser.add_argument('plot',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<position_steps>')
+        
+        self.getargs()
+        
+        plotting = False
+        
+        if self.args.plot[0] == "plot":
+            plotting = True
+            print('I am showing a plot this time!')
+        
+        images = []
+        
+        image_log_path = self.config['focus_loop_param']['image_log_path']
+        
+        current_filter = str(self.state['Viscam_Filter_Wheel_Position'])
+        filt_numlist = {'1':'uband','3':'rband'}
+
+        loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config)
+        
+        filter_range = loop.return_Range()
+        
+        system = 'ccd'
+        
+        try:
+            for dist in filter_range:
+                #Collimate and take exposure
+                self.telescope.focuser_goto(target = dist)
+                time.sleep(2)
+                self.ccd_do_exposure()
+                time.sleep(2)
+                images.append(loop.return_Path())
+                print("done")
+        except Exception as e:
+            msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
+            print(msg)
+            
+        #images_16 = loop.fits_64_to_16(self, images, filter_range)
+        #images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
+        try:
+            data = {'images': images, 'focuser_pos' : list(filter_range)}
+            df = pd.DataFrame(data)
+            df.to_csv(image_log_path + 'focusLoop' + self.state['mount_timestamp_utc'] + '.csv')
+        
+        except Exception as e:
+            msg = f'wintercmd: Unable to save files to focus csv due to {e.__class__.__name__}, {e}'
+            print(msg)
+            
+        system = 'focuser'
+        
+        
+        try:
+            #find the ideal focuser position
+            print('Focuser re-aligning at %s microns'%(filter_range[0]))
+            self.telescope.focuser_goto(target = filter_range[0])
+            loop.rate_images(images)
+            #focuser_pos = filter_range[med_values.index(min(med_values))]
+            
+            xvals, yvals = loop.plot_focus_curve(plotting)
+            focuser_pos = xvals[yvals.index(min(yvals))]
+            print('Focuser_going to final position at %s microns'%(focuser_pos))
+            self.telescope.focuser_goto(target = focuser_pos)
+                
+
+        except FileNotFoundError as e:
+            print(f"You are trying to modify a catalog file or an image with no stars , {e}")
+            pass
+
+        except Exception as e:
+            msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
+            print(msg)
+        
+        try:
+            if plotting:
+                auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+                user_config_file = wsp_path + '/credentials/alert_list.yaml'
+                alert_config_file = wsp_path + '/config/alert_config.yaml'
+
+                auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
+                user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
+                alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
+
+                alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
+            
+                focus_plot = '/home/winter/data/plots_focuser/latest_focusloop.jpg'
+                alertHandler.slack_postImage(focus_plot)
+        
+        except Exception as e:
+            msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
+            print(msg)
+            
+        return focuser_pos
+            
+    @cmd
     def m2_focuser_enable(self):
         """
         Created: NPL 2-4-21
@@ -1329,7 +1474,7 @@ class Wintercmd(QtCore.QObject):
         self.telescope.rotator_disable()
         
         ## Wait until end condition is satisfied, or timeout ##
-        condition = False
+        condition = True
         timeout = 5.0
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
@@ -1460,9 +1605,46 @@ class Wintercmd(QtCore.QObject):
                                     help = '<target_degs>')
         
         self.getargs()
-        target = self.args.position[0]
+        target = float(self.args.position[0])
         self.telescope.rotator_goto_field(target_degs = target)
-    
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 60.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+                
+            # put the angle between 0-360
+            rotator_field_angle_norm = np.mod(self.state['rotator_field_angle'], 360)
+            target_norm = np.mod(target, 360)
+            
+            dist = np.mod(np.abs(rotator_field_angle_norm - target_norm), 360.0)
+            #self.logger.info(f'rotator dist to target = {dist} deg, field angle (norm) = {rotator_field_angle_norm}, target (norm) = {target_norm}')
+            
+            stop_condition = ( (self.state['rotator_is_slewing'] == False) & (dist < 0.5) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break 
+        self.logger.info(f'wintercmd: rotator move complete')
+        
+        
     @cmd
     def rotator_offset(self):
         """
@@ -1733,7 +1915,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 100
+        timeout = 300
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
@@ -2064,7 +2246,107 @@ class Wintercmd(QtCore.QObject):
     def robo_run(self):
         self.defineCmdParser('start the robotic operator')
         if self.roboThread.isRunning():
-            self.roboThread.restartRoboSignal.emit()
+            self.roboThread.restartRoboSignal.emit('auto')
+    
+    @cmd
+    def robo_run_test(self):
+        self.defineCmdParser('start the robotic operator')
+        if self.roboThread.isRunning():
+            self.roboThread.restartRoboSignal.emit('test')
+    
+    @cmd
+    def robo_do_currentObs(self):
+        self.defineCmdParser('do the current observation')
+        self.roboThread.do_currentObs_Signal.emit()
+    
+    
+    @cmd
+    def robo_do_exposure(self):
+        self.defineCmdParser('tell the robotic operator to take an image with the camera')
+        self.roboThread.doExposureSignal.emit()
+        
+    @cmd
+    def robo_observe_altaz(self):
+        """Usage: mount_goto_alt_az <alt> <az>"""
+        self.defineCmdParser('tell the robotic operator to execute on observation of the specified alt and az')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<alt_deg> <az_deg>')
+        self.getargs()
+        alt = self.args.position[0]
+        az = self.args.position[1]
+        
+        # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
+
+        sigcmd = signalCmd('do_observation',
+                           obstype = 'altaz',
+                           target = (alt,az),
+                           tracking = 'auto',
+                           field_angle = 'auto')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_observe_radec(self):
+        """Usage: robo_observe_radec <ra> <dec>"""
+        self.defineCmdParser('move telescope to specified j2000 ra (hours)/dec (deg) ')
+        self.cmdparser.add_argument('position',
+                                    nargs = 2,
+                                    action = None,
+                                    type = float,
+                                    help = '<ra_hours> <dec_degs>')
+        self.getargs()
+        ra_j2000_hours = self.args.position[0]
+        dec_j2000_degs = self.args.position[1]
+        
+        target = (ra_j2000_hours,dec_j2000_degs)
+        
+        # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
+
+        sigcmd = signalCmd('do_observation',
+                           obstype = 'radec',
+                           target = target,
+                           tracking = 'auto',
+                           field_angle = 'auto')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+    @cmd
+    def robo_observe_object(self):
+        """ Usage: mount_goto_object <object_name> """
+        # points to an object that is in the astropy object library
+        # before slewing makes sure that the altitude and azimuth as viewed from palomar are okay unless its overridden
+        self.defineCmdParser('move telescope to object from astropy catalog')
+        self.cmdparser.add_argument('object_name',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<object name>')
+        
+        self.getargs()
+        #print(f'wintercmd: args = {self.args}')
+        
+        obj = self.args.object_name[0]
+        self.logger.info(f'setting up observation of object_name = {obj}')
+        # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
+
+        sigcmd = signalCmd('do_observation',
+                           obstype = 'object',
+                           target = obj,
+                           tracking = 'auto',
+                           field_angle = 'auto')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_remakePointingModel(self):
+        self.defineCmdParser('start the robotic operator')
+        
+        sigcmd = signalCmd('remakePointingModel')
+        self.roboThread.newCommand.emit(sigcmd)
+        
         
     # General Shut Down
     @cmd
@@ -2099,11 +2381,34 @@ class Wintercmd(QtCore.QObject):
         if self.promptThread and self.execThread:
             self.promptThread.stop()
             self.execThread.stop()
-
+        
+        # try to shut down the ccd camera client
+        try:
+            self.parse('ccd_shutdown_client')
+            time.sleep(1)
+        except Exception as e:
+            print(f'could not shut down ccd camera client. {type(e)}: {e}')
+        
+        # try to shut down the ccd camera server
+        """try:
+            self.parse('ccd_killServer')
+            time.sleep(1)
+        except Exception as e:
+            print(f'could not shut down ccd camera huaso server. {type(e)}: {e}')"""
+        
         #sys.exit()#sigint_handler()
+        
+        # try to kill the ccd huaso_server
+        # we don't have a path from loacl to remote for this yet.
         
         # kill all the daemons
         self.daemonlist.kill_all()
+        
+        # kill any dangling instances of huaso_server
+        huaso_server_pids = daemon_utils.getPIDS('huaso_server')
+        for pid in huaso_server_pids:
+            print(f'killing huaso_server instance with PID {pid}')
+            os.kill(pid, signal.SIGKILL)
         
         # kill the program
         QtCore.QCoreApplication.quit()
@@ -2166,6 +2471,32 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('setexposure', secs)
         self.ccd.newCommand.emit(sigcmd)
         
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 15
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested exptime = {secs}, but it is {self.state["ccd_exptime"]}')
+            
+            stop_condition = ( (self.state['ccd_exptime'] == secs) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: ccd_exptime set successfully. Current Exptime = {self.state["ccd_exptime"]}')
+                break 
         
     @cmd
     def ccd_set_tec_sp(self):
@@ -2186,6 +2517,42 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('doExposure')
         self.ccd.newCommand.emit(sigcmd)
         
+        self.logger.info(f'wintercmd: running ccd_do_exposure in thread {threading.get_ident()}')
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = self.state['ccd_exposureTimeout'] + 10
+        # create a buffer list to hold several samples over which the stop condition must be true
+        
+        
+        #n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        # Change this to trigger on 1 True sample, since the flag is on for a short time and may get skipped
+        n_buffer_samples = 1
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = ( (self.state['ccd_doing_exposure'] == False) & (self.state['ccd_image_saved_flag']))
+            #self.logger.info(f'count = {self.state["count"]}')
+            #self.logger.info(f'wintercmd: ccd_doing_exposure = {self.state["ccd_doing_exposure"]}, ccd_image_saved_flag = {self.state["ccd_image_saved_flag"]}')
+            #self.logger.info('')
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
+                break 
+        
     @cmd
     def ccd_tec_start(self):
         self.defineCmdParser('Start ccd tec')
@@ -2199,45 +2566,118 @@ class Wintercmd(QtCore.QObject):
         self.ccd.newCommand.emit(sigcmd)
         
     @cmd
-    def total_startup(self):
-        
-        self.ccd_tec_start()
-        self.dome_takecontrol()
-        self.mount_connect()
-        self.mount_tracking_off()
-        self.parse('rotator_enable')
-        self.parse('rotator_home')
-        self.mount_az_on()
-        self.mount_alt_on()
-        self.mount_home()
-        self.dome_go_home()
-        self.m2_focuser_enable()
-        self.mirror_cover_connect()
-        #self.dome_open()
-        self.mirror_cover_open()
+    def ccd_shutdown_client(self):
+        self.defineCmdParser('shut down the camera client session')
+        sigcmd = signalCmd('shutdownCameraClient')
+        self.ccd.newCommand.emit(sigcmd)
+    
+    @cmd
+    def ccd_reconnectServer(self):
+        self.defineCmdParser('restart the huaso server')
+        sigcmd = signalCmd('reconnectServer')
+        self.ccd.newCommand.emit(sigcmd)
+    
+    @cmd
+    def ccd_killServer(self):
+        self.defineCmdParser('shut down the huaso server')
+        sigcmd = signalCmd('killServer')
+        self.ccd.newCommand.emit(sigcmd)
         
     @cmd
+    def total_startup(self):
+        if self.state['dome_control_status'] == 0:
+            try:
+                self.dome_takecontrol()
+            except Exception:
+                print('Could not take control of dome')
+        elif self.state['dome_control_status']:
+            print('Dome control is remote, skipping take control step')
+        try:
+            self.mount_connect()
+            if self.state['mount_is_tracking']:
+                self.mount_tracking_off()
+            self.mount_az_on()
+            self.mount_alt_on()
+            self.mount_home()
+            self.waitForCondition('mount_is_slewing', False)
+            print('Mount is connected and homed')
+        except Exception:
+            print('Could not home the mount')
+        if self.state['dome_tracking_status']:
+            self.dome_tracking_off()
+        try:
+            if self.state['rotator_is_enabled'] == 0:
+                self.rotator_enable()
+            self.rotator_home()
+            self.waitForCondition('rotator_is_slewing', 0)
+            print('Rotator is enabled and homed')
+        except Exception:
+            print('Could not home the rotator')
+        try:
+            self.mirror_cover_connect()
+            self.mirror_cover_open()
+            print('Mirror cover is connected and opened')
+        except Exception:
+            print('Could not connect and open mirror cover')
+        try:
+            self.m2_focuser_enable()
+            print('Focuser is enabled')
+        except Exception:
+            print('Could not enable the focuser')
+        if self.state['dome_home_status'] != 1:
+            try:
+                self.dome_go_home()
+                self.waitForCondition('dome_home_status', 1)
+                print("Dome is home")
+            except Exception:
+                print('Could not home the dome')
+        elif self.state['dome_home_status'] == 1:
+            print('Dome is already home')
+        try:
+            self.dome_open()
+            print('Opening dome')
+        except Exception:
+            print('Could not open dome')
+        print('Startup has finished :-)')
+    
+    @cmd
     def total_shutdown(self):
-        self.mount_home()
-        self.dome_go_home()
-        #self.ccd_tec_stop()
-        self.mount_tracking_off()
-        self.dome_tracking_off()
-        self.parse('rotator_home')
-        self.mirror_cover_close()
-        self.waitForCondition('mount_is_slewing', 0)
-        self.parse('rotator_disable')
-        self.mount_az_off()
-        self.dome_close()
-        self.mount_alt_off()
-        self.m2_focuser_disable()
-        self.dome_givecontrol()    
+        try:
+            self.mount_tracking_off()
+            self.dome_tracking_off()
+            self.mount_home()
+            self.dome_go_home()
+            self.mirror_cover_close()
+            self.waitForCondition('dome_home_status', 1)
+            self.waitForCondition('mount_is_slewing', False)
+        except Exception:
+            print('Failed while going home')
+        try:
+            self.rotator_home()
+            self.waitForCondition('rotator_is_slewing', 0)
+            self.rotator_disable()
+        except Exception:
+            print('Failed while disabling rotator')
+        try:
+            self.mount_alt_off()
+            self.mount_az_off()
+            self.m2_focuser_disable()
+        except Exception:
+            print("Failed while disabling mount and focuser")
+        try:
+            self.dome_close()
+            print ('Closing dome')
+            time.sleep(20)
+            self.dome_givecontrol()
+            print('Shutdown has finished :-)')
+        except Exception:
+            print('Failed during closing step')
+
     @cmd
     def total_restart(self):
         self.total_shutdown()
         self.total_startup()
-
-
+    
         """
 class ManualCmd(Wintercmd):
 

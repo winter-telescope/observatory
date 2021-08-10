@@ -20,6 +20,8 @@ from email.mime.multipart import MIMEMultipart
 # needed for slack
 import requests
 import json
+import slack_sdk
+import slack_sdk.errors
 
 # add the wsp directory to the PATH
 code_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,7 +34,8 @@ class SlackDispatcher(object):
     def __init__(self, auth_config, logger = None):
         self.auth_config = auth_config
         self.logger = logger
-    
+        self.client = slack_sdk.WebClient(token = self.auth_config.get("slackbot_token", ""))
+        
     def log(self, msg, level = logging.INFO):
         if self.logger is None:
                 #print(msg)
@@ -71,7 +74,20 @@ class SlackDispatcher(object):
                 # log the post failure
                 self.log(f'SlackDispatcher: failed to post slack message to {channel}. Got status code {status_code}: {reply_text}')
         #return status_code, reply_text
-
+    
+    def postImage(self, filepath, msg = '', verbose = False):
+        # post an image to the channel
+        try:
+            result = self.client.files_upload(
+                channels = '#winter_observatory',
+                initial_comment = msg,
+                file = filepath,
+                )
+            self.log(result)
+        except slack_sdk.errors.SlackApiError as e:
+            self.log(f"Error uploading file: {e}")
+            
+    
 class EmailDispatcher(object):
     def __init__(self, auth_config, logger = None):
         
@@ -198,6 +214,26 @@ class AlertHandler(object):
         # now post the message
         self.slacker.post('winter_observatory', full_message, verbose = verbose)
     
+    def slack_postImage(self, filepath, message = '', group = None, verbose = False):
+        #    def postImage(self, filepath, msg = '', verbose = False):
+        # if a group is specified users from that group will be mentioned, eg @username
+        mentions = ''
+        
+        if not group is None:
+            # if is a specified group to tag, try to tag everybody in the group
+            for user in self.user_config['users']:
+                try:
+                    user_groups = self.user_config['users'][user]['groups']
+                    if (group in user_groups) or ('sudo' in user_groups) or ('all' in group):
+                        slack_username = self.user_config['users'][user]['slack']
+                        mentions += ' <@' + slack_username + '> '
+                except:
+                    pass
+        
+        full_message = message + mentions
+        # now post the message
+        self.slacker.postImage(filepath, full_message, verbose = verbose)
+        
 if __name__ == '__main__':
     
     auth_config_file  = wsp_path + '/credentials/authentication.yaml'
@@ -220,8 +256,13 @@ if __name__ == '__main__':
     #alertHandler.slack_message_group(group, message)
     alertHandler.slack_log('just logging a normal old message', group = None)
     
+    
     """
     group = 'announcements'
     message = 'This is a test of the WINTER emergency alert system'
     alertHandler.email_group(group, subject, message)
     """
+    #%%
+    lastimagejpg = os.path.join(os.getenv("HOME"), 'data','last_image.jpg')
+    
+    alertHandler.slack_postImage(lastimagejpg, message = 'here is the last image taken by the observatory')

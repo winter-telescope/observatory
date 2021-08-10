@@ -3,9 +3,25 @@ import platform
 from subprocess import Popen, PIPE
 import tempfile
 
-# Point this to the location of the "ps3cli.exe" executable
-PS3CLI_EXE = os.path.expanduser("~/ps3cli/ps3cli.exe")
+"""
+Author: Kevin Ivarsen
+Updated: 7-26-21 Nate Lourie
+Updated paths to be more platform independent.
+Also added options to enable running on unix (eg Mac)
 
+Note: to run on mac, must install mono here: https://www.mono-project.com/download/stable/
+Use the Stable Version, not the Visual Studio Version (at least that's what I tested on).
+By default the mono build will not be added to the path, so to run it from everywhere,
+edit (as root) the path file: /etc/paths, by adding a line at the end with:
+    /Library/Frameworks/Mono.framework/Versions/Current/bin
+Source: https://stackoverflow.com/a/33003816
+"""
+
+
+
+# Point this to the location of the "ps3cli.exe" executable
+#PS3CLI_EXE = os.path.expanduser("~/ps3cli/ps3cli.exe")
+PS3CLI_EXE = os.path.join(os.getenv("HOME"),'ps3cli','ps3cli.exe')
 # For testing purposes...
 #PS3CLI_EXE = r"C:\Users\kmi\Desktop\Planewave work\Code\PWGit\PWCode\ps3cli\bin\Debug\ps3cli.exe"
 
@@ -18,12 +34,16 @@ PS3_CATALOG = None
 def is_linux():
     return platform.system() == "Linux"
 
-def get_default_catalog_location():
-    if is_linux():
-        return os.path.expanduser("~/Kepler")
-    else:
-        return os.path.expanduser("~\\Documents\\Kepler")
+def is_unix():
+    return platform.system() == "Darwin"
 
+def get_default_catalog_location():
+    if is_linux() or is_unix():
+        #return os.path.expanduser("~/Kepler")
+        return os.path.join(os.getenv("HOME"),'Kepler')
+    else:
+        #return os.path.expanduser("~\\Documents\\Kepler")
+        return os.path.join(os.getenv("HOME"),'Documents','Kepler')
 
 def platesolve(image_file, arcsec_per_pixel):
     stdout_destination = None  # Replace with PIPE if we want to capture the output rather than displaying on the console
@@ -43,11 +63,11 @@ def platesolve(image_file, arcsec_per_pixel):
         catalog_path
     ]
 
-    if is_linux():
+    if is_linux() or is_unix():
         # Linux systems need to run ps3cli via the mono runtime,
         # so add that to the beginning of the command/argument list
         args.insert(0, "mono")
-    
+    print(f'passing to subprocess.Popen: args = {args}')
     process = Popen(
             args,
             stdout=stdout_destination,
@@ -60,7 +80,7 @@ def platesolve(image_file, arcsec_per_pixel):
     if exit_code != 0:
         raise Exception("Error finding solution.\n" +
                         "Exit code: " + str(exit_code) + "\n" + 
-                        "Error output: " + stderr)
+                        "Error output: " + stderr.decode('utf-8'))
     
     return parse_platesolve_output(output_file_path)
 

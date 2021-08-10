@@ -443,7 +443,7 @@ class StatusThread(QtCore.QThread):
         
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.statusMonitor.pollStatus)
-        self.timer.start(500)
+        self.timer.start(100)
         self.exec_()
         
         

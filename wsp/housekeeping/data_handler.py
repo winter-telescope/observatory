@@ -47,7 +47,7 @@ print(f'data_handler: wsp_path = {wsp_path}')
 
 class hk_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, schedule, telescope,weather, mirror_cover, labjacks, counter, dome, chiller, ephem, viscam, ccd, verbose = False):
+    def __init__(self,config, state, curframe, schedule, telescope,weather, mirror_cover, labjacks, counter, dome, chiller, ephem, viscam, ccd, robostate, verbose = False):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -65,6 +65,7 @@ class hk_loop(QtCore.QThread):
         self.viscam = viscam
         self.ccd = ccd
         self.mirror_cover = mirror_cover
+        self.robostate = robostate
         
         # pass the config to the thread
         self.config = config
@@ -392,7 +393,7 @@ class daq_loop(QtCore.QThread):
     It is meant for polling different sensors or instruments or servers
     each in their own thread so they don't bog each other down.
     """
-    def __init__(self, func, dt, name = '', print_thread_name_in_update = False, thread_numbering = 'PyQt', *args, **kwargs):
+    def __init__(self, func, dt, name = '', print_thread_name_in_update = False, thread_numbering = 'PyQt', autostart = True, *args, **kwargs):
         QtCore.QThread.__init__(self)
 
         self.index = 0
@@ -412,7 +413,8 @@ class daq_loop(QtCore.QThread):
         self._thread_numbering_ = thread_numbering.lower()
         
         # start the thread itself
-        self.start()
+        if autostart:
+            self.start()
     
     
     def run(self):

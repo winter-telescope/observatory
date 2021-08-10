@@ -121,11 +121,8 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.chillerd)
             
             # ccd daemon
-            if '--viscam' in opts:
-                self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
-                self.daemonlist.add_daemon(self.ccdd)
-            else:
-                pass
+            self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
+            self.daemonlist.add_daemon(self.ccdd)
             
             # housekeeping data logging daemon (hkd = housekeeping daemon)
             self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
@@ -178,16 +175,15 @@ class control(QtCore.QObject):
                                              port = self.config['telescope']['port'])
 
         # init the mirror cover 
-        
         self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
                                                       port = self.config['telescope_shutter']['port'],
                                                       config = self.config, logger = self.logger)
         
         # init the dome
-        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope)
+        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, logger = self.logger)
         
         # init the ephemeris
-        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config)
+        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
         # init the weather by creating a local object that interfaces with the remote object from the weather daemon
         
@@ -226,8 +222,13 @@ class control(QtCore.QObject):
         else:
             self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
 
-        ### SET UP THE HOUSEKEEPING ###
+        ### CREATE A VARIABLE TO HOLD THE ROBO OPERATOR STATE THAT BOTH ROBO AND HOUSEKEEPING CAN ACCESS
+        self.robostate = dict()
 
+        ### SET UP THE HOUSEKEEPING ###
+            
+            
+            
         # if mode == 1:
         # init the housekeeping class (this starts the daq and dirfile write loops)
         self.hk = housekeeping.housekeeping(self.config,
@@ -243,7 +244,8 @@ class control(QtCore.QObject):
                                                 ephem = self.ephem,
                                                 viscam = self.viscam, 
                                                 ccd = self.ccd, 
-                                                mirror_cover = self.mirror_cover
+                                                mirror_cover = self.mirror_cover,
+                                                robostate = self.robostate
                                                 )
         
         
@@ -283,7 +285,22 @@ class control(QtCore.QObject):
         # connect the new schedule command to the command executor
         if mode in ['r','m']:
             #self.scheduleExec.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
-            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, self.config, mode = mode, state = self.hk.state, wintercmd = self.wintercmd, logger = self.logger, alertHandler = self.alertHandler, schedule = self.schedule, telescope = self.telescope, dome = self.dome, chiller = self.chiller, ephem = self.ephem, viscam=self.viscam, ccd = self.ccd, mirror_cover = self.mirror_cover)
+            self.roboThread = roboOperator.RoboOperatorThread(self.base_directory, 
+                                                              self.config, 
+                                                              mode = mode, 
+                                                              state = self.hk.state, 
+                                                              wintercmd = self.wintercmd, 
+                                                              logger = self.logger, 
+                                                              alertHandler = self.alertHandler, 
+                                                              schedule = self.schedule, 
+                                                              telescope = self.telescope, 
+                                                              dome = self.dome, 
+                                                              chiller = self.chiller, 
+                                                              ephem = self.ephem, 
+                                                              viscam=self.viscam, 
+                                                              ccd = self.ccd, 
+                                                              mirror_cover = self.mirror_cover,
+                                                              robostate = self.robostate)
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
