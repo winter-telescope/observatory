@@ -343,7 +343,7 @@ pointing_model:
         
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
-    default_pointlist: 'data/pointing_model/50_point_denser_near_zenith_spaced_pointing_model_points.txt'
+    default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'
     # path prefix is HOME
     ps3cli_path: ps3cli
     catalog_path: Kepler
