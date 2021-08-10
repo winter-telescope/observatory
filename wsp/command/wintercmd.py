@@ -1300,11 +1300,11 @@ class Wintercmd(QtCore.QObject):
         try:
             for dist in filter_range:
                 #Collimate and take exposure
-                #self.telescope.focuser_goto(target = dist)
-                #time.sleep(2)
-                #self.ccd_do_exposure()
-                #time.sleep(2)
-                #images.append(loop.return_Path())
+                self.telescope.focuser_goto(target = dist)
+                time.sleep(2)
+                self.ccd_do_exposure()
+                time.sleep(2)
+                images.append(loop.return_Path())
                 print("done")
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
