@@ -32,7 +32,7 @@ import astropy.units as u
 import astropy.coordinates
 import astropy.io.fits as fits
 import pytz
-
+import numpy as np
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 print(f'wsp_path = {wsp_path}')
@@ -504,23 +504,93 @@ class CCD(QtCore.QObject):
         
         # populate the header. this would be better done driven by a config file
         
-        # add the image acquisition timestamp to the fits header
-        fits_timestamp = Time(self.image_starttime_utc).fits
-        header.append(fits.Card('UTC', fits_timestamp, 'Time of observation'))
-        
+        ###### BASIC PARAMETERS ######
+        header.append(fits.Card('ORIGIN',   'Wide-field INfrared Transient ExploreR (WINTER): SUMMER Camera', 'Data Origin'))
+        header.append(fits.Card('OBSERVER', state.get('operator_name', ''),     'Observer'))
+        header.append(fits.Card('OBSTYPE',  state.get('obstype', ''),            'Observation Type'))
         #add the filename to the header
         header.append(fits.Card('FILENAME', self.lastfilename, 'File name'))
         header.append(fits.Card('ORIGNAME', self.lastfilename, 'Original filename'))
         
-        # TELESCOPE PARAMETERS
+        
+        ###### TELESCOPE PARAMETERS ######
+        # Site lon/lat/height
+        header.append(fits.Card('OBSERVAT', 'Palomar Observatory', 'Observatory'))
+        header.append(fits.Card('TELESCOP', 'WINTER / P39', 'Observatory telescope'))
+        header.append(fits.Card('OBSLAT',   state.get('site_latitude_degs', ''),    'Observatory latitude (deg)' ))
+        header.append(fits.Card('OBSLON',   state.get('site_longitude_degs', ''),   'Observatory longitude (deg)'))
+        header.append(fits.Card('OBSALT',   state.get('site_height_meters', ''),    'Observatory altitude (m)'))
+        header.append(fits.Card('TELLAT',   state.get('mount_latitude_degs', ''),   'Telescope latitude (deg)'))
+        header.append(fits.Card('TELLON',   state.get('mount_longitude_degs', ''),  'Telescope longitude (deg)'))
+        header.append(fits.Card('TELALT',   state.get('mount_height_meters', ''),   'Telescope altitude (m)'))
+        # target RA/DEC
+        """
+        there are a few relevant fields here:
+            mount_ra_j2000_hours: the current (instantaneous) mount ra hours
+            mount_dec_j2000_deg: the current mount dec in degrees
+            robo_target_ra_j2000: the requested target RA from roboOperator (hours)
+            robo_target_dec_j2000: the requested target DEC from roboOperator (degs)
+        
+        """
+        # not putting in hourangle for now... need to figure out how to calculate it properly!
+        #header.append(fits.Card('HOURANG',  '', 'Hour angle'))
+        #TODO: add hourangle
+        #TODO: change RA and DEC to the requested RA DEC, not the instantaneous RA/DEC
+        
+        # RA
         ra_hours = state.get('mount_ra_j2000_hours', 0)
         ra_obj = astropy.coordinates.Angle(ra_hours * u.hour)
         header.append(fits.Card('RA', ra_obj.to_string(unit = u.deg, sep = ':'), 'Requested right ascension (deg:m:s)'))
-        
+        # DEC
         dec_deg = state.get('mount_dec_j2000_deg', 0)
         dec_obj = astropy.coordinates.Angle(dec_deg * u.deg)
         header.append(fits.Card('DEC', dec_obj.to_string(unit = u.deg, sep = ':'), 'Requested declination (deg:m:s)'))
         
+        header.append(fits.Card('TELRA', ra_obj.to_string(unit = u.deg, sep = ':'), 'Telescope right ascension (deg:m:s)'))
+        header.append(fits.Card('TELDEC', dec_obj.to_string(unit = u.deg, sep = ':'), 'Telescope declination (deg:m:s)'))
+        
+        # Alt and Az
+        header.append(fits.Card('AZIMUTH',      state.get('mount_az_deg', ''),       'Telescope azimuth (deg)'))
+        header.append(fits.Card('ALTITUDE',     state.get('mount_alt_deg', ''),      'Telescope altitude (deg)'))
+        header.append(fits.Card('ELEVATION',    state.get('mount_alt_deg', ''),      'Telescope elevation (deg)'))
+        # airmass
+        z = (90 - state.get('mount_alt_deg', 0))*np.pi/180.0
+        airmass = 1/np.cos(z)
+        header.append(fits.Card('AIRMASS',      airmass,        'Airmass'))
+        header.append(fits.Card('DOME_AZ',      state.get('dome_az_deg', ''),       'Dome azimuth (deg)'))
+        
+
+        ###### QUEUE PARAMETERS ######
+        header.append(fits.Card('PROGRMPI', state.get('programPI',''),           'Queue program PI'))
+        header.append(fits.Card('PROGRMID', state.get('programID',''),           'Queue program ID'))
+        header.append(fits.Card('QCOMMENT', state.get('qcomment',''),            'Queue comment'))
+        header.append(fits.Card('FIELDID',  state.get('qcomment',''),            'Field ID number'))
+        
+        try:
+            objra = astropy.coordinates.Angle(state.get('robo_target_ra_j2000', 0)*u.hour)
+            objdec = astropy.coordinates.Angle(state.get('robo_target_dec_j2000', 0)*u.deg)
+            objra_str = objra.to_string(unit = u.deg, sep = ':')
+            objdec_str = objdec.to_string(unit = u.deg, sep = ':')
+        except Exception as e:
+            objra_str = ''
+            objdec_str = ''
+            print(f'ccd_daemon: could not form object ra/dec strings: {e}')
+            
+        header.append(fits.Card('OBJRA', objra_str,     'Object right ascension (deg:m:s)'))
+        header.append(fits.Card('OBJDEC', objdec_str,   'Object declination (deg:m:s)'))
+        
+        # target type: altaz, radec, schedule
+        header.append(fits.Card('TARGTYPE', state.get('targtype',''),           'Target Type'))
+
+        
+        ###### FILTER PARAMETERS ######
+        filterpos = state.get('Viscam_Filter_Wheel_Position', 0)
+        filterID = self.config['filter_wheels']['summer'][filterpos]
+        filtername = self.config['filters'][filterID]['name']
+        header.append(fits.Card('FILTER',        filtername,        'Filter name'))
+        header.append(fits.Card('FILTERID',      filterID,          'Filter ID'))
+        header.append(fits.Card('FILPOS',        filterpos,         'Filter position'  ))
+
         # SHUTTER PARAMETERS
         if self.shutter_open_timestamp != 0.0:
             SHUTOPEN = datetime.fromtimestamp(self.shutter_open_timestamp).strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -533,6 +603,17 @@ class CCD(QtCore.QObject):
             header.append(fits.Card('SHUTCLSD', SHUTCLSD, 'Shutter Open Time (UTC)'))
         else:
             header.append(fits.Card('SHUTCLSD', 0.0, 'Shutter Open Time (UTC)'))                       
+        
+
+        
+        # add the image acquisition timestamp to the fits header
+        fits_timestamp = Time(self.image_starttime_utc).fits
+        header.append(fits.Card('UTC', fits_timestamp, 'Time of observation'))
+        
+        
+        
+        
+        
         
         # CAMERA PARAMETERS
         header.append(fits.Card('AEXPTIME', self.exptime_actual, 'Actual exposure time (sec)'))

@@ -241,7 +241,14 @@ class RoboOperator(QtCore.QObject):
         # when the image is saved, log the observation and go to the next
         #### FIX THIS SOON! NPL 6-13-21
         #self.ccd.imageSaved.connect(self.log_observation_and_gotoNext)
-
+        
+        ### Some methods which will log things we pass to the fits header info
+        self.operator = self.config.get('fits_header',{}).get('default_operator','')
+        self.programPI = ''
+        self.programID = 0
+        self.qcomment = ''
+        self.targtype = ''
+        
         
         ### CONNECT SIGNALS AND SLOTS ###
         self.startRoboSignal.connect(self.restart_robo)
@@ -328,7 +335,19 @@ class RoboOperator(QtCore.QObject):
     
     
     def update_state(self):
-        fields = ['ok_to_observe', 'target_alt', 'target_az','target_ra_j2000_hours','target_dec_j2000_deg','lastSeen']
+        fields = ['ok_to_observe', 
+                  'target_alt', 
+                  'target_az',
+                  'target_ra_j2000_hours',
+                  'target_dec_j2000_deg',
+                  'lastSeen',
+                  'operator',
+                  'obstype',     
+                  'programPI',
+                  'programID',
+                  'qcomment',
+                  'targtype',
+                  ]
 
         for field in fields:
             try:
@@ -345,6 +364,8 @@ class RoboOperator(QtCore.QObject):
         # turn off tracking
         self.doTry('mount_tracking_off')
         self.doTry('rotator_home')
+        # turn on wrap check again
+        self.doTry('rotator_wrap_check_enable')
         
     def handle_wrap_warning(self, angle):
         
@@ -363,6 +384,13 @@ class RoboOperator(QtCore.QObject):
         
         # got to the next observation
         self.gotoNext()
+    
+    def updateOperator(self, operator):
+        if type(operator) is str:
+            self.operator = operator
+            self.log(f'updating current operator to: {operator}')
+        else:
+            self.log(f'specified operator is not a valid string! doing nothing.')
     
     def restart_robo(self, arg = 'auto'):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts

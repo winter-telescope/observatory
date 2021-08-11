@@ -25,6 +25,10 @@ image_data_link_directory: 'data'
 image_data_link_name: 'tonight_images.lnk'
 image_last_taken_link: 'last_image.lnk'
 
+########## FITS HEADER THINGS ##########
+fits_header:
+    default_observer: 'WINTER roboOperator'
+
 ########## WINTERCMD COMMANDING ##########
 wintercmd_server_addr: 'localhost'
 wintercmd_server_port: 7000
@@ -318,15 +322,20 @@ filt_limits:
         lower: 10100
  
 filters:
-      r:
-        camera: summer
+    r:
+        name: "SDSS r' (Chroma)"
         nominal_focus: 10150
-        position: 3
-      u:
-        camera: summer
+    u:
+        name: "SDSS u' (Chroma)"
         nominal_focus: 10200
-        position: 1
         
+filter_wheels:
+    summer:
+        positions:
+            1: 'u'
+            3: 'g'
+            
+            
 ########### POINTING MODEL PARAMETERS ###########
 # Construct a grid of 3 x 6 = 18 Alt-Az points
 # ranging from 20 to 80 degrees Altitude, and from
@@ -447,6 +456,29 @@ fields:
         dtype: int64
         rate: 'hk'
         var: 'pdu1.status[7]'
+# site
+    site_latitude_degs:
+        ftype: raw
+        label: Latitude
+        units: deg
+        dtype: float64
+        rate: fast
+        var: ephem.lat_deg
+    site_longitude_degs:
+        ftype: raw
+        label: Longitude
+        units: deg
+        dtype: float64
+        rate: fast
+        var: ephem.lon_deg
+    site_height_meters:
+        ftype: raw
+        label: Height
+        units: m
+        dtype: float64
+        rate: fast
+        var: ephem.height_m
+        
 #ephemeris
     ephem_timestamp:
         ftype: raw
@@ -549,7 +581,7 @@ fields:
         dtype: float64
         rate: slow
         var: "schedule.currentObs['azimuth']"
-        
+    
 #telescope
     pwi4_version_field0:
         ftype: raw
@@ -586,28 +618,28 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state["response.timestamp_utc"]
-    site_latitude_degs:
+    mount_latitude_degs:
         ftype: raw
         label: Latitude
         units: deg
         dtype: float64
         rate: fast
         var: telescope.state["site.latitude_degs"]
-    site_longitude_degs:
+    mount_longitude_degs:
         ftype: raw
         label: Longitude
         units: deg
         dtype: float64
         rate: fast
         var: telescope.state["site.longitude_degs"]
-    site_height_meters:
+    mount_height_meters:
         ftype: raw
         label: Height
         units: m
         dtype: float64
         rate: fast
         var: telescope.state["site.height_meters"]
-    site_lmst_hours:
+    mount_lmst_hours:
         ftype: raw
         label: LMST
         units: hours
@@ -1912,6 +1944,25 @@ fields:
         dtype: float64
         rate: slow
         var: chiller.state['readSetT'] 
+
+#### FITS HEADER STUFF. THESE ARE STRINGS! WILL NOT BE LOGGED TO THE DIRFILE
+header_fields:
+    operator_name:
+        var: robostate["operator"]
+    obstype:
+        var: robostate["obstype"]
+    programPI:
+        var: robostate["progrdamPI"]
+    programID:
+        var: robostate["programID"]
+    qcomment:
+        var: robostate["qcomment"]
+    targtype:
+        var: robostate["targtype"]
+    pwi4_version:
+        var: telescope.state["pwi4.version"]
+    
+    
 
 derived_fields:
     # note the base directory for the LUT is the wsp directory
