@@ -345,6 +345,8 @@ class RoboOperator(QtCore.QObject):
         # turn off tracking
         self.doTry('mount_tracking_off')
         self.doTry('rotator_home')
+        # turn on wrap check again
+        self.doTry('rotator_wrap_check_enable')
         
     def handle_wrap_warning(self, angle):
         
