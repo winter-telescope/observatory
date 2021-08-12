@@ -24,6 +24,7 @@ import astropy.units as u
 from astropy.io import fits
 import pathlib
 import subprocess
+import traceback
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -385,12 +386,19 @@ class RoboOperator(QtCore.QObject):
         # got to the next observation
         self.gotoNext()
     
-    def updateOperator(self, operator):
-        if type(operator) is str:
-            self.operator = operator
-            self.log(f'updating current operator to: {operator}')
+    def updateOperator(self, operator_name):
+        if type(operator_name) is str:
+            self.operator = operator_name
+            self.log(f'updating current operator to: {operator_name}')
         else:
-            self.log(f'specified operator is not a valid string! doing nothing.')
+            self.log(f'specified operator {operator_name} is not a valid string! doing nothing.')
+    
+    def updateObsType(self, obstype):
+        if type(obstype) is str:
+            self.obstype = obstype
+            self.log(f'updating current obstype to: {obstype}')
+        else:
+            self.log(f'specified obstype {obstype} is not a valid string! doing nothing.')
     
     def restart_robo(self, arg = 'auto'):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
@@ -450,10 +458,10 @@ class RoboOperator(QtCore.QObject):
         """
         
         # if the sun is below the horizon, or if the sun_override is active, then we want to open the dome
-        if self.ephem.sun_below_horizon or self.sun_override:
+        if self.dome.Sunlight_Status == 'READY' or self.sun_override:#self.ephem.sun_below_horizon or self.sun_override:
             
             # make a note of why we want to open the dome
-            if self.ephem.sun_below_horizon:
+            if self.dome.Sunlight_Status == 'READY': #self.ephem.sun_below_horizon:
                 #self.logger.info(f'robo: the sun is below the horizon, I want to open the dome.')
                 pass
             elif self.sun_override:
@@ -603,7 +611,7 @@ class RoboOperator(QtCore.QObject):
             else:
                 pass
         return data
-    
+        
     def getMJD(self):
         now_utc = datetime.utcnow()
         T = astropy.time.Time(now_utc, format = 'datetime')
@@ -665,7 +673,8 @@ class RoboOperator(QtCore.QObject):
             self.wintercmd.parse(cmd)
         
         except Exception as e:
-            msg = f'roboOperator: could not execute function {cmd} due to {e.__class__.__name__}, {e}'
+            tb = traceback.format_exc()
+            msg = f'roboOperator: could not execute function {cmd} due to {e.__class__.__name__}, {e}, traceback = {tb}'
             self.log(msg)
             err = roboError(context, cmd, system, msg)
             self.hardware_error.emit(err)
@@ -797,6 +806,11 @@ class RoboOperator(QtCore.QObject):
         """
         self.check_ok_to_observe(logcheck = True)
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
+        
+        if self.schedule.currentObs is None:
+            self.running = False
+            return
+        
         if self.running & self.ok_to_observe:
             
             # grab some fields from the currentObs
@@ -807,7 +821,8 @@ class RoboOperator(QtCore.QObject):
             self.ra_radians_scheduled = float(self.schedule.currentObs['fieldRA'])
             self.dec_radians_scheduled = float(self.schedule.currentObs['fieldDec'])
             
-            
+            self.alt_deg_scheduled = float(self.schedule.currentObs['altitude'])
+            self.az_deg_scheduled = float(self.schedule.currentObs['azimuth'])
             
             
             # convert ra and dec from radians to astropy objects
@@ -859,7 +874,8 @@ class RoboOperator(QtCore.QObject):
                 
                 # do the observation. what we do depends on if we're in test mode
                 if self.test_mode:
-                    self.do(f'robo_observe_altaz {self.local_alt_deg} {self.local_az_deg}')
+                    self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
+                    self.do(f'robo_observe_altaz {self.alt_deg_scheduled} {self.az_deg_scheduled}')
                 else:
                     self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
                 
@@ -1207,7 +1223,8 @@ class RoboOperator(QtCore.QObject):
         ### Validate the observation ###
         # just make it lowercase to avoid any case issues
         obstype = obstype.lower()
-        
+        # set the target type
+        self.targtype = obstype
         # first do some quality checks on the request
         # observation type
         #allowed_obstypes = ['schedule', 'altaz', 'radec']
@@ -1305,6 +1322,8 @@ class RoboOperator(QtCore.QObject):
             # do some asserts
             # TODO
             self.log(f'handling object observations')
+            # set the comment on the fits header 
+            self.qcomment = target
             # make sure it's a string
             if not (type(target[0]) is str):
                 self.log(f'for object observation, target must be a string object name, got type = {type(target)}')
@@ -1345,13 +1364,22 @@ class RoboOperator(QtCore.QObject):
         
         #### Validate the observation ###
         # check if alt and az are in allowed ranges
-        in_view = (self.target_alt >= self.config['telescope']['min_alt']) & (self.target_alt <= self.config['telescope']['max_alt'])
+        not_too_low = (self.target_alt >= self.config['telescope']['min_alt'])
+        not_too_high = (self.target_alt <= self.config['telescope']['max_alt'])
+        in_view = not_too_low & not_too_high
+        
         if in_view:
             pass
         else:
-            msg = f'>> target not within view! skipping...'
+            if not not_too_low:
+                reason = f"(TOO LOW, Target Alt {self.target_alt:0.1f} < Min Allowed Alt {self.config['telescope']['min_alt']:0.1f})"
+            elif not not_too_high:
+                reason = f"(TOO HIGH, Target Alt {self.target_alt:0.1f} > Max Allowed Alt {self.config['telescope']['max_alt']:0.1f})"
+            else:
+                reason = f"(unknown reason??)"
+            msg = f'>> target not within view! {reason} skipping...'
             self.log(msg)
-            #self.alertHandler.slack_log(msg, group = None)
+            self.alertHandler.slack_log(msg, group = None)
             self.target_ok = False
             raise TargetError(msg)
             #return
@@ -1397,7 +1425,7 @@ class RoboOperator(QtCore.QObject):
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            
+            self.target_ok = False
             return
             
             
@@ -1460,6 +1488,7 @@ class RoboOperator(QtCore.QObject):
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
+            self.target_ok = False
             return
         
         
@@ -1489,6 +1518,7 @@ class RoboOperator(QtCore.QObject):
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
+            self.target_ok = False
             raise Exception(msg)
             return
         

@@ -170,6 +170,9 @@ class Dirfile(object):
         """
         # write the data point as a binary entry using struct
         for val in data:
+            # if val is None, then handle it here:
+            if val is None:
+                val = -777
             # make sure the val is in the correct format:
             if self.entries[field].dtype == 'FLOAT64':
                 val = float(val)

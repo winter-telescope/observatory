@@ -66,7 +66,7 @@ class hk_loop(QtCore.QThread):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.robostate = robostate
-        
+        self.verbose = verbose
         # pass the config to the thread
         self.config = config
 
@@ -137,7 +137,7 @@ class hk_loop(QtCore.QThread):
         for field in self.config['header_fields']:
             try:
                  # update the state and frame dictionaries
-                 curval = self.get(self.config['fields'][field]['var'])
+                 curval = self.get(self.config['header_fields'][field]['var'])
                  self.state.update({field : curval})
                  
             except Exception as e:

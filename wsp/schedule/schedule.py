@@ -192,8 +192,13 @@ class Schedule(object):
             self.logger.error(f'query failed because of {type(e)}: {e}', exc_info=True )
 
         # The fetchone method grabs the first row in the result of the query and stores it as currentObs
-        self.currentObs = dict(self.result.fetchone())
+        nextResult = self.result.fetchone()
         self.logger.debug('popped first result')
+        if nextResult is None:
+            self.currentObs = None
+        else:
+            self.currentObs = dict(nextResult)
+        
 
 
     # def getCurrentObs(self):
@@ -231,11 +236,23 @@ class Schedule(object):
         Moves down a line in the database.
         When there are no more lines fetchone returns None and we know we've finished
         """
-        self.currentObs = dict(self.result.fetchone())
+        #self.currentObs = dict(self.result.fetchone())
+        
+        nextResult = self.result.fetchone()
+        
+        if nextResult is None:
+            self.currentObs = None
+            self.logger.debug('schedule file has no more entries')
+        else:
+            self.currentObs = dict(nextResult)
+            self.logger.debug('got next entry from schedule file')
         #Commented following lines to separate the close connection code from gotoNext. There are other situations which prompt closure
         # if self.currentObs == None:
         #     self.closeConnection()
-
+        
+        
+        
+        
     def closeConnection(self):
         """
         Closes the result and the connection to the database

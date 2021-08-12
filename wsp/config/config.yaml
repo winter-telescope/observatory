@@ -333,7 +333,7 @@ filter_wheels:
     summer:
         positions:
             1: 'u'
-            3: 'g'
+            3: 'r'
             
             
 ########### POINTING MODEL PARAMETERS ###########

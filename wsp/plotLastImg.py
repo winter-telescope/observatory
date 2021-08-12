@@ -80,9 +80,9 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
         exptime_str = '?'
     
     title = f'Last Image Taken: {filename}\nMedian Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s'
-    
+    title+= f'\nFilter: {header.get("FILTERID","?")}, ObsType = {header.get("OBSTYPE", "?")}, Comment = {header.get("QCOMMENT", "?")}'
     if "UTC" in header:
-        tstr = header['UTC']
+        tstr = header['UTCISO']
         
         
         image_write_time = datetime.fromisoformat(tstr)
@@ -201,7 +201,7 @@ post_to_slack = True
 #name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
 #name = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
 #%%
-name = os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk')
+name = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
 
 #hdu.writeto(name,overwrite = True)
 

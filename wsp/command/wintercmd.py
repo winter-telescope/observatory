@@ -1584,7 +1584,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
-            stop_condition = (self.telescope.state['wrap_check_enabled'] )
+            stop_condition = (self.telescope.state['rotator_wrap_check_enabled'] )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -1634,7 +1634,7 @@ class Wintercmd(QtCore.QObject):
             dist = np.mod(np.abs(rotator_field_angle_norm - target_norm), 360.0)
             #self.logger.info(f'rotator dist to target = {dist} deg, field angle (norm) = {rotator_field_angle_norm}, target (norm) = {target_norm}')
             
-            stop_condition = ( (self.state['rotator_is_slewing'] == False) & (dist < 0.5) )
+            stop_condition = ( (self.state['rotator_is_slewing'] == False) & (dist < 1.0) )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -2345,6 +2345,38 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('start the robotic operator')
         
         sigcmd = signalCmd('remakePointingModel')
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_update_operator(self):
+        self.defineCmdParser('record the name of the current operator')
+        self.cmdparser.add_argument('operator_name',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<operator name>')
+        
+        self.getargs()        
+        name = self.args.operator_name[0]
+        sigcmd = signalCmd('updateOperator',
+                           operator_name = name)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_set_obstype(self):
+        self.defineCmdParser('set the current observation type (flat, dark, bias, science, etc')
+        self.cmdparser.add_argument('obstype',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<observation type>')
+        
+        self.getargs()        
+        obstype = self.args.obstype[0]
+        sigcmd = signalCmd('updateObsType',
+                           obstype = obstype)
+        
         self.roboThread.newCommand.emit(sigcmd)
         
         
