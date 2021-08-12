@@ -46,7 +46,7 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
         fig, axarr = plt.subplots(2,1, gridspec_kw = {'height_ratios' : [3,1]}, figsize = (6,8))
         ax0 = axarr[0]
     else:
-        fig, axarr = plt.subplots(1,1, figsize = (6,6))
+        fig, axarr = plt.subplots(1,1, figsize = (8,8))
         ax0 = axarr
     
     image_file = filename
@@ -80,7 +80,8 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
         exptime_str = '?'
     
     title = f'Last Image Taken: {filename}\nMedian Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s'
-    title+= f'\nFilter: {header.get("FILTERID","?")}, ObsType = {header.get("OBSTYPE", "?")}, Comment = {header.get("QCOMMENT", "?")}'
+    title+= f'\nFilter: {header.get("FILTERID","?")}, ObsType = {header.get("OBSTYPE", "?")}'
+    title+=f'\nComment: {header.get("QCOMMENT", "?")}'
     if "UTC" in header:
         tstr = header['UTCISO']
         

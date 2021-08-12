@@ -815,6 +815,7 @@ class RoboOperator(QtCore.QObject):
             
             # grab some fields from the currentObs
             self.lastSeen = self.schedule.currentObs['obsHistID']
+            self.requestID = self.schedule.currentObs['requestID']
             #self.alt_scheduled = float(self.schedule.currentObs['altitude'])
             #self.az_scheduled = float(self.schedule.currentObs['azimuth'])
             
@@ -843,6 +844,7 @@ class RoboOperator(QtCore.QObject):
             
             #msg = f'executing observation of obsHistID = {self.lastSeen} at (alt, az) = ({self.alt_scheduled:0.2f}, {self.az_scheduled:0.2f})'
             msg = f'executing observation of obsHistID = {self.lastSeen}'
+            self.qcomment = f'obsHistID = {self.lastSeen}, requestID = {self.requestID}'
             self.announce(msg)
             
             self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
