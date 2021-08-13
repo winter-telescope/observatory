@@ -305,7 +305,7 @@ ephem:
 ########### FOCUSER LOOP PARAM ###########
 
 focus_loop_param:
-    micron_interval: 50
+    micron_interval: 25
     recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'
     pixscale: 0.466
@@ -318,8 +318,8 @@ filt_limits:
         upper: 10300
         lower: 10000
     rband:
-        upper: 10400
-        lower: 10100
+        upper: 10300
+        lower: 10000
  
 filters:
     r:
