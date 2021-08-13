@@ -1263,28 +1263,6 @@ class Wintercmd(QtCore.QObject):
     
     # Telescope Focuser Stuff
     @cmd
-    def focDither(self):
-        import random
-        k = 0
-        thresh = 0.015
-        
-        while k<120:
-            time.sleep(0.5)
-            print('exp')
-            self.ccd_do_exposure()
-            time.sleep(0.5)
-            k+=1
-            if k%5==0:
-                az = self.state['mount_az_deg']
-                alt = self.state['mount_alt_deg']
-                self.telescope.mount_goto_alt_az(alt_degs = alt+(random.uniform(-thresh,thresh)), az_degs = az+(random.uniform(-thresh,thresh)))
-                print('dithered')
-                time.sleep(1) 
-                self.mount_tracking_on()
-                time.sleep(1)
-            else:
-                print(k)
-    @cmd
     def doFocusLoop(self):
         """
         Runs a focus loop for a given filter by taking a set of images and collecting the relative
@@ -1297,14 +1275,26 @@ class Wintercmd(QtCore.QObject):
                                     nargs = 1,
                                     action = None,
                                     help = '<position_steps>')
+        self.cmdparser.add_argument('fine',
+                                    nargs = 1,
+                                    action = None,
+                                    help = '<position_steps>')
         
         self.getargs()
         
         plotting = False
+        fine = False
         
         if self.args.plot[0] == "plot":
-            plotting = True
+            ploting = True
             print('I am showing a plot this time!')
+        
+        try:
+            if self.args.fine[0] == "fine":
+                fine = True
+                
+        except Exception as e:
+            pass
         
         images = []
         
@@ -1313,7 +1303,7 @@ class Wintercmd(QtCore.QObject):
         current_filter = str(self.state['Viscam_Filter_Wheel_Position'])
         filt_numlist = {'1':'uband','3':'rband'}
 
-        loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config)
+        loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config, fine)
         
         filter_range = loop.return_Range()
         
