@@ -19,11 +19,14 @@ import subprocess
 
 class Focus_loop:
     
-    def __init__(self, filt, config): 
+    def __init__(self, filt, config, fine): 
         self.config = config
         self.interval = self.config['focus_loop_param']['micron_interval']
+        if fine:
+            self.interval = self.config['focus_loop_param']['fine_micron_interval']
         
         self.pixscale = self.config['focus_loop_param']['pixscale']
+        
         self.filter_range = range(self.config['filt_limits'][filt]['lower'],self.config['filt_limits'][filt]['upper']+self.interval,self.interval)
         
         self.path = self.config['focus_loop_param']['recent_path']
@@ -100,15 +103,9 @@ class Focus_loop:
         std_fwhms = np.array(self.std_fwhms)
         
         popt = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
-        #fig = plt.figure()
-        #plt.ion()
-        #plt.errorbar(filter_range,med_fwhms,yerr=std_fwhms,fmt='.',c='red')
+        
         plotfoc = np.linspace(np.min(filter_range),np.max(filter_range),20)
-        #plt.plot(plotfoc,plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
-        #plt.ioff()
-        #plt.title('Best FWHM : %.1f arcsec'%(np.min(med_fwhms)))
-        #plt.show()
-        #plt.savefig('/home/winter/data/plots_focuser/latest_focusloop.pdf', bbox_inches='tight')
+        
         if plotting:
             data = {'x':list(plotfoc), 'y':list(plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))}
             df = pd.DataFrame(data)
