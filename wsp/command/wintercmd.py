@@ -1261,6 +1261,30 @@ class Wintercmd(QtCore.QObject):
         self.telescope.mount_model_load(filename)
     
     
+    @cmd
+    def focDither(self):
+        import random
+        k = 0
+        thresh = 0.015
+        
+        while k<120:
+            time.sleep(0.5)
+            print('exp')
+            self.ccd_do_exposure()
+            time.sleep(0.5)
+            k+=1
+            if k%5==0:
+                az = self.state['mount_az_deg']
+                alt = self.state['mount_alt_deg']
+                self.telescope.mount_goto_alt_az(alt_degs = alt+(random.uniform(-thresh,thresh)), az_degs = az+(random.uniform(-thresh,thresh)))
+                print('dithered')
+                time.sleep(1) 
+                self.mount_tracking_on()
+                time.sleep(1)
+            else:
+                print(k)
+
+    
     # Telescope Focuser Stuff
     @cmd
     def doFocusLoop(self):
@@ -1286,7 +1310,7 @@ class Wintercmd(QtCore.QObject):
         fine = False
         
         if self.args.plot[0] == "plot":
-            ploting = True
+            plotting = True
             print('I am showing a plot this time!')
         
         try:
