@@ -2263,7 +2263,150 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def robo_do_exposure(self):
         self.defineCmdParser('tell the robotic operator to take an image with the camera')
-        self.roboThread.doExposureSignal.emit()
+        #self.roboThread.doExposureSignal.emit()
+        # argument to hold the coordinates/location of the target
+        
+        self.cmdparser.add_argument('--comment',
+                                    action = None,
+                                    type = str,
+                                    nargs = 1,
+                                    default = 'radec',
+                                    help = '<comment> ')
+        
+        self.cmdparser.add_argument('--plot',
+                                    action = 'store_true',
+                                    default = True,
+                                    help = '<comment> ')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-s',    '--science',   action = 'store_true', default = False)
+        group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
+        group.add_argument('-t',    '--test',      action = 'store_true', default = False)
+        group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        group.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
+        
+        self.getargs()
+        
+        if self.args.science:
+            obstype = 'SCIENCE'
+        elif self.args.dark:
+            obstype = 'DARK'
+        elif self.args.flat:
+            obstype = 'FLAT'
+        elif self.args.focus:
+            obstype = 'FOCUS'
+        elif self.args.bias:
+            obstype = 'BIAS'
+        elif self.args.test:
+            obstype = 'TEST'
+        elif self.args.pointing:
+            obstype = 'POINTING'
+        else:
+            # SET THE DEFAULT
+            obstype = 'TEST'
+        
+        sigcmd = signalCmd('doExposure',
+                               obstype = obstype,
+                               postPlot = self.args.plot,
+                               qcomment = self.args.comment)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+    @cmd
+    def robo_take_flat(self):
+        self.defineCmdParser('tell the robotic operator to take an image with the camera')
+        sigcmd = signalCmd('doExposure',
+                               obstype = 'FLAT',
+                               postPlot = True,
+                               qcomment = 'altaz')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+
+
+    @cmd
+    def robo_observe(self):
+        """Usage: robo_observe <targtype> <target> {<target}"""
+        self.defineCmdParser('tell the robotic operator to execute an observation')
+        
+        # argument to hold the target type
+        self.cmdparser.add_argument('targtype',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    choices = ['altaz', 'radec', 'object'],
+                                    )
+        
+        # argument to hold the coordinates/location of the target
+        self.cmdparser.add_argument('target',
+                                    action = None,
+                                    type = str,
+                                    nargs = '*',
+                                    help = '<target> {<target>}')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-s',    '--science',   action = 'store_true', default = False)
+        group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
+        group.add_argument('-t',    '--test',      action = 'store_true', default = False)
+        group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        group.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
+        
+        self.getargs()
+        
+        if self.args.science:
+            obstype = 'SCIENCE'
+        elif self.args.dark:
+            obstype = 'DARK'
+        elif self.args.flat:
+            obstype = 'FLAT'
+        elif self.args.focus:
+            obstype = 'FOCUS'
+        elif self.args.bias:
+            obstype = 'BIAS'
+        elif self.args.test:
+            obstype = 'TEST'
+        elif self.args.pointing:
+            obstype = 'POINTING'
+        else:
+            # SET THE DEFAULT
+            obstype = 'TEST'
+        
+        #print(f'robo_observe: args = {self.args}')
+        
+        targtype = self.args.targtype[0].lower()
+        if targtype in ['altaz', 'radec']:
+            targ_coord_1 = float(self.args.target[0])
+            targ_coord_2 = float(self.args.target[1])
+            
+            sigcmd = signalCmd('do_observation',
+                               targtype = targtype,
+                               target = (targ_coord_1, targ_coord_2),
+                               tracking = 'auto',
+                               field_angle = 'auto',
+                               obstype = obstype)
+            
+        elif targtype == 'object':
+            obj = self.args.target[0]
+            sigcmd = signalCmd('do_observation',
+                               targtype = targtype,
+                               target = obj,
+                               tracking = 'auto',
+                               field_angle = 'auto',
+                               obstype = obstype)
+        else:
+            msg = f'wintercmd: target type not allowed!'
+            self.logger.info(msg)
+            print(msg)
+            
+            
+        self.roboThread.newCommand.emit(sigcmd)
+        
+        
         
     @cmd
     def robo_observe_altaz(self):
@@ -2274,6 +2417,7 @@ class Wintercmd(QtCore.QObject):
                                     action = None,
                                     type = float,
                                     help = '<alt_deg> <az_deg>')
+        
         self.getargs()
         alt = self.args.position[0]
         az = self.args.position[1]
@@ -2281,7 +2425,7 @@ class Wintercmd(QtCore.QObject):
         # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
 
         sigcmd = signalCmd('do_observation',
-                           obstype = 'altaz',
+                           targtype = 'altaz',
                            target = (alt,az),
                            tracking = 'auto',
                            field_angle = 'auto')
@@ -2306,7 +2450,7 @@ class Wintercmd(QtCore.QObject):
         # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
 
         sigcmd = signalCmd('do_observation',
-                           obstype = 'radec',
+                           targtype = 'radec',
                            target = target,
                            tracking = 'auto',
                            field_angle = 'auto')
@@ -2333,7 +2477,7 @@ class Wintercmd(QtCore.QObject):
         # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
 
         sigcmd = signalCmd('do_observation',
-                           obstype = 'object',
+                           targtype = 'object',
                            target = obj,
                            tracking = 'auto',
                            field_angle = 'auto')
@@ -2348,7 +2492,7 @@ class Wintercmd(QtCore.QObject):
         self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
-    def robo_update_operator(self):
+    def robo_set_operator(self):
         self.defineCmdParser('record the name of the current operator')
         self.cmdparser.add_argument('operator_name',
                                     nargs = 1,
@@ -2362,6 +2506,67 @@ class Wintercmd(QtCore.QObject):
                            operator_name = name)
         
         self.roboThread.newCommand.emit(sigcmd)
+    
+    
+    @cmd
+    def robo_set_observer(self):
+        # this is the same as set_operator... just adding flexibility!
+        self.defineCmdParser('record the name of the current operator')
+        self.cmdparser.add_argument('operator_name',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<operator name>')
+        
+        self.getargs()        
+        name = self.args.operator_name[0]
+        sigcmd = signalCmd('updateOperator',
+                           operator_name = name)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_set_qcomment(self):
+        self.defineCmdParser('set comment which will be written to QCOMMENT in the fits header')
+        self.cmdparser.add_argument('qcomment',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<queue comment>')
+        
+        self.getargs()        
+        qcomment = self.args.qcomment[0]
+        sigcmd = signalCmd('updateQComment',
+                           qcomment = qcomment)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+        condition = True
+        timeout = 15
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested qcomment = {qcomment}, but it is {self.state["qcomment"]}')
+            
+            stop_condition = ( (self.state['qcomment'] == qcomment) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: qcomment set successfully. Current qcomment = {self.state["qcomment"]}')
+                break 
+    
     
     @cmd
     def robo_set_obstype(self):
@@ -2378,6 +2583,32 @@ class Wintercmd(QtCore.QObject):
                            obstype = obstype)
         
         self.roboThread.newCommand.emit(sigcmd)
+        
+        condition = True
+        timeout = 15
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested obstype = {obstype}, but it is {self.state["obstype"]}')
+            
+            stop_condition = ( (self.state['obstype'] == obstype) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: obstype set successfully. Current obstype = {self.state["obstype"]}')
+                break 
         
         
     # General Shut Down

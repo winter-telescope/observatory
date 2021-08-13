@@ -400,6 +400,13 @@ class RoboOperator(QtCore.QObject):
         else:
             self.log(f'specified obstype {obstype} is not a valid string! doing nothing.')
     
+    def updateQComment(self, qcomment):
+        if type(qcomment) is str:
+            self.qcomment = qcomment
+            self.log(f'updating current qcomment to: {qcomment}')
+        else:
+            self.log(f'specified obstype {qcomment} is not a valid string! doing nothing.')
+    
     def restart_robo(self, arg = 'auto'):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
         
@@ -877,10 +884,12 @@ class RoboOperator(QtCore.QObject):
                 # do the observation. what we do depends on if we're in test mode
                 if self.test_mode:
                     self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
-                    self.do(f'robo_observe_altaz {self.alt_deg_scheduled} {self.az_deg_scheduled}')
+                    #self.do(f'robo_observe_altaz {self.alt_deg_scheduled} {self.az_deg_scheduled}')
+                    self.do(f'robo_observe altaz {self.alt_deg_scheduled} {self.az_deg_scheduled} --test')
                 else:
-                    self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
-                
+                    #self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
+                    self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science')
+
                 # it is now okay to trigger going to the next observation
                 self.log_observation_and_gotoNext()
                 return
@@ -1155,24 +1164,43 @@ class RoboOperator(QtCore.QObject):
         self.waiting_for_exposure = False
     
     
-    def doExposure(self):
+    def doExposure(self, obstype = 'TEST', postPlot = True, qcomment = None):
         # test method for making sure the roboOperator can communicate with the CCD daemon
         # 3: trigger image acquisition
         #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
         
         self.logger.info(f'robo: running ccd_do_exposure in thread {threading.get_ident()}')
-
+        # if we got no comment, then do nothing
+        if qcomment == 'altaz':
+            qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
+        else:
+            pass
+        
+        if qcomment is None:
+            pass                
+        else:
+            # if the qcomment is the same as the current then do nothing
+            if qcomment == self.qcomment:
+                pass
+            else:
+                # if we got a new comment, set it
+                self.doTry(f'robo_set_qcomment "{qcomment}"', context = 'doExposure')
         
         # first check if any ephemeris bodies are near the target
         self.log('checking that target is not too close to ephemeris bodies')
         ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.state['mount_alt_deg'],
                                                     target_az = self.state['mount_az_deg'])
         
+        # set the obstype
+        self.doTry(f'robo_set_obstype {obstype}', context = 'doExposure', system = '')
+        
+        
+        
         if not ephem_inview:
             self.log('ephem check okay: no ephemeris bodies in the field of view.')
             self.logger.info(f'robo: telling ccd to take exposure!')
-            self.do(f'ccd_do_exposure')
-            self.log(f'exposure complete!')
+            #self.do(f'ccd_do_exposure')
+            #self.log(f'exposure complete!')
             pass
         else:
             msg = f'>> ephemeris body is too close to target! skipping...'
@@ -1181,12 +1209,35 @@ class RoboOperator(QtCore.QObject):
             self.gotoNext()
             return
         
-    def do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
+        # do the exposure and wrap with appropriate error handling
+        system = 'ccd'
+        context = 'robo doExposure'
+        self.logger.info(f'robo: telling ccd to take exposure!')
+        try:
+            self.do(f'ccd_do_exposure')
+            
+            
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            self.target_ok = False
+            raise Exception(msg)
+            return
+        
+        # if we get to here then we have successfully saved the image
+        self.log(f'exposure complete!')
+        if postPlot:
+            # make a jpg of the last image and publish it to slack!
+            postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
+        
+    def do_observation(self, targtype, target, tracking = 'auto', field_angle = 'auto', obstype = 'TEST'):
         """
         A GENERIC OBSERVATION FUNCTION
         
         INPUTS:
-            obstype: description of the observation type. can be any ONE of:
+            targtype: description of the observation type. can be any ONE of:
                 'schedule'  : observes whatever the current observation in the schedule queue is
                                 - exposure time and other parameters are set according to the current obs from the schedule file
                                 
@@ -1207,7 +1258,7 @@ class RoboOperator(QtCore.QObject):
         # tag the context for any error messages
         context = 'do_observation'
         
-        self.log(f'doing observation: obstype = {obstype}, target = {target}, tracking = {tracking}, field_angle = {field_angle}')
+        self.log(f'doing observation: targtype = {targtype}, target = {target}, tracking = {tracking}, field_angle = {field_angle}')
         
         #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
         self.check_ok_to_observe(logcheck = True)
@@ -1215,30 +1266,34 @@ class RoboOperator(QtCore.QObject):
         
         #TODO Uncomment this, for now it's commented out so that we can test with the dome closed
         # NPL 7-28-21
-        """
+        
         if self.ok_to_observe:
             pass
         else:
             
             return
-        """
+        
         ### Validate the observation ###
         # just make it lowercase to avoid any case issues
-        obstype = obstype.lower()
+        targtype = targtype.lower()
         # set the target type
-        self.targtype = obstype
+        self.targtype = targtype
+        
+        # update the observation type: DO THIS THRU ROBO OPERATOR SO WE'RE SURE IT'S SET
+        self.doTry(f'robo_set_obstype {obstype}', context = context, system = '')
+
         # first do some quality checks on the request
         # observation type
         #allowed_obstypes = ['schedule', 'altaz', 'radec']
         # for now only allow altaz, and we'll add on more as we go
-        allowed_obstypes = ['altaz', 'object', 'radec']
+        allowed_targtypes = ['altaz', 'object', 'radec']
         
         # raise an exception is the type isn't allwed
-        if not (obstype in allowed_obstypes):
-            self.log(f'improper observation type {obstype}, must be one of {allowed_obstypes}')
+        if not (targtype in allowed_targtypes):
+            self.log(f'improper observation type {targtype}, must be one of {allowed_targtypes}')
             return
         else:
-            self.log(f'initiating observation type {obstype}')
+            self.log(f'initiating observation type {targtype}')
         self.log('checking tracking')
         # raise an exception if tracking isn't a bool or 'auto'
         assert ((not type(tracking) is bool) or (tracking.lower() != 'auto')), f'tracking option must be bool or "auto", got {tracking}'
@@ -1248,20 +1303,20 @@ class RoboOperator(QtCore.QObject):
         assert ((not type(field_angle) is float) or (field_angle.lower() != 'auto')), f'field_angle option must be float or "auto", got {field_angle}'
         
         # now check that the target is appropriate to the observation type
-        if obstype == 'altaz':
+        if targtype == 'altaz':
             # make sure it's a tuple
-            assert (type(target) is tuple), f'for {obstype} observation, target must be a tuple. got type = {type(target)}'
+            assert (type(target) is tuple), f'for {targtype} observation, target must be a tuple. got type = {type(target)}'
             
             # make sure it's the right length
-            assert (len(target) == 2), f'for {obstype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
+            assert (len(target) == 2), f'for {targtype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
             
             # make sure they're floats
-            assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {obstype} observation, target vars must be floats'
+            assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {targtype} observation, target vars must be floats'
             
             # get the target alt and az
             self.target_alt = target[0]
             self.target_az  = target[1]
-            msg = f'Observing Target @ (Alt, Az) = {self.target_alt:0.2f}, {self.target_az:0.2f}'
+            msg = f'Observing [{obstype}] Target @ (Alt, Az) = {self.target_alt:0.2f}, {self.target_az:0.2f}'
             self.alertHandler.slack_log(msg, group = None)
 
             self.log(f'target: (alt, az) = {self.target_alt:0.2f}, {self.target_az:0.2f}')
@@ -1287,21 +1342,21 @@ class RoboOperator(QtCore.QObject):
                 tracking = True
             else:
                 pass
-        elif obstype == 'radec':
+        elif targtype == 'radec':
             # make sure it's a tuple
-            assert (type(target) is tuple), f'for {obstype} observation, target must be a tuple. got type = {type(target)}'
+            assert (type(target) is tuple), f'for {targtype} observation, target must be a tuple. got type = {type(target)}'
             
             # make sure it's the right length
-            assert (len(target) == 2), f'for {obstype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
+            assert (len(target) == 2), f'for {targtype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
             
             # make sure they're floats
-            assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {obstype} observation, target vars must be floats'
+            assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {targtype} observation, target vars must be floats'
             
             # get the target RA (hours) and DEC (degs)
             self.target_ra_j2000_hours = target[0]
             self.target_dec_j2000_deg = target[1]
             
-            msg = f'Observing Target @ (RA, DEC) = {self.target_ra_j2000_hours:0.2f}, {self.target_dec_j2000_deg:0.2f}'
+            msg = f'Observing [{obstype}] Target @ (RA, DEC) = {self.target_ra_j2000_hours:0.2f}, {self.target_dec_j2000_deg:0.2f}'
             self.alertHandler.slack_log(msg, group = None)
             
             #j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
@@ -1320,16 +1375,19 @@ class RoboOperator(QtCore.QObject):
             self.target_alt = local_coords.alt.deg
             self.target_az = local_coords.az.deg
         
-        elif obstype == 'object':
+        elif targtype == 'object':
             # do some asserts
             # TODO
             self.log(f'handling object observations')
             # set the comment on the fits header 
+            self.log(f'setting qcomment to {target}')
             self.qcomment = target
             # make sure it's a string
-            if not (type(target[0]) is str):
+            if not (type(target) is str):
                 self.log(f'for object observation, target must be a string object name, got type = {type(target)}')
                 return
+            
+            
             
             try:
                 obj = target
@@ -1337,6 +1395,8 @@ class RoboOperator(QtCore.QObject):
                 j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
                 self.target_ra_j2000_hours = j2000_coords.ra.hour
                 self.target_dec_j2000_deg = j2000_coords.dec.deg
+                
+                
                 
                 obstime = astropy.time.Time(datetime.utcnow())
                 lat = astropy.coordinates.Angle(self.config['site']['lat'])
@@ -1348,6 +1408,11 @@ class RoboOperator(QtCore.QObject):
                 local_coords = j2000_coords.transform_to(frame)
                 self.target_alt = local_coords.alt.deg
                 self.target_az = local_coords.az.deg
+                
+                msg = f'Doing [{obstype}] observation of {target} @ (RA, DEC) = ({self.target_ra_j2000_hours:0.2f}, {self.target_dec_j2000_deg:0.2f})'
+                msg+= f', (Alt, Az) = ({self.target_alt:0.2f}, {self.target_az:0.2f})'
+                self.alertHandler.slack_log(msg, group = None)
+                
             except Exception as e:
                 self.log(f'error getting object coord: {e}')
         
@@ -1437,11 +1502,11 @@ class RoboOperator(QtCore.QObject):
         system = 'telescope'
         try:
             
-            if obstype == 'altaz':
+            if targtype == 'altaz':
                 # slew to the requested alt/az
                 self.do(f'mount_goto_alt_az {self.target_alt} {self.target_az}')
             
-            elif obstype in ['radec', 'object']:
+            elif targtype in ['radec', 'object']:
                 # slew to the requested ra/dec
                 self.logger.info(f'robo: mount_goto_ra_dec_j2000 running in thread {threading.get_ident()}')
                 self.do(f'mount_goto_ra_dec_j2000 {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
@@ -1561,7 +1626,8 @@ class RoboOperator(QtCore.QObject):
             try:
             
                 # do the observation
-                self.do(f'robo_observe_altaz {target_alt} {target_az}')
+                #self.do(f'robo_observe_altaz {target_alt} {target_az}')
+                self.do(f'robo_observe altaz {target_alt} {target_az} --pointing')
                 
                 if self.target_ok:
                     
