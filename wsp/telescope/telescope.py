@@ -166,7 +166,12 @@ class Telescope(pwi4_client.PWI4):
                 self.signals.wrapWarning.emit(angle)
                 # set the flag to false so we don't send a billion signals
                 self.wrap_check_enabled = False
-            
+                
+    def fans_on(self): 
+        self.request_with_status("/fans/on")
+        
+    def fans_off(self): 
+        self.request_with_status("/fans/off")
     
 if __name__ == '__main__':
         

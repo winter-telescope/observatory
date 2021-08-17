@@ -134,6 +134,9 @@ class CCD(QtCore.QObject):
         # init the viscam (ie the shutter)
         self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
         
+        # flag to control whether or not we should open the shutter during the image
+        self.useshutter = True
+        
         # flags to monitor connection status
         self.server_running = False
         self.connected = False
@@ -712,13 +715,19 @@ class CCD(QtCore.QObject):
         self.exposureTimeout = self.cc._exposure[self.camnum] + self.readoutTime + timeout_buffer
     
     @Pyro5.server.expose
-    def doExposure(self, state = {}, image_suffix = None):
+    def doExposure(self, state = {}, image_suffix = None, dark = False):
         """
         self.cc.downloadimg(self.camnum, 
                             image_path = self.image_directory,
                             image_prefix = image_prefix,
                             image_suffix = self.image_suffix,
                             metadata = self.header)"""
+        
+        # should we use the shutter?
+        if dark:
+            self.useshutter = False
+        else:
+            self.useshutter = True
         
         # first update the timeout so that we properly timeout when calling this function
         self.getExposureTimeout()
@@ -788,28 +797,41 @@ class CCD(QtCore.QObject):
         #self.expTimer.start(int(waittime))
         self.startExposureTimer.emit(waittime)
         
-        # open the shutter!!
-        self.log('opening the shutter!')
-        self.viscam.send_shutter_command(1)
+        # OPEN THE SHUTTER IF WE'RE DOING A LIGHT FRAME
+        if self.useshutter:
+            # open the shutter!!
+            self.log('opening the shutter!')
+            self.viscam.send_shutter_command(1)
         
-        self.shutter_open_timestamp = datetime.utcnow().timestamp()
+            self.shutter_open_timestamp = datetime.utcnow().timestamp()
+            
+        
+        else:
+            # handle a dark image
+            self.shutter_open_timestamp = 0
+        
         # add the shutter open timestamp to the imagestate snapshot dictionary
-        self.imagestate.update({'shutter_open_timestamp' : self.shutter_open_timestamp})
+            self.imagestate.update({'shutter_open_timestamp' : self.shutter_open_timestamp})
         
         self.log('got to the end of the doExposure method')
         pass
     
     def readImg(self):
         
-        # CLOSE THE SHUTTER!
-        self.log('closing the shutter!')
-        self.viscam.send_shutter_command(0)
+        if self.useshutter:
+            # CLOSE THE SHUTTER!
+            self.log('closing the shutter!')
+            self.viscam.send_shutter_command(0)
+            
+            self.shutter_close_timestamp = datetime.utcnow().timestamp()
+            self.exptime_actual = self.shutter_close_timestamp - self.shutter_open_timestamp
+        else:
+            self.shutter_close_timestamp = 0
+            self.exptime_actual = self.exptime
         
-        self.shutter_close_timestamp = datetime.utcnow().timestamp()
         # add the shutter close time to the imagestate snapshot dictionary
         self.imagestate.update({'shutter_close_timestamp' : self.shutter_close_timestamp})
         
-        self.exptime_actual = self.shutter_close_timestamp - self.shutter_open_timestamp
         # add the exposure time actual to the state dict for monitoring
         self.state.update({'exptime_actual' : self.exptime_actual})
         # add the exposure time actual to the image state snapshot to record in the fits header

@@ -52,6 +52,8 @@ class EphemMon(object):
         self.logger = logger
         self.dt = dt
         self.sunalt = 0.0
+        self.prev_sunalt = 0.0
+        self.sun_rising = False
         self.verbose = verbose
         self.state = dict()
         self.observatoryState = dict() # this will hold the current state of the FULL instrument
@@ -142,12 +144,17 @@ class EphemMon(object):
             self.state.update({'ephem_in_view' : self.ephemInViewCurrent()})
             
             # get sun altitude
+            self.prev_sunalt = self.sunalt
             self.sunalt = self.get_sun_alt(obstime = time_utc, time_format = 'datetime')
+            if self.sunalt > self.prev_sunalt:
+                self.sun_rising = True
+            else:
+                self.sun_rising = False
             self.moonalt, self.moonaz = self.get_moon_altaz(obstime = time_utc, time_format = 'datetime')
             self.state.update({'sunalt' : self.sunalt})
             self.state.update({'moonalt' : self.moonalt})
             self.state.update({'moonaz' : self.moonaz})
-            
+            self.state.update({'sun_rising' : self.sun_rising})
             
             # is the sun  below the horizon?
             if self.sunalt < 0:

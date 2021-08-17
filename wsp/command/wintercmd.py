@@ -685,6 +685,18 @@ class Wintercmd(QtCore.QObject):
         """Usage: mount_find_home"""
         self.defineCmdParser('find home')
         self.telescope.mount_find_home()
+        
+    @cmd
+    def mount_fans_on(self):
+        """Usage: mount_fans_on"""
+        self.defineCmdParser('turn on telescope mount fans')
+        self.telescope.fans_on()
+        
+    @cmd
+    def mount_fans_off(self):
+        """Usage: mount_fans_on"""
+        self.defineCmdParser('turn off telescope mount fans')
+        self.telescope.fans_off()
     
     @cmd
     def mount_goto_ra_dec_apparent(self):
@@ -1295,31 +1307,39 @@ class Wintercmd(QtCore.QObject):
         """
         
         self.defineCmdParser('retrieve whether or not a plot will be displayed based on img fwhm')
-        self.cmdparser.add_argument('plot',
-                                    nargs = 1,
-                                    action = None,
+        self.cmdparser.add_argument('--noplot',
+                                    action = 'store_true',
+                                    default = False,
                                     help = '<position_steps>')
-        self.cmdparser.add_argument('fine',
-                                    nargs = 1,
-                                    action = None,
+        self.cmdparser.add_argument('--fine',
+                                    action = 'store_true',
+                                    default = False,
                                     help = '<position_steps>')
         
         self.getargs()
         
-        plotting = False
+        plotting = True
         fine = False
         
-        if self.args.plot[0] == "plot":
+        #print(f'args = {self.args}')
+        #print(f'args.noplot = {self.args.noplot}')
+        #print(f'args.fine = {self.args.fine}')
+        
+        if self.args.noplot:
+            plotting = False
+        else:
             plotting = True
             print('I am showing a plot this time!')
         
         try:
-            if self.args.fine[0] == "fine":
+            if self.args.fine:
                 fine = True
+            else:
+                fine = False
                 
         except Exception as e:
-            pass
-        
+            self.logger.info(f'wintercmd: could not set fine focus option: {e}')
+            fine = False
         images = []
         
         image_log_path = self.config['focus_loop_param']['image_log_path']
@@ -1333,12 +1353,15 @@ class Wintercmd(QtCore.QObject):
         
         system = 'ccd'
         
+        self.parse('robo_set_obstype FOCUS')
+        
         try:
             for dist in filter_range:
                 #Collimate and take exposure
                 self.telescope.focuser_goto(target = dist)
                 time.sleep(2)
-                self.ccd_do_exposure()
+                self.parse('ccd_do_exposure')
+                #self.ccd_do_exposure()
                 time.sleep(2)
                 images.append(loop.return_Path())
                 print("done")
@@ -2273,6 +2296,12 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('do the current observation')
         self.roboThread.do_currentObs_Signal.emit()
     
+    @cmd
+    def robo_do_calibration(self):
+        self.defineCmdParser('do the current observation')
+        sigcmd = signalCmd('do_calibration')
+        
+        self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
     def robo_do_exposure(self):
@@ -2287,9 +2316,9 @@ class Wintercmd(QtCore.QObject):
                                     default = 'radec',
                                     help = '<comment> ')
         
-        self.cmdparser.add_argument('--plot',
+        self.cmdparser.add_argument('--noplot',
                                     action = 'store_true',
-                                    default = True,
+                                    default = False,
                                     help = '<comment> ')
         
         # argument to hold the observation type
@@ -2322,10 +2351,17 @@ class Wintercmd(QtCore.QObject):
             # SET THE DEFAULT
             obstype = 'TEST'
         
+        if self.args.noplot:
+            postPlot = False
+        else:
+            postPlot = True
+        
+        comment = self.args.comment
+        
         sigcmd = signalCmd('doExposure',
                                obstype = obstype,
-                               postPlot = self.args.plot,
-                               qcomment = self.args.comment)
+                               postPlot = postPlot,
+                               qcomment = comment)
         
         self.roboThread.newCommand.emit(sigcmd)
         
@@ -2502,7 +2538,25 @@ class Wintercmd(QtCore.QObject):
     def robo_remakePointingModel(self):
         self.defineCmdParser('start the robotic operator')
         
-        sigcmd = signalCmd('remakePointingModel')
+        self.cmdparser.add_argument('-a', '--append',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = 'append points instead of clearing')
+        self.cmdparser.add_argument('-n', '--firstline', 
+                                    nargs = 1,
+                                    type = int,
+                                    default = 0,
+                                    help = 'line number of first point to use')
+        
+        self.getargs()
+        #print(f'wintercmd: args = {self.args}')
+        append = self.args.append
+        firstpoint = self.args.firstline[0]
+        
+        sigcmd = signalCmd('remakePointingModel',
+                           append = append,
+                           firstpoint = firstpoint)
+        
         self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
@@ -2787,11 +2841,32 @@ class Wintercmd(QtCore.QObject):
         degs = np.float(self.args.degrees[0]) # remember the args come in as strings!!
         sigcmd = signalCmd('setSetpoint', degs)
         self.ccd.newCommand.emit(sigcmd)
-        
+    
     @cmd
     def ccd_do_exposure(self):
         self.defineCmdParser('Start ccd exposure')
-        sigcmd = signalCmd('doExposure')
+        
+        self.cmdparser.add_argument('-d',    '--dark',      action = 'store_true', default = False, help = 'dark frame option')
+        self.cmdparser.add_argument('-b',    '--bias',      action = 'store_true', default = False, help = 'bias frame option')
+        
+        self.getargs()
+        self.logger.info(f'wintercmd: args = {self.args}')
+        # if dark, set obstype to dark
+        if self.args.dark:
+            dark = True
+            obstype = 'DARK'
+        elif self.args.bias:
+            dark = True
+            obstype = 'BIAS'
+        else:
+            dark = False
+        
+        if dark:
+            self.parse(f'robo_set_obstype {obstype}')
+
+        sigcmd = signalCmd('doExposure',
+                               dark = dark)
+        
         self.ccd.newCommand.emit(sigcmd)
         
         self.logger.info(f'wintercmd: running ccd_do_exposure in thread {threading.get_ident()}')
@@ -2829,7 +2904,32 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
                 break 
+    
+    @cmd
+    def ccd_do_bias(self):
+        """ Do a bias frame """
+        self.defineCmdParser('Do a bias frame')
         
+        try:
+            
+            # set the image type to bias
+            self.parse('robo_set_obstype BIAS')
+            
+            lastExptime = self.state['ccd_exptime']
+            
+            # change the exposure time to zero
+            self.parse(f'ccd_set_exposure 0')
+            
+            # take a bias frame
+            self.parse(f'ccd_do_exposure --bias')
+            
+            # set the exposure time back to what it was before
+            self.parse(f'ccd_set_exposure {lastExptime}')
+        
+        except Exception as e:
+            self.logger.info(f'wintercmd: could not take bias frame: {e}')
+    
+    
     @cmd
     def ccd_tec_start(self):
         self.defineCmdParser('Start ccd tec')

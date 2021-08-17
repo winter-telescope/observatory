@@ -769,12 +769,147 @@ class RoboOperator(QtCore.QObject):
         self.startup_complete = True
             
         self.announce(':greentick: startup complete!')
-        
+    
+    def skyflat_sun_low_enough(self):
+        # check if the sunalt is within workable range for doing sky flats
+        if self.state["sun_alt"] <= -5:
+            return True
+        else:
+            return False
+    
+    def skyflat_sun_high_enough(self):
+        if self.state["sun_alt"] >= -7:
+            return True
+        else:
+            return False
+    
     def do_calibration(self):
         
-        context = 'do_calibration'
+        # if we're in here set running to True
+        self.running = True
         
-        self.logger.info('robo: doing calibration routine. for now this does nothing.')
+        context = 'do_calibration'
+        self.announce('starting auto calibration sequence.')
+        #self.logger.info('robo: doing calibration routine. for now this does nothing.')
+        
+        ### TAKE SKY FLATS ###
+        # for now some numbers are hard coded which should be in the config file
+        # pick which direction to look: look away from the sun
+        if self.state['sun_rising']:
+            flat_az = 270.0
+            start_condition_func = self.skyflat_sun_high_enough
+            end_condition_func = self.skyflat_sun_low_enough
+        else:
+            flat_az = 0.0
+            start_condition_func = self.skyflat_sun_low_enough
+            end_condition_func = self.skyflat_sun_high_enough
+        
+            
+        # get the altitude
+        flat_alt = 75.0
+        
+        # slew the dome
+        self.doTry(f'dome_tracking_off')
+        self.doTry(f'dome_goto {flat_az}')
+        self.doTry(f'dome_tracking_on')
+        # slew the telescope
+        self.doTry(f'mount_goto_alt_az {flat_alt} {flat_az}')
+        
+        self.log(f'waiting for sun to begin taking sky flats')
+        dt = 5
+        t_elapsed = 0
+        
+        try:
+            while True:
+            
+                if start_condition_func():
+                    self.log('start condition satisfied!')
+                    break
+                self.log(f'not ready to start. waiting 10 seconds...')
+                QtCore.QThread.sleep(dt)
+                #time.sleep(dt)
+                self.log(f'wait complete.')
+                t_elapsed += dt
+                """
+                if t_elapsed >= 15:
+                    self.log(f'timed out after {t_elapsed} seconds, returning')
+                    #pass
+                    break
+                """
+        except Exception as e:
+            self.log(f'exception while waiting for sun: {e}')
+            return
+        
+        self.log(f'starting the flat observations')
+        
+        # if we got here we're good to start
+        # take 5 flats!
+        nflats = 5
+        for i in range(nflats):
+            self.log(f'setting up flat #{i}')
+            # THIS IS GIVING THE WRONG ANSWER DURING SUNRISE
+            # check to make sure we haven't hit the stop condition
+            if not end_condition_func():
+                self.log(f'sun alt is okay to continue')
+                pass
+            else:
+                self.log('sun position is not okay for flats anymore, stopping')
+                #break
+                pass
+            
+            try:
+                # estimate required exposure time
+                flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
+                
+                ra_total_offset_arcmin = 0
+                dec_total_offset_arcmin = 0
+                
+                minexptime = 2.5 + i
+                maxexptime = 60
+                if type(flat_exptime) is complex:
+                    self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')
+                    flat_exptime = minexptime
+                    
+                elif (flat_exptime < minexptime):
+                    self.log(f'calculated exptime too short ({flat_exptime} < {minexptime}), setting to {minexptime} s')
+                    flat_exptime = minexptime
+                elif (flat_exptime > maxexptime):
+                    self.log(f'calculated exptime too long ({flat_exptime} > {maxexptime}), setting to {maxexptime} s')
+                    flat_exptime = maxexptime
+                else:
+                    self.log(f'setting exptime to estimated {flat_exptime} s')
+                
+                self.do(f'ccd_set_exposure {flat_exptime:0.3f}')
+                time.sleep(2)
+                
+                qcomment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
+                #qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
+                # now trigger the actual observation. this also starts the mount tracking
+                if i==0:
+                    self.log(f'handling the i=0 case')
+                    self.do(f'robo_set_qcomment "{qcomment}"')
+                    self.do(f'robo_observe altaz {flat_alt} {flat_az} -f')
+                else:
+                    self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
+                
+                # now dither. if i is odd do ra, otherwise dec
+                dither_arcsec = 600
+                if i%2:
+                    axis = 'ra'
+                    ra_total_offset_arcmin += dither_arcsec/60
+                else:
+                    axis = 'dec'
+                    dec_total_offset_arcmin += dither_arcsec/60
+                    
+                self.do(f'mount_offset {axis} add_arcsec {dither_arcsec}')
+            except Exception as e:
+                self.log(f'could not run flat loop instance: {e}')
+            
+            
+        self.log(f'finished with calibration. no more to do.')    
+        
+        
+        
         ### Take darks ###
         # Nothing here yet
         
@@ -1595,11 +1730,15 @@ class RoboOperator(QtCore.QObject):
         # make a jpg of the last image and publish it to slack!
         postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
 
-    def remakePointingModel(self):
+    def remakePointingModel(self, append = False, firstpoint = 0):
         context = 'Pointing Model'
         self.alertHandler.slack_log('Setting Up a New Pointing Model!', group = None)
-        # clear the current pointing model
-        self.do('mount_model_clear_points')
+        if append:
+            # if in append mode, don't clear the old points
+            pass
+        else:
+            # clear the current pointing model
+            self.do('mount_model_clear_points')
         
         time.sleep(2)
         
@@ -1613,7 +1752,7 @@ class RoboOperator(QtCore.QObject):
         # how many points are there to do?
         npoints = len(self.pointingModelBuilder.altaz_points)
         
-        for i in range(npoints):
+        for i in np.arange(firstpoint-1, npoints, 1):
             altaz_point = self.pointingModelBuilder.altaz_points[i]
             target_alt = altaz_point[0]
             target_az  = altaz_point[1]

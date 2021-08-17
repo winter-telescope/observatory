@@ -1,80 +1,64 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 20 15:37:23 2021
+Created on Tue Aug 17 00:15:52 2021
 
 @author: winter
 """
 
-
+#from astropy.nddata import CCDData
+import astropy.nddata
+from astropy.io import fits
 import os
 import numpy as np
-from astropy.io import fits
+import glob
 import matplotlib.pyplot as plt
+from datetime import datetime
 import astropy.visualization 
 import  astropy.time
-from datetime import datetime
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import sys
-import pathlib
-import time
-import getopt
-import yaml
-
-wsp_path = os.path.dirname( os.path.abspath(__file__) )
-sys.path.insert(1, wsp_path)
-print(f'wsp_path = {wsp_path}')
-
-from alerts import alert_handler
-
-auth_config_file  = wsp_path + '/credentials/authentication.yaml'
-user_config_file = wsp_path + '/credentials/alert_list.yaml'
-alert_config_file = wsp_path + '/config/alert_config.yaml'
-
-auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
-user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
-alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
-
-alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
+import scipy.optimize
 
 
-def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None, hist = True, min_bin_counts = 1):
+
+def plotFITSdata(CCDData, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None, hist = True, min_bin_counts = 1):
     plt.close('all')
     
     
+    image_data = CCDData.data
+    header = CCDData.header
     
     
     
-    
-    image_file = filename
+    #image_file = filename
     #plt.ion()
+    """
     hdu_list = fits.open(image_file,ignore_missing_end = True)
     if printinfo:
         hdu_list.info()
     
     image_data = hdu_list[0].data
-    
+    """
     if xmin is None:
         xmin = 0
     if ymin is None:
         ymin = 0
     if xmax is None:
-        xmax = np.shape(data)[0]
+        xmax = np.shape(image_data)[0]
     if ymax is None:
-        ymax = np.shape(data)[1]
+        ymax = np.shape(image_data)[1]
         
     
-    header = hdu_list[0].header
+    #header = hdu_list[0].header
     image = image_data[xmin:xmax, ymin:ymax]
     
-    filename = header.get("FILENAME", filename.split('/')[-1])
+    filename = header.get("FILENAME", "")
     median_counts = np.median(image)
     stddev = np.std(image)
     
     if "OBSTYPE" in header.keys():
         if header.get("OBSTYPE", "?") in ["BIAS", "DARK", "FLAT"]:
             hist = True
-            #hist = False
             #print(f'hist = {hist}')
     
     if hist:
@@ -182,7 +166,6 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     
         axarr[1].set_yscale('log')
     
-    plt.savefig(os.path.join(os.getenv("HOME"),'data','last_image.jpg'))
 
     #plt.show()#block = False)
     #plt.pause(0.1)
@@ -191,65 +174,103 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     return header, image_data
 
 
-"""
-npix_x = 1920
-npix_y = 1080
-data = np.random.random((npix_x,npix_y))
-data = np.transpose(data)
-hdu = fits.PrimaryHDU(data = data)
-"""
 
-argv = sys.argv[1:]
-print(f'argv = {argv}')
-
-#optlist
-
-if ('-h' in argv) or ('-hist' in argv):
-    do_hist = True
-
-else:
-    do_hist = False
-    
-post_to_slack = True
-    
-#name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
-#name = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
 #%%
-name = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
+data_directory = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'tonight_images.lnk'))
 
-#hdu.writeto(name,overwrite = True)
+#image_path = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
+image_path = '/home/winter/data/images/20210817/SUMMER_20210816_235912_Camera0.fits'
 
-# check if file exists
-# check if file exists
-imgpath = pathlib.Path(name)
-timeout = 20
-dt = 0.5
-t_elapsed = 0
-while t_elapsed < timeout:
-    
-    file_exists = imgpath.is_file()
-    if file_exists:
-        break
-    else:
-        time.sleep(dt) 
-        t_elapsed += dt
+imlist = glob.glob(os.path.join(data_directory, '*.fits'))
+
+
 #%%
+images = []
+flats = []
+biases = []
 
-header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = do_hist, min_bin_counts = 10)
+for image_path in imlist:
+    ccd = astropy.nddata.CCDData.read(image_path, unit = 'adu')
+    #images.append(ccd)
+    if ccd.header["OBSTYPE"] == "FLAT":
+        flats.append(ccd)
+    
+    elif ccd.header["OBSTYPE"] == "BIAS":
+        biases.append(ccd)
+        
+    
 
-# reading some stuff from the header.
-## the header is an astropy.io.fits.header.Header object, but it can be queried like a dict
-try:
-    print(f'FILENAME = {header["FILENAME"]}')
-    print(f'RA = {header["RA"]}')
-    print(f'DEC  = {header["DEC"]}')
-except:
+#%%
+        
+def powerLaw(x, a, n):
+    y = a*(-x)**n
+    return y
+        
+sunalt = []
+medcnts = []
+exptimes = []
+
+bias_medcnts = []
+        
+for flat in flats:
+    #plotFITSdata(flat, printinfo = False, xmax = 2048, ymax = 2048, hist = False)
+    #plt.figure()
+    #plt.imshow(flat.data)
+    
+    sunalt.append(flat.header["SUNALT"])
+    medcnts.append(np.median(flat.data))
+    exptimes.append(flat.header["EXPTIME"])
     pass
-#%% Post to slack !
 
-if post_to_slack:
-    lastimagejpg = os.path.join(os.getenv("HOME"), 'data','last_image.jpg')
-    alertHandler.slack_postImage(lastimagejpg)
+for bias in biases:
+    bias_medcnts.append(np.median(bias.data))
 
+meanbias = np.mean(bias_medcnts)
 
- 
+i_outlier = 7
+del sunalt[i_outlier]
+del medcnts[i_outlier]
+del exptimes[i_outlier]
+
+sunalt = np.array(sunalt)
+medcnts = np.array(medcnts) 
+#medcnts -= meanbias
+exptimes = np.array(exptimes)
+"""
+sunalt = sunalt[exptimes>6]
+medcnts = medcnts[exptimes>6]
+exptimes = exptimes[exptimes>6]
+
+"""
+countrate = medcnts/exptimes
+
+#sunalt = np.abs(sunalt)
+
+plt.figure()
+plt.plot(sunalt, countrate, 'ks')
+
+fit = np.polyfit(sunalt, countrate, 6)
+#xfit = np.linspace(np.min(sunalt), np.max(sunalt), 100)
+xfit = np.linspace(np.min(sunalt), -5, 100)
+yfit = np.polyval(fit, xfit)
+#plt.plot(xfit, yfit, 'm-')
+
+params = scipy.optimize.curve_fit(powerLaw,sunalt, countrate)[0]
+#%
+powerlaw_yfit = powerLaw(xfit, *params)
+label = f'rate = {params[0]:0.2e}*(-x)^{params[1]:0.2f}'
+plt.plot(xfit, powerlaw_yfit, 'r-', label = label)
+plt.xlabel('Sun Altitude (deg)')
+plt.ylabel('Count Rate (counts/s)')
+plt.legend()
+#%%
+target_counts = 40000
+maxtime = 60
+times = target_counts/countrate
+times_fit = target_counts/powerlaw_yfit
+plt.figure()
+plt.plot(sunalt[times<maxtime], times[times<maxtime], 'ks')
+plt.plot(xfit[times_fit<maxtime], times_fit[times_fit<maxtime], 'r-')
+plt.xlabel('Sun Altitude (degs)')
+plt.ylabel(f'Req Time for {target_counts} Counts (sec)')
+
