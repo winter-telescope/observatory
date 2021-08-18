@@ -138,6 +138,7 @@ def timer_handlings():
 def send(cmd):
     # now that the connection is established, data can be sent with sendall() and received with recv()
     try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.sendall(bytes(cmd,"utf-8"))
         reply = sock.recv(1024).decode("utf-8")
         window.output_display.appendPlainText(f"received message back from server: '{reply}'\n")
@@ -145,19 +146,22 @@ def send(cmd):
             window.chiller_button.setStyleSheet("background-color:green;")
             window.chiller_button.setText("WINTER Connected")
     except socket.error:
-		try:
-			# create a TCP/IP socket
-			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			# connect the socket ot the port where the server is listening
-			server_address = ('localhost', 7000)
-			sock.connect(server_address)
-			window.server_connect_button.setStyleSheet("background-color:green;")
-			window.server_connect_button.setText("WSP Connected")
+        try:
+            # create a TCP/IP socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # connect the socket ot the port where the server is listening
+            server_address = ('localhost', 7000)
+            sock.connect(server_address)
+            sock.sendall(bytes(cmd,"utf-8"))
+            reply = sock.recv(1024).decode("utf-8")
+            window.output_display.appendPlainText(f"received message back from server: '{reply}'\n")
+            window.server_connect_button.setStyleSheet("background-color:green;")
+            window.server_connect_button.setText("WSP Connected")
         except Exception:
-			sock.close()
-			window.output_display.appendPlainText(f"WSP has disconnected. Socket is closed until a manual reconnect. Did not send the command {cmd}")
-			window.server_connect_button.setStyleSheet("background-color:grey;")
-			window.server_connect_button.setText("Connect to WSP")
+            sock.close()
+            window.output_display.appendPlainText(f"WSP has disconnected. Socket is closed until a manual reconnect. Did not send the command {cmd}")
+            window.server_connect_button.setStyleSheet("background-color:grey;")
+            window.server_connect_button.setText("Connect to WSP")
 def test():
     print('please')
 
@@ -317,7 +321,7 @@ if __name__ == "__main__":
         timer_start = True
         window.server_connect_button.setStyleSheet("background-color:green;")
         window.server_connect_button.setText("WSP Connected")
-    except Exception:
+    except socket.error:
         sock.close()
         window.server_connect_button.setStyleSheet("background-color:grey;")
         window.server_connect_button.setText("Connect to WSP")

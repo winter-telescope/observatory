@@ -234,6 +234,8 @@ del sunalt[i_outlier]
 del medcnts[i_outlier]
 del exptimes[i_outlier]
 
+
+
 sunalt = np.array(sunalt)
 medcnts = np.array(medcnts) 
 #medcnts -= meanbias
@@ -244,6 +246,11 @@ medcnts = medcnts[exptimes>6]
 exptimes = exptimes[exptimes>6]
 
 """
+#
+medcnts = medcnts[sunalt<-2.5]
+exptimes = exptimes[sunalt<-2.5]
+sunalt = sunalt[sunalt<-2.5]
+
 countrate = medcnts/exptimes
 
 #sunalt = np.abs(sunalt)

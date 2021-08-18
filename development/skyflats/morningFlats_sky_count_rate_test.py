@@ -176,12 +176,13 @@ def plotFITSdata(CCDData, printinfo = False, xmin = None, xmax = None, ymin = No
 
 
 #%%
-#data_directory = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'tonight_images.lnk'))
+data_directory = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'tonight_images.lnk'))
 # evening skyflats
-data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20210817')
+#data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20210817')
+
 
 #image_path = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
-image_path = '/home/winter/data/images/20210817/SUMMER_20210816_235912_Camera0.fits'
+#image_path = '/home/winter/data/images/20210817/SUMMER_20210816_235912_Camera0.fits'
 
 imlist = glob.glob(os.path.join(data_directory, '*.fits'))
 
@@ -190,6 +191,7 @@ imlist = glob.glob(os.path.join(data_directory, '*.fits'))
 images = []
 flats = []
 biases = []
+times = []
 
 for image_path in imlist:
     ccd = astropy.nddata.CCDData.read(image_path, unit = 'adu')
@@ -200,7 +202,7 @@ for image_path in imlist:
     elif ccd.header["OBSTYPE"] == "BIAS":
         biases.append(ccd)
         
-    
+    times.append(astropy.time.Time(ccd.header["UTCISO"]))
 
 #%%
         
@@ -234,6 +236,8 @@ del sunalt[i_outlier]
 del medcnts[i_outlier]
 del exptimes[i_outlier]
 
+
+
 sunalt = np.array(sunalt)
 medcnts = np.array(medcnts) 
 #medcnts -= meanbias
@@ -244,6 +248,11 @@ medcnts = medcnts[exptimes>6]
 exptimes = exptimes[exptimes>6]
 
 """
+#
+medcnts = medcnts[sunalt<-2.5]
+exptimes = exptimes[sunalt<-2.5]
+sunalt = sunalt[sunalt<-2.5]
+
 countrate = medcnts/exptimes
 
 #sunalt = np.abs(sunalt)

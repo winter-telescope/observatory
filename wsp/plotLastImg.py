@@ -72,8 +72,10 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     stddev = np.std(image)
     
     if "OBSTYPE" in header.keys():
+        """
         if header.get("OBSTYPE", "?") in ["BIAS", "DARK", "FLAT"]:
             hist = True
+        """
             #hist = False
             #print(f'hist = {hist}')
     

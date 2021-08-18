@@ -762,7 +762,9 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
         self.announce(':greentick: telescope startup complete!')
-        
+# =============================================================================
+#         
+# =============================================================================
         # turn on 
         
         # if we made it all the way to the bottom, say the startup is complete!
