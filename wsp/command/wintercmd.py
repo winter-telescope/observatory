@@ -56,6 +56,9 @@ import astropy.units as u
 import threading
 import pandas as pd
 import yaml
+import sqlite3 as sql
+import requests
+from astropy.coordinates import SkyCoord
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -2960,6 +2963,41 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('killServer')
         self.ccd.newCommand.emit(sigcmd)
         
+    @cmd
+    def generate_supernovae_db(self):
+        self.defineCmdParser('Generate supernovae observation schedule')
+        self.cmdparser.add_argument('source', nargs = 1, default = 'ZFT', action = None)
+        if source == 'Rochester':
+            URL = 'https://www.rochesterastronomy.org/sn2021/snlocations.html'
+        if source == 'ZTF':
+            URL = 'https://sites.astro.caltech.edu/ztf/bts/explorer.php?f=s&subsample=sn&classstring=Ia&classexclude=&quality=y&purity=y&ztflink=lasair&lastdet=&startsavedate=&startpeakdate=&startra=&startdec=&startz=&startdur=&startrise=&startfade=&startpeakmag=&startabsmag=&starthostabs=&starthostcol=&startb=&startav=&endsavedate=&endpeakdate=&endra=&enddec=&endz=&enddur=&endrise=&endfade=&endpeakmag=19.0&endabsmag=&endhostabs=&endhostcol=&endb=&endav='
+        connection = sql.connect("data/schedules/Supernovae.db")
+        html = requests.get(URL).content
+        df_list = pd.read_html(html)
+        df = df_list[-1]
+        ra = []
+        dec = []
+        if data == 'Rochester':
+            for i, j in zip(df["R.A."], df["Decl."]):
+                c = SkyCoord(i, j, unit=(u.hourangle, u.deg))
+                ra.append(c.ra.radian)
+                dec.append(c.dec.radian)
+        if data == 'ZTF':
+            new_header = [x[1] for x in df.columns]
+            df.columns = new_header
+            for i, j in zip(df["RA"], df["Dec"]):
+                c = SkyCoord(i, j, unit=(u.hourangle, u.deg))
+                ra.append(c.ra.radian)
+                dec.append(c.dec.radian)
+        df.index = df.index + 1
+        df.insert(loc=2, column='visitExpTime', value=30)
+        df.insert(loc=0, column='fieldRA', value=ra)
+        df.insert(loc=1, column='fieldDec', value=dec)
+        df.insert(loc=5, column='filter', value="r")
+        df.to_sql('Summary', con=connection, if_exists='replace', index_label = "obsHistID")
+        df_2 = pd.DataFrame.from_dict({"Nonsense that is required": [1, 2, 3, 4, 5]})
+        df_2.to_sql('Fields', con=connection, if_exists='replace', index_label = "fieldID")
+    
     @cmd
     def total_startup(self):
         if self.state['dome_control_status'] == 0:
