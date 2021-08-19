@@ -2967,6 +2967,8 @@ class Wintercmd(QtCore.QObject):
     def generate_supernovae_db(self):
         self.defineCmdParser('Generate supernovae observation schedule')
         self.cmdparser.add_argument('source', nargs = 1, default = 'ZFT', action = None)
+        self.getargs()
+        source = self.args.source
         if source == 'Rochester':
             URL = 'https://www.rochesterastronomy.org/sn2021/snlocations.html'
         if source == 'ZTF':
@@ -2977,12 +2979,12 @@ class Wintercmd(QtCore.QObject):
         df = df_list[-1]
         ra = []
         dec = []
-        if data == 'Rochester':
+        if source == 'Rochester':
             for i, j in zip(df["R.A."], df["Decl."]):
                 c = SkyCoord(i, j, unit=(u.hourangle, u.deg))
                 ra.append(c.ra.radian)
                 dec.append(c.dec.radian)
-        if data == 'ZTF':
+        if source == 'ZTF':
             new_header = [x[1] for x in df.columns]
             df.columns = new_header
             for i, j in zip(df["RA"], df["Dec"]):
