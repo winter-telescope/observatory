@@ -436,7 +436,9 @@ class RoboOperator(QtCore.QObject):
             # if we're done with the startup, continue
             if not self.calibration_complete:
                 # do the calibration:
-                self.do_calibration()
+                #TODO: NPL 8-19-21 just commented this out while fixing the auto cal function
+                #self.do_calibration()
+                self.calibration_complete = True
                 # If that didn't work, then return
                 if not self.calibration_complete:
                     return
@@ -537,7 +539,8 @@ class RoboOperator(QtCore.QObject):
             # the sun is up
             self.ok_to_observe = False
         
-        
+        # FOR TESTING ONLY
+        self.ok_to_observe = True
             
             
     
@@ -847,8 +850,12 @@ class RoboOperator(QtCore.QObject):
         # if we got here we're good to start
         # take 5 flats!
         nflats = 5
+        
+        ra_total_offset_arcmin = 0
+        dec_total_offset_arcmin = 0
+        
         for i in range(nflats):
-            self.log(f'setting up flat #{i}')
+            self.log(f'setting up flat #{i + 1}')
             # THIS IS GIVING THE WRONG ANSWER DURING SUNRISE
             # check to make sure we haven't hit the stop condition
             if not end_condition_func():
@@ -863,8 +870,7 @@ class RoboOperator(QtCore.QObject):
                 # estimate required exposure time
                 flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
                 
-                ra_total_offset_arcmin = 0
-                dec_total_offset_arcmin = 0
+                
                 
                 minexptime = 2.5 + i
                 maxexptime = 60
@@ -887,23 +893,27 @@ class RoboOperator(QtCore.QObject):
                 qcomment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
                 #qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
                 # now trigger the actual observation. this also starts the mount tracking
+                self.announce(f'Executing {qcomment}')
                 if i==0:
                     self.log(f'handling the i=0 case')
-                    self.do(f'robo_set_qcomment "{qcomment}"')
-                    self.do(f'robo_observe altaz {flat_alt} {flat_az} -f')
+                    #self.do(f'robo_set_qcomment "{qcomment}"')
+                    self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
                 else:
                     self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
                 
                 # now dither. if i is odd do ra, otherwise dec
-                dither_arcsec = 600
+                dither_arcmin = 5
                 if i%2:
                     axis = 'ra'
-                    ra_total_offset_arcmin += dither_arcsec/60
+                    ra_total_offset_arcmin += dither_arcmin
                 else:
                     axis = 'dec'
-                    dec_total_offset_arcmin += dither_arcsec/60
+                    dec_total_offset_arcmin += dither_arcmin
                     
-                self.do(f'mount_offset {axis} add_arcsec {dither_arcsec}')
+                #self.do(f'mount_offset {axis} add_arcsec {dither_arcsec}')
+                self.do(f'mount_dither {axis} {dither_arcmin}')
+                
+                
             except Exception as e:
                 self.log(f'could not run flat loop instance: {e}')
             
@@ -1369,7 +1379,7 @@ class RoboOperator(QtCore.QObject):
             # make a jpg of the last image and publish it to slack!
             postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
         
-    def do_observation(self, targtype, target, tracking = 'auto', field_angle = 'auto', obstype = 'TEST'):
+    def do_observation(self, targtype, target = None, tracking = 'auto', field_angle = 'auto', obstype = 'TEST', comment = ''):
         """
         A GENERIC OBSERVATION FUNCTION
         
@@ -1418,7 +1428,11 @@ class RoboOperator(QtCore.QObject):
         
         # update the observation type: DO THIS THRU ROBO OPERATOR SO WE'RE SURE IT'S SET
         self.doTry(f'robo_set_obstype {obstype}', context = context, system = '')
-
+        
+        # update the qcomment
+        if comment != '':
+            self.doTry(f'robo_set_qcomment {comment}')
+        
         # first do some quality checks on the request
         # observation type
         #allowed_obstypes = ['schedule', 'altaz', 'radec']

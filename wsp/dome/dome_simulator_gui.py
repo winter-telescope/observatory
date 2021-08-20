@@ -454,6 +454,8 @@ class MainWindow(QtWidgets.QMainWindow):
     
     
     def move_fake_az(self, az_goal, progress_callback, numsteps = 25, verbose = False):
+        
+        verbose = True
         # put the requested azimuth on a 0-360 range
         az = self.state['Dome_Azimuth']
         
@@ -493,14 +495,14 @@ class MainWindow(QtWidgets.QMainWindow):
                         dirtxt = '[+]'
                     self.log(f"Rotating Dome {dist_to_go} deg in {dirtxt} direction from Az = {az} to Az = {az_goal}")
                 
-                while np.abs(az_goal - az) > self.allowed_error:
+                while np.abs(360.0 - np.mod(np.abs(az_goal - az), 360.0)) > self.allowed_error:
                     self.ismoving = True
                     # keep "moving" the dome until it gets close enough
                     time.sleep(dt)
                     # MAKE SURE THAT AZ ALWAYS STAYS IN 0-360 RANGE
                     az = np.mod(az + movedir*self.az_speed*dt,360.0)
                     if verbose:
-                        self.log(f"Dome Az = {az}, Dist to Go = {np.abs(az_goal-az)} deg")# %(az, np.abs(az_goal-az)))
+                        self.log(f"Dome Az = {az}, Dist to Go = {np.abs(360.0 - np.mod(np.abs(az_goal - az), 360.0))} deg")# %(az, np.abs(az_goal-az)))
                         #print(f" Still Moving? {self.ismoving}")
                     # report back the azimuth as we go
                     progress_callback.emit(az)

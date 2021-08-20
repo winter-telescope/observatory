@@ -59,6 +59,7 @@ import yaml
 import sqlite3 as sql
 import requests
 from astropy.coordinates import SkyCoord
+import warnings
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -905,6 +906,90 @@ class Wintercmd(QtCore.QObject):
         self.parse(cmd)
     
     @cmd
+    def mount_dither(self):
+        """Usage: mount_dither <axis> <arcmin> """
+        # this is a handy wrapper around the more complicated mount_offset function below
+        
+        self.defineCmdParser('dither the mount in the specified axis by the specified arcminutes')
+        self.cmdparser.add_argument('axis',
+                                    nargs = 1,
+                                    type = str,
+                                    choices = ['ra', 'dec'],
+                                    action = None,
+                                    help = 'axis to dither: ra or dec',
+                                    )
+        self.cmdparser.add_argument('arcmin',
+                                    nargs = 1,
+                                    type = float,
+                                    action = None,
+                                    help = 'arcminutes to dither')
+        
+        self.getargs()
+        
+        axis = self.args.axis[0]
+        arcmin = self.args.arcmin[0]
+        arcsec = arcmin * 60.0
+        
+        if axis == 'ra':
+            arcmin = arcmin * (1/0.0667) # this is a stupid thing we have to do because the ra offset doesn't work right
+        else:
+            pass
+        
+        max_arcmin = 100
+        if arcmin > max_arcmin:
+            self.logger.warning(f'wintercmd: MAX DITHER DISTANCE IS {max_arcmin} ARCMIN. RETURNING...')
+            return
+        
+        cmd = f'mount_offset {axis} add_arcsec {arcsec}'
+        
+        ra0_j2000_hours = self.state['mount_ra_j2000_hours']
+        dec0_j2000_deg = self.state['mount_dec_j2000_deg']
+        
+        ra_j2000_hours_goal = ra0_j2000_hours + (arcmin * (1/60.0) * (24/360.0))
+        dec_j2000_deg_goal = dec0_j2000_deg + (arcmin/60.0)
+
+        threshold_arcmin = 0.5
+        threshold_hours = threshold_arcmin * (1/60.0) * (24/360.0)
+
+        # dispatch the command
+        self.parse(cmd)
+        
+        
+        # wait for the dist to target to be low and the ra/dec near what they're meant to be
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 60.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1) )
+            ra_in_range = ((abs(self.state['mount_ra_j2000_hours']) - ra_j2000_hours_goal) < threshold_hours)
+            dec_in_range = ((abs(self.state['mount_dec_j2000_deg']) - dec_j2000_deg_goal) < threshold_arcmin)
+            stop_condition = dist_to_target_low & ra_in_range & dec_in_range
+            
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+        self.logger.info(f'Mount Dither complete')
+    
+    @cmd
     def mount_offset(self):
         # this is a monster case structure because of how it's implemented in PWI4
         # Created, NPL 2-2-21, 
@@ -1274,30 +1359,6 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         filename = self.args.filename[0]
         self.telescope.mount_model_load(filename)
-    
-    
-    @cmd
-    def focDither(self):
-        import random
-        k = 0
-        thresh = 0.015
-        
-        while k<120:
-            time.sleep(0.5)
-            print('exp')
-            self.ccd_do_exposure()
-            time.sleep(0.5)
-            k+=1
-            if k%5==0:
-                az = self.state['mount_az_deg']
-                alt = self.state['mount_alt_deg']
-                self.telescope.mount_goto_alt_az(alt_degs = alt+(random.uniform(-thresh,thresh)), az_degs = az+(random.uniform(-thresh,thresh)))
-                print('dithered')
-                time.sleep(1) 
-                self.mount_tracking_on()
-                time.sleep(1)
-            else:
-                print(k)
 
     
     # Telescope Focuser Stuff
@@ -1348,7 +1409,7 @@ class Wintercmd(QtCore.QObject):
         image_log_path = self.config['focus_loop_param']['image_log_path']
         
         current_filter = str(self.state['Viscam_Filter_Wheel_Position'])
-        filt_numlist = {'1':'uband','3':'rband'}
+        filt_numlist = {'1':'uband','2':'other','3':'rband'}
 
         loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config, fine)
         
@@ -1950,12 +2011,31 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('GoTo', az)
         self.dome.newCommand.emit(sigcmd)
         
+        
+        # estimated drivetime
+        # this is from a study of a bunch of moves, move_time = delta_az/effective_speed = lag_time
+        effective_speed = 3.33 #deg/sec
+        lag_time = 9.0 #seconds
+        
+        delta = az - self.state['dome_az_deg']
+                
+        if np.abs(delta) >= 180.0:
+            dist_to_go = 360-np.abs(delta)
+        else:
+            dist_to_go = np.abs(delta)
+
+            
+        drivetime = np.abs(dist_to_go)/effective_speed + lag_time# total time to move
+        # now start "moving the dome" it stays moving for an amount of time
+            # based on the dome speed and distance to move
+        self.logger.info(f'wintercmd: Estimated Dome Drivetime = {drivetime} s')
+        
         #self.logger.info(f'self.state["dome_az_deg"] = {self.state["dome_az_deg"]}, type = {type(self.state["dome_az_deg"])}')
         #self.logger.info(f'az = {az}, type = {type(az)}')
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 300
+        timeout = drivetime * 1.5 # give the drivetime some overhead
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
@@ -1978,22 +2058,8 @@ class Wintercmd(QtCore.QObject):
             
             if all(entry == condition for entry in stop_condition_buffer):
                 break 
-        """# wait until the dome is homed.
-        #TODO add a timeout
-        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [True for i in range(n_buffer_samples)]
-        while True:
-            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
-            time.sleep(self.config['cmd_status_dt'])
-            stop_condition = ( (self.state['dome_status'] == self.config['Dome_Status_Dict']['Dome_Status']['STOPPED']) and (np.abs(self.state['dome_az_deg'] - az ) < 0.5 ) )
-            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-            # now replace the last element
-            stop_condition_buffer[-1] = stop_condition
-            
-            if all(entry == True for entry in stop_condition_buffer):
-                break
-        self.logger.info('wintercmd: dome homing complete')"""
+        
+        self.logger.info(f'wintercmd: actual dome drivetime = {dt} s')
         
     @cmd 
     def dome_go_home(self):
@@ -2389,7 +2455,7 @@ class Wintercmd(QtCore.QObject):
                                     nargs = 1,
                                     action = None,
                                     type = str,
-                                    choices = ['altaz', 'radec', 'object'],
+                                    choices = ['altaz', 'radec', 'object','here'],
                                     )
         
         # argument to hold the coordinates/location of the target
@@ -2398,6 +2464,13 @@ class Wintercmd(QtCore.QObject):
                                     type = str,
                                     nargs = '*',
                                     help = '<target> {<target>}')
+        
+        self.cmdparser.add_argument('--comment',
+                                    action = None,
+                                    type = str,
+                                    nargs = 1,
+                                    default = 'radec',
+                                    help = '<comment> ')
         
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
@@ -2430,18 +2503,19 @@ class Wintercmd(QtCore.QObject):
             obstype = 'TEST'
         
         #print(f'robo_observe: args = {self.args}')
-        
+        comment = self.args.comment
+
         targtype = self.args.targtype[0].lower()
         if targtype in ['altaz', 'radec']:
             targ_coord_1 = float(self.args.target[0])
             targ_coord_2 = float(self.args.target[1])
-            
             sigcmd = signalCmd('do_observation',
                                targtype = targtype,
                                target = (targ_coord_1, targ_coord_2),
                                tracking = 'auto',
                                field_angle = 'auto',
-                               obstype = obstype)
+                               obstype = obstype,
+                               comment = comment)
             
         elif targtype == 'object':
             obj = self.args.target[0]
@@ -2450,7 +2524,8 @@ class Wintercmd(QtCore.QObject):
                                target = obj,
                                tracking = 'auto',
                                field_angle = 'auto',
-                               obstype = obstype)
+                               obstype = obstype,
+                               comment = comment)
         else:
             msg = f'wintercmd: target type not allowed!'
             self.logger.info(msg)
@@ -2966,25 +3041,28 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def generate_supernovae_db(self):
         self.defineCmdParser('Generate supernovae observation schedule')
-        self.cmdparser.add_argument('source', nargs = 1, default = 'ZFT', action = None)
+        self.cmdparser.add_argument('source', nargs = 1, default = 'ZTF', action = None)
         self.getargs()
-        source = self.args.source
+        source = self.args.source[0]
         if source == 'Rochester':
             URL = 'https://www.rochesterastronomy.org/sn2021/snlocations.html'
-        if source == 'ZTF':
+        else:
             URL = 'https://sites.astro.caltech.edu/ztf/bts/explorer.php?f=s&subsample=sn&classstring=Ia&classexclude=&quality=y&purity=y&ztflink=lasair&lastdet=&startsavedate=&startpeakdate=&startra=&startdec=&startz=&startdur=&startrise=&startfade=&startpeakmag=&startabsmag=&starthostabs=&starthostcol=&startb=&startav=&endsavedate=&endpeakdate=&endra=&enddec=&endz=&enddur=&endrise=&endfade=&endpeakmag=19.0&endabsmag=&endhostabs=&endhostcol=&endb=&endav='
-        connection = sql.connect("data/schedules/Supernovae.db")
+        connection = sql.connect("/home/winter/data/schedules/Supernovae.db")
+        print("Downloading entries")
         html = requests.get(URL).content
         df_list = pd.read_html(html)
         df = df_list[-1]
         ra = []
         dec = []
         if source == 'Rochester':
+            print("Generating Rochester Database")
             for i, j in zip(df["R.A."], df["Decl."]):
                 c = SkyCoord(i, j, unit=(u.hourangle, u.deg))
                 ra.append(c.ra.radian)
                 dec.append(c.dec.radian)
-        if source == 'ZTF':
+        else:
+            print("Generating ZTF Database")
             new_header = [x[1] for x in df.columns]
             df.columns = new_header
             for i, j in zip(df["RA"], df["Dec"]):
@@ -2996,10 +3074,11 @@ class Wintercmd(QtCore.QObject):
         df.insert(loc=0, column='fieldRA', value=ra)
         df.insert(loc=1, column='fieldDec', value=dec)
         df.insert(loc=5, column='filter', value="r")
+        warnings.filterwarnings("ignore", category=UserWarning)
         df.to_sql('Summary', con=connection, if_exists='replace', index_label = "obsHistID")
         df_2 = pd.DataFrame.from_dict({"Nonsense that is required": [1, 2, 3, 4, 5]})
         df_2.to_sql('Fields', con=connection, if_exists='replace', index_label = "fieldID")
-    
+        print("Finished")
     @cmd
     def total_startup(self):
         if self.state['dome_control_status'] == 0:

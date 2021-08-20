@@ -305,7 +305,7 @@ ephem:
 ########### FOCUSER LOOP PARAM ###########
 
 focus_loop_param:
-    micron_interval: 50
+    micron_interval: 100
     fine_micron_interval: 10
     recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'
@@ -318,9 +318,12 @@ filt_limits:
     uband:
         upper: 10300
         lower: 10000
+    other:
+        upper: 11600
+        lower: 8500
     rband:
-        upper: 10275
-        lower: 10000
+        upper: 10275 #11150 
+        lower: 10000 #9000
         #upper: 10183
         #lower: 10133
          
