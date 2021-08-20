@@ -2924,22 +2924,50 @@ class Wintercmd(QtCore.QObject):
     def ccd_do_exposure(self):
         self.defineCmdParser('Start ccd exposure')
         
-        self.cmdparser.add_argument('-d',    '--dark',      action = 'store_true', default = False, help = 'dark frame option')
-        self.cmdparser.add_argument('-b',    '--bias',      action = 'store_true', default = False, help = 'bias frame option')
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-s',    '--science',   action = 'store_true', default = False)
+        group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
+        group.add_argument('-t',    '--test',      action = 'store_true', default = False)
+        group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        group.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
         
         self.getargs()
-        self.logger.info(f'wintercmd: args = {self.args}')
-        # if dark, set obstype to dark
-        if self.args.dark:
-            dark = True
+        
+        if self.args.science:
+            obstype = 'SCIENCE'
+            dark = False
+        elif self.args.dark:
             obstype = 'DARK'
-        elif self.args.bias:
             dark = True
+        elif self.args.flat:
+            obstype = 'FLAT'
+            dark = False
+        elif self.args.focus:
+            obstype = 'FOCUS'
+            dark = False
+        elif self.args.bias:
             obstype = 'BIAS'
+            dark = True
+        elif self.args.test:
+            obstype = 'TEST'
+            dark = True
+        elif self.args.pointing:
+            obstype = 'POINTING'
+            dark = True
         else:
+            # SET THE DEFAULT
+            obstype = ''
             dark = False
         
-        if dark:
+        print(f'wintercmd: obstype = {obstype}, dark = {dark}')
+        
+        self.logger.info(f'wintercmd: args = {self.args}')
+        
+        # it the obstype is '' then just leave it be
+        if obstype != '':
             self.parse(f'robo_set_obstype {obstype}')
 
         sigcmd = signalCmd('doExposure',

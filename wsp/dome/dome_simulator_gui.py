@@ -188,7 +188,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.server_thread.start()
         
         # Dome Characteristics
-        self.az_speed = 23.5 #360/180 # speed in deg/sec #3.5 nominal
+        self.az_speed = 3.5 #360/180 # speed in deg/sec #3.5 nominal
         self.open_time = 5 #90 # time to open the shutter #90 nominal
         self.close_time = 5 #90 # time to close the shutter #90 nominal
         self.allowed_error = 0.1
@@ -451,11 +451,25 @@ class MainWindow(QtWidgets.QMainWindow):
             progress_callback.emit(az_cur)
         """
     
+    def getDistToGo(self, az_goal, az):
+        # get the remaining minimum move distance and direction to go
+        delta = az_goal - az
+                
+        if np.abs(delta) >= 180.0:
+            #print(f'delta = |{delta}| > 180')
+            dist_to_go = 360-np.abs(delta)
+            movedir = -1*np.sign(delta)
+            #print(f'new delta = {delta}')
+        else:
+            #print(f'delta = |{delta}| < 180')
+            dist_to_go = np.abs(delta)
+            movedir = np.sign(delta)
     
+        return dist_to_go, movedir
     
     def move_fake_az(self, az_goal, progress_callback, numsteps = 25, verbose = False):
         
-        verbose = True
+        #verbose = True
         # put the requested azimuth on a 0-360 range
         az = self.state['Dome_Azimuth']
         
@@ -468,7 +482,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if np.abs(az_goal - az)>=self.allowed_error:
                 # calculate the angular distance in the pos direction
                 # want to drive dome shortest distance
-
+                """
                 delta = az_goal - az
                 
                 if np.abs(delta) >= 180.0:
@@ -480,13 +494,15 @@ class MainWindow(QtWidgets.QMainWindow):
                     #print(f'delta = |{delta}| < 180')
                     dist_to_go = np.abs(delta)
                     movedir = np.sign(delta)
-                    
+                """
+                dist_to_go, movedir = self.getDistToGo(az_goal = az_goal, az = self.state['Dome_Azimuth'])
+                
                 drivetime = np.abs(dist_to_go)/self.az_speed # total time to move
                 # now start "moving the dome" it stays moving for an amount of time
                     # based on the dome speed and distance to move
                 self.log(f' Estimated Drivetime = {drivetime} s')
                 dt = drivetime/numsteps #0.1 #increment time for updating position
-                #N_steps = drivetime/dt
+                N_steps = int(drivetime/dt)
                 #daz = delta/N_steps
                 if verbose:
                     if movedir < 0:
@@ -495,18 +511,24 @@ class MainWindow(QtWidgets.QMainWindow):
                         dirtxt = '[+]'
                     self.log(f"Rotating Dome {dist_to_go} deg in {dirtxt} direction from Az = {az} to Az = {az_goal}")
                 
-                while np.abs(360.0 - np.mod(np.abs(az_goal - az), 360.0)) > self.allowed_error:
+                for i in range(N_steps):
+                    if verbose:
+                        self.log(f"Dome Az = {az:0.1f}, Remaining Distance = {dist_to_go:0.1f} deg")# %(az, np.abs(az_goal-az)))
+                        
                     self.ismoving = True
                     # keep "moving" the dome until it gets close enough
                     time.sleep(dt)
                     # MAKE SURE THAT AZ ALWAYS STAYS IN 0-360 RANGE
-                    az = np.mod(az + movedir*self.az_speed*dt,360.0)
-                    if verbose:
-                        self.log(f"Dome Az = {az}, Dist to Go = {np.abs(360.0 - np.mod(np.abs(az_goal - az), 360.0))} deg")# %(az, np.abs(az_goal-az)))
+                    az = np.mod(az + movedir*self.az_speed*dt, 360.0)
+                    
                         #print(f" Still Moving? {self.ismoving}")
                     # report back the azimuth as we go
                     progress_callback.emit(az)
-                        
+                    
+                    dist_to_go, movedir =  dist_to_go, movedir = self.getDistToGo(az_goal = az_goal, az = az)
+                    
+                
+                
                 self.ismoving = False
                 if verbose:
                     if not self.ismoving:

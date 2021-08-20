@@ -835,6 +835,7 @@ class RoboOperator(QtCore.QObject):
                 #time.sleep(dt)
                 self.log(f'wait complete.')
                 t_elapsed += dt
+                break
                 """
                 if t_elapsed >= 15:
                     self.log(f'timed out after {t_elapsed} seconds, returning')
@@ -1338,30 +1339,40 @@ class RoboOperator(QtCore.QObject):
         ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.state['mount_alt_deg'],
                                                     target_az = self.state['mount_az_deg'])
         
-        # set the obstype
-        self.doTry(f'robo_set_obstype {obstype}', context = 'doExposure', system = '')
-        
-        
-        
-        if not ephem_inview:
-            self.log('ephem check okay: no ephemeris bodies in the field of view.')
-            self.logger.info(f'robo: telling ccd to take exposure!')
-            #self.do(f'ccd_do_exposure')
-            #self.log(f'exposure complete!')
-            pass
-        else:
-            msg = f'>> ephemeris body is too close to target! skipping...'
-            self.log(msg)
-            self.alertHandler.slack_log(msg, group = 'sudo')
-            self.gotoNext()
-            return
+        # if doing a light exposure, make sure it's okay to open the shutter safely
+        if obstype not in ['BIAS', 'DARK']:
+            
+            if not ephem_inview:
+                self.log('ephem check okay: no ephemeris bodies in the field of view.')
+                self.logger.info(f'robo: telling ccd to take exposure!')
+                #self.do(f'ccd_do_exposure')
+                #self.log(f'exposure complete!')
+                pass
+            else:
+                msg = f'>> ephemeris body is too close to target! skipping...'
+                self.log(msg)
+                self.alertHandler.slack_log(msg, group = 'sudo')
+                self.gotoNext()
+                return
         
         # do the exposure and wrap with appropriate error handling
         system = 'ccd'
         context = 'robo doExposure'
         self.logger.info(f'robo: telling ccd to take exposure!')
+        
+        # pass the correct options to the ccd daemon
+        obstype_dict = dict({'FLAT'     : '-f',
+                             'BIAS'     : '-b',
+                             'DARK'     : '-d',
+                             'POINTING' : '-p',
+                             'SCIENCE'  : '-s',
+                             'TEST'     : '-t',
+                             'FOCUS'    : '-foc'})
+        
+        obstype_option = obstype_dict.get(obstype, '')
+        
         try:
-            self.do(f'ccd_do_exposure')
+            self.do(f'ccd_do_exposure {obstype_option}')
             
             
         except Exception as e:
@@ -1427,7 +1438,7 @@ class RoboOperator(QtCore.QObject):
         self.targtype = targtype
         
         # update the observation type: DO THIS THRU ROBO OPERATOR SO WE'RE SURE IT'S SET
-        self.doTry(f'robo_set_obstype {obstype}', context = context, system = '')
+        #self.doTry(f'robo_set_obstype {obstype}', context = context, system = '')
         
         # update the qcomment
         if comment != '':
@@ -1727,8 +1738,21 @@ class RoboOperator(QtCore.QObject):
         # do the exposure and wrap with appropriate error handling
         system = 'ccd'
         self.logger.info(f'robo: telling ccd to take exposure!')
+        """try:
+            self.do(f'ccd_do_exposure')"""
+        # pass the correct options to the ccd daemon
+        obstype_dict = dict({'FLAT'     : '-f',
+                             'BIAS'     : '-b',
+                             'DARK'     : '-d',
+                             'POINTING' : '-p',
+                             'SCIENCE'  : '-s',
+                             'TEST'     : '-t',
+                             'FOCUS'    : '-foc'})
+        
+        obstype_option = obstype_dict.get(obstype, '')
+        
         try:
-            self.do(f'ccd_do_exposure')
+            self.do(f'ccd_do_exposure {obstype_option}')
             
             
         except Exception as e:
