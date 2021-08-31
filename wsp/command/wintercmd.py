@@ -56,6 +56,10 @@ import astropy.units as u
 import threading
 import pandas as pd
 import yaml
+import sqlite3 as sql
+import requests
+from astropy.coordinates import SkyCoord
+import warnings
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -78,6 +82,9 @@ CONFIG = utils.loadconfig(CONFIG_FILE)
 LOGGER = logging_setup.setup_logger(wsp_path, CONFIG)
 
 #redefine the argument parser so it exits nicely and execptions are handled better
+
+class WrapError(Exception):
+    pass
 
 class ArgumentParser(argparse.ArgumentParser):
     '''
@@ -183,6 +190,15 @@ class Wintercmd(QtCore.QObject):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.defineParser()
+        # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
+        self.telescope.signals.wrapWarning.connect(self.raiseWrapError)
+        
+        # wait QTimer to try to keep responsive instead of 
+        
+    def raiseWrapError(self):
+        msg = f'wintercmd (thread {threading.get_ident()}): caught telescope wrapWarning signal: raising wrap error'
+        self.logger.warning(msg)
+        #raise WrapError
     
     def throwTimeoutError(self):
         msg = "command took too long to execute!"
@@ -294,6 +310,7 @@ class Wintercmd(QtCore.QObject):
         start_timestamp = datetime.utcnow().timestamp()
         print(f'start_timestamp = {start_timestamp}')
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
             time.sleep(self.config['cmd_status_dt'])
@@ -388,6 +405,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -426,6 +444,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -464,6 +483,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -503,6 +523,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -541,6 +562,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -578,6 +600,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -620,6 +643,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -685,6 +709,18 @@ class Wintercmd(QtCore.QObject):
         """Usage: mount_find_home"""
         self.defineCmdParser('find home')
         self.telescope.mount_find_home()
+        
+    @cmd
+    def mount_fans_on(self):
+        """Usage: mount_fans_on"""
+        self.defineCmdParser('turn on telescope mount fans')
+        self.telescope.fans_on()
+        
+    @cmd
+    def mount_fans_off(self):
+        """Usage: mount_fans_on"""
+        self.defineCmdParser('turn off telescope mount fans')
+        self.telescope.fans_off()
     
     @cmd
     def mount_goto_ra_dec_apparent(self):
@@ -712,6 +748,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -737,13 +774,25 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('move telescope to specified j2000 ra (hours)/dec (deg) ')
         self.cmdparser.add_argument('position',
                                     nargs = 2,
+                                    type = str,
                                     action = None,
-                                    type = float,
                                     help = '<ra_hours> <dec_degs>')
         self.getargs()
         ra = self.args.position[0]
         dec = self.args.position[1]
-        self.telescope.mount_goto_ra_dec_j2000(ra_hours = ra, dec_degs = dec)
+        
+        
+        # allow the RA and DEC to be specified in multiple ways:
+        # this allows you to specify the coords either as: 
+        #     ra, dec = '05:34:30.52', '22:00:59.9'
+        #     ra, dec = 5.57514, 22.0166            
+        ra_obj = astropy.coordinates.Angle(ra, unit = u.hour)
+        dec_obj = astropy.coordinates.Angle(dec, unit = u.deg)
+        
+        ra_hour = ra_obj.hour
+        dec_deg = dec_obj.deg
+        
+        self.telescope.mount_goto_ra_dec_j2000(ra_hours = ra_hour, dec_degs = dec_deg)
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -757,6 +806,7 @@ class Wintercmd(QtCore.QObject):
         start_timestamp = datetime.utcnow().timestamp()
         self.logger.info(f'wintercmd: mount_goto_ra_dec_j2000 running in thread {threading.get_ident()}')
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -771,7 +821,9 @@ class Wintercmd(QtCore.QObject):
             self.logger.info(f'wintercmd (thread {threading.get_ident()}: az_dist_to_target: {self.state["mount_az_dist_to_target"]}')
             self.logger.info('')
             """
-            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1))
+            az_dist_lim = 3
+            alt_dist_lim = 0.5
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < az_dist_lim) & (abs(self.state['mount_alt_dist_to_target']) < alt_dist_lim))
 
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -812,6 +864,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -888,6 +941,91 @@ class Wintercmd(QtCore.QObject):
         # SEND THE MOVE COMMAND
         cmd = f'mount_goto_ra_dec_j2000 {j2000_ra_hours} {j2000_dec_deg}'
         self.parse(cmd)
+    
+    @cmd
+    def mount_dither(self):
+        """Usage: mount_dither <axis> <arcmin> """
+        # this is a handy wrapper around the more complicated mount_offset function below
+        
+        self.defineCmdParser('dither the mount in the specified axis by the specified arcminutes')
+        self.cmdparser.add_argument('axis',
+                                    nargs = 1,
+                                    type = str,
+                                    choices = ['ra', 'dec'],
+                                    action = None,
+                                    help = 'axis to dither: ra or dec',
+                                    )
+        self.cmdparser.add_argument('arcmin',
+                                    nargs = 1,
+                                    type = float,
+                                    action = None,
+                                    help = 'arcminutes to dither')
+        
+        self.getargs()
+        
+        axis = self.args.axis[0]
+        arcmin = self.args.arcmin[0]
+        arcsec = arcmin * 60.0
+        
+        if axis == 'ra':
+            arcmin = arcmin * (1/0.0667) # this is a stupid thing we have to do because the ra offset doesn't work right
+        else:
+            pass
+        
+        max_arcmin = 100
+        if arcmin > max_arcmin:
+            self.logger.warning(f'wintercmd: MAX DITHER DISTANCE IS {max_arcmin} ARCMIN. RETURNING...')
+            return
+        
+        cmd = f'mount_offset {axis} add_arcsec {arcsec}'
+        
+        ra0_j2000_hours = self.state['mount_ra_j2000_hours']
+        dec0_j2000_deg = self.state['mount_dec_j2000_deg']
+        
+        ra_j2000_hours_goal = ra0_j2000_hours + (arcmin * (1/60.0) * (24/360.0))
+        dec_j2000_deg_goal = dec0_j2000_deg + (arcmin/60.0)
+
+        threshold_arcmin = 0.5
+        threshold_hours = threshold_arcmin * (1/60.0) * (24/360.0)
+
+        # dispatch the command
+        self.parse(cmd)
+        
+        
+        # wait for the dist to target to be low and the ra/dec near what they're meant to be
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 60.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1) )
+            ra_in_range = ((abs(self.state['mount_ra_j2000_hours']) - ra_j2000_hours_goal) < threshold_hours)
+            dec_in_range = ((abs(self.state['mount_dec_j2000_deg']) - dec_j2000_deg_goal) < threshold_arcmin)
+            stop_condition = dist_to_target_low & ra_in_range & dec_in_range
+            
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+        self.logger.info(f'Mount Dither complete')
     
     @cmd
     def mount_offset(self):
@@ -995,6 +1133,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1043,6 +1182,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1089,6 +1229,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1124,6 +1265,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1259,31 +1401,9 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         filename = self.args.filename[0]
         self.telescope.mount_model_load(filename)
-    
+
     
     # Telescope Focuser Stuff
-    @cmd
-    def focDither(self):
-        import random
-        k = 0
-        thresh = 0.015
-        
-        while k<120:
-            time.sleep(0.5)
-            print('exp')
-            self.ccd_do_exposure()
-            time.sleep(0.5)
-            k+=1
-            if k%5==0:
-                az = self.state['mount_az_deg']
-                alt = self.state['mount_alt_deg']
-                self.telescope.mount_goto_alt_az(alt_degs = alt+(random.uniform(-thresh,thresh)), az_degs = az+(random.uniform(-thresh,thresh)))
-                print('dithered')
-                time.sleep(1) 
-                self.mount_tracking_on()
-                time.sleep(1)
-            else:
-                print(k)
     @cmd
     def doFocusLoop(self):
         """
@@ -1293,38 +1413,61 @@ class Wintercmd(QtCore.QObject):
         """
         
         self.defineCmdParser('retrieve whether or not a plot will be displayed based on img fwhm')
-        self.cmdparser.add_argument('plot',
-                                    nargs = 1,
-                                    action = None,
+        self.cmdparser.add_argument('--noplot',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = '<position_steps>')
+        self.cmdparser.add_argument('--fine',
+                                    action = 'store_true',
+                                    default = False,
                                     help = '<position_steps>')
         
         self.getargs()
         
-        plotting = False
+        plotting = True
+        fine = False
         
-        if self.args.plot[0] == "plot":
+        #print(f'args = {self.args}')
+        #print(f'args.noplot = {self.args.noplot}')
+        #print(f'args.fine = {self.args.fine}')
+        
+        if self.args.noplot:
+            plotting = False
+        else:
             plotting = True
             print('I am showing a plot this time!')
         
+        try:
+            if self.args.fine:
+                fine = True
+            else:
+                fine = False
+                
+        except Exception as e:
+            self.logger.info(f'wintercmd: could not set fine focus option: {e}')
+            fine = False
         images = []
         
         image_log_path = self.config['focus_loop_param']['image_log_path']
         
         current_filter = str(self.state['Viscam_Filter_Wheel_Position'])
-        filt_numlist = {'1':'uband','3':'rband'}
+        filt_numlist = {'1':'uband','2':'other','3':'rband'}
 
-        loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config)
+        loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config, fine)
         
         filter_range = loop.return_Range()
         
         system = 'ccd'
+        
+        self.parse('robo_set_obstype FOCUS')
         
         try:
             for dist in filter_range:
                 #Collimate and take exposure
                 self.telescope.focuser_goto(target = dist)
                 time.sleep(2)
-                self.ccd_do_exposure()
+                self.parse('ccd_do_exposure')
+                #self.ccd_do_exposure()
                 time.sleep(2)
                 images.append(loop.return_Path())
                 print("done")
@@ -1447,6 +1590,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1484,6 +1628,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1515,7 +1660,7 @@ class Wintercmd(QtCore.QObject):
         
         self.getargs()
         target = float(self.args.position[0])
-        self.logger.info(f'wintercmd rotator_goto_mech: target = {target}, type(target) = {type(target)}')
+        self.logger.info(f'wintercmd rotator_goto_mech (thread {threading.get_ident()}): target = {target}, type(target) = {type(target)}')
         self.telescope.rotator_goto_mech(target_degs = target)
         
         
@@ -1530,8 +1675,15 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
+            """
+            if self.telescope.wrap_status:
+                # the rotator is wrapping!
+                raise WrapError(f'command rotator_goto_mech exited because rotator is wrapping!')
+            """
             #print('entering loop')
-            time.sleep(self.config['cmd_status_dt'])
+            #time.sleep(self.config['cmd_status_dt'])
+            QtCore.QThread.msleep(int(self.config['cmd_status_dt']*1000))
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
@@ -1576,6 +1728,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1584,7 +1737,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
-            stop_condition = (self.telescope.state['wrap_check_enabled'] )
+            stop_condition = (self.telescope.state['rotator_wrap_check_enabled'] )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -1619,6 +1772,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1634,7 +1788,7 @@ class Wintercmd(QtCore.QObject):
             dist = np.mod(np.abs(rotator_field_angle_norm - target_norm), 360.0)
             #self.logger.info(f'rotator dist to target = {dist} deg, field angle (norm) = {rotator_field_angle_norm}, target (norm) = {target_norm}')
             
-            stop_condition = ( (self.state['rotator_is_slewing'] == False) & (dist < 0.5) )
+            stop_condition = ( (self.state['rotator_is_slewing'] == False) & (dist < 1.0) )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -1717,6 +1871,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1755,6 +1910,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1793,6 +1949,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1840,6 +1997,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -1875,6 +2033,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -1910,12 +2069,31 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('GoTo', az)
         self.dome.newCommand.emit(sigcmd)
         
+        
+        # estimated drivetime
+        # this is from a study of a bunch of moves, move_time = delta_az/effective_speed = lag_time
+        effective_speed = 3.33 #deg/sec
+        lag_time = 9.0 #seconds
+        
+        delta = az - self.state['dome_az_deg']
+                
+        if np.abs(delta) >= 180.0:
+            dist_to_go = 360-np.abs(delta)
+        else:
+            dist_to_go = np.abs(delta)
+
+            
+        drivetime = np.abs(dist_to_go)/effective_speed + lag_time# total time to move
+        # now start "moving the dome" it stays moving for an amount of time
+            # based on the dome speed and distance to move
+        self.logger.info(f'wintercmd: Estimated Dome Drivetime = {drivetime} s')
+        
         #self.logger.info(f'self.state["dome_az_deg"] = {self.state["dome_az_deg"]}, type = {type(self.state["dome_az_deg"])}')
         #self.logger.info(f'az = {az}, type = {type(az)}')
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 300
+        timeout = drivetime * 1.5 # give the drivetime some overhead
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
@@ -1923,6 +2101,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -1938,22 +2117,8 @@ class Wintercmd(QtCore.QObject):
             
             if all(entry == condition for entry in stop_condition_buffer):
                 break 
-        """# wait until the dome is homed.
-        #TODO add a timeout
-        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [True for i in range(n_buffer_samples)]
-        while True:
-            #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
-            time.sleep(self.config['cmd_status_dt'])
-            stop_condition = ( (self.state['dome_status'] == self.config['Dome_Status_Dict']['Dome_Status']['STOPPED']) and (np.abs(self.state['dome_az_deg'] - az ) < 0.5 ) )
-            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-            # now replace the last element
-            stop_condition_buffer[-1] = stop_condition
-            
-            if all(entry == True for entry in stop_condition_buffer):
-                break
-        self.logger.info('wintercmd: dome homing complete')"""
+        
+        self.logger.info(f'wintercmd: actual dome drivetime = {dt} s')
         
     @cmd 
     def dome_go_home(self):
@@ -2259,11 +2424,199 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('do the current observation')
         self.roboThread.do_currentObs_Signal.emit()
     
+    @cmd
+    def robo_do_calibration(self):
+        self.defineCmdParser('do the current observation')
+        sigcmd = signalCmd('do_calibration')
+        
+        self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
     def robo_do_exposure(self):
         self.defineCmdParser('tell the robotic operator to take an image with the camera')
-        self.roboThread.doExposureSignal.emit()
+        #self.roboThread.doExposureSignal.emit()
+        # argument to hold the coordinates/location of the target
+        
+        self.cmdparser.add_argument('--comment',
+                                    action = None,
+                                    type = str,
+                                    nargs = 1,
+                                    default = 'radec',
+                                    help = '<comment> ')
+        
+        self.cmdparser.add_argument('--noplot',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = '<comment> ')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-s',    '--science',   action = 'store_true', default = False)
+        group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
+        group.add_argument('-t',    '--test',      action = 'store_true', default = False)
+        group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        group.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
+        
+        self.getargs()
+        
+        if self.args.science:
+            obstype = 'SCIENCE'
+        elif self.args.dark:
+            obstype = 'DARK'
+        elif self.args.flat:
+            obstype = 'FLAT'
+        elif self.args.focus:
+            obstype = 'FOCUS'
+        elif self.args.bias:
+            obstype = 'BIAS'
+        elif self.args.test:
+            obstype = 'TEST'
+        elif self.args.pointing:
+            obstype = 'POINTING'
+        else:
+            # SET THE DEFAULT
+            obstype = 'TEST'
+        
+        if self.args.noplot:
+            postPlot = False
+        else:
+            postPlot = True
+        
+        comment = self.args.comment
+        
+        sigcmd = signalCmd('doExposure',
+                               obstype = obstype,
+                               postPlot = postPlot,
+                               qcomment = comment)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+    @cmd
+    def robo_take_flat(self):
+        self.defineCmdParser('tell the robotic operator to take an image with the camera')
+        sigcmd = signalCmd('doExposure',
+                               obstype = 'FLAT',
+                               postPlot = True,
+                               qcomment = 'altaz')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+
+
+    @cmd
+    def robo_observe(self):
+        """Usage: robo_observe <targtype> <target> {<target}"""
+        self.defineCmdParser('tell the robotic operator to execute an observation')
+        
+        # argument to hold the target type
+        self.cmdparser.add_argument('targtype',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    choices = ['altaz', 'radec', 'object','here'],
+                                    )
+        
+        # argument to hold the coordinates/location of the target
+        self.cmdparser.add_argument('target',
+                                    action = None,
+                                    type = str,
+                                    nargs = '*',
+                                    help = '<target> {<target>}')
+        
+        self.cmdparser.add_argument('--comment',
+                                    action = None,
+                                    type = str,
+                                    nargs = 1,
+                                    default = 'radec',
+                                    help = '<comment> ')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-s',    '--science',   action = 'store_true', default = False)
+        group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
+        group.add_argument('-t',    '--test',      action = 'store_true', default = False)
+        group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        group.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
+        
+        self.getargs()
+        
+        if self.args.science:
+            obstype = 'SCIENCE'
+        elif self.args.dark:
+            obstype = 'DARK'
+        elif self.args.flat:
+            obstype = 'FLAT'
+        elif self.args.focus:
+            obstype = 'FOCUS'
+        elif self.args.bias:
+            obstype = 'BIAS'
+        elif self.args.test:
+            obstype = 'TEST'
+        elif self.args.pointing:
+            obstype = 'POINTING'
+        else:
+            # SET THE DEFAULT
+            obstype = 'TEST'
+        
+        #print(f'robo_observe: args = {self.args}')
+        comment = self.args.comment
+
+        targtype = self.args.targtype[0].lower()
+        if targtype == 'altaz':
+            targ_coord_1 = float(self.args.target[0])
+            targ_coord_2 = float(self.args.target[1])
+            sigcmd = signalCmd('do_observation',
+                               targtype = targtype,
+                               target = (targ_coord_1, targ_coord_2),
+                               tracking = 'auto',
+                               field_angle = 'auto',
+                               obstype = obstype,
+                               comment = comment)
+        
+        elif targtype == 'radec':
+            # allow the RA and DEC to be specified in multiple ways:
+            # this allows you to specify the coords either as: 
+            #     ra, dec = '05:34:30.52', '22:00:59.9'
+            #     ra, dec = 5.57514, 22.0166 
+            ra = self.args.target[0]
+            dec = self.args.target[1]
+            
+            ra_obj = astropy.coordinates.Angle(ra, unit = u.hour)
+            dec_obj = astropy.coordinates.Angle(dec, unit = u.deg)
+            
+            # note: turning these back to floats instead of numpy.float64 objects to satisfy assert checking in roboOperator
+            ra_hour = float(ra_obj.hour)
+            dec_deg = float(dec_obj.deg)
+            
+            sigcmd = signalCmd('do_observation',
+                               targtype = targtype,
+                               target = (ra_hour, dec_deg),
+                               tracking = 'auto',
+                               field_angle = 'auto',
+                               obstype = obstype,
+                               comment = comment)
+        
+        elif targtype == 'object':
+            obj = self.args.target[0]
+            sigcmd = signalCmd('do_observation',
+                               targtype = targtype,
+                               target = obj,
+                               tracking = 'auto',
+                               field_angle = 'auto',
+                               obstype = obstype,
+                               comment = comment)
+        else:
+            msg = f'wintercmd: target type not allowed!'
+            self.logger.info(msg)
+            print(msg)
+            
+            
+        self.roboThread.newCommand.emit(sigcmd)
+        
+        
         
     @cmd
     def robo_observe_altaz(self):
@@ -2274,6 +2627,7 @@ class Wintercmd(QtCore.QObject):
                                     action = None,
                                     type = float,
                                     help = '<alt_deg> <az_deg>')
+        
         self.getargs()
         alt = self.args.position[0]
         az = self.args.position[1]
@@ -2281,7 +2635,7 @@ class Wintercmd(QtCore.QObject):
         # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
 
         sigcmd = signalCmd('do_observation',
-                           obstype = 'altaz',
+                           targtype = 'altaz',
                            target = (alt,az),
                            tracking = 'auto',
                            field_angle = 'auto')
@@ -2306,7 +2660,7 @@ class Wintercmd(QtCore.QObject):
         # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
 
         sigcmd = signalCmd('do_observation',
-                           obstype = 'radec',
+                           targtype = 'radec',
                            target = target,
                            tracking = 'auto',
                            field_angle = 'auto')
@@ -2333,7 +2687,7 @@ class Wintercmd(QtCore.QObject):
         # triggering this: do_observation(self, obstype, target, tracking = 'auto', field_angle = 'auto'):
 
         sigcmd = signalCmd('do_observation',
-                           obstype = 'object',
+                           targtype = 'object',
                            target = obj,
                            tracking = 'auto',
                            field_angle = 'auto')
@@ -2344,8 +2698,147 @@ class Wintercmd(QtCore.QObject):
     def robo_remakePointingModel(self):
         self.defineCmdParser('start the robotic operator')
         
-        sigcmd = signalCmd('remakePointingModel')
+        self.cmdparser.add_argument('-a', '--append',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = 'append points instead of clearing')
+        self.cmdparser.add_argument('-n', '--firstline', 
+                                    nargs = 1,
+                                    type = int,
+                                    default = 0,
+                                    help = 'line number of first point to use')
+        
+        self.getargs()
+        #print(f'wintercmd: args = {self.args}')
+        append = self.args.append
+        firstpoint = self.args.firstline[0]
+        
+        sigcmd = signalCmd('remakePointingModel',
+                           append = append,
+                           firstpoint = firstpoint)
+        
         self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_set_operator(self):
+        self.defineCmdParser('record the name of the current operator')
+        self.cmdparser.add_argument('operator_name',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<operator name>')
+        
+        self.getargs()        
+        name = self.args.operator_name[0]
+        sigcmd = signalCmd('updateOperator',
+                           operator_name = name)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    
+    @cmd
+    def robo_set_observer(self):
+        # this is the same as set_operator... just adding flexibility!
+        self.defineCmdParser('record the name of the current operator')
+        self.cmdparser.add_argument('operator_name',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<operator name>')
+        
+        self.getargs()        
+        name = self.args.operator_name[0]
+        sigcmd = signalCmd('updateOperator',
+                           operator_name = name)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def robo_set_qcomment(self):
+        self.defineCmdParser('set comment which will be written to QCOMMENT in the fits header')
+        self.cmdparser.add_argument('qcomment',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<queue comment>')
+        
+        self.getargs()        
+        qcomment = self.args.qcomment[0]
+        sigcmd = signalCmd('updateQComment',
+                           qcomment = qcomment)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+        condition = True
+        timeout = 15
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested qcomment = {qcomment}, but it is {self.state["qcomment"]}')
+            
+            stop_condition = ( (self.state['qcomment'] == qcomment) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: qcomment set successfully. Current qcomment = {self.state["qcomment"]}')
+                break 
+    
+    
+    @cmd
+    def robo_set_obstype(self):
+        self.defineCmdParser('set the current observation type (flat, dark, bias, science, etc')
+        self.cmdparser.add_argument('obstype',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    help = '<observation type>')
+        
+        self.getargs()        
+        obstype = self.args.obstype[0]
+        sigcmd = signalCmd('updateObsType',
+                           obstype = obstype)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+        condition = True
+        timeout = 15
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested obstype = {obstype}, but it is {self.state["obstype"]}')
+            
+            stop_condition = ( (self.state['obstype'] == obstype) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: obstype set successfully. Current obstype = {self.state["obstype"]}')
+                break 
         
         
     # General Shut Down
@@ -2438,7 +2931,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument('shutter_cmd',
               nargs = 1,
               action = None,
-              help = '<shutter_int>')
+             help = '<shutter_int>')
 
         self.getargs()
         shutter_cmd = self.args.shutter_cmd[0]
@@ -2481,6 +2974,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -2510,11 +3004,60 @@ class Wintercmd(QtCore.QObject):
         degs = np.float(self.args.degrees[0]) # remember the args come in as strings!!
         sigcmd = signalCmd('setSetpoint', degs)
         self.ccd.newCommand.emit(sigcmd)
-        
+    
     @cmd
     def ccd_do_exposure(self):
         self.defineCmdParser('Start ccd exposure')
-        sigcmd = signalCmd('doExposure')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-s',    '--science',   action = 'store_true', default = False)
+        group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
+        group.add_argument('-t',    '--test',      action = 'store_true', default = False)
+        group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        group.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
+        
+        self.getargs()
+        
+        if self.args.science:
+            obstype = 'SCIENCE'
+            dark = False
+        elif self.args.dark:
+            obstype = 'DARK'
+            dark = True
+        elif self.args.flat:
+            obstype = 'FLAT'
+            dark = False
+        elif self.args.focus:
+            obstype = 'FOCUS'
+            dark = False
+        elif self.args.bias:
+            obstype = 'BIAS'
+            dark = True
+        elif self.args.test:
+            obstype = 'TEST'
+            dark = False
+        elif self.args.pointing:
+            obstype = 'POINTING'
+            dark = False
+        else:
+            # SET THE DEFAULT
+            obstype = ''
+            dark = False
+        
+        print(f'wintercmd: obstype = {obstype}, dark = {dark}')
+        
+        self.logger.info(f'wintercmd: args = {self.args}')
+        
+        # it the obstype is '' then just leave it be
+        if obstype != '':
+            self.parse(f'robo_set_obstype {obstype}')
+
+        sigcmd = signalCmd('doExposure',
+                               dark = dark)
+        
         self.ccd.newCommand.emit(sigcmd)
         
         self.logger.info(f'wintercmd: running ccd_do_exposure in thread {threading.get_ident()}')
@@ -2533,6 +3076,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -2552,7 +3096,32 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
                 break 
+    
+    @cmd
+    def ccd_do_bias(self):
+        """ Do a bias frame """
+        self.defineCmdParser('Do a bias frame')
         
+        try:
+            
+            # set the image type to bias
+            self.parse('robo_set_obstype BIAS')
+            
+            lastExptime = self.state['ccd_exptime']
+            
+            # change the exposure time to zero
+            self.parse(f'ccd_set_exposure 0')
+            
+            # take a bias frame
+            self.parse(f'ccd_do_exposure --bias')
+            
+            # set the exposure time back to what it was before
+            self.parse(f'ccd_set_exposure {lastExptime}')
+        
+        except Exception as e:
+            self.logger.info(f'wintercmd: could not take bias frame: {e}')
+    
+    
     @cmd
     def ccd_tec_start(self):
         self.defineCmdParser('Start ccd tec')
@@ -2583,6 +3152,47 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('killServer')
         self.ccd.newCommand.emit(sigcmd)
         
+    @cmd
+    def generate_supernovae_db(self):
+        self.defineCmdParser('Generate supernovae observation schedule')
+        self.cmdparser.add_argument('source', nargs = 1, default = 'ZTF', action = None)
+        self.getargs()
+        source = self.args.source[0]
+        if source == 'Rochester':
+            URL = 'https://www.rochesterastronomy.org/sn2021/snlocations.html'
+        else:
+            URL = 'https://sites.astro.caltech.edu/ztf/bts/explorer.php?f=s&subsample=sn&classstring=Ia&classexclude=&quality=y&purity=y&ztflink=lasair&lastdet=&startsavedate=&startpeakdate=&startra=&startdec=&startz=&startdur=&startrise=&startfade=&startpeakmag=&startabsmag=&starthostabs=&starthostcol=&startb=&startav=&endsavedate=&endpeakdate=&endra=&enddec=&endz=&enddur=&endrise=&endfade=&endpeakmag=19.0&endabsmag=&endhostabs=&endhostcol=&endb=&endav='
+        connection = sql.connect("/home/winter/data/schedules/Supernovae.db")
+        print("Downloading entries")
+        html = requests.get(URL).content
+        df_list = pd.read_html(html)
+        df = df_list[-1]
+        ra = []
+        dec = []
+        if source == 'Rochester':
+            print("Generating Rochester Database")
+            for i, j in zip(df["R.A."], df["Decl."]):
+                c = SkyCoord(i, j, unit=(u.hourangle, u.deg))
+                ra.append(c.ra.radian)
+                dec.append(c.dec.radian)
+        else:
+            print("Generating ZTF Database")
+            new_header = [x[1] for x in df.columns]
+            df.columns = new_header
+            for i, j in zip(df["RA"], df["Dec"]):
+                c = SkyCoord(i, j, unit=(u.hourangle, u.deg))
+                ra.append(c.ra.radian)
+                dec.append(c.dec.radian)
+        df.index = df.index + 1
+        df.insert(loc=2, column='visitExpTime', value=30)
+        df.insert(loc=0, column='fieldRA', value=ra)
+        df.insert(loc=1, column='fieldDec', value=dec)
+        df.insert(loc=5, column='filter', value="r")
+        warnings.filterwarnings("ignore", category=UserWarning)
+        df.to_sql('Summary', con=connection, if_exists='replace', index_label = "obsHistID")
+        df_2 = pd.DataFrame.from_dict({"Nonsense that is required": [1, 2, 3, 4, 5]})
+        df_2.to_sql('Fields', con=connection, if_exists='replace', index_label = "fieldID")
+        print("Finished")
     @cmd
     def total_startup(self):
         if self.state['dome_control_status'] == 0:

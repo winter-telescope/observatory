@@ -183,14 +183,14 @@ class local_ccd(QtCore.QObject):
     def setSetpoint(self, temp):
         self.remote_object.setSetpoint(temp)
         
-    def doExposure(self):
+    def doExposure(self, dark = False):
         # first get the housekeeping state
         self.update_hk_state()
         
         # now dispatch the observation
         
         try:
-            self.remote_object.doExposure(state = self.hk_state)
+            self.remote_object.doExposure(state = self.hk_state, dark = dark)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
             

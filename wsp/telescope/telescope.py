@@ -29,6 +29,7 @@ import os
 from datetime import datetime
 from PyQt5 import QtCore
 import yaml
+import logging
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,7 +54,7 @@ class Telescope(pwi4_client.PWI4):
     """
     
     
-    def __init__(self, config, host="localhost", port=8220):
+    def __init__(self, config, host="localhost", port=8220, logger = None):
     
         super(Telescope, self).__init__(host = host, port = port)
     
@@ -63,6 +64,14 @@ class Telescope(pwi4_client.PWI4):
         self.signals = TelescopeSignals()
         self.wrap_check_enabled = True#False
         self.wrap_status = False
+        self.logger = logger
+    
+    def log(self, msg):
+        msg = f'telescope: {msg}'
+        if self.logger is None:
+            print(msg)
+        else:
+            self.logger.warning(msg)
         
     def status_text_to_dict_parse(self, response):
         """
@@ -161,12 +170,17 @@ class Telescope(pwi4_client.PWI4):
         if self.wrap_check_enabled:
             if self.wrap_status:
                 
-                #print('WRAP WARNING')
+                self.log('WRAP WARNING')
                 # we're in danger of wrapping!!
                 self.signals.wrapWarning.emit(angle)
                 # set the flag to false so we don't send a billion signals
                 self.wrap_check_enabled = False
-            
+                
+    def fans_on(self): 
+        self.request_with_status("/fans/on")
+        
+    def fans_off(self): 
+        self.request_with_status("/fans/off")
     
 if __name__ == '__main__':
         
@@ -174,7 +188,7 @@ if __name__ == '__main__':
     config_file = wsp_path + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
-    telescope = Telescope(config, 'thor')
+    telescope = Telescope(config, 'thor', logger = None)
     print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
     #%%
     print(f'Getting Updated State from Telescope:')
