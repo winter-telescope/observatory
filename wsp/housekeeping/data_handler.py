@@ -66,7 +66,7 @@ class hk_loop(QtCore.QThread):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.robostate = robostate
-        
+        self.verbose = verbose
         # pass the config to the thread
         self.config = config
 
@@ -133,7 +133,22 @@ class hk_loop(QtCore.QThread):
                     print(f'datahandler: could not update field [{field}] due to {e.__class__}: {e}')
                 pass
             
-
+        # add in the text fields
+        for field in self.config['header_fields']:
+            try:
+                 # update the state and frame dictionaries
+                 curval = self.get(self.config['header_fields'][field]['var'])
+                 self.state.update({field : curval})
+                 
+            except Exception as e:
+                 """
+                 we end up here if there's a problem either getting the field,
+                 or with the config for that field. either way log it and
+                 just keep moving
+                 """
+                 if self.verbose:
+                     print(f'datahandler: could not update field [{field}] due to {e.__class__}: {e}')
+                 pass
 
 #TODO: slow_loop is deprecated! NPL 3-8-21
 class slow_loop(QtCore.QThread):

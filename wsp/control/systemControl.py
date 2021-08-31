@@ -159,6 +159,9 @@ class control(QtCore.QObject):
         # note we always want to set this all up. we just won't try to update the state later on if we're not running certain daemons
         # we'll run into trouble down the line if some of these attributes don't exist
         
+        ### CREATE A VARIABLE TO HOLD THE ROBO OPERATOR STATE THAT BOTH ROBO AND HOUSEKEEPING CAN ACCESS
+        self.robostate = dict()
+        
         # init the network power supply
         try:
             self.pdu1 = power.PDU('pdu1.ini',base_directory = self.base_directory)
@@ -172,7 +175,8 @@ class control(QtCore.QObject):
         # init the telescope
         self.telescope = telescope.Telescope(config = self.config, 
                                              host = self.config['telescope']['host'], 
-                                             port = self.config['telescope']['port'])
+                                             port = self.config['telescope']['port'],
+                                             logger = logger)
 
         # init the mirror cover 
         self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
@@ -222,8 +226,7 @@ class control(QtCore.QObject):
         else:
             self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
 
-        ### CREATE A VARIABLE TO HOLD THE ROBO OPERATOR STATE THAT BOTH ROBO AND HOUSEKEEPING CAN ACCESS
-        self.robostate = dict()
+        
 
         ### SET UP THE HOUSEKEEPING ###
             

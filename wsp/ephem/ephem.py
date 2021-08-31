@@ -39,11 +39,12 @@ class local_ephem(object):
         # set up site
         lat = astropy.coordinates.Angle(self.config['site']['lat'])
         lon = astropy.coordinates.Angle(self.config['site']['lon'])
-        height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
+        self.height_m = self.config['site']['height']
+        height = self.height_m * u.Unit(self.config['site']['height_units'])
                                         
         self.site = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
-        
-        
+        self.lat_deg = lat.deg
+        self.lon_deg = lon.deg
         # init the local and remote state dictionaries
         self.state = dict()
         self.remote_state = dict()
