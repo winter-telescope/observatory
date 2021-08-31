@@ -67,6 +67,18 @@ class TimerThread(QtCore.QThread):
         self.timer.start(self.timeout)
         self.exec_() 
 
+
+class WrapHandler(QtCore.QThread):
+    """
+    This is a dedicated thread which just handles rotator wrap issues
+    """
+    def __init__(self):
+        super(WrapHandler, self).__init__()
+        
+    def run(self):
+        self.exec_()
+
+
 class RoboOperatorThread(QtCore.QThread):
     """
     A dedicated thread to handle all the robotic operations!
@@ -684,7 +696,7 @@ class RoboOperator(QtCore.QObject):
         
         except Exception as e:
             tb = traceback.format_exc()
-            msg = f'roboOperator: could not execute function {cmd} due to {e.__class__.__name__}, {e}, traceback = {tb}'
+            msg = f'roboOperator: could not execute function {cmd} due to {e.__class__.__name__}, {e}'#', traceback = {tb}'
             self.log(msg)
             err = roboError(context, cmd, system, msg)
             self.hardware_error.emit(err)
@@ -777,16 +789,22 @@ class RoboOperator(QtCore.QObject):
     
     def skyflat_sun_low_enough(self):
         # check if the sunalt is within workable range for doing sky flats
-        if self.state["sun_alt"] <= -5:
-            return True
+        lim = -5
+        if self.state["sun_alt"] <= -7:
+            val =  True
         else:
-            return False
+            val =  False
+        print(f'sunalt = {self.state["sun_alt"]} , sunalt <= {lim}: {val}')
+        return val
     
     def skyflat_sun_high_enough(self):
+        lim = -7
         if self.state["sun_alt"] >= -7:
-            return True
+            val =  True
         else:
-            return False
+            val =  False
+        print(f'sunalt = {self.state["sun_alt"]} , sunalt >= {lim}: {val}')
+        return val
     
     def do_calibration(self):
         
@@ -826,7 +844,7 @@ class RoboOperator(QtCore.QObject):
         
         try:
             while True:
-            
+                print(f'start flats? {start_condition_func()}, end flats? {end_condition_func()}')
                 if start_condition_func():
                     self.log('start condition satisfied!')
                     break
@@ -835,7 +853,7 @@ class RoboOperator(QtCore.QObject):
                 #time.sleep(dt)
                 self.log(f'wait complete.')
                 t_elapsed += dt
-                break
+                #break
                 """
                 if t_elapsed >= 15:
                     self.log(f'timed out after {t_elapsed} seconds, returning')
@@ -859,7 +877,7 @@ class RoboOperator(QtCore.QObject):
             self.log(f'setting up flat #{i + 1}')
             # THIS IS GIVING THE WRONG ANSWER DURING SUNRISE
             # check to make sure we haven't hit the stop condition
-            if not end_condition_func():
+            if end_condition_func():
                 self.log(f'sun alt is okay to continue')
                 pass
             else:
@@ -918,9 +936,28 @@ class RoboOperator(QtCore.QObject):
             except Exception as e:
                 self.log(f'could not run flat loop instance: {e}')
             
-            
-        self.log(f'finished with calibration. no more to do.')    
         
+        ### Take darks ###
+        # send the rotator home
+        self.do('rotator_stop')
+        self.do('rotator_home')
+        
+        self.do(f'ccd_set_exposure 30.0')
+        
+        for i in range(5):
+            
+            self.do(f'robo_do_exposure -d')
+            
+        ### Take bias ###
+        self.do(f'ccd_set_exposure 0.0')
+        
+        for i in range(5):
+            self.do(f'robo_do_exposure -b')
+            
+        
+        
+        self.log(f'finished with calibration. no more to do.')    
+        self.announce('auto calibration completed successfully!')
         
         
         ### Take darks ###
@@ -1053,149 +1090,6 @@ class RoboOperator(QtCore.QObject):
             self.gotoNext()
             
             
-            """
-            
-            # turn off dome tracking while slewing the telescope
-            self.do('dome_tracking_off')
-            
-            # 1: point the telescope
-            context = 'do_currentObs'
-            system = 'telescope'
-            try:
-                
-                
-                
-                # turn tracking back on
-                self.do(f'rotator_enable')
-                
-                # TURN ON WRAP CHECK 
-                self.do('rotator_wrap_check_enable')
-                
-                # don't turn the tracking on it will drift off. just leave the rotator enabled and tracking off and then do a goto RA/DEC
-                #self.do(f'mount_tracking_on')
-                
-                # point the rotator to the home position
-                self.do(f'rotator_home')
-                
-                
-                
-                # check if alt and az are in allowed ranges
-                in_view = (self.local_alt_deg >= self.config['telescope']['min_alt']) & (self.local_alt_deg <= self.config['telescope']['max_alt'])
-                if in_view:
-                    pass
-                else:
-                    msg = f'>> target not within view! skipping...'
-                    self.log(msg)
-                    self.alertHandler.slack_log(msg, group = 'sudo')
-                    self.gotoNext()
-                    return
-                
-                # now check if the target alt and az are too near the tracked ephemeris bodies
-                 # first check if any ephemeris bodies are near the target
-                self.log('checking that target is not too close to ephemeris bodies')
-                ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.local_alt_deg,
-                                                            target_az = self.local_az_deg)
-                
-                if not ephem_inview:
-                    self.log('ephem check okay: no ephemeris bodies in the field of view.')
-                    
-                    pass
-                else:
-                    msg = f'>> ephemeris body is too close to target! skipping...'
-                    self.log(msg)
-                    self.alertHandler.slack_log(msg, group = 'sudo')
-                    self.gotoNext()
-                    return
-                
-                
-                '''
-                # Launder the alt and az scheduled to RA/DEC
-                self.lastcmd = 'convert_alt-az_to_ra-dec'
-                #TODO: remove this! This is just a patch so that we can observe the schedule during the day
-                az_angle = astropy.coordinates.Angle(self.az_scheduled * u.deg)
-                alt_angle = astropy.coordinates.Angle(self.alt_scheduled * u.deg)
-                obstime_utc = astropy.time.Time(datetime.utcnow(), format = 'datetime')
-                
-                
-                altaz_coords = astropy.coordinates.SkyCoord(alt = alt_angle, az = az_angle,
-                                                            obstime = obstime_utc,
-                                                            location = self.ephem.site,
-                                                            frame = 'altaz')
-                j2000_coords = altaz_coords.transform_to('icrs')
-                j2000_ra_hours = j2000_coords.ra.hour
-                j2000_dec_deg = j2000_coords.dec.deg
-                '''
-                
-                # slew the telscope
-                #self.do(f'mount_goto_alt_az {self.alt_scheduled} {self.az_scheduled}')
-                #self.do(f'mount_goto_ra_dec_j2000 {j2000_ra_hours} {j2000_dec_deg}')
-                self.do(f'mount_goto_ra_dec_j2000 {self.j2000_ra_scheduled.hour} {self.j2000_dec_scheduled.deg}')
-                
-            except Exception as e:
-                msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                return
-            
-            system = 'dome'
-            try:
-                self.do(f'dome_goto {self.local_az_deg}')
-            except Exception as e:
-                msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                return
-            
-            # now that the slew is finished, turn on the dome tracking
-            # turn on dome tracking (of telescope)
-            #self.do('dome_tracking_on')
-            
-            # 2: create the log dictionary & FITS header. save log dict to self.lastObs_record
-            # for now this is happeningin the ccd_daemon, but we need to make this better
-            # and get the info from the database, etc
-            
-            # 3: trigger image acquisition
-            self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
-            self.logger.info(f'robo: setting exposure time on ccd to {self.exptime}')
-            #self.ccd.setexposure(self.exptime)
-            
-            # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
-            if self.exptime == self.state['ccd_exptime']:
-                self.log('requested exposure time matches current setting')
-                pass
-            else:
-                self.do(f'ccd_set_exposure {self.exptime}')
-                
-            time.sleep(0.5)
-            
-            # do the exposure and wrap with appropriate error handling
-            system = 'ccd'
-            self.logger.info(f'robo: telling ccd to take exposure!')
-            try:
-                self.do(f'ccd_do_exposure')
-            except Exception as e:
-                msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                return
-            
-            # if we get to here then we have successfully saved the image
-            self.log(f'exposure complete!')
-            
-            # it is now okay to trigger going to the next observation
-            self.log_observation_and_gotoNext()
-            """
-            '''
-            # 4: start exposure timer
-            self.logger.info('robo: starting timer to wait for exposure to finish')
-            self.waittime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
-            self.waittime_padding = 2.0 # pad the waittime a few seconds just to be sure it's done
-            self.waiting_for_exposure = True
-            self.exptimer.start((self.waittime + self.waittime_padding)*1000.0) # start the timer with waittime in ms as a timeout
-            '''
             # 5: exit
             
             
@@ -1372,7 +1266,11 @@ class RoboOperator(QtCore.QObject):
         obstype_option = obstype_dict.get(obstype, '')
         
         try:
-            self.do(f'ccd_do_exposure {obstype_option}')
+            
+            if obstype == 'BIAS':
+                self.do('ccd_do_bias')
+            else:
+                self.do(f'ccd_do_exposure {obstype_option}')
             
             
         except Exception as e:
@@ -1457,24 +1355,29 @@ class RoboOperator(QtCore.QObject):
         else:
             self.log(f'initiating observation type {targtype}')
         self.log('checking tracking')
-        # raise an exception if tracking isn't a bool or 'auto'
-        assert ((not type(tracking) is bool) or (tracking.lower() != 'auto')), f'tracking option must be bool or "auto", got {tracking}'
-        
-        self.log('checking field_angle')
-        # raise an exception if field_angle isn't a float or 'auto'
-        assert ((not type(field_angle) is float) or (field_angle.lower() != 'auto')), f'field_angle option must be float or "auto", got {field_angle}'
-        
+        try:
+            # raise an exception if tracking isn't a bool or 'auto'
+            assert ((not type(tracking) is bool) or (tracking.lower() != 'auto')), f'tracking option must be bool or "auto", got {tracking}'
+            
+            self.log('checking field_angle')
+            # raise an exception if field_angle isn't a float or 'auto'
+            assert ((not type(field_angle) is float) or (field_angle.lower() != 'auto')), f'field_angle option must be float or "auto", got {field_angle}'
+        except Exception as e:
+                self.log(f'Problem while vetting observation: {e}')
+                
         # now check that the target is appropriate to the observation type
         if targtype == 'altaz':
-            # make sure it's a tuple
-            assert (type(target) is tuple), f'for {targtype} observation, target must be a tuple. got type = {type(target)}'
-            
-            # make sure it's the right length
-            assert (len(target) == 2), f'for {targtype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
-            
-            # make sure they're floats
-            assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {targtype} observation, target vars must be floats'
-            
+            try:
+                # make sure it's a tuple
+                assert (type(target) is tuple), f'for {targtype} observation, target must be a tuple. got type = {type(target)}'
+                
+                # make sure it's the right length
+                assert (len(target) == 2), f'for {targtype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
+                
+                # make sure they're floats
+                assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {targtype} observation, target vars must be floats'
+            except Exception as e:
+                self.log(f'Problem while vetting observation: {e}')
             # get the target alt and az
             self.target_alt = target[0]
             self.target_az  = target[1]
@@ -1505,15 +1408,18 @@ class RoboOperator(QtCore.QObject):
             else:
                 pass
         elif targtype == 'radec':
-            # make sure it's a tuple
-            assert (type(target) is tuple), f'for {targtype} observation, target must be a tuple. got type = {type(target)}'
-            
-            # make sure it's the right length
-            assert (len(target) == 2), f'for {targtype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
-            
-            # make sure they're floats
-            assert ( (type(target[0]) is float) & (type(target[0]) is float) ), f'for {targtype} observation, target vars must be floats'
-            
+            try:
+                # make sure it's a tuple
+                assert (type(target) is tuple), f'for {targtype} observation, target must be a tuple. got type = {type(target)}'
+                
+                # make sure it's the right length
+                assert (len(target) == 2), f'for {targtype} observation, target must have 2 coordinates. got len(target) = {len(target)}'
+                
+                # make sure they're floats
+                #self.log(f'Targ[0]: val = {target[0]}, type = {type(target[0])}')
+                assert ( (type(target[0]) is float) & (type(target[1]) is float) ), f'for {targtype} observation, target vars must be floats'
+            except Exception as e:
+                self.log(f'Problem while vetting observation: {e}')
             # get the target RA (hours) and DEC (degs)
             self.target_ra_j2000_hours = target[0]
             self.target_dec_j2000_deg = target[1]
@@ -1709,7 +1615,7 @@ class RoboOperator(QtCore.QObject):
             """
             # slew the rotator
             self.do(f'rotator_goto_field {self.target_field_angle}')
-            
+            #self.do(f'rotator_goto_mech 161')
             time.sleep(3)
                 
         except Exception as e:

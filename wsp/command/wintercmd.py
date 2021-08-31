@@ -83,6 +83,9 @@ LOGGER = logging_setup.setup_logger(wsp_path, CONFIG)
 
 #redefine the argument parser so it exits nicely and execptions are handled better
 
+class WrapError(Exception):
+    pass
+
 class ArgumentParser(argparse.ArgumentParser):
     '''
     Subclass the exiting/error methods from argparse.ArgumentParser
@@ -187,6 +190,15 @@ class Wintercmd(QtCore.QObject):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.defineParser()
+        # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
+        self.telescope.signals.wrapWarning.connect(self.raiseWrapError)
+        
+        # wait QTimer to try to keep responsive instead of 
+        
+    def raiseWrapError(self):
+        msg = f'wintercmd (thread {threading.get_ident()}): caught telescope wrapWarning signal: raising wrap error'
+        self.logger.warning(msg)
+        #raise WrapError
     
     def throwTimeoutError(self):
         msg = "command took too long to execute!"
@@ -298,6 +310,7 @@ class Wintercmd(QtCore.QObject):
         start_timestamp = datetime.utcnow().timestamp()
         print(f'start_timestamp = {start_timestamp}')
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             #self.logger.info(f'STOP CONDITION BUFFER = {stop_condition_buffer}')
             time.sleep(self.config['cmd_status_dt'])
@@ -392,6 +405,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -430,6 +444,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -468,6 +483,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -507,6 +523,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -545,6 +562,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -582,6 +600,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -624,6 +643,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -728,6 +748,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -753,13 +774,25 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('move telescope to specified j2000 ra (hours)/dec (deg) ')
         self.cmdparser.add_argument('position',
                                     nargs = 2,
+                                    type = str,
                                     action = None,
-                                    type = float,
                                     help = '<ra_hours> <dec_degs>')
         self.getargs()
         ra = self.args.position[0]
         dec = self.args.position[1]
-        self.telescope.mount_goto_ra_dec_j2000(ra_hours = ra, dec_degs = dec)
+        
+        
+        # allow the RA and DEC to be specified in multiple ways:
+        # this allows you to specify the coords either as: 
+        #     ra, dec = '05:34:30.52', '22:00:59.9'
+        #     ra, dec = 5.57514, 22.0166            
+        ra_obj = astropy.coordinates.Angle(ra, unit = u.hour)
+        dec_obj = astropy.coordinates.Angle(dec, unit = u.deg)
+        
+        ra_hour = ra_obj.hour
+        dec_deg = dec_obj.deg
+        
+        self.telescope.mount_goto_ra_dec_j2000(ra_hours = ra_hour, dec_degs = dec_deg)
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -773,6 +806,7 @@ class Wintercmd(QtCore.QObject):
         start_timestamp = datetime.utcnow().timestamp()
         self.logger.info(f'wintercmd: mount_goto_ra_dec_j2000 running in thread {threading.get_ident()}')
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -787,7 +821,9 @@ class Wintercmd(QtCore.QObject):
             self.logger.info(f'wintercmd (thread {threading.get_ident()}: az_dist_to_target: {self.state["mount_az_dist_to_target"]}')
             self.logger.info('')
             """
-            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1))
+            az_dist_lim = 3
+            alt_dist_lim = 0.5
+            stop_condition = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < az_dist_lim) & (abs(self.state['mount_alt_dist_to_target']) < alt_dist_lim))
 
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -828,6 +864,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -967,6 +1004,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1095,6 +1133,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1143,6 +1182,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1189,6 +1229,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1224,6 +1265,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1548,6 +1590,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1585,6 +1628,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1616,7 +1660,7 @@ class Wintercmd(QtCore.QObject):
         
         self.getargs()
         target = float(self.args.position[0])
-        self.logger.info(f'wintercmd rotator_goto_mech: target = {target}, type(target) = {type(target)}')
+        self.logger.info(f'wintercmd rotator_goto_mech (thread {threading.get_ident()}): target = {target}, type(target) = {type(target)}')
         self.telescope.rotator_goto_mech(target_degs = target)
         
         
@@ -1631,8 +1675,15 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
+            """
+            if self.telescope.wrap_status:
+                # the rotator is wrapping!
+                raise WrapError(f'command rotator_goto_mech exited because rotator is wrapping!')
+            """
             #print('entering loop')
-            time.sleep(self.config['cmd_status_dt'])
+            #time.sleep(self.config['cmd_status_dt'])
+            QtCore.QThread.msleep(int(self.config['cmd_status_dt']*1000))
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
@@ -1677,6 +1728,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1720,6 +1772,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1818,6 +1871,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1856,6 +1910,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1894,6 +1949,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             #print('entering loop')
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
@@ -1941,6 +1997,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -1976,6 +2033,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -2043,6 +2101,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -2506,7 +2565,7 @@ class Wintercmd(QtCore.QObject):
         comment = self.args.comment
 
         targtype = self.args.targtype[0].lower()
-        if targtype in ['altaz', 'radec']:
+        if targtype == 'altaz':
             targ_coord_1 = float(self.args.target[0])
             targ_coord_2 = float(self.args.target[1])
             sigcmd = signalCmd('do_observation',
@@ -2516,7 +2575,30 @@ class Wintercmd(QtCore.QObject):
                                field_angle = 'auto',
                                obstype = obstype,
                                comment = comment)
+        
+        elif targtype == 'radec':
+            # allow the RA and DEC to be specified in multiple ways:
+            # this allows you to specify the coords either as: 
+            #     ra, dec = '05:34:30.52', '22:00:59.9'
+            #     ra, dec = 5.57514, 22.0166 
+            ra = self.args.target[0]
+            dec = self.args.target[1]
             
+            ra_obj = astropy.coordinates.Angle(ra, unit = u.hour)
+            dec_obj = astropy.coordinates.Angle(dec, unit = u.deg)
+            
+            # note: turning these back to floats instead of numpy.float64 objects to satisfy assert checking in roboOperator
+            ra_hour = float(ra_obj.hour)
+            dec_deg = float(dec_obj.deg)
+            
+            sigcmd = signalCmd('do_observation',
+                               targtype = targtype,
+                               target = (ra_hour, dec_deg),
+                               tracking = 'auto',
+                               field_angle = 'auto',
+                               obstype = obstype,
+                               comment = comment)
+        
         elif targtype == 'object':
             obj = self.args.target[0]
             sigcmd = signalCmd('do_observation',
@@ -2696,6 +2778,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -2739,6 +2822,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -2847,7 +2931,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument('shutter_cmd',
               nargs = 1,
               action = None,
-              help = '<shutter_int>')
+             help = '<shutter_int>')
 
         self.getargs()
         shutter_cmd = self.args.shutter_cmd[0]
@@ -2890,6 +2974,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
@@ -2953,10 +3038,10 @@ class Wintercmd(QtCore.QObject):
             dark = True
         elif self.args.test:
             obstype = 'TEST'
-            dark = True
+            dark = False
         elif self.args.pointing:
             obstype = 'POINTING'
-            dark = True
+            dark = False
         else:
             # SET THE DEFAULT
             obstype = ''
@@ -2991,6 +3076,7 @@ class Wintercmd(QtCore.QObject):
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
         while True:
+            QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)

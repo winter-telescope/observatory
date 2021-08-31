@@ -175,7 +175,8 @@ class control(QtCore.QObject):
         # init the telescope
         self.telescope = telescope.Telescope(config = self.config, 
                                              host = self.config['telescope']['host'], 
-                                             port = self.config['telescope']['port'])
+                                             port = self.config['telescope']['port'],
+                                             logger = logger)
 
         # init the mirror cover 
         self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
