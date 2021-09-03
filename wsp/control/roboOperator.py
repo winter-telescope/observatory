@@ -1001,6 +1001,9 @@ class RoboOperator(QtCore.QObject):
         
         if self.schedule.currentObs is None:
             self.running = False
+            
+            self.handle_end_of_schedule()
+            
             return
         
         if self.running & self.ok_to_observe:
@@ -1137,6 +1140,8 @@ class RoboOperator(QtCore.QObject):
                 self.logger.info('robo: in log and goto next, but either there is no observation to log.')
             elif self.running == False:
                 self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
+                self.rotator_stop_and_reset()
+            
             
             """
             # don't want to do this if we just paused the schedule. need to figure that out, mauybe move it to a new shutdown method?
@@ -1204,6 +1209,16 @@ class RoboOperator(QtCore.QObject):
                 self.schedule.closeConnection()
                 self.writer.closeConnection()
                 """
+    
+    def handle_end_of_schedule(self):
+        # this handles when we get to the end of the schedule, ie when next observation is None:
+        
+        # FIRST: stow the rotator
+        self.rotator_stop_and_reset()
+        
+        # Now shut down the connection to the databases
+        self.schedule.closeConnection()
+        self.writer.closeConnection()
     
     def log_timer_finished(self):
         self.logger.info('robo: exposure timer finished.')
