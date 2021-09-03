@@ -1198,10 +1198,12 @@ class RoboOperator(QtCore.QObject):
                 #NPL 08-03-21: adding this here since I turned off the reset at the top of the function. 
                 # if there are no more observations, we can stow the rotator:
                 self.rotator_stop_and_reset()
-                
+                """
+                # don't want to do this if we just paused the schedule. need to figure that out, mauybe move it to a new shutdown method?
                 ## TODO: Code to close connections to the databases.
                 self.schedule.closeConnection()
                 self.writer.closeConnection()
+                """
     
     def log_timer_finished(self):
         self.logger.info('robo: exposure timer finished.')
