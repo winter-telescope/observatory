@@ -2414,6 +2414,14 @@ class Wintercmd(QtCore.QObject):
             self.roboThread.restartRoboSignal.emit('auto')
     
     @cmd
+    def robo_stop(self):
+        self.defineCmdParser('stop/pause the robotic operator')
+        if self.roboThread.isRunning():
+            sigcmd = signalCmd('stop')
+        
+            self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
     def robo_run_test(self):
         self.defineCmdParser('start the robotic operator')
         if self.roboThread.isRunning():

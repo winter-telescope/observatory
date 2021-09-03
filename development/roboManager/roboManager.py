@@ -586,8 +586,8 @@ class RoboManager(QtCore.QObject):
                 except:
                     pass
         
-        if self.state['sun_alt'] > 10:
-            self.xyxxy()
+        # check if we should be requesting any tasks
+        self.checkWhatToDo()
                     
         #print(f'roboManager (Thread {threading.get_ident()}): got new status. status = {json.dumps(self.state, indent = 2)}')
         
@@ -609,8 +609,19 @@ class RoboManager(QtCore.QObject):
     
     
         
-        
+    def checkWhatToDo(self):
+        """
+        This is the main meat of this program. It checks the sun alt and time against a
+        set of predefined tasks and then submits commands to the WSP wintercmd TCP/IP
+        command interface.
 
+        Returns
+        -------
+        None.
+
+        """
+        
+        pass
     
     
     ###### PUBLIC FUNCTIONS THAT CAN BE CALLED USING PYRO SERVER #####
