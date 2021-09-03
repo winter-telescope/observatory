@@ -1000,6 +1000,7 @@ class RoboOperator(QtCore.QObject):
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
         
         if self.schedule.currentObs is None:
+            self.logger.info(f'robo: self.schedule.currentObs is None. Closing connection to db.')
             self.running = False
             
             self.handle_end_of_schedule()
@@ -1187,36 +1188,52 @@ class RoboOperator(QtCore.QObject):
             # get the next observation
             self.logger.info('robo: getting next observation from schedule database')
             self.schedule.gotoNextObs()
-            
-            # do the next observation and continue the cycle
-            self.do_currentObs()
-            
+        
+        
         else:  
             if self.schedule.currentObs is None:
-                self.logger.info('robo: in log and goto next, but either there is no observation to log.')
+                self.logger.info('robo: in log and goto next, but there is no observation to log.')
             elif self.running == False:
                 self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
-            
+            """
             if not self.schedulefile_name is None:
                 self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
                 
                 #NPL 08-03-21: adding this here since I turned off the reset at the top of the function. 
                 # if there are no more observations, we can stow the rotator:
                 self.rotator_stop_and_reset()
-                """
-                # don't want to do this if we just paused the schedule. need to figure that out, mauybe move it to a new shutdown method?
-                ## TODO: Code to close connections to the databases.
-                self.schedule.closeConnection()
-                self.writer.closeConnection()
-                """
+            """
+            
+        # recheck if the newly loaded observation is None:
+        if self.schedule.currentObs is not None and self.running:
+            # do the next observation and continue the cycle
+            self.do_currentObs()
+            
+        else:  
+            if self.schedule.currentObs is None:
+                self.logger.info('robo: in log and goto next, but either there is no observation to log.')
+                
+                if not self.schedulefile_name is None:
+                    self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
+                    
+                    self.handle_end_of_schedule()
+                    
+                    
+            elif self.running == False:
+                self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
+                self.rotator_stop_and_reset()
+            
+                
     
     def handle_end_of_schedule(self):
         # this handles when we get to the end of the schedule, ie when next observation is None:
-        
+        self.logger.info(f'robo: handling end of schedule')
+            
         # FIRST: stow the rotator
         self.rotator_stop_and_reset()
         
         # Now shut down the connection to the databases
+        self.logger.info(f'robo: closing connection to schedule and obslog databases')
         self.schedule.closeConnection()
         self.writer.closeConnection()
     
