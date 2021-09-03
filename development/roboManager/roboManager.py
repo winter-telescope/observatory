@@ -42,11 +42,15 @@ import logging
 #import json
 import subprocess
 import yaml
+import json
 
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
+# switch to this when ported to wsp
+#wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 sys.path.insert(1, wsp_path)
-print(f'wsp_path = {wsp_path}')
+print(f'roboManager: wsp_path = {wsp_path}')
 
 
 #from housekeeping import data_handler
@@ -119,12 +123,11 @@ class StatusMonitor(QtCore.QObject):
     doReconnect = QtCore.pyqtSignal()
     handModeEnabled = QtCore.pyqtSignal()
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
+    def __init__(self, proxyname, logger = None, connection_timeout = 0.5, verbose = False):
         super(StatusMonitor, self).__init__()
         
         self.state = dict()
-        self.addr = addr # IP address
-        self.port = port # port
+        self.proxyname = proxyname # address (in this case proxyname)
         self.logger = logger
         self.connection_timeout = connection_timeout # time to allow each connection attempt to take
         self.verbose = verbose
@@ -139,6 +142,7 @@ class StatusMonitor(QtCore.QObject):
         self.setup_connection()
     
     def log(self, msg, level = logging.INFO):
+        msg = 'roboManager' + msg
         if self.logger is None:
                 print(msg)
         else:
@@ -149,9 +153,15 @@ class StatusMonitor(QtCore.QObject):
     
     def create_socket(self):
         if self.verbose:
-            self.log('(Thread {threading.get_ident()}) StatusMonitor: socket')
-        self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        self.sock.settimeout(self.connection_timeout)
+            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: creating socket')
+        # init the remote object
+        try:
+            self.remote_object = Pyro5.client.Proxy(f"PYRONAME:{self.proxyname}")
+            self.connected = True
+        except Exception as e:
+            self.connected = False
+            self.logger.error(f'roboManager: connection with remote object failed: {e}', exc_info = True)
+            pass
         
     def connect_socket(self):
         if self.verbose:
@@ -168,7 +178,8 @@ class StatusMonitor(QtCore.QObject):
             self.log(f'(Thread {threading.get_ident()}) StatusMonitor: trying to connection to ({self.addr} | {self.port})')
             
             # try to reconnect the socket
-            self.sock.connect((self.addr, self.port))
+            #self.sock.connect((self.addr, self.port))
+            self.create_socket()
             
             #print(f'(Thread {threading.get_ident()}) Connection attempt successful!')
             
@@ -187,27 +198,22 @@ class StatusMonitor(QtCore.QObject):
             
             
     
-    def updateDomeState(self, domeState):
+    def updateState(self, state):
         '''
         When we receive a status update from the dome, add each element 
         to the state dictionary
         '''
         #print(f'(Thread: {threading.get_ident()}): recvd dome state: {domeState}')
-        if type(domeState) is dict:
+        if type(state) is dict:
             # make sure we don't get some garbage, and only attempt if this is actually a dictionary
-            for key in domeState.keys():
+            for key in state.keys():
                 try:
-                    self.state.update({key : domeState[key]})
+                    self.state.update({key : state[key]})
                 
                 except:
                     pass
         
-        # check to see if the dome control state is MANUAL (ie in hand mode). if so then emit the handModeEnabled signal
-        dome_control_state = domeState.get('Control_Status', 'UNKNOWN')
         
-        if dome_control_state == 'MANUAL':
-            # THE DOME HAS BEEN PUT INTO HAND MODE! EMIT THE SIGNAL THAT THIS HAS HAPPENED
-            self.handModeEnabled.emit()
         
         
     def pollStatus(self):
@@ -221,6 +227,61 @@ class StatusMonitor(QtCore.QObject):
         self.state.update({'reconnect_timeout' : self.reconnector.reconnect_timeout})
         self.state.update({'is_connected' : self.connected})
         
+        # poll the state, if we're not connected try to reconnect
+        # this should reconnect down the line if we get disconnected
+        
+        if self.connected:
+            
+            try:
+                state = self.remote_object.GetStatus()
+                
+                self.updateState(state)
+                
+            except Exception as e:
+                if self.verbose:
+                    self.log(f'could not update observatory state: {e}')
+                pass
+        
+        else:
+            #print(f'Dome Status Not Connected. ')
+            
+            '''
+            If we're not connected, then:
+                If we've waited the full reconnection timeout, then try to reconnect
+                If not, then just note the time and pass''
+            '''
+            self.reconnector.get_time_since_last_connection()
+            
+            
+            #if self.reconnect_remaining_time <= 0.0:
+            if self.reconnector.reconnect_remaining_time <= 0.0:
+                if self.verbose:
+                    self.log('StatusMonitor: Do a reconnect')
+                # we have waited the full reconnection timeout
+                self.doReconnect.emit()
+                self.connect_socket()
+                
+            else:
+                # we haven't waited long enough do nothing
+                pass
+            
+        
+        """
+        
+        if not self.connected:
+            self.init_remote_object()
+            
+        else:
+            try:
+                self.observatoryState = self.remote_object.GetStatus()
+                
+                
+            except Exception as e:
+                if self.verbose:
+                    print(f'ephemd: could not update observatory state: {e}')
+                pass
+        """
+        """
         # if the connection is live, ask for the dome status
         if self.connected:
             #self.time_since_last_connection = 0.0
@@ -259,7 +320,7 @@ class StatusMonitor(QtCore.QObject):
             else:
                 # we haven't waited long enough do nothing
                 pass
-        
+        """
         self.newStatus.emit(self.state)
     
 class CommandHandler(QtCore.QObject):
@@ -286,6 +347,7 @@ class CommandHandler(QtCore.QObject):
         self.setup_connection()
     
     def log(self, msg, level = logging.INFO):
+        msg = 'roboManager' + msg        
         if self.logger is None:
                 print(msg)
         else:
@@ -293,10 +355,12 @@ class CommandHandler(QtCore.QObject):
     
     def setup_connection(self):
         self.create_socket()
+        
+        self.connect_socket()
     
     def create_socket(self):
         if self.verbose:
-            self.log('(Thread {threading.get_ident()}) CommandHandler: Creating socket')
+            self.log(f'(Thread {threading.get_ident()}) CommandHandler: Creating socket')
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         #self.sock.settimeout(self.connection_timeout)
         
@@ -335,11 +399,12 @@ class CommandHandler(QtCore.QObject):
             self.connected = False
             
             if self.verbose:
-                self.log(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')   
+                print(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')   
             
             self.newReply.emit(self.disconnectedReply)
             # increment the reconnection timeout
             #self.reconnector.increment_reconnect_timeout()
+            
             
     def sendCommand(self, cmd):
         '''
@@ -418,10 +483,10 @@ class StatusThread(QtCore.QThread):
     doReconnect = QtCore.pyqtSignal()
     enableHandMode = QtCore.pyqtSignal()
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
+    def __init__(self, proxyname, logger = None, connection_timeout = 0.5, verbose = False):
         super(QtCore.QThread, self).__init__()
-        self.addr = addr
-        self.port = port
+        self.proxyname = proxyname
+        #self.port = port
         self.logger = logger
         self.connection_timeout = connection_timeout
         self.verbose = verbose
@@ -435,7 +500,7 @@ class StatusThread(QtCore.QThread):
             self.enableHandMode.emit()
         
         self.timer= QtCore.QTimer()
-        self.statusMonitor = StatusMonitor(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
+        self.statusMonitor = StatusMonitor(self.proxyname, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
         
         self.statusMonitor.newStatus.connect(SignalNewStatus)
         self.statusMonitor.doReconnect.connect(SignalDoReconnect)
@@ -449,7 +514,7 @@ class StatusThread(QtCore.QThread):
         
 
 #class Dome(object):        
-class Dome(QtCore.QObject):
+class RoboManager(QtCore.QObject):
     """
     This is the pyro object that handles connections and communication with t
     the dome.
@@ -465,18 +530,19 @@ class Dome(QtCore.QObject):
     #statusRequest = QtCore.pyqtSignal(object)
     commandRequest = QtCore.pyqtSignal(str)
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 1.5, alertHandler = None, verbose = False):
-        super(Dome, self).__init__()
+    def __init__(self, addr, port, status_proxyname, sunsim = False, logger = None, connection_timeout = 1.5, alertHandler = None, verbose = False):
+        super(RoboManager, self).__init__()
         # attributes describing the internet address of the dome server
         self.addr = addr
         self.port = port
+        self.proxyname = status_proxyname
         self.logger = logger
         self.connection_timeout = connection_timeout
         self.state = dict()
         self.alertHandler = alertHandler
         self.verbose = verbose
         
-        self.statusThread = StatusThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
+        self.statusThread = StatusThread(self.proxyname, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
         self.commandThread = CommandThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
         # connect the signals and slots
         
@@ -484,17 +550,19 @@ class Dome(QtCore.QObject):
         self.commandThread.start()
         
         # if the status thread is request a reconnection, trigger the reconnection in the command thread too
-        self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
+        # THE STATUS THREAD IS A PYRO CONN, THE COMMAND THREAD IS A SOCKET, SO DON'T CONNECT THEIR RECONNECTION ATTEMPTS
+        #self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
         
         # if the status thread gets the signbal that we've entered hand mode then enter hand mode
-        self.statusThread.enableHandMode.connect(self.handleHandMode)
+        #self.statusThread.enableHandMode.connect(self.handleHandMode)
         
         self.statusThread.newStatus.connect(self.updateStatus)
         self.commandRequest.connect(self.commandThread.HandleCommand)
         self.commandThread.newReply.connect(self.updateCommandReply)
-        self.log(f'Dome: running in thread {threading.get_ident()}')
+        self.log(f'RoboManager: running in thread {threading.get_ident()}')
         
     def log(self, msg, level = logging.INFO):
+        msg = 'roboManager: ' + msg
         if self.logger is None:
                 print(msg)
         else:
@@ -517,9 +585,18 @@ class Dome(QtCore.QObject):
                 
                 except:
                     pass
+        
+        if self.state['sun_alt'] > 10:
+            self.xyxxy()
                     
-                    
-        #print(f'Dome (Thread {threading.get_ident()}): got new status. status = {self.state}')
+        #print(f'roboManager (Thread {threading.get_ident()}): got new status. status = {json.dumps(self.state, indent = 2)}')
+        
+        print(f'roboManager (Thread {threading.get_ident()}): got new status:')
+        print(f'            timestamp : {self.state.get("timestamp", -999)}')
+        print(f'            sun_alt   : {self.state.get("sun_alt", -999)}')
+        print(f'            sun_az    : {self.state.get("sun_az", -999)}')
+        
+        
     def updateCommandReply(self, reply):
         '''
         when we get a new reply back from the command thread, add it to the status dictionary
@@ -530,56 +607,7 @@ class Dome(QtCore.QObject):
             pass
     
     
-    def handleHandMode(self):
-        
-        msg = f'DOME HAS BEEN SWITCHED TO HAND MODE!'
-        self.log(msg = msg, level = logging.WARNING)
-        self.alertHandler.slack_log(f':redsiren: *{msg}*')
-        
-        # shut down the wsp watchdog
-        self.log('Shutting down any runing instance of the WSP watchdog...')
-        watchdog.shutdown_watchdog()
-        
-        
-        # after the watchdog is stopped, kill wsp
-        msg = 'Launching WSP KILLER! CHECK INSTRUMENT MANUALLY AFTER!'
-        self.log(msg, logging.WARNING)        
-        self.alertHandler.slack_log(f':redsiren: *{msg}*')
-        
-        try:
-            # get the PID of the wsp.py process
-            main_pid, child_pids = daemon_utils.checkParent('wsp.py', printall = False)
-            
-            args = ['python',f'{wsp_path}/wsp_kill.py']
-            subprocess.Popen(args,shell = False, start_new_session = True)
-            
-            """# kill it!
-            if not main_pid is None:
-                daemon_utils.killPIDS(main_pid)
-                
-            # pause for a hot second
-            time.sleep(0.5)
-            # check again
-            main_pid, child_pids = daemon_utils.checkParent('wsp.py', printall = False)
-            
-            if main_pid is None:
-                msg = 'Successfully killed WSP'
-                self.log(msg, logging.WARNING)        
-                self.alertHandler.slack_log(msg)
-            else:
-                msg = 'COULD NOT KILL WSP!!!! SYSTEM IS STILL LIVE!'
-                self.log(msg, logging.WARNING)
-                self.alertHandler.slack_log(f':redsiren: *WARNING* {msg}')"""
-        except Exception as e:
-                msg = f'COULD NOT KILL WSP!!!! SYSTEM IS STILL LIVE! Exception: {e}'
-                self.log(msg, logging.WARNING)
-                self.alertHandler.slack_log(f':redsiren: *WARNING* {msg}')
-            
-        
-        
-        # kill this daemon
-        sigint_handler()
-        
+    
         
         
 
@@ -594,38 +622,13 @@ class Dome(QtCore.QObject):
     
     # Commands which make the dome do things
     @Pyro5.server.expose
-    def Home(self):
-        cmd = 'home'
-        self.commandRequest.emit(cmd)
-    
-    @Pyro5.server.expose
-    def Close(self):
-        cmd = 'close'
-        self.commandRequest.emit(cmd)
-    
-    @Pyro5.server.expose
-    def GoDome(self, az):
-        cmd = f'godome {az}'
-        self.commandRequest.emit(cmd)
-    
-    @Pyro5.server.expose
-    def Open(self):
-        cmd = 'open'
-        self.commandRequest.emit(cmd)
-    
-    @Pyro5.server.expose
-    def Stop(self):
-        cmd = 'stop'
+    def xyxxy(self):
+        cmd = 'xyzzy'
         self.commandRequest.emit(cmd)
         
-    @Pyro5.server.expose
-    def TakeControl(self):
-        cmd = 'takecontrol'
-        self.commandRequest.emit(cmd)
-    
-    @Pyro5.server.expose
-    def GiveControl(self):
-        cmd = 'givecontrol'
+    @Pyro5.server.exposre
+    def do(self, cmd):
+        # send an arbitrary command to WSP
         self.commandRequest.emit(cmd)
         
     
@@ -638,14 +641,14 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, config, logger = None, verbose = False, parent=None, domesim = False):            
+    def __init__(self, config, logger = None, verbose = False, parent=None, sunsim = False):            
         super(PyroGUI, self).__init__(parent)   
 
         self.config = config
         self.logger = logger
         self.verbose = verbose
         
-        msg = f'(Thread {threading.get_ident()}: Starting up Dome Daemon '
+        msg = f'(Thread {threading.get_ident()}: Starting up roboManager Daemon '
         if logger is None:
             print(msg)
         else:
@@ -663,25 +666,27 @@ class PyroGUI(QtCore.QObject):
         
         self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)    
         
-
-
-        # set up the dome
-        self.servername = 'command_server' # this is the key it uses to set up the server from the conf file
-        if domesim == True:
-            self.dome_addr = 'localhost'
+        if sunsim:
+            self.proxyname = 'sunsim'
         else:
-            self.dome_addr                  = self.config[self.servername]['addr']
-        self.dome_port                  = self.config[self.servername]['port']
-        self.dome_connection_timeout    = self.config[self.servername]['timeout']
+            self.proxyname = 'state'
         
-        self.dome = Dome(addr = self.dome_addr, 
-                         port = self.dome_port, 
+
+
+        # set up the dome        
+        self.addr                  = self.config['wintercmd_server_addr']
+        self.port                  = self.config['wintercmd_server_port']
+        self.connection_timeout    = self.config['wintercmd_server_timeout']
+        
+        self.roboManager = RoboManager(addr = self.addr, 
+                         port = self.port, 
+                         status_proxyname = self.proxyname,
                          logger = self.logger, 
-                         connection_timeout = self.dome_connection_timeout,
+                         connection_timeout = self.connection_timeout,
                          alertHandler = self.alertHandler,
                          verbose = self.verbose)        
         
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.dome, name = 'dome')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.roboManager, name = 'roboManager')
         self.pyro_thread.start()
         
 
@@ -694,9 +699,13 @@ def sigint_handler( *args):
     
     print('CAUGHT SIGINT, KILLING PROGRAM')
     
+    # close any dangling socket connections
+    main.roboManager.commandThread.commandHandler.sock.close()
+    
     # explicitly kill each thread, otherwise sometimes they live on
-    main.dome.statusThread.quit()
-    main.dome.commandThread.quit()
+    main.roboManager.statusThread.quit()
+    main.roboManager.commandThread.quit()
+    
     #main.dome.statusThread.terminate()
     #print('KILLING APPLICATION')
     
@@ -712,12 +721,12 @@ if __name__ == "__main__":
     modes = dict()
     modes.update({'-v' : "Running in VERBOSE mode"})
     modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
-    modes.update({'--domesim' : "Running in SIMULATED DOME mode" })
+    modes.update({'--sunsim' : "Running in SIMULATED SUN mode" })
     
     # set the defaults
     verbose = True
-    doLogging = True
-    domesim = False
+    doLogging = False
+    sunsim = True
     #domesim = True
     
     #print(f'args = {args}')
@@ -771,7 +780,7 @@ if __name__ == "__main__":
         logger = None
     
     # set up the main app. note that verbose is set above
-    main = PyroGUI(config = config, logger = logger, verbose = verbose, domesim = domesim)
+    main = PyroGUI(config = config, logger = logger, verbose = verbose, sunsim = sunsim)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)

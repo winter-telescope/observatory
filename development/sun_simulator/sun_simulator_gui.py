@@ -14,7 +14,8 @@ from PyQt5 import uic, QtCore, QtWidgets
 import sys
 import json
 from datetime import datetime, timedelta
-
+import Pyro5.core
+import Pyro5.server
 import os
 import threading
 import shlex
@@ -38,12 +39,12 @@ print(f'sun_simulator: wsp_path = {wsp_path}')
 from utils import logging_setup
 from housekeeping import data_handler
 #from utils import utils
+from daemon import daemon_utils
 
 
 
 
-
-class MainWindow(QtWidgets.QMainWindow):
+class SunSimulator(QtWidgets.QMainWindow):
 
     """
     The class taking care for the main window.
@@ -59,7 +60,7 @@ class MainWindow(QtWidgets.QMainWindow):
         Initializes the main window
         """
 
-        super(MainWindow, self).__init__(*args, **kwargs)
+        super(SunSimulator, self).__init__(*args, **kwargs)
         #uic.loadUi(wsp_path + '/dome/' + 'dome_simulator.ui', self)  # Load the .ui file
         uic.loadUi('sun_simulator.ui', self) # Load the .ui file
         
@@ -75,8 +76,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # things that manage the time update loop
         self.update_dt = 1000 # ms
         self.speed = 1 # seconds per second
-        
-        
+
         
         #self.logger = logger
         
@@ -147,7 +147,10 @@ class MainWindow(QtWidgets.QMainWindow):
         month = now_local.month
         day = now_local.day
         
-        self.time = datetime(year = year, month = month, day = day, hour = 18, minute = 30, second = 0)    
+        self.time = datetime(year = year, month = month, day = day, hour = 18, minute = 30, second = 0) 
+        self.sun_timestamp = self.time.timestamp()
+        self.sun_timeiso = self.time.isoformat(sep = ' ')
+        
         self.qtime_requested = QtCore.QDateTime.fromTime_t(self.time.timestamp())
         
         # update the reset time display to the initial qtime_requested
@@ -165,7 +168,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.state.update({'UTC' : utc_datetime_str})
         self.state.update({'sun_alt' : -888,
                            'sun_az'  : -888,
-                           'sun_timestamp' : self.time.timestamp()
+                           'timestamp' : self.time.timestamp()
                            }
                           )
    
@@ -215,6 +218,7 @@ class MainWindow(QtWidgets.QMainWindow):
         newtime = self.time + timedelta(seconds = dt)
         
         self.time = newtime
+        self.sun_timestamp = self.time.timestamp()
         
         
     
@@ -225,7 +229,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.state.update({'UTC' : utc_datetime_str})
         
-        self.qtime = QtCore.QDateTime.fromTime_t(self.time.timestamp())
+        self.qtime = QtCore.QDateTime.fromTime_t(self.sun_timestamp)
         
         self.sun_alt, self.sun_az = self.getSunAltAz(self.time)
         
@@ -233,7 +237,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.speed = self.speedbox.value()
         
         
+        # update the state
+        self.state.update({'sun_alt' : self.sun_alt})
         
+        self.state.update({'sun_az' : self.sun_az})
+        
+        self.state.update({'timestamp': self.sun_timestamp})
+        
+        
+        # publisht the state
         self.state_json = json.dumps(self.state)
         self.update_display()
     
@@ -251,19 +263,49 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.sun_az_display.setText( f'{self.sun_az :0.1f}')
         self.sun_alt_display.setText(f'{self.sun_alt : 0.1f}')
+    
+    
+    @Pyro5.server.expose
+    def getState(self):
+        return self.state
+    
+    @Pyro5.server.expose
+    def GetStatus(self):
+        return self.state
+    
+
+class PyroGUI(QtCore.QObject):   
+
+                  
+    def __init__(self, logger = None, parent=None ):            
+        super(PyroGUI, self).__init__(parent)   
+        print(f'main: running in thread {threading.get_ident()}')
         
+        self.sunsim = SunSimulator(logger = logger)
+                
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.sunsim, name = 'sunsim')
+        self.pyro_thread.start()
+
+        
+    
 if __name__ == '__main__':
     
     doLogging = True
+    sunsim = True
+    
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
     # set up the logger
     if doLogging:
         logger = logging_setup.setup_logger(wsp_path, config)    
     else:
         logger = None
+        
+        
     
     app = QtWidgets.QApplication(sys.argv)
-    main = MainWindow(logger = logger)
+    main = PyroGUI(logger = logger)
+    
+    
 
-    main.show()
+    main.sunsim.show()
     app.exec_()
