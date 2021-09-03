@@ -1138,12 +1138,14 @@ class RoboOperator(QtCore.QObject):
             elif self.running == False:
                 self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
             
+            """
+            # don't want to do this if we just paused the schedule. need to figure that out, mauybe move it to a new shutdown method?
             if not self.schedulefile_name is None:
                 self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
                 ## TODO: Code to close connections to the databases.
                 self.schedule.closeConnection()
                 self.writer.closeConnection()
-                
+            """
                 
     def log_observation_and_gotoNext(self):
         self.logger.info('robo: image timer finished, logging observation and then going to the next one')
