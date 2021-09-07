@@ -104,6 +104,70 @@ log_directory: 'data/log'
 log_link_directory: 'data'
 log_link_name: 'winter.log'
 
+########### ROBO MANAGER ###########
+# read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
+# eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL
+robotic_manager_triggers:
+    timeformat: '%H:%M:%S.%f'
+    triggers:
+        startup:
+            type: 'sun'
+            val: 5.0
+            cond: '<'
+            sundir: 0
+            cmd: 'total_startup'
+        load_schedule:
+            type: 'sun'
+            val: 0.0
+            cond: '<'
+            sundir: 0
+            cmd: 'load_nightly_schedule'
+        evening_flats:
+            type: 'sun'
+            val: -5.0
+            cond: '<'
+            sundir: -1
+            cmd: 'robo_do_calibration'
+        focus:
+            type: 'sun'
+            val: -11.0
+            cond: '<'
+            sundir: 0
+            cmd: 'doFocusLoop'
+        start_obs:
+            type: 'sun'
+            val: -12.0
+            cond: '<'
+            sundir: 0
+            cmd: 'robo_run'
+        stop_obs:
+            type: 'sun'
+            val:  -12.0
+            cond: '>'
+            sundir: 1
+            cmd: 'robo_stop'
+        morning_flats:
+            type: 'sun'
+            val: -7.0
+            cond: '>'
+            sundir: 1
+            cmd: 'robo_do_calibration'
+        shutdown:
+            type: 'sun'
+            val: -4.0
+            cond: '>'
+            sundir: 1
+            cmd: 'total_shutdown'
+        kill:
+            type: 'time'
+            val: '8:01:0.0'
+            cond: '>'
+            sundir: 1
+            cmd: 'kill'
+            
+
+
+
 
 ########### TELESCOPE SET UP ##########
 telescope:

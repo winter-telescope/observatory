@@ -199,17 +199,32 @@ class SunSimulator(QtWidgets.QMainWindow):
         # make sure we enforce the timezone
         obstime = self.tz.localize(obstime)
         
-        obstime = astropy.time.Time(obstime, format = time_format)
+        obstime_astropy = astropy.time.Time(obstime, format = time_format)
         
-        frame = astropy.coordinates.AltAz(obstime = obstime, location = self.site)
+        frame = astropy.coordinates.AltAz(obstime = obstime_astropy, location = self.site)
         
-        sunloc = astropy.coordinates.get_sun(obstime)
+        sunloc = astropy.coordinates.get_sun(obstime_astropy)
         
         sun_coords = sunloc.transform_to(frame)
         
         sun_alt = sun_coords.alt.value
-        sun_az  = sun_coords.az.value        
-        return sun_alt, sun_az
+        sun_az  = sun_coords.az.value       
+        
+        # get the sun_alt from 0.5 seconds ago to determine if the sun is rising or setting
+        earlier_obstime = obstime - timedelta(seconds = 0.5)
+        earlier_obstime_astropy = astropy.time.Time(earlier_obstime, format = time_format)
+        earlier_frame = astropy.coordinates.AltAz(obstime = earlier_obstime_astropy, location = self.site)
+        earlier_sunloc = astropy.coordinates.get_sun(obstime_astropy)
+        
+        earlier_sun_coords = earlier_sunloc.transform_to(earlier_frame)
+        earlier_sun_alt = earlier_sun_coords.alt.value
+        
+        if sun_alt >= earlier_sun_alt:
+            sun_rising = True
+        else:
+            sun_rising = False
+        
+        return sun_alt, sun_az, sun_rising
         
     def update_time(self):
         
@@ -231,7 +246,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         
         self.qtime = QtCore.QDateTime.fromTime_t(self.sun_timestamp)
         
-        self.sun_alt, self.sun_az = self.getSunAltAz(self.time)
+        self.sun_alt, self.sun_az, self.sun_rising = self.getSunAltAz(self.time)
         
         # get the current speed
         self.speed = self.speedbox.value()
@@ -241,6 +256,8 @@ class SunSimulator(QtWidgets.QMainWindow):
         self.state.update({'sun_alt' : self.sun_alt})
         
         self.state.update({'sun_az' : self.sun_az})
+        
+        self.state.update({'sun_rising' : self.sun_rising})
         
         self.state.update({'timestamp': self.sun_timestamp})
         
