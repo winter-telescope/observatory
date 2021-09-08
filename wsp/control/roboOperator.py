@@ -838,6 +838,9 @@ class RoboOperator(QtCore.QObject):
         # slew the telescope
         self.doTry(f'mount_goto_alt_az {flat_alt} {flat_az}')
         
+        # TODO: Check this behavior
+        # NPL 09-07-21: commenting out all this sun checking, it is now handled elsewhere
+        """
         self.log(f'waiting for sun to begin taking sky flats')
         dt = 5
         t_elapsed = 0
@@ -854,16 +857,16 @@ class RoboOperator(QtCore.QObject):
                 self.log(f'wait complete.')
                 t_elapsed += dt
                 #break
-                """
+                '''
                 if t_elapsed >= 15:
                     self.log(f'timed out after {t_elapsed} seconds, returning')
                     #pass
                     break
-                """
+                '''
         except Exception as e:
             self.log(f'exception while waiting for sun: {e}')
             return
-        
+        """
         self.log(f'starting the flat observations')
         
         # if we got here we're good to start
@@ -875,6 +878,9 @@ class RoboOperator(QtCore.QObject):
         
         for i in range(nflats):
             self.log(f'setting up flat #{i + 1}')
+            """
+            # TODO: Check this behavior
+            # NPL 09-07-21: commenting out all this sun checking, it is now handled elsewhere
             # THIS IS GIVING THE WRONG ANSWER DURING SUNRISE
             # check to make sure we haven't hit the stop condition
             if end_condition_func():
@@ -884,7 +890,7 @@ class RoboOperator(QtCore.QObject):
                 self.log('sun position is not okay for flats anymore, stopping')
                 #break
                 pass
-            
+            """
             try:
                 # estimate required exposure time
                 flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
