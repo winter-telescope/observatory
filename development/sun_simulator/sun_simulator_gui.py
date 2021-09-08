@@ -151,7 +151,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         self.sun_timestamp = self.time.timestamp()
         self.sun_timeiso = self.time.isoformat(sep = ' ')
         
-        self.qtime_requested = QtCore.QDateTime.fromTime_t(self.time.timestamp())
+        self.qtime_requested = QtCore.QDateTime.fromTime_t(int(np.round(self.time.timestamp())))
         
         # update the reset time display to the initial qtime_requested
         self.datebox.setDateTime(self.qtime_requested)
@@ -244,7 +244,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         
         self.state.update({'UTC' : utc_datetime_str})
         
-        self.qtime = QtCore.QDateTime.fromTime_t(self.sun_timestamp)
+        self.qtime = QtCore.QDateTime.fromTime_t(int(np.round(self.sun_timestamp)))
         
         self.sun_alt, self.sun_az, self.sun_rising = self.getSunAltAz(self.time)
         
