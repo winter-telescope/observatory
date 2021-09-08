@@ -130,13 +130,13 @@ robotic_manager_triggers:
             cmd: 'robo_do_calibration'
         focus:
             type: 'sun'
-            val: -11.0
+            val: -10.0
             cond: '<'
             sundir: 0
             cmd: 'doFocusLoop'
         start_obs:
             type: 'sun'
-            val: -12.0
+            val: -14.0
             cond: '<'
             sundir: 0
             cmd: 'robo_run'
