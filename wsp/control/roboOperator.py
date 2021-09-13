@@ -299,12 +299,13 @@ class RoboOperator(QtCore.QObject):
         self.setup_schedule()
         
         
-        
+        """
         # start up the robotic observing!
+        #TODO: NPL 9-8-21 commenting out since this has been moved to roboManager
         if self.mode == 'r':
             # start the robo?
             self.restart_robo()        # make a timer that will control the cadence of checking the conditions
-        
+        """
         ### SET UP POINTING MODEL BUILDER ###
         self.pointingModelBuilder = pointingModelBuilder.PointingModelBuilder()
         

@@ -164,16 +164,19 @@ class Schedule(object):
             #TODO: this isn't handled properly!
         else:
             if schedulefile_name.lower() == 'nightly':
-                self.schedulefile_name = self.config['scheduleFile_nightly_prefix'] + utils.tonight() +'.db'
+                #self.schedulefile_name = self.config['scheduleFile_nightly_prefix'] + utils.tonight_local() +'.db'
+                self.schedulefile_name = 'data'
                 self.scheduleType = 'nightly'
+                self.schedulefile = os.readlink(os.path.join(os.getenv("HOME"), self.config['scheduleFile_nightly_link_directory'], self.config['scheduleFile_nightly_link_name']))
             else:
                 if '.db' not in schedulefile_name:
                     schedulefile_name = schedulefile_name + '.db'
                 self.schedulefile_name = schedulefile_name
                 self.scheduleType = 'target'
+                self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
             
         #self.schedulefile = self.base_directory + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
-        self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
+        #self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
         
         self.logger.info(f'scheduler: creating sql engine to schedule file at {self.schedulefile}')
         self.engine = db.create_engine('sqlite:///' + self.schedulefile)
@@ -257,7 +260,10 @@ class Schedule(object):
         """
         Closes the result and the connection to the database
         """
-        self.result.close()
+        try:
+            self.result.close()
+        except Exception as e:
+            self.logger.warning(f'schedule: COULD NOT CLOSE RESULT DURING SHUTDOWN: {e}')
         self.conn.close()
 
 

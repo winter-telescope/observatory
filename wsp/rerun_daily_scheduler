@@ -32,7 +32,8 @@ daily_scheduler_path = os.path.join(code_path, 'scheduler','daily_summer_schedul
 filepath = os.path.join(daily_scheduler_path,'run_winter_sim.py')
 sky_config = os.path.join(daily_scheduler_path, 'sims', 'summer_1_night.json')
 night_config = os.path.join(daily_scheduler_path, 'config', 'tonight.cfg')
-print(f'Setting up to run schedule for night of {utils.tonight()}')
+#print(f'Setting up to run schedule for night of {utils.tonight()}')
+print(f'Setting up to run schedule for night of {utils.tonight_local()}')
 print(f'### RUNNING DAILY WINTER SCHEDULER ###')
 print(f'wsp_path = {wsp_path}')
 print(f'daily_scheduler_path = {daily_scheduler_path}')
@@ -40,7 +41,9 @@ print(f'daily_scheduler_path = {daily_scheduler_path}')
 cmd = f"python {filepath} '{sky_config}' '{night_config}'"
 
 # where will the schedule file write to?
-schedulefile_name = f'nightly_{utils.tonight()}.db'
+#schedulefile_name = f'nightly_{utils.tonight()}.db'
+schedulefile_name = f'nightly_{utils.tonight_local()}.db'
+
 
 # set up the alert system to post to slack
 auth_config_file  = wsp_path + '/credentials/authentication.yaml'

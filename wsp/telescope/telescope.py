@@ -65,7 +65,17 @@ class Telescope(pwi4_client.PWI4):
         self.wrap_check_enabled = True#False
         self.wrap_status = False
         self.logger = logger
-    
+        
+        # put things in a safe position on startup
+        self.mount_stop()
+        time.sleep(1)
+        self.mount_tracking_off()
+        time.sleep(1)
+        self.rotator_stop()
+        time.sleep(1)
+        self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
+        time.sleep(1)
+        
     def log(self, msg):
         msg = f'telescope: {msg}'
         if self.logger is None:

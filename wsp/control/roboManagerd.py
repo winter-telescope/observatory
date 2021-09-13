@@ -526,7 +526,7 @@ class RoboTrigger(object):
         self.val = val
         self.cond = cond
         self.cmd = cmd
-        self.sundir = sundir
+        self.sundir = int(sundir)
         
 
 
@@ -560,6 +560,10 @@ class RoboManager(QtCore.QObject):
         self.alertHandler = alertHandler
         self.verbose = verbose
         self.sunsim = sunsim
+        
+        # post a message that the roboManager has been started
+        self.alertHandler.slack_log(f':futurama-bender-robot: *roboManager started!*')
+
         
         # dictionaries for the triggered commands
         self.triggers = dict()
@@ -614,8 +618,12 @@ class RoboManager(QtCore.QObject):
                     pass
         
         # check if we should be requesting any tasks
-        self.checkWhatToDo()
-                    
+        try:
+            self.checkWhatToDo()
+        except Exception as e:
+            # do nothing for now
+            #print(f'roboManager: could not check what to do: {e}')
+            pass
         #print(f'roboManager (Thread {threading.get_ident()}): got new status. status = {json.dumps(self.state, indent = 2)}')
         """
         print(f'roboManager (Thread {threading.get_ident()}): got new status:')
@@ -702,7 +710,8 @@ class RoboManager(QtCore.QObject):
         """
         # file
         self.triglog_dir = os.path.join(os.getenv("HOME"),'data','triglogs')
-        self.triglog_filename = f'triglog_{utils.tonight()}.json'
+        #self.triglog_filename = f'triglog_{utils.tonight()}.json'
+        self.triglog_filename = f'triglog_{utils.tonight_local()}.json'
         self.triglog_filepath = os.path.join(self.triglog_dir, self.triglog_filename)
 
         self.triglog_linkdir = os.path.join(os.getenv("HOME"),'data')
@@ -870,7 +879,9 @@ class RoboManager(QtCore.QObject):
                     print(f'\ttrig condition: {trig_condition} --> {trig_condition_met}')
                     print()
                     # send the trigger command
+                    self.alertHandler.slack_log(f':futurama-bender-robot: roboManager: sending command *{trig.cmd}*')
                     self.do(trig.cmd)
+                    
                     
                     # log that we've sent the command
                     #self.triglog.update({trigname : True})
@@ -1027,9 +1038,9 @@ if __name__ == "__main__":
                     print(modes[arg])
                     doLogging = False
                 
-                elif opt == 'domesim':
+                elif opt == 'sunsim':
                     print(modes[arg])
-                    domesim = True
+                    sunsim = True
             else:
                 print(f'Invalid mode {arg}')
     

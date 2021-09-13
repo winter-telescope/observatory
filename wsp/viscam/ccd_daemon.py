@@ -460,7 +460,8 @@ class CCD(QtCore.QObject):
         
         if image_directory == 'default':
             
-            tonight = utils.tonight()
+            #tonight = utils.tonight()
+            tonight = utils.tonight_local()
             
             ### SET UP NIGHTLY IMAGE DIRECTORY ###
             self.image_directory = os.path.join(os.getenv("HOME"), self.config['image_directory'], tonight)
