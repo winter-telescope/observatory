@@ -1428,6 +1428,10 @@ class Wintercmd(QtCore.QObject):
                                     action = 'store_true',
                                     default = False,
                                     help = '<run_robotic_schedule>')
+        self.cmdparser.add_argument('--roboruntest',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = '<run_robotic_schedule>')
         
         self.getargs()
         
@@ -1450,6 +1454,13 @@ class Wintercmd(QtCore.QObject):
         else:
             roborun = False
             self.logger.info('wintercmd: doFocusLoop: I will run the robotic schedule when I am finished!')
+        
+        if self.args.roboruntest:
+            roboruntest = True
+        else:
+            roboruntest = False
+            self.logger.info('wintercmd: doFocusLoop: I will run the robotic schedule IN TEST MODE when I am finished!')
+        
         
         try:
             if self.args.fine:
@@ -1553,6 +1564,9 @@ class Wintercmd(QtCore.QObject):
         # start the robotic schedule executor when finished?
         if roborun:
             self.parse('robo_run')
+            
+        elif roboruntest:
+            self.parse('robo_run_test')
         
         return focuser_pos
             

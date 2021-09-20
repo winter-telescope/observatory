@@ -58,6 +58,10 @@ class local_ccd(QtCore.QObject):
         self.logger = logger
         self.default = self.config['default_value']
         
+        # placeholders for getting the image parameters from ccd_daemon
+        self.image_directory = 'UNKNOWN'
+        self.image_filename = 'UNKNOWN'
+        
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)
         
@@ -146,7 +150,23 @@ class local_ccd(QtCore.QObject):
             except Exception as e:
                 #(f'ccd: could not update remote state: {e}')
                 pass
+            
+            # get the last image name
+            try:
+                self.image_directory, self.image_filename = self.remote_object.getLastImagePath()
+            except Exception as e:
+                self.image_directory = 'UNKNOWN'
+                self.image_filename = 'UNKNOWN'
+                
+                self.logger.error(f'ccd: could not get last image filename due to {e}')
     
+    def getLastImagePath(self):
+        
+        image_directory = self.image_directory
+        image_filename = self.image_filename
+        
+        return image_directory, image_filename
+            
     def parse_state(self):
         '''
         Do any conditioning we need to properly handle and parse the state dictionary

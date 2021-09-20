@@ -566,13 +566,18 @@ class RoboOperator(QtCore.QObject):
         else:
             #print(f'scheduleExecutor: loading schedule file [{self.schedulefile_name}]')
             # code that sets up the connections to the databases
-            self.getSchedule(self.schedulefile_name)
+            # NPL: 09-13-21: added start_fresh = True so changing schedules will start at the first entry
+            self.getSchedule(self.schedulefile_name, startFresh = True)
             self.writer.setUpDatabase()
     
         
     
-    def getSchedule(self, schedulefile_name):
-        self.schedule.loadSchedule(schedulefile_name, self.lastSeen+1)
+    def getSchedule(self, schedulefile_name, startFresh = True):
+        if startFresh:
+            currentTime = 0
+        else:
+            currentTime = self.lastseen + 1
+        self.schedule.loadSchedule(schedulefile_name, currentTime = currentTime)
 
     def interrupt(self):
         self.schedule.currentObs = None
@@ -788,6 +793,17 @@ class RoboOperator(QtCore.QObject):
             
         self.announce(':greentick: startup complete!')
     
+    
+    def restartScheduleExecution(self):
+        """
+        Run this function anytime we are going to restart the robotic operations
+        it will:
+            1. refocus the telescope
+            2. start the robotic operator loop
+        """
+        
+        
+        
     def skyflat_sun_low_enough(self):
         # check if the sunalt is within workable range for doing sky flats
         lim = -5
@@ -952,13 +968,14 @@ class RoboOperator(QtCore.QObject):
         self.do(f'ccd_set_exposure 30.0')
         
         for i in range(5):
-            
+            self.announce(f'Executing Auto Darks {i+1}/5')
             self.do(f'robo_do_exposure -d')
             
         ### Take bias ###
         self.do(f'ccd_set_exposure 0.0')
         
         for i in range(5):
+            self.announce(f'Executing Auto Bias {i+1}/5')
             self.do(f'robo_do_exposure -b')
             
         
@@ -1182,8 +1199,13 @@ class RoboOperator(QtCore.QObject):
             
             
             if self.state["ok_to_observe"]:
-                    image_filename = str(self.lastSeen)+'.FITS'
-                    image_filepath = os.path.join(self.writer.base_directory, self.config['image_directory'], image_filename) 
+                
+                    #image_filename = str(self.lastSeen)+'.FITS'
+                    #image_filepath = os.path.join(self.writer.base_directory, self.config['image_directory'], image_filename) 
+                    
+                    image_directory, image_filename = self.ccd.getLastImagePath()
+                    image_filepath = os.path.join(image_directory, image_filename)
+                
                     # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
                     header_data = self.get_data_to_log()
                     # self.state.update(currentData)
@@ -1330,7 +1352,11 @@ class RoboOperator(QtCore.QObject):
         if postPlot:
             # make a jpg of the last image and publish it to slack!
             postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
-        
+    
+    def point_and_slew(self, targtype, target = None, tracking = 'auto', field_angle = 'auto'):
+        pass
+    
+    
     def do_observation(self, targtype, target = None, tracking = 'auto', field_angle = 'auto', obstype = 'TEST', comment = ''):
         """
         A GENERIC OBSERVATION FUNCTION

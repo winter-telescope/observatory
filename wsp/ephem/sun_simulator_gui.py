@@ -61,8 +61,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         """
 
         super(SunSimulator, self).__init__(*args, **kwargs)
-        #uic.loadUi(wsp_path + '/dome/' + 'dome_simulator.ui', self)  # Load the .ui file
-        uic.loadUi('sun_simulator.ui', self) # Load the .ui file
+        uic.loadUi(os.path.join(wsp_path, 'ephem', 'sun_simulator.ui'), self) # Load the .ui file
         
         self.threadpool = QtCore.QThreadPool()
         

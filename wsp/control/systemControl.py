@@ -96,7 +96,8 @@ class control(QtCore.QObject):
                            'dome_simulator_gui.py',
                            'ephemd.py', 
                            'dirfiled.py',
-                           'roboManagerd.py']
+                           'roboManagerd.py',
+                           'sun_simulator.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -155,7 +156,7 @@ class control(QtCore.QObject):
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
             self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py")
             self.daemonlist.add_daemon(self.ephemd)
-        """
+        
         if mode in ['r']:
             # ROBOTIC OPERATION MODE!
             # ROBO MANAGER DAEMON
@@ -166,7 +167,7 @@ class control(QtCore.QObject):
                 # start up the fake sun_simulator
                 self.sunsimd = daemon_utils.PyDaemon(name = 'sun_simulator', filepath = f"{wsp_path}/ephem/sun_simulator_gui.py")
                 self.daemonlist.add_daemon(self.sunsimd)
-        """
+        
         # Launch all hardware daemons
         self.daemonlist.launch_all()
         

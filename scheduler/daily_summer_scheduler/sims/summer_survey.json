@@ -1,0 +1,21 @@
+{
+
+	"queue_name": "default",
+        "queue_description": "SUMMER Overhead Survey",
+        "queue_manager": "gurobi",
+	"observing_programs": [
+		{"program_name": "SUMMER",
+		 "subprogram_name": "all_sky",
+		 "program_pi": "WINTER",
+		 "program_observing_fraction": 1.0,
+		 "subprogram_fraction": 1.0,
+		 "field_selections":{"dec_range":[12,23]},
+		 "filter_choice": "sequence",
+		 "filter_ids": [1, 2],
+		 "internight_gap_days": 3,
+		 "n_visits_per_night": 2,
+		 "nightly_priority": "oldest",
+		 "active_months": "all"}
+
+	]
+}

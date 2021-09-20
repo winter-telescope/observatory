@@ -45,6 +45,7 @@ import pathlib
 import traceback
 import pytz
 
+
 # add the wsp directory to the PATH
 wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
 # switch to this when ported to wsp
@@ -332,24 +333,28 @@ class StatusMonitor(QtCore.QObject):
     
 class CommandHandler(QtCore.QObject):
     newReply = QtCore.pyqtSignal(int)
-    newCommand = QtCore.pyqtSignal(str)
+    newCommand = QtCore.pyqtSignal(object)
+    doReconnect = QtCore.pyqtSignal()
+    updateTrigLog = QtCore.pyqtSignal(object)
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
+    def __init__(self, addr, port, logger = None, alertHandler = None, connection_timeout = 0.5, verbose = False):
         super(CommandHandler, self).__init__()
         
         self.state = dict()
         self.addr = addr # IP address
         self.port = port # port
         self.logger = logger
+        self.alertHandler = alertHandler
         self.connection_timeout = connection_timeout # time to allow each connection attempt to take
         self.verbose = verbose
         # this reply is updated in the dome state dictionary when the connection is dead
+        self.connectedReply = -1
         self.disconnectedReply = -9
         
         #self.timestamp = datetime.utcnow().timestamp()
         self.connected = False
         
-        #self.reconnector = ReconnectHandler()
+        self.reconnector = ReconnectHandler()
         
         self.setup_connection()
     
@@ -366,8 +371,8 @@ class CommandHandler(QtCore.QObject):
         self.connect_socket()
     
     def create_socket(self):
-        if self.verbose:
-            self.log(f'(Thread {threading.get_ident()}) CommandHandler: Creating socket')
+        #if self.verbose:
+        self.log(f'(Thread {threading.get_ident()}) CommandHandler: Creating socket')
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         #self.sock.settimeout(self.connection_timeout)
         
@@ -379,19 +384,23 @@ class CommandHandler(QtCore.QObject):
         self.sock.settimeout(150)
         
     def connect_socket(self):
-        if self.verbose:
-            self.log(f'(Thread {threading.get_ident()}) CommandHandler: Attempting to connect socket')
+        #if self.verbose:
+        self.log(f'CommandHandler: (Thread {threading.get_ident()}) Attempting to connect socket')
+
+        #NPL 9-17-21 adding this line from statusmonitor to avoid infinite reconnections
         # record the time of this connection attempt
-        #self.reset_last_recconnect_timestamp()
-        #self.reconnector.reset_last_reconnect_timestamp()
+        self.reconnector.reset_last_reconnect_timestamp()
+        
+        # increment the reconnection timeout
+        self.reconnector.increment_reconnect_timeout()
         
         try:
             
             # try to reconnect the socket
             self.sock.connect((self.addr, self.port))
             
-            if self.verbose:
-                self.log(f'(Thread {threading.get_ident()}) Connection attempt successful!')
+            #if self.verbose:
+            self.log(f'CommandHandler: (Thread {threading.get_ident()}) Connection attempt successful!')
             
             #if this works, then set connected to True
             self.connected = True
@@ -405,20 +414,44 @@ class CommandHandler(QtCore.QObject):
             # the connection is broken. set connected to false
             self.connected = False
             
-            if self.verbose:
-                print(f'(Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')   
+            #if self.verbose:
+            self.log(f'CommandHandler: (Thread {threading.get_ident()}) CommandHandler: connection unsuccessful.')   
             
             self.newReply.emit(self.disconnectedReply)
             # increment the reconnection timeout
             #self.reconnector.increment_reconnect_timeout()
             
+            ### NPL 9-17-21: trying to get this to attempt reconnections!
+            # the dome is not connected. set the reply to something that represents this state
+            self.newReply.emit(self.disconnectedReply)
+            #print(f'Dome Status Not Connected. ')
             
-    def sendCommand(self, cmd):
+            ### COpied from dome: StatusMonitor pollStatus
+            self.reconnector.get_time_since_last_connection()
+            
+            
+            #if self.reconnect_remaining_time <= 0.0:
+            if self.reconnector.reconnect_remaining_time <= 0.0:
+                if self.verbose:
+                    self.log('CommandHandler: Do a reconnect')
+                # we have waited the full reconnection timeout
+                self.doReconnect.emit()
+                self.connect_socket()
+                
+            else:
+                # we haven't waited long enough do nothing
+                pass
+            
+    def sendCommand(self, cmdRequest):
         '''
         This takes the command string and sends it directly to the dome.
         It takes any received reply and triggers a new reply event
         '''
+        cmd = cmdRequest.cmd
         
+        
+        
+        self.log(f'CommandHandler: Trying to send command {cmd}')
         
         if self.connected:
             #self.time_since_last_connection = 0.0
@@ -434,8 +467,17 @@ class CommandHandler(QtCore.QObject):
                              #timeout = self.connection_timeout)
                              #timeout = 10000)
                 
-                self.log(f'CommandHandler: Sent command {cmd} to dome. Received reply: {reply}')
-                self.newReply.emit(reply)
+                
+                
+                #self.log(f'CommandHandler: Sent command {cmd} to WSP. Received reply: {reply}')
+                self.log(f'CommandHandler: Command {cmd} sent successfully!')
+                self.newReply.emit(self.connectedReply)
+                
+                # send alert that we're sending the command
+                self.alertHandler.slack_log(f':futurama-bender-robot: roboManager: sent command *{cmd}*')
+                
+                # emit a signal that roboManager should update the triglog
+                self.updateTrigLog.emit(cmdRequest)
             
             except Exception as e:
                 #print(f'Query attempt failed.')
@@ -447,19 +489,39 @@ class CommandHandler(QtCore.QObject):
             # the dome is not connected. set the reply to something that represents this state
             self.newReply.emit(self.disconnectedReply)
             #print(f'Dome Status Not Connected. ')
+            
+            ### COpied from dome: StatusMonitor pollStatus
+            self.reconnector.get_time_since_last_connection()
+            
+            
+            #if self.reconnect_remaining_time <= 0.0:
+            if self.reconnector.reconnect_remaining_time <= 0.0:
+                if self.verbose:
+                    self.log('CommandHandler: Do a reconnect')
+                # we have waited the full reconnection timeout
+                self.doReconnect.emit()
+                self.connect_socket()
+                
+            else:
+                # we haven't waited long enough do nothing
+                pass
+            
             pass
 
 class CommandThread(QtCore.QThread):
     newReply = QtCore.pyqtSignal(int)
-    newCommand = QtCore.pyqtSignal(str)
+    newCommand = QtCore.pyqtSignal(object)
     doReconnect = QtCore.pyqtSignal()
+    updateTrigLog = QtCore.pyqtSignal(object)
     
-    def __init__(self, addr, port, logger = None, connection_timeout = 0.5, verbose = False):
+    def __init__(self, addr, port, logger = None, alertHandler = None, connection_timeout = 0.5, triglog = dict(), verbose = False):
         super(QtCore.QThread, self).__init__()
         self.addr = addr
         self.port = port
         self.logger = logger
+        self.alertHandler = alertHandler
         self.connection_timeout = connection_timeout
+        self.triglog = triglog
         self.verbose = verbose
     
     def HandleCommand(self, cmd):
@@ -468,12 +530,15 @@ class CommandThread(QtCore.QThread):
     def DoReconnect(self):
         #print(f'(Thread {threading.get_ident()}) Main: caught reconnect signal')
         self.doReconnect.emit()
+        
+    def DoUpdateTrigLog(self, cmdRequest):
+        self.updateTrigLog.emit(cmdRequest)
     
     def run(self):    
         def SignalNewReply(reply):
             self.newReply.emit(reply)
         
-        self.commandHandler = CommandHandler(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
+        self.commandHandler = CommandHandler(self.addr, self.port, logger = self.logger, alertHandler = self.alertHandler, connection_timeout = self.connection_timeout, verbose = self.verbose)
         # if the newReply signal is caught, execute the sendCommand function
         self.newCommand.connect(self.commandHandler.sendCommand)
         self.commandHandler.newReply.connect(SignalNewReply)
@@ -481,6 +546,8 @@ class CommandThread(QtCore.QThread):
         # if we recieve a doReconnect signal, trigger a reconnection
         self.doReconnect.connect(self.commandHandler.connect_socket)
         
+        # if the CommandHandler says to update the trigger log, emit a signal that can be caught by roboManager
+        self.commandHandler.updateTrigLog.connect(self.DoUpdateTrigLog)
         self.exec_()
 
 class StatusThread(QtCore.QThread):
@@ -515,20 +582,37 @@ class StatusThread(QtCore.QThread):
         
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.statusMonitor.pollStatus)
-        self.timer.start(100)
+        self.timer.start(5000)
         self.exec_()
         
     
-class RoboTrigger(object):
+class RoboTriggerCond(object):
     
-    def __init__(self, trigtype, val, cond, cmd, sundir):
+    def __init__(self, trigtype, val, cond):
         self.trigtype = trigtype
         self.val = val
         self.cond = cond
+        
+        
+class RoboTrigger(object):
+    def __init__(self, cmd, sundir, triglist = []):
         self.cmd = cmd
         self.sundir = int(sundir)
-        
+        self.triglist = triglist
 
+class TriggeredCommandRequest(object):
+    def __init__(self, cmd, trigname = None, sun_alt = -888, time_string = ''):
+        """
+        This is an object which holds a request which will be sent from the roboManager to the 
+        commandHandler. It holds the command to be sent to WSP, as well as the name of the trigger
+        and the sun altitude and time of the request. THis allows the commandHandler to 
+        handle signaling the roboManager to update the trigger log IFF the command is 
+        properly received by WSP.
+        """
+        self.cmd = cmd
+        self.trigname = trigname
+        self.sun_alt = sun_alt
+        self.time_string = time_string
 
 #class Dome(object):        
 class RoboManager(QtCore.QObject):
@@ -545,7 +629,7 @@ class RoboManager(QtCore.QObject):
     """
     
     #statusRequest = QtCore.pyqtSignal(object)
-    commandRequest = QtCore.pyqtSignal(str)
+    commandRequest = QtCore.pyqtSignal(object)
     
     def __init__(self, config, addr, port, status_proxyname, sunsim = False, logger = None, connection_timeout = 1.5, alertHandler = None, verbose = False):
         super(RoboManager, self).__init__()
@@ -564,6 +648,8 @@ class RoboManager(QtCore.QObject):
         # post a message that the roboManager has been started
         self.alertHandler.slack_log(f':futurama-bender-robot: *roboManager started!*')
 
+        # flag to indicate it's the first time running on restart
+        self.first_time = True
         
         # dictionaries for the triggered commands
         self.triggers = dict()
@@ -574,7 +660,10 @@ class RoboManager(QtCore.QObject):
         self.tz = pytz.timezone('America/Los_Angeles')
         
         self.statusThread = StatusThread(self.proxyname, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
-        self.commandThread = CommandThread(self.addr, self.port, logger = self.logger, connection_timeout = self.connection_timeout, verbose = self.verbose)
+        self.commandThread = CommandThread(self.addr, self.port, logger = self.logger, alertHandler = self.alertHandler, connection_timeout = self.connection_timeout, triglog = self.triglog, verbose = self.verbose)
+
+        
+        
         # connect the signals and slots
         
         self.statusThread.start()
@@ -590,6 +679,8 @@ class RoboManager(QtCore.QObject):
         self.statusThread.newStatus.connect(self.updateStatus)
         self.commandRequest.connect(self.commandThread.HandleCommand)
         self.commandThread.newReply.connect(self.updateCommandReply)
+        self.commandThread.updateTrigLog.connect(self.HandleUpdateTrigLog)
+        
         self.log(f'running in thread {threading.get_ident()}')
         
     def log(self, msg, level = logging.INFO):
@@ -662,20 +753,29 @@ class RoboManager(QtCore.QObject):
         
         # create local dictionary of triggers
         for trig in self.config['robotic_manager_triggers']['triggers']:
+            triglist = list()
+            print(f'handling trigger: {trig}')
             
-            print(trig)
+            trigsundir  = self.config['robotic_manager_triggers']['triggers'][trig]['sundir']
+            trigcmd     = self.config['robotic_manager_triggers']['triggers'][trig]['cmd']
             
-            trigtype = self.config['robotic_manager_triggers']['triggers'][trig]['type']
-            trigcond = self.config['robotic_manager_triggers']['triggers'][trig]['cond']
-            trigval  = self.config['robotic_manager_triggers']['triggers'][trig]['val']
-            trigcmd  = self.config['robotic_manager_triggers']['triggers'][trig]['cmd']
-            trigsundir = self.config['robotic_manager_triggers']['triggers'][trig]['sundir']
+            for cond in self.config['robotic_manager_triggers']['triggers'][trig]['conds']:
+                print(f'handling condition: {cond}')
+                trigtype    = self.config['robotic_manager_triggers']['triggers'][trig]['conds'][cond]['type']
+                trigcond    = self.config['robotic_manager_triggers']['triggers'][trig]['conds'][cond]['cond']
+                trigval     = self.config['robotic_manager_triggers']['triggers'][trig]['conds'][cond]['val']
+                
+                
+                # create a trigger object
+                trigObj = RoboTriggerCond(trigtype = trigtype, val = trigval, cond = trigcond)
+                RoboTrigger
+                # add the trigger object to the trigger list for this trigger
+                triglist.append(trigObj)
             
-            # create a trigger object
-            trigObj = RoboTrigger(trigtype = trigtype, val = trigval, cond = trigcond, cmd = trigcmd, sundir = trigsundir)
-            
+                
             # add the trigger object to the trigger dictionary
-            self.triggers.update({trig : trigObj})
+            roboTrigger = RoboTrigger(trigcmd, trigsundir, triglist)
+            self.triggers.update({trig : roboTrigger})
         
         # set up the log file
         
@@ -700,6 +800,24 @@ class RoboManager(QtCore.QObject):
             #yaml.dump(self.triglog, file)#, default_flow_style = False)
             json.dump(self.triglog, file, indent = 2)
         
+    
+    def HandleUpdateTrigLog(self, cmdRequest):
+        """
+        This handles updating the triglog and triglog file when requests
+        are sent and properly received by WSP. It is triggered by the CommandHandler
+        """
+        self.log(f'Main: caught signal to update triglog for {cmdRequest.trigname}')
+        
+        trigname = cmdRequest.trigname
+        sun_alt = cmdRequest.sun_alt
+        time_string = cmdRequest.time_string
+        
+        self.triglog.update({trigname : {'sent' : True, 
+                                             'sun_alt_sent' : sun_alt, 
+                                             'time_sent' : time_string}})
+        # update the triglog file
+        self.updateTrigLogFile()
+        pass
     
     def setupTrigLog(self):
         """
@@ -752,9 +870,79 @@ class RoboManager(QtCore.QObject):
             os.symlink(self.triglog_filepath, self.triglog_linkpath)
         
         print(f'\ntriglog = {json.dumps(self.triglog, indent = 2)}')
-            
-        
     
+    def getTrigCurVals(self, triggercond):
+        """:
+        get the trigger value (the value on which to trigger), and the current value of the given trigger
+        trigger must be in self.config['robotic_manager_triggers']['triggers']
+        
+        this is trying to build a general framework where we can decide down the line that we want to trigger
+        a command off of the sun altitude or a time.
+        
+        it may be too fussy and might not worth doing this way, but we shall see.
+        """
+        # triggercond must be a trigger cond object
+        
+        
+        trigtype = triggercond.trigtype
+                    
+        if trigtype == 'sun':
+            #print(f'handling sun trigger:')
+            #trigval = self.config['robotic_manager_triggers']['triggers'][trigname]['val']
+            trigval = triggercond.val
+            #curval = self.sun_alt
+            curval = self.state['sun_alt']
+            
+        elif trigtype == 'time':
+            #print(f'handling time trigger:')
+            trigval = triggercond.val
+            trig_datetime = datetime.strptime(trigval, self.config['robotic_manager_triggers']['timeformat'])
+            
+            if self.sunsim:
+                now_datetime = datetime.fromtimestamp(self.state['timestamp'])
+            else:
+                now_datetime = datetime.now()
+                
+            
+            # now the issue is that the timestamp from trig_datetime has a real time but a nonsense date. so we can't subtract
+            # to be able to subtract, let's make the two times on the same day, and use the now_datetime to get the day.
+            
+            now_year = now_datetime.year
+            now_month = now_datetime.month
+            now_day = now_datetime.day
+            
+            trig_hour = trig_datetime.hour
+            trig_minute = trig_datetime.minute
+            trig_second = trig_datetime.second
+            trig_microsecond = trig_datetime.microsecond
+            
+            trig_datetime_today = datetime(year = now_year, 
+                                           month = now_month, 
+                                           day = now_day,
+                                           hour = trig_hour,
+                                           minute = trig_minute,
+                                           second = trig_second,
+                                           microsecond = trig_microsecond)
+            
+            # if the trigger time is between 0:00 and 8:00 then we need to shove it forward by a day
+            if (trig_hour < 8.0) & (now_datetime.hour > 8) & (now_datetime.hour <= 24):
+                trig_datetime_today += timedelta(days = 1)
+            
+            #NOW we have two times on the same day. subtract to get the 
+            # for the trigval and the curval we will return the timestamps of each. these can be compared easily
+            trigval = trig_datetime_today.timestamp()
+            #curval = self.timestamp
+            #curval = self.state['timestamp']
+            curval = now_datetime.timestamp()
+            #print(f'trig_datetime_today = {trig_datetime_today}, timestamp = {trig_datetime_today.timestamp()}')
+            #print(f'now_datetime        = {now_datetime}, timestamp = {now_datetime.timestamp()}')
+            #print()
+            
+        return trigval, curval
+    
+        
+    '''
+    # original version before allowing multiple conditions per each trigger
     def getTrigCurVals(self, trigname):
         """:
         get the trigger value (the value on which to trigger), and the current value of the given trigger
@@ -818,8 +1006,115 @@ class RoboManager(QtCore.QObject):
             #print()
             
         return trigval, curval
+    '''
+    
+    def handleTrigger(self, trigname):
+        
+        # load up the trigger object
+        trig = self.triggers[trigname]
+        
+        ## original method:
+        ## see if the trigger condition has been met
+        #trigval, curval = self.getTrigCurVals(trigname)
+        ##print(f'\ttrigval = {trigval}, curval = {curval}')
+        #
+        #trig_condition = f'{curval} {trig.cond} {trigval}'
+        #trig_condition_met = eval(trig_condition)
+
+        # get the triglist for the given trigger
+        triglist = self.triggers[trigname].triglist
+        num_trigs = len(triglist)
+        if self.verbose:
+            print(f'\tevaluating {num_trigs} triggers for trigger: {trigname}')
+        
+        # create a condition list to be met. initialize with all conditions false
+        condlist = [False for i in range(num_trigs)]
+        if self.verbose:
+            print(f'\tinitializing condlist to: {condlist}')
+        
+        # step through all the triggers and evaluate. add their condition result boolean to the condlist
+        for i in range(num_trigs):
+            
+            trig_i = triglist[i]
+            trigval, curval = self.getTrigCurVals(triggercond = trig_i)
+            trig_condition = f'{curval} {trig_i.cond} {trigval}'
+            trig_condition_met = eval(trig_condition)
+            
+            # update the condlist with the value
+            condlist[i] = trig_condition_met
+        
+        if self.verbose:
+            print(f'\tcondlist = {condlist}')
         
         
+        # flag describes whether ALL conditions are met
+        all_conditions_met = all(condlist)
+        if self.verbose:
+            print(f'\t All conditions met: {all_conditions_met}')
+        
+                
+                
+                
+        # check the sun direction (ie rising/setting)
+        if trig.sundir == 0:
+            trig_sun_ok = True
+        elif trig.sundir <0:
+            # require sun to be setting
+            if self.state['sun_rising']:
+                trig_sun_ok = False
+            else:
+                trig_sun_ok = True
+        else:
+            # require sun to be rising
+            if self.state['sun_rising']:
+                trig_sun_ok = True
+            else:
+                trig_sun_ok = False
+        
+        if self.verbose:
+            print(f'trigger sun rising condition okay: {trig_sun_ok}')
+        #print(f'\ttrig condition: {trig_condition} --> {trig_condition_met}')
+        
+        if all_conditions_met & trig_sun_ok:
+            # the trigger condition is met!
+            print()
+            print(f'Time to send the {trig.cmd} command!')
+            print(f'\ttrigval = {trigval}, curval = {curval}')
+            print(f'\ttrig condition: {trig_condition} --> {trig_condition_met}')
+            print()
+            # send alert that we're sending the command
+            #self.alertHandler.slack_log(f':futurama-bender-robot: roboManager: sending command *{trig.cmd}*')
+            
+            # SEND THE COMMAND
+            self.do(trig.cmd, 
+                    trigname = trigname,
+                    sun_alt = self.state['sun_alt'], 
+                    time_string = datetime.fromtimestamp(self.state['timestamp']).isoformat(sep = ' '))
+            
+            
+            # log that we've sent the command
+            """
+            # MOVED THIS TO THE COMMAND HANDLER SEND METHOD
+            self.triglog.update({trigname : {'sent' : True, 
+                                             'sun_alt_sent' : self.state['sun_alt'], 
+                                             'time_sent' : datetime.fromtimestamp(self.state['timestamp']).isoformat(sep = ' ')}})
+            # update the triglog file
+            self.updateTrigLogFile()
+            """
+            # pause here briefly so commands don't pile up
+            dt = 0.1
+            t = 0
+            timeout = 2.0
+            while t < timeout:
+                time.sleep(dt)
+                t += dt
+                QtCore.QCoreApplication.processEvents()
+            
+        else:
+            # trigger condition not met
+            if self.verbose:
+                print(f'\tNot yet time to send {trig.cmd} command')
+            pass
         
         
     def checkWhatToDo(self):
@@ -834,69 +1129,42 @@ class RoboManager(QtCore.QObject):
 
         """
         
-        # startup #
-        #for trigname in ['startup']:
-        for trigname in self.triggers.keys():
-            #print(f'evaluating trigger: {trigname}')
-            # load up the trigger object
-            trig = self.triggers[trigname]
-            
-            # check to see if the trigger has already been executed
-            if self.triglog[trigname]['sent']:
-                # the trigger cmd has already been sent. do nothing.
-                pass
-            else:
-                # see if the trigger condition has been met
-                trigval, curval = self.getTrigCurVals(trigname)
-                #print(f'\ttrigval = {trigval}, curval = {curval}')
+        try:
+            #for trigname in ['startup']:
+            for trigname in self.triggers.keys():
+                if self.verbose:
+                        print(f'evaluating trigger: {trigname}')
+                # load up the trigger object
+                trig = self.triggers[trigname]
                 
-                trig_condition = f'{curval} {trig.cond} {trigval}'
-                trig_condition_met = eval(trig_condition)
-                
-                # check the sun direction (ie rising/setting)
-                if trig.sundir == 0:
-                    trig_sun_ok = True
-                elif trig.sundir <0:
-                    # require sun to be setting
-                    if self.state['sun_rising']:
-                        trig_sun_ok = False
-                    else:
-                        trig_sun_ok = True
-                else:
-                    # require sun to be rising
-                    if self.state['sun_rising']:
-                        trig_sun_ok = True
-                    else:
-                        trig_sun_ok = False
-                
-                #print(f'\ttrig condition: {trig_condition} --> {trig_condition_met}')
-                
-                if trig_condition_met & trig_sun_ok:
-                    # the trigger condition is met!
-                    print()
-                    print(f'Time to send the {trig.cmd} command!')
-                    print(f'\ttrigval = {trigval}, curval = {curval}')
-                    print(f'\ttrig condition: {trig_condition} --> {trig_condition_met}')
-                    print()
-                    # send the trigger command
-                    self.alertHandler.slack_log(f':futurama-bender-robot: roboManager: sending command *{trig.cmd}*')
-                    self.do(trig.cmd)
-                    
-                    
-                    # log that we've sent the command
-                    #self.triglog.update({trigname : True})
-                    self.triglog.update({trigname : {'sent' : True, 'sun_alt_sent' : self.state['sun_alt'], 'time_sent' : datetime.fromtimestamp(self.state['timestamp']).isoformat(sep = ' ')}})
 
+                if self.triglog[trigname]['sent']:
+                    # check to see if the trigger has already been executed
+                    if self.verbose:
+                        print('\tcmd already sent')
+                        
                     
-                    # update the triglog file
-                    self.updateTrigLogFile()
-                    
+                    if self.first_time:
+                        # if it's the first time we may want to trigger the cmd anyway
+                        if trig.repeat_on_restart:
+                            if self.verbose:
+                                print('\tsending trigger anyway since it is the first time after restart')
+                            self.handleTrigger(trigname)
+                            
+                    else:
+                        # the trigger cmd has already been sent. do nothing.
+                        pass
                 else:
-                    # trigger condition not met
-                    #print(f'\tNot yet time to send {trig.cmd} command')
-                    pass
+                    self.handleTrigger(trigname)
             
-    
+            # change the first time flag
+            self.first_time = False
+            
+        except Exception as e:
+            if self.verbose:
+                print(f'could not check what to do: {e}')
+                print(traceback.format_exc())
+            pass
     
     ###### PUBLIC FUNCTIONS THAT CAN BE CALLED USING PYRO SERVER #####
     
@@ -904,22 +1172,27 @@ class RoboManager(QtCore.QObject):
     @Pyro5.server.expose
     def GetStatus(self):
         return self.state
-    
-    # Commands which make the dome do things
+            
     @Pyro5.server.expose
-    def xyxxy(self):
-        cmd = 'xyzzy'
-        self.commandRequest.emit(cmd)
-        
-    @Pyro5.server.expose
-    def do(self, cmd):
+    def do(self, cmd, trigname = None, sun_alt = '', time_string = ''):
+        """
         # send an arbitrary command to WSP
+        self.do(trig.cmd, 
+                    trigname = trigname,
+                    sun_alt = self.state['sun_alt'], 
+                    time_string = datetime.fromtimestamp(self.state['timestamp']).isoformat(sep = ' '))
         
-        print(f'roboManager: sending command >> {cmd}')
+        """
+        msg = f'roboManager: sending command >> {cmd}'
+        print(msg)
+        if not self.logger is None:
+            self.logger.info(msg)
         
-        self.commandRequest.emit(cmd)
+        cmdRequest = TriggeredCommandRequest(cmd, trigname, sun_alt, time_string)
         
-    
+        self.commandRequest.emit(cmdRequest)
+        
+        
         
         
 class PyroGUI(QtCore.QObject):   
