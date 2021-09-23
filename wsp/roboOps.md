@@ -60,17 +60,32 @@ triggers:
                 val: '8:01:0.0'
                 cond: '>'
             cond2:
-                type: 'sun'
+               type: 'sun'
                 val: 40
                 cond: '<'
         repeat_on_restart: False
         sundir: 1
         cmd: 'kill'
 ```
-This describes a trigger with the `trigname` "kill". The goal is that at the end of the night the roboManager will automatically kill WSP, and then the watchdog will restart it. This occurs at 8am because WSP considers a "night" to be between 8am - 7:59 am the next day using Palomar local time (defined in `utils.tonight_local()`. From the above config, there are 2 conditions that must be met: (1) the trigger cannot be sent before the time is 08:01, (2) the Sun must be below 40 degrees. The `repeat_on_restart` key indicates whether or not this command should be sent again if WSP is restarted. By default each command is sent ONLY once per night (based on the triglog file). *NOTE: THIS FUNCTIONALITY DOESN'T WORK, HAS SOME BUGS*. The `sundir` = 1 means that the command can only be sent when the sun is rising. Note that there is a bit of redundancy in these definitions, hopefully the extra functionality makes it easier to define a set of working conditions.
+This describes a trigger with the `trigname` "kill". The goal is that at the end of the night the roboManager will automatically kill WSP, and then the watchdog will restart it. This occurs at 8am because WSP considers a "night" to be between 8am - 7:59 am the next day using Palomar local time (defined in `utils.tonight_local()`. From the above config, there are 2 conditions that must be met: (1) the trigger cannot be sent before the time is 08:01, (2) the Sun must be below 40 degrees. The `repeat_on_restart` key indicates whether or not this command should be sent again if WSP is restarted. By default each command is sent ONLY once per night (based on the triglog file). **NOTE: THIS FUNCTIONALITY DOESN'T WORK, HAS SOME BUGS. DON'T COUNT ON SOMETHING BEING SENT AGAIN ON RESTART AT THE MOMENT**. The `sundir` = 1 means that the command can only be sent when the sun is rising. Note that there is a bit of redundancy in these definitions, hopefully the extra functionality makes it easier to define a set of working conditions.
 
 #### Current robotic operations sequence (clipped from config.yaml):
 
+Roughly speaking, the order of operations is this:
+0. start up `WSP` in robotic mode in the morning after 8am Palomar time
+1. send some dummy command in the morning to make sure the connection to `WSP` is established
+2. turn on the fans in the telescope to equilibrate the temperatures in the afternoon
+3. start up all the hardware systems once the Sun gets low on the horizon
+4. load up the nightly schedule when the Sun sets (deadline for nightly schedule changes)
+5. start up the auto calibration routines (flats/darks/biases) when the Sun is low enough to open the dome
+6. focus the telescope
+7. run through the nightly schedule 
+8. stop the schedule when the sun is close to rising
+9. rerun the autocalibration routines when the sky is getting bright
+10. shut everything down for the night and turn off the hardware
+11. kill WSP so that the next day has a fresh start and a clean set of logfiles
+
+Here is how that is implemented:
 ``` yaml
 ########### ROBO MANAGER ###########
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
@@ -212,7 +227,37 @@ robotic_manager_triggers:
 
 ```
 
-*NOTE:* I don't promise that trigger conditions in their current form are the most optimal. They may need tweaks so that they don't trigger out of turn, at a weird time of day, or bump into each other so that one is sent before the previous one is finished. This is why there is some padding built in between the Sun altitude between the end of calibration and the start of science observations.
+**NOTE:** I don't promise that trigger conditions in their current form are the most optimal. They may need tweaks so that they don't trigger out of turn, at a weird time of day, or bump into each other so that one is sent before the previous one is finished. This is why there is some padding built in between the Sun altitude between the end of calibration and the start of science observations.
 
 
+# So you want to run WSP in robotic mode:
 
+## How things should ideally work:
+Start up the `WSP Watchdog`: from within WSP_DIRECTORY/wsp execute: `./watchdog_start.py`. This will start up the watchdog process which looks at the housekeeping database (at ~/data/dm.lnk) and restarts `WSP` in robotic mode (`./wsp.py -r --smallchiller`) any time it detects that it has been > 60 s since any housekeeping data was written. The observatory should run though its sequences, then shut itself off in the morning and be ready to go the next day.
+
+*Pro tip:* it is best to start things up before the Sun goes down in Palomar. Things work best when the sequence gets to happen at its specified pace. If you start things in robotic mode during or after the startup and calibration sequences are meant to run, sometimes the commands all pile up and get sent at once, which usually results in a bunch of nonsense getting logged, commands starting but then getting abandoned by `WSP`, some angry seeming timeouts, and inevitably the dome getting sent on a series of wild goose chases. It's not the end of the world but it will require manually sending some of these commands to get the observatory in the proper state. 
+
+## What to do when things don't work as desired:
+### Things are kinda working but just bad
+Usually this kind of this kind of thing happens during startup if it's going to happen. Often you can get things unstuck by killing WSP (literally just sending `kill` and letting it get rebooted by the watchdog), and resending some specific commands. You can either resend the commands by hand (ie with one of the `wintercmd` clients), or by opening up the current night's triglog file (~/data/triglog_tonight.lnk) and changing some of the trigger `sent` values from `True` to `False`, which will prompt `WSP` to send them again when it is restarted if their send conditions are still satisfied.
+
+Some specific examples:
+- The calibration images are nonsense. Flats that are dark, darks that are light, biases that are gradients, etc.
+    - Usually this means that the camera is unhappy. Presumably some commands are not being parsed properly and some but not all the commands are making it through to the camera (ie, exposure time is not being set properly but the images are still executing). This can usually be fixed by restarting `WSP` a few times to reset the `huaso_server`. If that doesn't work, kill the watchdog (`./watchdog_stop.py`), make sure `WSP` is really dead (`./wsp_kill.py`). Then start up `WSP` in manual mode. This lets you debug at your own pace, try to send a few camera commands like to change the exposure time (`ccd_set_exposure`), and then try to take some different types of images. You could try to take a bias: `robo_do_exposure -b`, take a flat: `robo_do_exposure -f`, or do a test observation: `robo_observe altaz 75 270 -t`. If things seem happy and working then kill WSP and restart the watchdog. 
+- The dome times out a bunch and never seems to know where it's going.
+    - This usually is indicative of a homing problem. Follow steps from above to restart in manual mode. If there is a homing problem the following two actions usually fix things: (1) send `dome_stop` command. This will clear/reset the dome's command queue to clear out any commands it's trying to do/is stuck on, (2) send `dome_home` to initiate the dome's homing routine. This takes a few minutes during which the dome will decide (at random) to spin CW or CCW until it crosses it's home sensor, then it will stop and slowly drive to 180 degrees. Now you should be good to try and rerun things.
+- The images are streaked.
+    - I don't understand why this happens periodically, but sometimes on startup the mount doesn't track properly. It's probably an issue with the sequence of startup commands to enable the mount tracking, but I'm not sure. We'll fix this by following an analogous plan as the dome. Restart in manual mode and then send `mount_stop`. You may also want to reload the pointing model to make sure it's the proper one: `mount_model_load pointing_model_20210810_218pts_180enabled_4p8rms.pxp`(loads files from Thor: ~\Documents\PlaneWave Instruments\PWI4\Mount). Now in manual mode try a few manual pointing commands (`mount_goto altaz 45 145`) and some observations, eg: `robo_observe object M31` (or some other object that is up in the sky).
+    - **NOTE:** you can log in to Thor (telescope PC) even if you can't get VNC or TeamViewer working on Odin. Just tunnel to Heimdall: ssh -Y winter@18.25.65.176, then tunnel to Odin: ssh -Y winter@198.202.125.142 -p 51234. Now open a remote desktop connection to Thor by running: `remmina` which will open the remmina RDP client and allow you to open a connection to Thor.
+- Nothing works and everything sucks
+    - Bummer. Tonight there be gremlins. Just shut everything down (`total_shutdown`), kill the watchdog, and start `WSP` in manual mode so that it will still report if there are any problems like the chiller has an issue or the like. Then I like to do one or more of the following actions: get a beer, watch some stupid TV, go to bed. 
+
+
+### So WSP died :(
+Yeah this happens. Usually the outcome is that the watchdog will restart `WSP`, but the camera will be in a nasty state because it didn't properly shut down the client connection. Sometimes you can jump start the situation by just sending a `kill` command and letting the watchdog reboot (maybe doing this a few times). If you want to have the roboManager send some commands it barfed on, then follow the steps at the top of the section to reset some of the items in the nightly triglog file so the commands will resend on next restart, or delete the triglog file alltogether if you want a clean slate to start from the top. You can also manually set things to where they should be (ie, load the nightly schedule and then send `robo_run`) to start the schedule execution. It should then keep chugging in robotic mode until the morning when it will send the shutdown sequences.
+
+### Some other quirks/issues to debug:
+1. Telescope throws an error and crashes WSP when you restart: this is beacuse I added some code to the `__init__` method of WSP_DIRECTORY/telescope/telescope.py which on `WSP` startup safely stows the rotator. The idea is that if `WSP` crashes and restarts, the rotator won't get left in some tracking state to drift off to oblivion. Initially it would send the commands to the rotrator but didn't attempt to reconnect so if it wasn't already connected to the mount then it would crash. I've tried to fix this but haven't tested extensively. To fix, log into Thor and press the connect button on the PWI4 GUI.
+2. The morning routines aren't happening. I'm not sure why, but it's been a while since I've gotten them to run. I think it must be some changes I've made, since it worked before I added the ability to make multiple conditions for each trigger. My guess is that there's an issue with the time of day, where it's ignoring triggers from after midnight. It worked before I made these changes, and doesn't work now. Probably something dumb but needs debugging. What is happening these days is that it just keeps observing until the dome closes and then it `roboOperator.ok_to_observe()` returns False and it stops.
+3. Handling what roboManager should do if `WSP` is restarted: I started poking at this, hence the `resend_on_restart` keyword. You can see there's some logic that is bad in the RoboManager class which tracks a `self.first_time` flag and is trying to parse it in `self.checkWhatToDo`. It's actually surprisingly complicated to decide what to do if it's been rebooted. THis also is related to how it should handle a situation where say, there is a P200 manual override which clears at 3am. Right now it doesn't do the right thing without manual intervention. Something to think about. Probably the answer is to just get over wanting these cases to be handled super generically and just manually write a sequence.
+4. Handling the schedule more sophisticatedly: right now as noted we just go line by line by line. Ideally we'd like a (default) option where it will get the next closest observation by *time*. This might need some cushion built in, as in "just go to the next one as long as it's within 30 minutes of it's scheduled time, otherwise jump to the closest in time". This approach would loosen the requirement that the schedule be a super accurate model of the telescope overheads. If there is a major difference in overheads, just always observing by time will mean that many observations will be skipped. We need to maintain the ability to just go line by line however, because this is how the target observations will be executed. For more info on how the schedule querying works, read [Allan's notes](https://magellomar-gitlab.mit.edu/WINTER/code/blob/master/wsp/dataLogTest.md) and [Nate's notes on Allan's notes](https://magellomar-gitlab.mit.edu/WINTER/code/-/blob/sunsim/wsp/schedule_ops_notes_npl.md).
