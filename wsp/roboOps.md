@@ -19,7 +19,8 @@ There are other complex sequences in the robotic operator which are not used reg
 
 ### 2. The wintercmd interface: [`wintercmd.py`](https://magellomar-gitlab.mit.edu/WINTER/code/-/blob/sunsim/wsp/command/wintercmd.py)
 
-The robotic operator class is instantiated in `systemControl.py`, but lives in its own thread. The roboOperator methods are not called directly elsewhere in the code, but can be executed through the `wintercmd` tcp/ip command server interface using the function calls defined in `wintercmd.py`. Particularly useful robotic operating functions include:
+The robotic operator class is instantiated in `systemControl.py`, but lives in its own thread. The roboOperator methods are not called directly elsewhere in the code, but can be executed through the `wintercmd` tcp/ip command server interface using the function calls defined in `wintercmd.py`. These commands can be executed by typing into the WSP terminal, using the GUI that Josh wrote, launching the [`commandClient.py`](https://magellomar-gitlab.mit.edu/WINTER/code/-/blob/master/wsp/command/commandClient.py) program, or using any other process connected to localhost:7000 to pass text command strings. Particularly useful robotic operating functions include:
+
 - `robo_observe`: wraps the `roboOperator.do_observation` function. Example calls:
     - `robo_observe altaz 70 270 -f`: do an observation of alt/az = 70/270 and tag as a focus exposure (-f)
     - `robo_observe object "M31"`: do an observation of M31. By default it calls the -t method for "TEST"
@@ -33,3 +34,5 @@ The robotic operator class is instantiated in `systemControl.py`, but lives in i
 - `robo_stop`: stops the schedule execution. Basically it just sets a roboOperator.running flag to False. When the roboOperator gets to the `log_observation_and_gotoNext` method, it just doesn't go to the next one, and then just sits there doing nothing unless `robo_run` is executed again.
 
 ### 2. The "Robotic Manager": [`roboManager.py`](https://magellomar-gitlab.mit.edu/WINTER/code/-/blob/sunsim/wsp/control/roboManagerd.py)
+
+
