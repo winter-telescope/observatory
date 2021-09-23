@@ -69,6 +69,150 @@ triggers:
 ```
 This describes a trigger with the `trigname` "kill". The goal is that at the end of the night the roboManager will automatically kill WSP, and then the watchdog will restart it. This occurs at 8am because WSP considers a "night" to be between 8am - 7:59 am the next day using Palomar local time (defined in `utils.tonight_local()`. From the above config, there are 2 conditions that must be met: (1) the trigger cannot be sent before the time is 08:01, (2) the Sun must be below 40 degrees. The `repeat_on_restart` key indicates whether or not this command should be sent again if WSP is restarted. By default each command is sent ONLY once per night (based on the triglog file). *NOTE: THIS FUNCTIONALITY DOESN'T WORK, HAS SOME BUGS*. The `sundir` = 1 means that the command can only be sent when the sun is rising. Note that there is a bit of redundancy in these definitions, hopefully the extra functionality makes it easier to define a set of working conditions.
 
+#### Current robotic operations sequence (clipped from config.yaml):
+
+``` yaml
+########### ROBO MANAGER ###########
+# read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
+# eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL
+robotic_manager_triggers:
+    timeformat: '%H:%M:%S.%f'
+    triggers:
+        daytest:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 0
+                    cond: '>'
+            sundir: 0
+            repeat_on_restart: True
+            cmd: xyzzy
+                
+        fans_on:
+            conds:
+                cond1:
+                    type: 'time'
+                    val: '14:00:0.0'
+                    cond: '>'
+            sundir: -1
+            repeat_on_restart: False
+            cmd: 'mount_fans_on'
+        startup:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 5.0
+                    cond: '<'
+            sundir: 0
+            repeat_on_restart: False
+            cmd: 'total_startup'
+        load_schedule:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 0.0
+                    cond: '<'
+            sundir: 0
+            repeat_on_restart: True
+            cmd: 'load_nightly_schedule'
+        evening_flats:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: -5.0
+                    cond: '<'
+                cond2:
+                    type: 'sun'
+                    val: -7.0
+                    cond: '>'
+            repeat_on_restart: True
+            sundir: -1
+            cmd: 'robo_do_calibration'
+        test_image:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: -11.0
+                    cond: '<'
+            repeat_on_restart: True
+            sundir: -1
+            cmd: 'robo_observe altaz 75 270'
+        focus:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: -12.0
+                    cond: '<'
+            sundir: 0
+            repeat_on_restart: True
+            cmd: 'doFocusLoop --roborun'
+        #start_obs:
+        #    type: 'sun'
+        #    val: -14.0
+        #    cond: '<'
+        #    sundir: 0
+        #    cmd: 'robo_run'
+        stop_obs:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val:  -12.0
+                    cond: '>'
+                cond2:
+                    type: 'time'
+                    val: '8:0:0.0'
+                    cond: '<'
+            sundir: 1
+            repeat_on_restart: False
+            cmd: 'robo_stop'
+        morning_flats:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: -7.0
+                    cond: '>'
+                cond2:
+                    type: 'sun'
+                    val: -5.0
+                    cond: '<'     
+            repeat_on_restart: True           
+            sundir: 1
+            cmd: 'robo_do_calibration'
+        shutdown:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: -4
+                    cond: '>'
+            repeat_on_restart: False
+            sundir: 1
+            cmd: 'total_shutdown'
+        fans_off:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 0
+                    cond: '>'
+            repeat_on_restart: False
+            sundir: 1
+            cmd: 'mount_fans_off'
+        kill:
+            conds:
+                cond1:
+                    type: 'time'
+                    val: '8:01:0.0'
+                    cond: '>'
+                cond2:
+                    type: 'sun'
+                    val: 40
+                    cond: '<'
+            repeat_on_restart: False
+            sundir: 1
+            cmd: 'kill'
+
+```
+
+*NOTE:* I don't promise that trigger conditions in their current form are the most optimal. They may need tweaks so that they don't trigger out of turn, at a weird time of day, or bump into each other so that one is sent before the previous one is finished. This is why there is some padding built in between the Sun altitude between the end of calibration and the start of science observations.
 
 
 
