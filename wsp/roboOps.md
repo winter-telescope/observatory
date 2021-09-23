@@ -40,4 +40,35 @@ The daemon has three main classes which follow the general approach of all the o
 - `RoboManager`: this is the main class. It regularly (at the moment every 5 s, set by a QTimer) checks what it should be doing (`roboManager.checkWhatToDo`). When it detects that the trigger criteria for any of it's predifined trigger events have been met, it sends a signal to WSP to execute the command. The trigger checking and handling happens in the main thread. There are two additional threads (QThreads), a `StatusThread` where the `StatusMonitor` object lives, and a `CommandThread` where the `CommandHandler` object lives (see below). This keeps the communications with WSP and the Pyro server, etc out of the mian thread.
 - `StatusMonitor`: this class handles the roboManager's connection to the WSP housekeeping and passes current housekeeping data to the `roboManager.state` dictionary. It's primary method is `pollStatus`. The roboManager really only cares about three status fields: the sun's altitude (stored in `roboManager.state['sun_alt']`), the timestamp associated with the sun (stored in `roboManager.state['timestamp']`), and a flag to indicate whether the sun is rising or not (`roboManager.state['sun_rising']`). By default these values are grabbed from the Pyro5 server, by making a proxy of the housekeeping state object which is published to the Pyro5 server by a dedicated QThread in [`systemControl.py`](https://magellomar-gitlab.mit.edu/WINTER/code/-/blob/master/wsp/control/systemControl.py). It is also possible to run the roboManager in a sun-simulation mode by passing the `--sunsim` option to WSP (or to the daemon directly if it is executed as a standlone). When this option is passed, the daemon will launch a PyQt5 GUI which allows the user to control the position of the sun. The position is driven by the local observatory time at Palomar, which can be reset, changed, started, sped up/slowed down, and paused. In sun-simulation mode this simulated sun position/time is passed to the roboManager and used for evaluating the trigger criteria. WSP does *not* use the sun simulator, so WSP will report the **actual** time, not the simulation time, so there will be some disagreement between what WSP/KST says the sun is doing and what the roboManager thinks the sun is doing. In both normal and sunsim modes, the StatusMonitor gets the Sun information using the Pyro5 server.
 - `CommandHandler`: this class handles the roboManager's communiations with the WSP `wintercmd` command server. It opens up a TCP/IP socket connection to the command server at `localhost:7000`. It's primary method is `sendCommand`. ~WARNING~ this is still a little buggy in terms of establishing the connection and handling disconnections. The main thing that is a non-ideal is that WSP launches all the subsystem daemons first, right at the top of the `systemControl.py` init. It takes some time before the `wintercmd` server is set up and ready for connection. At the moment I've added a simple 30 s sleep to the roboManagerd mainbody before the main application is instantiated. Ideally this means that the command server is ready for connection by the time the roboManager stats up. The CommandHandler object has a ReconnectHandler object which prevents infinite loops of reconnection attempts so all the bones of the necessary stuff is there but sometimes the startup is a bit buggy. Importantly, the CommandHandler emits a PyQtSignal `self.updateTrigLog` whenever a command is **successfully** sent to WSP. This signal is connected to the `roboManager.HandleUpdateTrigLog` method which stores the information about when (it time and sun position) the triggered command was sent, and saves the information to the nightly `triglog` which is located at ~/data/triglogs/triglog_YYYYMMDD.json and linked at ~/data/triglog_tonight.lnk. 
+### 4. Robotic Trigger Config (part of [`config.yaml`](https://magellomar-gitlab.mit.edu/WINTER/code/-/blob/sunsim/wsp/config/config.yaml)):
+All of the robotic operations are defined in the `config.yaml` main WSP config file, under the section heading  `robotic_manager_triggers`. Under the `triggers` subheading each entry is read into the roboManager to define a `roboManagerd.RoboTrigger` object, which has a command (`cmd`) which must be a text command from `wintercmd`, a name (`trigname`) which is used to keep track of the trigger within roboManager, and a series of conditions which must be met saved as a list (`triglist`). These conditions are defined in the config file under the `conds` keyword for each trigger entry. Each trigger can have an arbitrary number of conditions. These conditions are read in by roboManager and each one is used to define a `roboManagerd.RoboTriggerCond` object. All of this information is then used to create a dictionary member of the `RoboManager` class (`self.triggers`) which has key:value pairs of trigname:RoboTrigger objects. Each condition must be either a sun-type or time-type trigger, meaning the condition to be met is on the Sun's altitude, or the time of day. Each trigger also has a `sundir` keyword which describes when the command can be sent: 
+
+| sundir | meaning |
+| ------ | ------ |
+| -1 | Sun must be setting |
+| 0 | Doesn't matter if setting or rising |
+| -1 | Sun must be rising |
+
+An example trigger definition:
+
+``` yaml
+triggers:
+    kill:
+        conds:
+            cond1:
+                type: 'time'
+                val: '8:01:0.0'
+                cond: '>'
+            cond2:
+                type: 'sun'
+                val: 40
+                cond: '<'
+        repeat_on_restart: False
+        sundir: 1
+        cmd: 'kill'
+```
+This describes a trigger with the `trigname` "kill". The goal is that at the end of the night the roboManager will automatically kill WSP, and then the watchdog will restart it. This occurs at 8am because WSP considers a "night" to be between 8am - 7:59 am the next day using Palomar local time (defined in `utils.tonight_local()`. From the above config, there are 2 conditions that must be met: (1) the trigger cannot be sent before the time is 08:01, (2) the Sun must be below 40 degrees. The `repeat_on_restart` key indicates whether or not this command should be sent again if WSP is restarted. By default each command is sent ONLY once per night (based on the triglog file). *NOTE: THIS FUNCTIONALITY DOESN'T WORK, HAS SOME BUGS*. The `sundir` = 1 means that the command can only be sent when the sun is rising. Note that there is a bit of redundancy in these definitions, hopefully the extra functionality makes it easier to define a set of working conditions.
+
+
+
 
