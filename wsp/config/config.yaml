@@ -145,7 +145,7 @@ robotic_manager_triggers:
                     val: 0.0
                     cond: '<'
             sundir: 0
-            repeat_on_restart: True
+            repeat_on_restart: False
             cmd: 'load_nightly_schedule'
         evening_flats:
             conds:
@@ -157,7 +157,7 @@ robotic_manager_triggers:
                     type: 'sun'
                     val: -7.0
                     cond: '>'
-            repeat_on_restart: True
+            repeat_on_restart: False
             sundir: -1
             cmd: 'robo_do_calibration'
         test_image:
@@ -166,7 +166,7 @@ robotic_manager_triggers:
                     type: 'sun'
                     val: -11.0
                     cond: '<'
-            repeat_on_restart: True
+            repeat_on_restart: False
             sundir: -1
             cmd: 'robo_observe altaz 75 270'
         focus:
@@ -176,7 +176,7 @@ robotic_manager_triggers:
                     val: -12.0
                     cond: '<'
             sundir: 0
-            repeat_on_restart: True
+            repeat_on_restart: False
             cmd: 'doFocusLoop --roborun'
         #start_obs:
         #    type: 'sun'
@@ -207,7 +207,7 @@ robotic_manager_triggers:
                     type: 'sun'
                     val: -5.0
                     cond: '<'     
-            repeat_on_restart: True           
+            repeat_on_restart: False          
             sundir: 1
             cmd: 'robo_do_calibration'
         shutdown:
