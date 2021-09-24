@@ -67,6 +67,8 @@ class Telescope(pwi4_client.PWI4):
         self.logger = logger
         
         # put things in a safe position on startup
+        self.mount_connect()
+        time.sleep(1)
         self.mount_stop()
         time.sleep(1)
         self.mount_tracking_off()
