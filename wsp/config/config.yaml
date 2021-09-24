@@ -116,6 +116,10 @@ robotic_manager_triggers:
                     type: 'sun'
                     val: 0
                     cond: '>'
+                cond2:
+                    type: 'time'
+                    val: '14:00:0.0'
+                    cond: '>'        
             sundir: 0
             repeat_on_restart: True
             cmd: xyzzy

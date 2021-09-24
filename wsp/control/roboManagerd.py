@@ -1032,6 +1032,7 @@ class RoboManager(QtCore.QObject):
         if self.verbose:
             print(f'\tinitializing condlist to: {condlist}')
         
+        print(f'\tevaluating {num_trigs} triggers for trigger: {trigname}')
         # step through all the triggers and evaluate. add their condition result boolean to the condlist
         for i in range(num_trigs):
             
@@ -1040,6 +1041,8 @@ class RoboManager(QtCore.QObject):
             trig_condition = f'{curval} {trig_i.cond} {trigval}'
             trig_condition_met = eval(trig_condition)
             
+            print(f'\ttrig {i+1}:')
+            print(f'\t\ttrig condition: {trig_condition} --> {trig_condition_met}')
             # update the condlist with the value
             condlist[i] = trig_condition_met
         
@@ -1079,8 +1082,14 @@ class RoboManager(QtCore.QObject):
             # the trigger condition is met!
             print()
             print(f'Time to send the {trig.cmd} command!')
-            print(f'\ttrigval = {trigval}, curval = {curval}')
-            print(f'\ttrig condition: {trig_condition} --> {trig_condition_met}')
+            #print(f'\ttrigval = {trigval}, curval = {curval}')
+            for i in range(num_trigs):
+                print(f'\ttrig {i+1}:')
+                trig_i = triglist[i]
+                trigval, curval = self.getTrigCurVals(triggercond = trig_i)
+                trig_condition = f'{curval} {trig_i.cond} {trigval}'
+                trig_condition_met = eval(trig_condition)
+                print(f'\t\ttrig condition: {trig_condition} --> {trig_condition_met}')
             print()
             # send alert that we're sending the command
             #self.alertHandler.slack_log(f':futurama-bender-robot: roboManager: sending command *{trig.cmd}*')
@@ -1286,9 +1295,9 @@ if __name__ == "__main__":
     modes.update({'--sunsim' : "Running in SIMULATED SUN mode" })
     
     # set the defaults
-    verbose = False
+    verbose = True
     doLogging = False
-    sunsim = False
+    sunsim = True
     #domesim = True
     
     #print(f'args = {args}')
