@@ -150,7 +150,12 @@ class control(QtCore.QObject):
                 # start up the fake dome as a daemon
                 self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
                 self.daemonlist.add_daemon(self.domesim)
-                            
+                
+            if '--sunsim' in opts:
+                # start up the fake sun_simulator
+                self.sunsimd = daemon_utils.PyDaemon(name = 'sun_simulator', filepath = f"{wsp_path}/ephem/sun_simulator_gui.py")
+                self.daemonlist.add_daemon(self.sunsimd)
+                    
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
@@ -163,10 +168,7 @@ class control(QtCore.QObject):
             self.roboManagerd = daemon_utils.PyDaemon(name = 'robomanager', filepath = f"{wsp_path}/control/roboManagerd.py", args = opts)
             self.daemonlist.add_daemon(self.roboManagerd)
             
-            if '--sunsim' in opts:
-                # start up the fake sun_simulator
-                self.sunsimd = daemon_utils.PyDaemon(name = 'sun_simulator', filepath = f"{wsp_path}/ephem/sun_simulator_gui.py")
-                self.daemonlist.add_daemon(self.sunsimd)
+            
         
         # Launch all hardware daemons
         self.daemonlist.launch_all()

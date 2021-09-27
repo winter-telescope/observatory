@@ -319,7 +319,7 @@ class RoboOperator(QtCore.QObject):
         
     def broadcast_hardware_error(self, error):
         msg = f':redsiren: *{error.system.upper()} ERROR* ocurred when attempting command: *_{error.cmd}_*, {error.msg}'
-        group = 'sudo'
+        group = 'operator'
         self.alertHandler.slack_log(msg, group = group)
         
         # turn off tracking
@@ -388,10 +388,15 @@ class RoboOperator(QtCore.QObject):
         context = ''
         system = 'rotator'
         cmd = self.lastcmd
+        """
         err = roboError(context, cmd, system, msg)
         # directly broadcast the error rather than use an event to keep it all within this event
         self.broadcast_hardware_error(err)
         self.log(msg)
+        """
+        msg = f':redsiren: *{system.upper()} ERROR* ocurred when attempting command: *_{cmd}_*, {msg}'
+        group = 'operator'
+        self.alertHandler.slack_log(msg, group = group)
         
         # STOP THE ROTATOR
         self.rotator_stop_and_reset()
@@ -802,26 +807,7 @@ class RoboOperator(QtCore.QObject):
             2. start the robotic operator loop
         """
         
-        
-        
-    def skyflat_sun_low_enough(self):
-        # check if the sunalt is within workable range for doing sky flats
-        lim = -5
-        if self.state["sun_alt"] <= -7:
-            val =  True
-        else:
-            val =  False
-        print(f'sunalt = {self.state["sun_alt"]} , sunalt <= {lim}: {val}')
-        return val
-    
-    def skyflat_sun_high_enough(self):
-        lim = -7
-        if self.state["sun_alt"] >= -7:
-            val =  True
-        else:
-            val =  False
-        print(f'sunalt = {self.state["sun_alt"]} , sunalt >= {lim}: {val}')
-        return val
+
     
     def do_calibration(self):
         
@@ -837,12 +823,10 @@ class RoboOperator(QtCore.QObject):
         # pick which direction to look: look away from the sun
         if self.state['sun_rising']:
             flat_az = 270.0
-            start_condition_func = self.skyflat_sun_high_enough
-            end_condition_func = self.skyflat_sun_low_enough
+            
         else:
             flat_az = 0.0
-            start_condition_func = self.skyflat_sun_low_enough
-            end_condition_func = self.skyflat_sun_high_enough
+            
         
             
         # get the altitude
@@ -855,35 +839,7 @@ class RoboOperator(QtCore.QObject):
         # slew the telescope
         self.doTry(f'mount_goto_alt_az {flat_alt} {flat_az}')
         
-        # TODO: Check this behavior
-        # NPL 09-07-21: commenting out all this sun checking, it is now handled elsewhere
-        """
-        self.log(f'waiting for sun to begin taking sky flats')
-        dt = 5
-        t_elapsed = 0
-        
-        try:
-            while True:
-                print(f'start flats? {start_condition_func()}, end flats? {end_condition_func()}')
-                if start_condition_func():
-                    self.log('start condition satisfied!')
-                    break
-                self.log(f'not ready to start. waiting 10 seconds...')
-                QtCore.QThread.sleep(dt)
-                #time.sleep(dt)
-                self.log(f'wait complete.')
-                t_elapsed += dt
-                #break
-                '''
-                if t_elapsed >= 15:
-                    self.log(f'timed out after {t_elapsed} seconds, returning')
-                    #pass
-                    break
-                '''
-        except Exception as e:
-            self.log(f'exception while waiting for sun: {e}')
-            return
-        """
+       
         self.log(f'starting the flat observations')
         
         # if we got here we're good to start
@@ -966,17 +922,20 @@ class RoboOperator(QtCore.QObject):
         self.do('rotator_home')
         
         self.do(f'ccd_set_exposure 30.0')
-        
-        for i in range(5):
+        ndarks = 5
+        for i in range(ndarks):
             self.announce(f'Executing Auto Darks {i+1}/5')
-            self.do(f'robo_do_exposure -d')
+            qcomment = f"Auto Darks {i+1}/{ndarks}"
+
+            self.do(f'robo_do_exposure -d --comment "{qcomment}"')
             
         ### Take bias ###
         self.do(f'ccd_set_exposure 0.0')
-        
-        for i in range(5):
+        nbias = 5
+        for i in range(nbias):
             self.announce(f'Executing Auto Bias {i+1}/5')
-            self.do(f'robo_do_exposure -b')
+            qcomment = f"Auto Bias {i+1}/{nbias}"
+            self.do(f'robo_do_exposure -b --comment "{qcomment}"')
             
         
         
@@ -1276,6 +1235,8 @@ class RoboOperator(QtCore.QObject):
         # 3: trigger image acquisition
         #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
         
+        #self.announce(f'in doExposure: self.running = {self.running}')
+        
         self.logger.info(f'robo: running ccd_do_exposure in thread {threading.get_ident()}')
         # if we got no comment, then do nothing
         if qcomment == 'altaz':
@@ -1309,10 +1270,15 @@ class RoboOperator(QtCore.QObject):
                 pass
             else:
                 msg = f'>> ephemeris body is too close to target! skipping...'
+                #self.log(msg)
+                #self.alertHandler.slack_log(msg, group = 'sudo')
+                #self.gotoNext()
+                #NOTE: NPL 9-27-21: don't want to put a gotoNext here b ecause it will start the schedule even if we're not running one yet
                 self.log(msg)
-                self.alertHandler.slack_log(msg, group = 'sudo')
-                self.gotoNext()
-                return
+                self.alertHandler.slack_log(msg, group = None)
+                self.target_ok = False
+                raise TargetError(msg)
+                #return
         
         # do the exposure and wrap with appropriate error handling
         system = 'ccd'

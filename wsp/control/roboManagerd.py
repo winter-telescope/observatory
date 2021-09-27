@@ -595,10 +595,11 @@ class RoboTriggerCond(object):
         
         
 class RoboTrigger(object):
-    def __init__(self, cmd, sundir, triglist = []):
+    def __init__(self, cmd, sundir, triglist = [], repeat_on_restart = False):
         self.cmd = cmd
         self.sundir = int(sundir)
         self.triglist = triglist
+        self.repeat_on_restart = repeat_on_restart
 
 class TriggeredCommandRequest(object):
     def __init__(self, cmd, trigname = None, sun_alt = -888, time_string = ''):
@@ -758,6 +759,7 @@ class RoboManager(QtCore.QObject):
             
             trigsundir  = self.config['robotic_manager_triggers']['triggers'][trig]['sundir']
             trigcmd     = self.config['robotic_manager_triggers']['triggers'][trig]['cmd']
+            repeat_on_restart = self.config['robotic_manager_triggers']['triggers'][trig]['repeat_on_restart']
             
             for cond in self.config['robotic_manager_triggers']['triggers'][trig]['conds']:
                 print(f'handling condition: {cond}')
@@ -768,13 +770,13 @@ class RoboManager(QtCore.QObject):
                 
                 # create a trigger object
                 trigObj = RoboTriggerCond(trigtype = trigtype, val = trigval, cond = trigcond)
-                RoboTrigger
+                #RoboTrigger
                 # add the trigger object to the trigger list for this trigger
                 triglist.append(trigObj)
             
                 
             # add the trigger object to the trigger dictionary
-            roboTrigger = RoboTrigger(trigcmd, trigsundir, triglist)
+            roboTrigger = RoboTrigger(trigcmd, trigsundir, triglist, repeat_on_restart)
             self.triggers.update({trig : roboTrigger})
         
         # set up the log file
@@ -899,9 +901,14 @@ class RoboManager(QtCore.QObject):
             trig_datetime = datetime.strptime(trigval, self.config['robotic_manager_triggers']['timeformat'])
             
             if self.sunsim:
+                
                 now_datetime = datetime.fromtimestamp(self.state['timestamp'])
+                if self.verbose:
+                    print(f'\t>>using suntim time: {now_datetime}')
             else:
                 now_datetime = datetime.now()
+                if self.verbose:
+                    print(f'\t>> using local time: {now_datetime}')
                 
             
             # now the issue is that the timestamp from trig_datetime has a real time but a nonsense date. so we can't subtract
@@ -1031,8 +1038,7 @@ class RoboManager(QtCore.QObject):
         condlist = [False for i in range(num_trigs)]
         if self.verbose:
             print(f'\tinitializing condlist to: {condlist}')
-        
-        print(f'\tevaluating {num_trigs} triggers for trigger: {trigname}')
+            print(f'\tevaluating {num_trigs} triggers for trigger: {trigname}')
         # step through all the triggers and evaluate. add their condition result boolean to the condlist
         for i in range(num_trigs):
             
@@ -1040,9 +1046,19 @@ class RoboManager(QtCore.QObject):
             trigval, curval = self.getTrigCurVals(triggercond = trig_i)
             trig_condition = f'{curval} {trig_i.cond} {trigval}'
             trig_condition_met = eval(trig_condition)
+            trig_type = trig_i.trigtype
+            if self.verbose:
+                print(f'\ttrig {i+1}:')
             
-            print(f'\ttrig {i+1}:')
-            print(f'\t\ttrig condition: {trig_condition} --> {trig_condition_met}')
+            if trig_type == 'sun':
+                trig_condition_text = f'\t\tsun_alt: {curval} {trig_i.cond} {trigval} --> {trig_condition_met}'
+            elif trig_type == 'time':
+                trig_condition_text = f'\t\ttime: {datetime.fromtimestamp(curval)} {trig_i.cond} {datetime.fromtimestamp(trigval)} --> {trig_condition_met}'
+            if self.verbose:
+                print(trig_condition_text)   
+                
+                    
+           # print(f'\t\ttrig condition: {trig_condition} --> {trig_condition_met}')
             # update the condlist with the value
             condlist[i] = trig_condition_met
         
@@ -1086,10 +1102,16 @@ class RoboManager(QtCore.QObject):
             for i in range(num_trigs):
                 print(f'\ttrig {i+1}:')
                 trig_i = triglist[i]
+                trig_type = trig_i.trigtype
                 trigval, curval = self.getTrigCurVals(triggercond = trig_i)
                 trig_condition = f'{curval} {trig_i.cond} {trigval}'
                 trig_condition_met = eval(trig_condition)
-                print(f'\t\ttrig condition: {trig_condition} --> {trig_condition_met}')
+                if trig_type == 'sun':
+                    trig_condition_text = f'\t\tsun_alt: {curval} {trig_i.cond} {trigval} --> {trig_condition_met}'
+                elif trig_type == 'time':
+                    trig_condition_text = f'\t\ttime: {datetime.fromtimestamp(curval)} {trig_i.cond} {datetime.fromtimestamp(trigval)} --> {trig_condition_met}'
+                print(trig_condition_text) 
+                #print(f'\t\ttrig condition: {trig_condition} --> {trig_condition_met}')
             print()
             # send alert that we're sending the command
             #self.alertHandler.slack_log(f':futurama-bender-robot: roboManager: sending command *{trig.cmd}*')
@@ -1217,6 +1239,7 @@ class PyroGUI(QtCore.QObject):
         self.config = config
         self.logger = logger
         self.verbose = verbose
+        self.sunsim = sunsim
         
         msg = f'(Thread {threading.get_ident()}: Starting up roboManager Daemon '
         if logger is None:
@@ -1236,7 +1259,7 @@ class PyroGUI(QtCore.QObject):
         
         self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)    
         
-        if sunsim:
+        if self.sunsim:
             self.proxyname = 'sunsim'
         else:
             self.proxyname = 'state'
@@ -1255,7 +1278,8 @@ class PyroGUI(QtCore.QObject):
                                        logger = self.logger, 
                                        connection_timeout = self.connection_timeout,
                                        alertHandler = self.alertHandler,
-                                       verbose = self.verbose)        
+                                       verbose = self.verbose,
+                                       sunsim = self.sunsim)        
         
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.roboManager, name = 'roboManager')
         self.pyro_thread.start()
@@ -1295,9 +1319,9 @@ if __name__ == "__main__":
     modes.update({'--sunsim' : "Running in SIMULATED SUN mode" })
     
     # set the defaults
-    verbose = True
-    doLogging = False
-    sunsim = True
+    verbose = False
+    doLogging = True
+    sunsim = False
     #domesim = True
     
     #print(f'args = {args}')

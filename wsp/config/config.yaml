@@ -468,8 +468,8 @@ filt_limits:
         upper: 11600
         lower: 8500
     rband:
-        upper: 10275 #11150 
-        lower: 10000 #9000
+        upper: 11150 
+        lower: 9000
         #upper: 10183
         #lower: 10133
          

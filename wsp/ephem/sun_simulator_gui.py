@@ -146,7 +146,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         month = now_local.month
         day = now_local.day
         
-        self.time = datetime(year = year, month = month, day = day, hour = 18, minute = 30, second = 0) 
+        self.time = datetime(year = year, month = month, day = day, hour = 17, minute = 30, second = 0) 
         self.sun_timestamp = self.time.timestamp()
         self.sun_timeiso = self.time.isoformat(sep = ' ')
         
