@@ -285,12 +285,12 @@ def set_exposure():
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     try:
-        path_to_stylesheet = '/home/winter/WINTER_GIT/code/Summer_GUI/stylesheet.qss'
+        path_to_stylesheet = '/home/winter/WINTER_GIT/code/WINTER_GUI/stylesheet.qss'
         with open(path_to_stylesheet) as file:
             sheet = file.readlines()
             sheet =''.join(sheet).strip('\n')
     except:
-        path_to_stylesheet = '/home/joshua/WINTER_GIT/code/Summer_GUI/stylesheet.qss'
+        path_to_stylesheet = '/home/joshua/WINTER_GIT/code/WINTER_GUI/stylesheet.qss'
         with open(path_to_stylesheet) as file:
             sheet = file.readlines()
             sheet =''.join(sheet).strip('\n')
