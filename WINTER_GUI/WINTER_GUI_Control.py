@@ -101,6 +101,9 @@ def timer_handlings():
         window.ccd_temp_display.setText(state['ccd_tec_temp'])
         window.exp_time_display.setText(state['ccd_exptime'])
         window.sun_alt_display.setText(state['sun_alt'])
+        window.RA_display.setText(state['ccd_tec_temp'])
+        window.DEC_display.setText(state['ccd_exptime'])
+        window.filter_display.setText(state['sun_alt'])
     except:
         return
     if state['ccd_tec_status'] == 1:

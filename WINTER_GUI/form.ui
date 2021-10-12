@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>960</width>
-    <height>1060</height>
+    <height>1051</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -140,69 +140,6 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="3" column="2" colspan="2">
-        <widget class="QLineEdit" name="DEC_input">
-         <property name="focusPolicy">
-          <enum>Qt::ClickFocus</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0" colspan="5">
-        <widget class="QLabel" name="label_18">
-         <property name="text">
-          <string>Robotic Control Commands</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0" colspan="2">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>DEC (J2000)</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="2" colspan="2">
-        <widget class="QLineEdit" name="command_entry"/>
-       </item>
-       <item row="4" column="2" colspan="2">
-        <widget class="QLineEdit" name="exposure_input">
-         <property name="focusPolicy">
-          <enum>Qt::ClickFocus</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="8" column="1">
-        <widget class="QCheckBox" name="plot_option">
-         <property name="maximumSize">
-          <size>
-           <width>80</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>With Plot</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0" colspan="5">
-        <widget class="QLabel" name="label_11">
-         <property name="text">
-          <string>Manual Control Commands</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
        <item row="7" column="2" colspan="2">
         <widget class="QLineEdit" name="object_entry">
          <property name="focusPolicy">
@@ -210,13 +147,36 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0" colspan="2">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>RA (J2000)</string>
+       <item row="8" column="0">
+        <widget class="QPushButton" name="do_focus_loop">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
          </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
+         <property name="text">
+          <string>Focus Loop</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="2" colspan="2">
+        <widget class="QLineEdit" name="command_entry"/>
+       </item>
+       <item row="8" column="4">
+        <widget class="QPushButton" name="pushButton">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="text">
+          <string>Plot Last Image</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="4">
+        <widget class="QPushButton" name="change_filter_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="text">
+          <string>Change Filter</string>
          </property>
         </widget>
        </item>
@@ -230,23 +190,73 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="0" colspan="2">
-        <widget class="QLabel" name="label_14">
+       <item row="2" column="0" colspan="2">
+        <widget class="QLabel" name="label">
          <property name="text">
-          <string>Object Name</string>
+          <string>RA (J2000)</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
-       <item row="1" column="4">
-        <widget class="QPushButton" name="change_filter_button">
+       <item row="3" column="4">
+        <widget class="QPushButton" name="exposure_button">
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
-          <string>Change Filter</string>
+          <string>Take Exposure</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="4">
+        <widget class="QPushButton" name="observe_object_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="text">
+          <string>Observe Object</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2" colspan="2">
+        <widget class="QLineEdit" name="DEC_input">
+         <property name="focusPolicy">
+          <enum>Qt::ClickFocus</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="4">
+        <widget class="QPushButton" name="command_execute">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
+         <property name="text">
+          <string>Execute</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="4">
+        <widget class="QPushButton" name="goto_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="text">
+          <string>Go To Coordinate</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>Filter Selection</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -267,61 +277,8 @@
          </item>
         </widget>
        </item>
-       <item row="8" column="0">
-        <widget class="QPushButton" name="do_focus_loop">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>Focus Loop</string>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="4">
-        <widget class="QPushButton" name="observe_object_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>Observe Object</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0" colspan="2">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Exposure Time (seconds)</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="4">
-        <widget class="QPushButton" name="goto_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>Go To Coordinate</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="4">
-        <widget class="QPushButton" name="command_execute">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="styleSheet">
-          <string notr="true"/>
-         </property>
-         <property name="text">
-          <string>Execute</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2" colspan="2">
-        <widget class="QLineEdit" name="RA_input">
+       <item row="4" column="2" colspan="2">
+        <widget class="QLineEdit" name="exposure_input">
          <property name="focusPolicy">
           <enum>Qt::ClickFocus</enum>
          </property>
@@ -337,33 +294,49 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0" colspan="2">
-        <widget class="QLabel" name="label_10">
+       <item row="4" column="0" colspan="2">
+        <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Filter Selection</string>
+          <string>Exposure Time (seconds)</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
-       <item row="4" column="4">
-        <widget class="QPushButton" name="set_exposure_button">
+       <item row="8" column="1">
+        <widget class="QCheckBox" name="plot_option">
+         <property name="maximumSize">
+          <size>
+           <width>80</width>
+           <height>16777215</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>
          <property name="text">
-          <string>Set Exposure</string>
+          <string>With Plot</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="4">
-        <widget class="QPushButton" name="exposure_button">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
+       <item row="6" column="0" colspan="5">
+        <widget class="QLabel" name="label_18">
          <property name="text">
-          <string>Take Exposure</string>
+          <string>Robotic Control Commands</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="5">
+        <widget class="QLabel" name="label_11">
+         <property name="text">
+          <string>Manual Control Commands</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -487,16 +460,6 @@ QSlider::sub-page:vertical {
          </item>
         </layout>
        </item>
-       <item row="8" column="4">
-        <widget class="QPushButton" name="pushButton">
-         <property name="focusPolicy">
-          <enum>Qt::NoFocus</enum>
-         </property>
-         <property name="text">
-          <string>Plot Last Image</string>
-         </property>
-        </widget>
-       </item>
        <item row="8" column="3">
         <widget class="QPushButton" name="pushButton_3">
          <property name="focusPolicy">
@@ -507,10 +470,47 @@ QSlider::sub-page:vertical {
          </property>
         </widget>
        </item>
+       <item row="3" column="0" colspan="2">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>DEC (J2000)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
        <item row="9" column="0" colspan="2">
         <widget class="QPushButton" name="pushButton_4">
          <property name="text">
           <string>Load Schedule From File:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2" colspan="2">
+        <widget class="QLineEdit" name="RA_input">
+         <property name="focusPolicy">
+          <enum>Qt::ClickFocus</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0" colspan="2">
+        <widget class="QLabel" name="label_14">
+         <property name="text">
+          <string>Object Name</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="4">
+        <widget class="QPushButton" name="set_exposure_button">
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="text">
+          <string>Set Exposure</string>
          </property>
         </widget>
        </item>
@@ -685,16 +685,6 @@ QSlider::sub-page:vertical {
      <enum>QFrame::Raised</enum>
     </property>
     <layout class="QGridLayout" name="gridLayout_5">
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_20">
-       <property name="text">
-        <string>Current RA</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QLineEdit" name="exp_time_display"/>
-     </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_21">
        <property name="text">
@@ -702,8 +692,15 @@ QSlider::sub-page:vertical {
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="DEC_display"/>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>CCD Temperature</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
      </item>
      <item row="7" column="0">
       <widget class="QLabel" name="label_23">
@@ -712,8 +709,19 @@ QSlider::sub-page:vertical {
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="filter_display"/>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_24">
+       <property name="text">
+        <string>Current Filter</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_20">
+       <property name="text">
+        <string>Current RA</string>
+       </property>
+      </widget>
      </item>
      <item row="4" column="0">
       <widget class="QLabel" name="label_17">
@@ -735,29 +743,45 @@ QSlider::sub-page:vertical {
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QLineEdit" name="ccd_temp_display"/>
-     </item>
-     <item row="4" column="1">
-      <widget class="QLineEdit" name="sun_alt_display"/>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="RA_display"/>
-     </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_9">
+     <item row="0" column="1">
+      <widget class="QLabel" name="filter_display">
        <property name="text">
-        <string>CCD Temperature</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        <string/>
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_24">
+     <item row="1" column="1">
+      <widget class="QLabel" name="RA_display">
        <property name="text">
-        <string>Current Filter</string>
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="DEC_display">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QLabel" name="sun_alt_display">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLabel" name="exp_time_display">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLabel" name="ccd_temp_display">
+       <property name="text">
+        <string/>
        </property>
       </widget>
      </item>
