@@ -35,14 +35,14 @@ python run_winter_sim.py './sims/allsky_config.json' './config/tonight.cfg'
 The WINTER version of the ZTF scheduler implements the following changes to account for WINTER’s differing project requirements. For general bookkeeping, the major changes to the code and the files affected are listed below each category in gray. 
 
 1.	Removes 1 filter per time slot constraint: ZTF’s filter changing mechanism takes 135 seconds, as opposed to WINTER’s ~8 seconds, to exchange passband filters. Therefore, to minimize overhead time and simplify optimizations ZTF is constrained to one filter per time slot (set to 30 minutes). For WINTER’s implementation, we removed this constraint from the optimization and instead introduced the filter exchange time as an overhead time in the travelling salesman problem. This requires reindexing the scheduler such that each observable field in each filter is a unique request and a filter exchange presents extra overhead time between requests. This solution accomplishes WINTER’s science goals more closely by allowing for frequent filter exchanges but can slow down the scheduler optimization by introducing more requests to optimize over.
-a.	Remove 1 filter constraint in optimize.py by setting number of filters per block to <=3. 
-b.	Reindexed QueueManager.py and small parts of the rest of the scheduler, such as simulate.py
-c.	Added filter exchange time to traveling salesman problem in QueueManager.py 
+    1.	Remove 1 filter constraint in optimize.py by setting number of filters per block to <=3. 
+    2.	Reindexed QueueManager.py and small parts of the rest of the scheduler, such as simulate.py
+    3.	Added filter exchange time to traveling salesman problem in QueueManager.py 
 
 2.	Replaces ZTF fields with smaller WINTER fields: WINTER has a ~1 square degree field of view, as opposed to ZTF’s 47 square degree field of view and can observe to a higher airmass. Combining these two factors, the WINTER simulator must optimize across ~35,000 fields compared to ~600 fields for ZTF (Figure 1). This volume of pointings makes the ZTF program for the Gurobi optimizer prohibitively slow for WINTER reference building surveys and large all-sky surveys. To run reasonable simulations for WINTER, we rewrote how the Gurobi optimizer mode sorts and searches through request databases. By implementing multilevel indexing of databases, rather than searching each line of a database for a request, a simulation that ran in ~24 hours with the original ZTF code instead runs in 13 minutes.    
-a.	Created WinterFields.txt
-b.	Changed hard coded field limit in Fields.py that constrain the user to 4000 fields. 
-c.	Replaced scalar compare line by line searches in optimize.py with multilevel indexing of databases. 
+    1.	Created WinterFields.txt
+    2.	Changed hard coded field limit in Fields.py that constrain the user to 4000 fields. 
+    3.	Replaced scalar compare line by line searches in optimize.py with multilevel indexing of databases. 
 
 ![Size of ZTF fields](images/ZTF_fields.png "ZTF Fields")
 ![Size of WINTER fields](images/WINTER_fields.png "WINTER Fields")
@@ -55,8 +55,8 @@ The ZTF project is a follow-up to the Palomar Transient Factory (PTF), which als
 Figure 2: Limiting magnitude by waveband for a 90 second exposure on the WINTER telescope.
 
 4.	Other project differences: The remaining project differences between WINTER and ZTF, such as instrument noise values, slew times, pixel scale, readout times, and other similar constants, are contained in variables in constants.py. The one exception is limiting hour angles (e.g. the telescope cannot point at a tree) are hard-coded into QueueManager.py and will be changed for WINTER once the project is on sky. 
-    a.	Changed all variables in constants.py
-    b.	Removed hour angle constraints in QueueManager.py 
+    1.	Changed all variables in constants.py
+    2.	Removed hour angle constraints in QueueManager.py 
 
 
 
@@ -73,15 +73,15 @@ Figure 3: Some statistics of a sample program.
 
 ## How to run the scheduler:
 
-1) Download the WINTER code git
+1.  Download the WINTER code git
 
 git clone git@magellomar-gitlab.mit.edu:WINTER/code.git
 
-2) Go to the correct directory
+2. Go to the correct directory
 
 cd code/scheduler/winter_scheduler
 
-3) Run
+3. Run
 
 python run_winter_sim.py './sims/J_reference_config.json' './config/2021_reference.cfg'
 
