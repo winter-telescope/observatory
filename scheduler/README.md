@@ -54,7 +54,8 @@ The WINTER version of the ZTF scheduler implements the following changes to acco
 3.	Redefines sky brightness models and atmospheric extinction for an infrared sky:
 The ZTF project is a follow-up to the Palomar Transient Factory (PTF), which also conducted all-sky surveys on the same telescope in the same visible wavebands (g, r, and i). Variables that go into computing the limiting magnitude and therefore the volumetric weighting of fields--e.g. sky brightness, zeropoints, and atmospheric extinction--are all based on historic PTF data. WINTER observes in infrared wavelengths and has no preceding project in the right wavebands on Palomar mountain (Y, J, and Hs). Instead, we model the IR sky based on the Gemini Observatory in Mauna Kea, Hawaii. Sky brightness is based on Roth et al. 2016, which also concludes that for infrared wavelengths sky brightness changes significantly only within 20 degrees of the moon. In contrast, the visible wavelengths observed by ZTF, moonglow casts a gradient of brightness across the whole sky. For WINTER, we simplify this model by invalidating any fields within 20 degrees of the moon and conduct no further modeling beyond 20 degrees. The scaling of zeropoint by altitude is modeled after Tokunaga et al. 2002 for the J and H filters and after Hillenbrand et al. 2002 for the Y-band. Combining these models with the WINTER project specifications (e.g. throughput, noise levels, aperture, and zeropoints) leads to a complete model for limiting magnitude (Figure 2). Once WINTER is on sky, we will replace these models with data from WINTER observations. 
 
-** Old image that needs to be updated. Not going to bother inserting ** 
+**Old image that needs to be updated. Not going to bother inserting** 
+
 Figure 2: Limiting magnitude by waveband for a 90 second exposure on the WINTER telescope.
 
 4.	Other project differences: The remaining project differences between WINTER and ZTF, such as instrument noise values, slew times, pixel scale, readout times, and other similar constants, are contained in variables in constants.py. The one exception is limiting hour angles (e.g. the telescope cannot point at a tree) are hard-coded into QueueManager.py and will be changed for WINTER once the project is on sky. 
@@ -76,7 +77,7 @@ This is a temporary results section. The main takeaway is that in addition to ea
 ![Sample Program Statistics](images/sample_stats.png "Sample Program Statistics")
 
 
-*Figure 3: Some statistics of a sample program. *
+*Figure 3: Some statistics of a sample program.*
 
 ## How to run the scheduler:
 
