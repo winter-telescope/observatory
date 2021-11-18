@@ -45,5 +45,5 @@ b.	Changed hard coded field limit in Fields.py that constrain the user to 4000 f
 c.	Replaced scalar compare line by line searches in optimize.py with multilevel indexing of databases. 
 
 ![Size of ZTF fields](images/ZTF_fields.png "ZTF Fields")
-![Size of WINTER fields](images/WINTER_fields.png "WINTER Fields")*Figure 1: A comparison of all possible ZTF pointings (top) and WINTER pointings (bottom). WINTER has a smaller field of view and observes a higher airmass, leading to ~60 times more WINTER fields than ZTF fields. *
+![Size of WINTER fields](images/WINTER_fields.png "WINTER Fields")*Figure 1: A comparison of all possible ZTF pointings (top) and WINTER pointings (bottom). WINTER has a smaller field of view and observes a higher airmass, leading to ~60 times more WINTER fields than ZTF fields.*
 
