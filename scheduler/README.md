@@ -1,8 +1,8 @@
-WINTER Scheduler Documentation
-Danielle Frostig 05/2020 
+# WINTER Scheduler Documentation
+### Danielle Frostig 05/2020 
 
 
-Scope 
+## Scope 
 
 As part of it’s autonomous observing program, WINTER must generate an observing plan that balances scientific goals of the project while maximizing the scientific quality of the data. The science goals, in order of decreasing priority, are:
 
@@ -26,7 +26,7 @@ python run_winter_sim.py './sims/allsky_config.json' './config/2021_reference.cf
 
 Run Nightly
 
-	There is a separate folder called daily_winter_scheduler that runs one nightly sim and pulls from the long term database. The nightly schedules are written to ~/data/schedules/nightly_YYYMMDD.db and pull from the master database at ~/data/WINTER_ObsLog.db. To run the nightly mode, go to the daily_winter_scheduler file and run:
+There is a separate folder called daily_winter_scheduler that runs one nightly sim and pulls from the long term database. The nightly schedules are written to `~/data/schedules/nightly_YYYMMDD.db` and pull from the master database at `~/data/WINTER_ObsLog.db`. To run the nightly mode, go to the daily_winter_scheduler file and run:
 
 python run_winter_sim.py './sims/allsky_config.json' './config/tonight.cfg'
 
