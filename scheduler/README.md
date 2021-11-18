@@ -21,16 +21,16 @@ The ZTF scheduler offers several modes for simulations and on-sky observing. Que
 
 The WINTER scheduler takes in 4 json (JavaScript Object Notation) configuration files. The top-level reference file (e.g. allsky_config) specifies the name of the run and the default and fallback observing queues. Two more json configuration files specify the observable fields, cadence, filters, and other parameters for default and fallback observing queues (e.g. allsky_reference_building.json and j_band_fallback.json, respectively). Finally, a timing configuration file (e.g. 2021_config.cfg) specifies the start date, duration, and weather conditions (for simulated observing only) for the run. The WINTER scheduler can be run in the top-level folder (with the README file) with run_winter_sim.py as follows:
 
-``` ruby
+``` python
 python run_winter_sim.py './sims/allsky_config.json' './config/2021_reference.cfg'
 ```
 
 ## Run Nightly
 
 There is a separate folder called daily_winter_scheduler that runs one nightly sim and pulls from the long term database. The nightly schedules are written to `~/data/schedules/nightly_YYYMMDD.db` and pull from the master database at `~/data/WINTER_ObsLog.db`. To run the nightly mode, go to the daily_winter_scheduler file and run:
-
+``` python
 python run_winter_sim.py './sims/allsky_config.json' './config/tonight.cfg'
-
+```
 ## Major changes from the ZTF Scheduler
 
 The WINTER version of the ZTF scheduler implements the following changes to account for WINTER’s differing project requirements. For general bookkeeping, the major changes to the code and the files affected are listed below each category in gray. 
