@@ -71,7 +71,9 @@ Twilight: On Mac but not linux the handling of twilight occasionally skips past 
 ## Results
 
 This is a temporary results section. The main takeaway is that in addition to each night of WINTER observing, we can also simulate a year of observations with historic weather data to plan for future observations. Below is one example simulation with some statistics plotted. This work is ongoing.   
-    
+
+![Sample program](images/sample_prog.png "Sample program")
+![Sample Program Statistics](images/sample_stats.png "Sample Program Statistics")
 Figure 3: Some statistics of a sample program. 
 
 ## How to run the scheduler:
