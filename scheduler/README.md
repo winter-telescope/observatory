@@ -45,5 +45,55 @@ b.	Changed hard coded field limit in Fields.py that constrain the user to 4000 f
 c.	Replaced scalar compare line by line searches in optimize.py with multilevel indexing of databases. 
 
 ![Size of ZTF fields](images/ZTF_fields.png "ZTF Fields")
-[![Size of WINTER fields](images/WINTER_fields.png "WINTER Fields")*Figure 1: A comparison of all possible ZTF pointings (top) and WINTER pointings (bottom). WINTER has a smaller field of view and observes a higher airmass, leading to ~60 times more WINTER fields than ZTF fields.*]
+![Size of WINTER fields](images/WINTER_fields.png "WINTER Fields")
+*Figure 1: A comparison of all possible ZTF pointings (top) and WINTER pointings (bottom). WINTER has a smaller field of view and observes a higher airmass, leading to ~60 times more WINTER fields than ZTF fields.*
+
+3.	Redefines sky brightness models and atmospheric extinction for an infrared sky:
+The ZTF project is a follow-up to the Palomar Transient Factory (PTF), which also conducted all-sky surveys on the same telescope in the same visible wavebands (g, r, and i). Variables that go into computing the limiting magnitude and therefore the volumetric weighting of fields--e.g. sky brightness, zeropoints, and atmospheric extinction--are all based on historic PTF data. WINTER observes in infrared wavelengths and has no preceding project in the right wavebands on Palomar mountain (Y, J, and Hs). Instead, we model the IR sky based on the Gemini Observatory in Mauna Kea, Hawaii. Sky brightness is based on Roth et al. 2016, which also concludes that for infrared wavelengths sky brightness changes significantly only within 20 degrees of the moon. In contrast, the visible wavelengths observed by ZTF, moonglow casts a gradient of brightness across the whole sky. For WINTER, we simplify this model by invalidating any fields within 20 degrees of the moon and conduct no further modeling beyond 20 degrees. The scaling of zeropoint by altitude is modeled after Tokunaga et al. 2002 for the J and H filters and after Hillenbrand et al. 2002 for the Y-band. Combining these models with the WINTER project specifications (e.g. throughput, noise levels, aperture, and zeropoints) leads to a complete model for limiting magnitude (Figure 2). Once WINTER is on sky, we will replace these models with data from WINTER observations. 
+
+ 
+Figure 2: Limiting magnitude by waveband for a 90 second exposure on the WINTER telescope.
+
+4.	Other project differences: The remaining project differences between WINTER and ZTF, such as instrument noise values, slew times, pixel scale, readout times, and other similar constants, are contained in variables in constants.py. The one exception is limiting hour angles (e.g. the telescope cannot point at a tree) are hard-coded into QueueManager.py and will be changed for WINTER once the project is on sky. 
+    a.	Changed all variables in constants.py
+    b.	Removed hour angle constraints in QueueManager.py 
+
+
+
+## Known issues:
+
+Twilight: On Mac but not linux the handling of twilight occasionally skips past the start of the night, causing the Gurobi optimizer to break. There is a commented out solution utils.py that should not need to be implemented on Linux. 
+
+
+## Results
+
+This is a temporary results section. The main takeaway is that in addition to each night of WINTER observing, we can also simulate a year of observations with historic weather data to plan for future observations. Below is one example simulation with some statistics plotted. This work is ongoing.   
+    
+Figure 3: Some statistics of a sample program. 
+
+## How to run the scheduler:
+
+1) Download the WINTER code git
+
+git clone git@magellomar-gitlab.mit.edu:WINTER/code.git
+
+2) Go to the correct directory
+
+cd code/scheduler/winter_scheduler
+
+3) Run
+
+python run_winter_sim.py './sims/J_reference_config.json' './config/2021_reference.cfg'
+
+J_reference_config calls a default file 7_visit.json, which attempts to cover the whole sky in J-band 7 times, and the backup file J_7visit_fallback.json that pulls observations if there are no new observations in the default program.
+
+If you want to change the exposure time, go to code/scheduler/winter_scheduler/winter_sim/constants.py. 
+
+
+## Works cited:
+
+Bellm et al. 2019: https://iopscience.iop.org/article/10.1088/1538-3873/ab0c2a/meta
+Tokunaga et al. 2002: https://iopscience.iop.org/article/10.1086/338545
+Hillenbrand et al. 2002: https://www.jstor.org/stable/10.1086/341699?seq=13#metadata_info_tab_contents
+
 
