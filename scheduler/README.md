@@ -44,5 +44,5 @@ a.	Created WinterFields.txt
 b.	Changed hard coded field limit in Fields.py that constrain the user to 4000 fields. 
 c.	Replaced scalar compare line by line searches in optimize.py with multilevel indexing of databases. 
 
-![Size of ZTF fields](/images/ZTF_fields.png "ZTF Fields")
+![Size of ZTF fields](images/ZTF_fields.png "ZTF Fields")
 
