@@ -573,6 +573,11 @@ class RoboOperator(QtCore.QObject):
             # code that sets up the connections to the databases
             # NPL: 09-13-21: added start_fresh = True so changing schedules will start at the first entry
             self.getSchedule(self.schedulefile_name, startFresh = True)
+
+            # RAS - note that this is where we should send the
+            # plot of tonight's observation footprint to Slack
+            res = subprocess.Popen(args=['python','plotTonightSchedule.py'])
+
             self.writer.setUpDatabase()
     
         
@@ -1424,7 +1429,8 @@ class RoboOperator(QtCore.QObject):
                 # calculate the nominal target ra and dec
                 alt_object = astropy.coordinates.Angle(self.target_alt*u.deg)
                 az_object = astropy.coordinates.Angle(self.target_az*u.deg)
-                obstime = astropy.time.Time(datetime.utcnow())
+                obstime = astropy.time.Time(datetime.utcnow(), \
+                                    location=self.ephem.site)
                 
                 altaz = astropy.coordinates.SkyCoord(alt = alt_object, az = az_object, 
                                                      location = self.ephem.site, 
@@ -1433,6 +1439,7 @@ class RoboOperator(QtCore.QObject):
                 j2000 = altaz.transform_to('icrs')
                 self.target_ra_j2000_hours = j2000.ra.hour
                 self.target_dec_j2000_deg = j2000.dec.deg
+                ra_deg = j2000.ra.deg
                 msg = f'target: (ra, dec) = {self.target_ra_j2000_hours:0.1f}, {self.target_dec_j2000_deg:0.1f}'
                 self.log(msg)
             except Exception as e:
@@ -1466,8 +1473,10 @@ class RoboOperator(QtCore.QObject):
             j2000_ra = self.target_ra_j2000_hours * u.hour
             j2000_dec = self.target_dec_j2000_deg * u.deg
             j2000_coords = astropy.coordinates.SkyCoord(ra = j2000_ra, dec = j2000_dec, frame = 'icrs')
-            
-            obstime = astropy.time.Time(datetime.utcnow())
+
+            ra_deg = j2000_coords.ra.deg
+            obstime = astropy.time.Time(datetime.utcnow(),\
+                                        location=self.ephem.site)
             
             #lat = astropy.coordinates.Angle(self.config['site']['lat'])
             #lon = astropy.coordinates.Angle(self.config['site']['lon'])
@@ -1498,10 +1507,11 @@ class RoboOperator(QtCore.QObject):
                 j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
                 self.target_ra_j2000_hours = j2000_coords.ra.hour
                 self.target_dec_j2000_deg = j2000_coords.dec.deg
+                ra_deg = j2000_coords.ra.deg
                 
                 
-                
-                obstime = astropy.time.Time(datetime.utcnow())
+                obstime = astropy.time.Time(datetime.utcnow(),\
+                                            location=self.ephem.site)
                 lat = astropy.coordinates.Angle(self.config['site']['lat'])
                 lon = astropy.coordinates.Angle(self.config['site']['lon'])
                 height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
@@ -1530,7 +1540,66 @@ class RoboOperator(QtCore.QObject):
             self.target_field_angle = self.config['telescope']['rotator_field_angle_zeropoint']
         else:
             self.target_field_angle = field_angle
-        
+
+        ####### Check if field angle will violate cable wrap limits
+        #                 and adjust as needed.
+
+        if (True):
+            lat = astropy.coordinates.Angle(self.config['site']['lat']).rad
+            dec = self.target_dec_j2000_deg*np.pi/180.0
+            lst = obstime.sidereal_time('mean').rad
+            hour_angle = lst - ra_deg*np.pi/180.0
+            if (hour_angle < -1*np.pi):
+                hour_angle += 2 * np.pi
+            if (hour_angle > np.pi):
+                hour_angle -= 2 * np.pi
+
+            parallactic_angle = np.arctan2(np.sin(hour_angle), \
+                                         np.tan(lat)*np.cos(dec)- \
+                                         np.sin(dec)*np.cos(hour_angle)) * \
+                                         180 / np.pi
+            
+            predicted_rotator_mechangle = self.config['telescope']['rotator_field_angle_zeropoint'] - parallactic_angle + self.target_alt
+            
+            print("\n##########################################")
+            print("Predicted rotator angle: {} degrees".format(predicted_rotator_mechangle))
+            if (predicted_rotator_mechangle > \
+                self.config['telescope']['rotator_min_degs'] \
+                and predicted_rotator_mechangle < \
+                self.config['telescope']['rotator_max_degs']):
+                print("No rotator wrap predicted")
+                self.target_mech_angle = predicted_rotator_mechangle
+                
+            if (predicted_rotator_mechangle < \
+                self.config['telescope']['rotator_min_degs']):
+                print("Rotator wrapping < min, adjusting")
+                self.target_field_angle -= 360.0
+                self.target_mech_angle = predicted_rotator_mechangle + 360.0
+                
+            if (predicted_rotator_mechangle > \
+                self.config['telescope']['rotator_max_degs']):
+                print("Rotator wrapping > max, adjusting")
+                # Changed line below from + to -= as a test...RAS
+                self.target_field_angle -= 360.0
+                self.target_mech_angle = predicted_rotator_mechangle - 360.0
+                
+            # Check!
+
+            # self.state['rotator_mech_position']
+            # self.state['rotator_field_angle']
+            
+            # print("\nlatitude: {}".format(lat))
+            # print("ra,dec: {},{}".format(ra_deg*np.pi/180.0,dec))
+            # print("lst: {}".format(lst))
+            # print("HA: {}".format(hour_angle))
+            # print("Par. Angle: {}".format(parallactic_angle))
+
+                
+            print("##########################################")
+            
+            ###########################################
+
+
         
         #### Validate the observation ###
         # check if alt and az are in allowed ranges
@@ -1650,9 +1719,13 @@ class RoboOperator(QtCore.QObject):
             """
             # slew the rotator
             self.do(f'rotator_goto_field {self.target_field_angle}')
-            #self.do(f'rotator_goto_mech 161')
+            # self.do(f'rotator_goto_mech {self.target_mech_angle}')
             time.sleep(3)
-                
+            # if(tracking):
+            #     self.do(f'mount_tracking_on')
+            
+            self.current_mech_angle = self.target_mech_angle
+            
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)

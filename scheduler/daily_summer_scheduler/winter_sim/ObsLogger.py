@@ -49,6 +49,7 @@ class ObsLogger(object):
         #history_path = '../../wsp/demoRelational.db'
         #self.historyengine = create_engine('sqlite:///'+os.path.join(history_path))
         #self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
+        print("HISTORY FILE: {}".format(output_path))
         self.historyengine = create_engine('sqlite:///'+output_path+f'WINTER_ObsLog.db') #NPL did this change on 2-16-21
         self.history = pd.read_sql('Observation', self.historyengine)
         

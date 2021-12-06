@@ -1411,7 +1411,7 @@ class Wintercmd(QtCore.QObject):
     def doFocusLoop(self):
         """
         Runs a focus loop for a given filter by taking a set of images and collecting the relative
-        size of objects in the image. Will collimate mirror at optimal position.
+        size of objects in the image. Will return focus to the optimal position.
         
         """
         
@@ -1451,15 +1451,15 @@ class Wintercmd(QtCore.QObject):
         
         if self.args.roborun:
             roborun = True
+            self.logger.info('wintercmd: doFocusLoop: I will run the robotic schedule when I am finished!')
         else:
             roborun = False
-            self.logger.info('wintercmd: doFocusLoop: I will run the robotic schedule when I am finished!')
         
         if self.args.roboruntest:
             roboruntest = True
+            self.logger.info('wintercmd: doFocusLoop: I will run the robotic schedule IN TEST MODE when I am finished!')
         else:
             roboruntest = False
-            self.logger.info('wintercmd: doFocusLoop: I will run the robotic schedule IN TEST MODE when I am finished!')
         
         
         try:
@@ -1476,8 +1476,9 @@ class Wintercmd(QtCore.QObject):
         image_log_path = self.config['focus_loop_param']['image_log_path']
         
         current_filter = str(self.state['Viscam_Filter_Wheel_Position'])
-        filt_numlist = {'1':'uband','2':'other','3':'rband'}
+        filt_numlist = {'1':'uband','2':'other2','3':'rband','4':'other4','5':'other5','6':'other6'}
 
+        # Run the focus loop on the current filter
         loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config, fine)
         
         filter_range = loop.return_Range()
@@ -1486,21 +1487,20 @@ class Wintercmd(QtCore.QObject):
         
         self.parse('mount_tracking_on')
         #self.parse('robo_set_obstype FOCUS')
-        self.parse('ccd_set_exposure 30')
-        
-        
+        self.parse('ccd_set_exposure 10')
+                
         try:
             for dist in filter_range:
                 #Collimate and take exposure
+                print(f"Focus image at position {dist}")
                 self.telescope.focuser_goto(target = dist)
                 time.sleep(2)
                 self.parse('ccd_do_exposure')
-                #self.parse('robo_observe altaz 75 270 -f')
-                #self.ccd_do_exposure()
-                time.sleep(2)
+                time.sleep(15)
                 images.append(loop.return_Path())
                 self.logger.info("focus image added to list")
                 postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
+                time.sleep(5)
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.logger.warning(msg)

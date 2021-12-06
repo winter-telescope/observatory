@@ -151,6 +151,15 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: False
             cmd: 'load_nightly_schedule'
+        open_dome:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: '-4.5'
+                    cond: '<'
+            repeat_on_restart: False
+            sundir: -1
+            cmd: 'dome_open'
         evening_flats:
             conds:
                 cond1:
@@ -173,26 +182,29 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'robo_observe altaz 75 270'
-        focus:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -12.0
-                    cond: '<'
-            sundir: 0
-            repeat_on_restart: False
-            cmd: 'doFocusLoop --roborun'
-        #start_obs:
-        #    type: 'sun'
-        #    val: -14.0
-        #    cond: '<'
+        #focus:
+        #    conds:
+        #        cond1:
+        #            type: 'sun'
+        #            val: -12.0
+        #            cond: '<'
         #    sundir: 0
-        #    cmd: 'robo_run'
+        #    repeat_on_restart: False
+        #    cmd: 'doFocusLoop --roborun'
+        start_obs:
+            conds:
+               cond1:
+                   type: 'sun'
+                   val: -14.0
+                   cond: '<'
+            repeat_on_restart: False
+            sundir: -1
+            cmd: 'robo_run'
         stop_obs:
             conds:
                 cond1:
                     type: 'sun'
-                    val:  -12.0
+                    val:  -14.0
                     cond: '>'
                 cond2:
                     type: 'time'
@@ -242,13 +254,17 @@ robotic_manager_triggers:
                     type: 'sun'
                     val: 40
                     cond: '<'
+                cond3:
+                    type: 'sun'
+                    val: 5
+                    cond: '>'
+                cond4:
+                    type: 'time'
+                    val: '12:01:0.0'
+                    cond: '<'
             repeat_on_restart: False
             sundir: 1
             cmd: 'kill'
-            
-
-
-
 
 ########### TELESCOPE SET UP ##########
 telescope:
@@ -456,23 +472,30 @@ focus_loop_param:
     recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'
     pixscale: 0.466
-    current_filter: 'uband'
-    save_dir: 'home/winter/data/images/focusing/'
-    image_log_path: 'home/winter/data/plots_focuser/img_logs/'
+    current_filter: 'rband'
+    save_dir: '/home/winter/data/images/focusing/'
+    image_log_path: '/home/winter/data/plots_focuser/img_logs/'
 
 filt_limits:
     uband:
         upper: 10300
         lower: 10000
-    other:
+    other2:
         upper: 11600
         lower: 8500
     rband:
         upper: 11150 
         lower: 9000
-        #upper: 10183
-        #lower: 10133
-         
+    other4:
+        upper: 11150
+        lower: 9000
+    other5:
+        upper: 10600
+        lower: 9800
+    other6:
+        upper: 11150
+        lower: 9800
+
 filters:
     r:
         name: "SDSS r' (Chroma)"
@@ -480,14 +503,29 @@ filters:
     u:
         name: "SDSS u' (Chroma)"
         nominal_focus: 10200
-        
+    other2:
+        name: "Unknown filter posn 2"
+        nominal_focus: 10150
+    other4:
+        name: "Unknown filter posn 4"
+        nominal_focus: 10150
+    other5:
+        name: "SDSS r' (Chroma, filter error)"
+        nominal_focus: 10150
+    other6:
+        name: "Unknown filter posn 6"
+        nominal_focus: 10150
+
 filter_wheels:
     summer:
         positions:
             1: 'u'
+            2: 'other2'
             3: 'r'
-            
-            
+            4: 'other4'
+            5: 'other5'
+            6: 'other6'
+
 ########### POINTING MODEL PARAMETERS ###########
 # Construct a grid of 3 x 6 = 18 Alt-Az points
 # ranging from 20 to 80 degrees Altitude, and from
