@@ -119,6 +119,9 @@ FILTER_IDS = list(FILTER_ID_TO_NAME.keys())
 #PIXEL_SCALE = 1.006  # arcsec/pixel (ZTF)
 PIXEL_SCALE = 1.08  # arcsec/pixel W, from proposal, double check
 
+VALIDITY_WINDOW_MINUTES = 2.0
+VALIDITY_WINDOW_MJD = VALIDITY_WINDOW_MINUTES / (24*60) # 24*60 minutes per day
+DITHER = 'N'
 
 
 def slew_time(axis, angle):
