@@ -60,6 +60,7 @@ import sqlite3 as sql
 import requests
 from astropy.coordinates import SkyCoord
 import warnings
+import subprocess
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -74,6 +75,7 @@ from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
 from alerts import alert_handler
+
 # GLOBAL VARS
 
 # load the config
@@ -1404,11 +1406,12 @@ class Wintercmd(QtCore.QObject):
 
     
     # Telescope Focuser Stuff
+      
     @cmd
     def doFocusLoop(self):
         """
         Runs a focus loop for a given filter by taking a set of images and collecting the relative
-        size of objects in the image. Will collimate mirror at optimal position.
+        size of objects in the image. Will return focus to the optimal position.
         
         """
         
@@ -1421,11 +1424,20 @@ class Wintercmd(QtCore.QObject):
                                     action = 'store_true',
                                     default = False,
                                     help = '<position_steps>')
+        self.cmdparser.add_argument('--roborun',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = '<run_robotic_schedule>')
+        self.cmdparser.add_argument('--roboruntest',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = '<run_robotic_schedule>')
         
         self.getargs()
         
         plotting = True
         fine = False
+        roborun = False
         
         #print(f'args = {self.args}')
         #print(f'args.noplot = {self.args.noplot}')
@@ -1435,7 +1447,20 @@ class Wintercmd(QtCore.QObject):
             plotting = False
         else:
             plotting = True
-            print('I am showing a plot this time!')
+            self.logger.info('wintercmd: doFocusLoop: I am showing a plot this time!')
+        
+        if self.args.roborun:
+            roborun = True
+            self.logger.info('wintercmd: doFocusLoop: I will run the robotic schedule when I am finished!')
+        else:
+            roborun = False
+        
+        if self.args.roboruntest:
+            roboruntest = True
+            self.logger.info('wintercmd: doFocusLoop: I will run the robotic schedule IN TEST MODE when I am finished!')
+        else:
+            roboruntest = False
+        
         
         try:
             if self.args.fine:
@@ -1451,29 +1476,34 @@ class Wintercmd(QtCore.QObject):
         image_log_path = self.config['focus_loop_param']['image_log_path']
         
         current_filter = str(self.state['Viscam_Filter_Wheel_Position'])
-        filt_numlist = {'1':'uband','2':'other','3':'rband'}
+        filt_numlist = {'1':'uband','2':'other2','3':'rband','4':'other4','5':'other5','6':'other6'}
 
+        # Run the focus loop on the current filter
         loop = summerFocusLoop.Focus_loop(filt_numlist[current_filter], self.config, fine)
         
         filter_range = loop.return_Range()
         
         system = 'ccd'
         
-        self.parse('robo_set_obstype FOCUS')
-        
+        self.parse('mount_tracking_on')
+        #self.parse('robo_set_obstype FOCUS')
+        self.parse('ccd_set_exposure 10')
+                
         try:
             for dist in filter_range:
                 #Collimate and take exposure
+                print(f"Focus image at position {dist}")
                 self.telescope.focuser_goto(target = dist)
                 time.sleep(2)
                 self.parse('ccd_do_exposure')
-                #self.ccd_do_exposure()
-                time.sleep(2)
+                time.sleep(15)
                 images.append(loop.return_Path())
-                print("done")
+                self.logger.info("focus image added to list")
+                postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
+                time.sleep(5)
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
-            print(msg)
+            self.logger.warning(msg)
             
         #images_16 = loop.fits_64_to_16(self, images, filter_range)
         #images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits','/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
@@ -1484,31 +1514,31 @@ class Wintercmd(QtCore.QObject):
         
         except Exception as e:
             msg = f'wintercmd: Unable to save files to focus csv due to {e.__class__.__name__}, {e}'
-            print(msg)
+            self.logger.warning(msg)
             
         system = 'focuser'
         
         
         try:
             #find the ideal focuser position
-            print('Focuser re-aligning at %s microns'%(filter_range[0]))
+            self.logger.info('Focuser re-aligning at %s microns'%(filter_range[0]))
             self.telescope.focuser_goto(target = filter_range[0])
             loop.rate_images(images)
             #focuser_pos = filter_range[med_values.index(min(med_values))]
             
             xvals, yvals = loop.plot_focus_curve(plotting)
             focuser_pos = xvals[yvals.index(min(yvals))]
-            print('Focuser_going to final position at %s microns'%(focuser_pos))
+            self.logger.info('Focuser_going to final position at %s microns'%(focuser_pos))
             self.telescope.focuser_goto(target = focuser_pos)
                 
 
         except FileNotFoundError as e:
-            print(f"You are trying to modify a catalog file or an image with no stars , {e}")
+            self.logger.warning(f"You are trying to modify a catalog file or an image with no stars , {e}")
             pass
 
         except Exception as e:
             msg = f'wintercmd: could not set up {system} due to {e.__class__.__name__}, {e}'
-            print(msg)
+            self.logger.info(msg)
         
         try:
             if plotting:
@@ -1527,8 +1557,17 @@ class Wintercmd(QtCore.QObject):
         
         except Exception as e:
             msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
-            print(msg)
+            self.logger.warning(msg)
+        
+        self.parse('mount_tracking_off')
+        
+        # start the robotic schedule executor when finished?
+        if roborun:
+            self.parse('robo_run')
             
+        elif roboruntest:
+            self.parse('robo_run_test')
+        
         return focuser_pos
             
     @cmd
@@ -2379,6 +2418,7 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def load_nightly_schedule(self):
         self.defineCmdParser('load the schedule file for the nightly plan')
+        #schedulefile_name = 'nightly'
         schedulefile_name = 'nightly'
         self.roboThread.changeSchedule.emit(schedulefile_name)
 
@@ -2412,6 +2452,14 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('start the robotic operator')
         if self.roboThread.isRunning():
             self.roboThread.restartRoboSignal.emit('auto')
+    
+    @cmd
+    def robo_stop(self):
+        self.defineCmdParser('stop/pause the robotic operator')
+        if self.roboThread.isRunning():
+            sigcmd = signalCmd('stop')
+        
+            self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
     def robo_run_test(self):

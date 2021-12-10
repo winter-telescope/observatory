@@ -50,7 +50,7 @@ class PyroDaemon(QtCore.QThread):
     crash. We may want to handle this more gracefully somehow if the nameserver
     dies.
     """
-    def __init__(self, obj, name):
+    def __init__(self, obj, name, verbose = False):
         QtCore.QThread.__init__(self)
         
         # the object is the remote object which will be registered with the name server

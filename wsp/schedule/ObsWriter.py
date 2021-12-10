@@ -162,16 +162,19 @@ class ObsWriter():
                 primaryKey = self.getPrimaryKey(table)
                 exists = self.conn.execute(dbTable.select().where(dbTable.c[primaryKey] == separatedData[table][primaryKey])).fetchone()
             except Exception as e:
+                exists = None
                 self.logger.error('query failed', exc_info=True )
             if exists is None:
                 try:
                     record_row = pd.DataFrame(separatedData[table], index=[uuid.uuid4().hex])
                     record_row.to_sql(table, self.conn, index=False, if_exists='append')
-                    #self.logger.debug(f'Inserted {table} Row: {separatedData[table]}')
+                    self.logger.debug(f'Inserted {table} Row: {separatedData[table]}')
                 except:
+                    
                     self.logger.error('insert failed:', exc_info=True )
             else:
-                #self.logger.debug('did not insert because the row already existed in the database')
+                self.logger.debug('did not insert because the row already existed in the database')
+                print('did not insert because the row already existed in the database')
                 pass
             
     def separate_data_dict(self, dataDict):

@@ -56,6 +56,7 @@ def setup_logger(base_dir, config):
     ## create the log directory
     log_dir = os.getenv("HOME") + '/' + config['log_directory']
     
+    #night = utils.tonight()
     night = utils.tonight()
     
     logname = night + '.log'
@@ -104,8 +105,11 @@ def setup_logger(base_dir, config):
     if len(logger.handlers) == 0:
         print(f'No handlers. Adding one...')
         formatter = logging.Formatter(fmt,datefmt=datefmt)
-        formatter.converter = time.gmtime
-    
+        # Use UTC
+        #formatter.converter = time.gmtime
+        # Use local time
+        formatter.converter = time.localtime
+        
         fileHandler = logging.FileHandler(logpath, mode='a')
         fileHandler.setFormatter(formatter)
         fileHandler.setLevel(logging.DEBUG)

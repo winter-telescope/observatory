@@ -299,12 +299,13 @@ class RoboOperator(QtCore.QObject):
         self.setup_schedule()
         
         
-        
+        """
         # start up the robotic observing!
+        #TODO: NPL 9-8-21 commenting out since this has been moved to roboManager
         if self.mode == 'r':
             # start the robo?
             self.restart_robo()        # make a timer that will control the cadence of checking the conditions
-        
+        """
         ### SET UP POINTING MODEL BUILDER ###
         self.pointingModelBuilder = pointingModelBuilder.PointingModelBuilder()
         
@@ -318,7 +319,7 @@ class RoboOperator(QtCore.QObject):
         
     def broadcast_hardware_error(self, error):
         msg = f':redsiren: *{error.system.upper()} ERROR* ocurred when attempting command: *_{error.cmd}_*, {error.msg}'
-        group = 'sudo'
+        group = 'operator'
         self.alertHandler.slack_log(msg, group = group)
         
         # turn off tracking
@@ -387,10 +388,15 @@ class RoboOperator(QtCore.QObject):
         context = ''
         system = 'rotator'
         cmd = self.lastcmd
+        """
         err = roboError(context, cmd, system, msg)
         # directly broadcast the error rather than use an event to keep it all within this event
         self.broadcast_hardware_error(err)
         self.log(msg)
+        """
+        msg = f':redsiren: *{system.upper()} ERROR* ocurred when attempting command: *_{cmd}_*, {msg}'
+        group = 'operator'
+        self.alertHandler.slack_log(msg, group = group)
         
         # STOP THE ROTATOR
         self.rotator_stop_and_reset()
@@ -565,13 +571,23 @@ class RoboOperator(QtCore.QObject):
         else:
             #print(f'scheduleExecutor: loading schedule file [{self.schedulefile_name}]')
             # code that sets up the connections to the databases
-            self.getSchedule(self.schedulefile_name)
+            # NPL: 09-13-21: added start_fresh = True so changing schedules will start at the first entry
+            self.getSchedule(self.schedulefile_name, startFresh = True)
+
+            # RAS - note that this is where we should send the
+            # plot of tonight's observation footprint to Slack
+            res = subprocess.Popen(args=['python','plotTonightSchedule.py'])
+
             self.writer.setUpDatabase()
     
         
     
-    def getSchedule(self, schedulefile_name):
-        self.schedule.loadSchedule(schedulefile_name, self.lastSeen+1)
+    def getSchedule(self, schedulefile_name, startFresh = True):
+        if startFresh:
+            currentTime = 0
+        else:
+            currentTime = self.lastseen + 1
+        self.schedule.loadSchedule(schedulefile_name, currentTime = currentTime)
 
     def interrupt(self):
         self.schedule.currentObs = None
@@ -787,24 +803,16 @@ class RoboOperator(QtCore.QObject):
             
         self.announce(':greentick: startup complete!')
     
-    def skyflat_sun_low_enough(self):
-        # check if the sunalt is within workable range for doing sky flats
-        lim = -5
-        if self.state["sun_alt"] <= -7:
-            val =  True
-        else:
-            val =  False
-        print(f'sunalt = {self.state["sun_alt"]} , sunalt <= {lim}: {val}')
-        return val
     
-    def skyflat_sun_high_enough(self):
-        lim = -7
-        if self.state["sun_alt"] >= -7:
-            val =  True
-        else:
-            val =  False
-        print(f'sunalt = {self.state["sun_alt"]} , sunalt >= {lim}: {val}')
-        return val
+    def restartScheduleExecution(self):
+        """
+        Run this function anytime we are going to restart the robotic operations
+        it will:
+            1. refocus the telescope
+            2. start the robotic operator loop
+        """
+        
+
     
     def do_calibration(self):
         
@@ -820,12 +828,10 @@ class RoboOperator(QtCore.QObject):
         # pick which direction to look: look away from the sun
         if self.state['sun_rising']:
             flat_az = 270.0
-            start_condition_func = self.skyflat_sun_high_enough
-            end_condition_func = self.skyflat_sun_low_enough
+            
         else:
             flat_az = 0.0
-            start_condition_func = self.skyflat_sun_low_enough
-            end_condition_func = self.skyflat_sun_high_enough
+            
         
             
         # get the altitude
@@ -838,32 +844,7 @@ class RoboOperator(QtCore.QObject):
         # slew the telescope
         self.doTry(f'mount_goto_alt_az {flat_alt} {flat_az}')
         
-        self.log(f'waiting for sun to begin taking sky flats')
-        dt = 5
-        t_elapsed = 0
-        
-        try:
-            while True:
-                print(f'start flats? {start_condition_func()}, end flats? {end_condition_func()}')
-                if start_condition_func():
-                    self.log('start condition satisfied!')
-                    break
-                self.log(f'not ready to start. waiting 10 seconds...')
-                QtCore.QThread.sleep(dt)
-                #time.sleep(dt)
-                self.log(f'wait complete.')
-                t_elapsed += dt
-                #break
-                """
-                if t_elapsed >= 15:
-                    self.log(f'timed out after {t_elapsed} seconds, returning')
-                    #pass
-                    break
-                """
-        except Exception as e:
-            self.log(f'exception while waiting for sun: {e}')
-            return
-        
+       
         self.log(f'starting the flat observations')
         
         # if we got here we're good to start
@@ -875,6 +856,9 @@ class RoboOperator(QtCore.QObject):
         
         for i in range(nflats):
             self.log(f'setting up flat #{i + 1}')
+            """
+            # TODO: Check this behavior
+            # NPL 09-07-21: commenting out all this sun checking, it is now handled elsewhere
             # THIS IS GIVING THE WRONG ANSWER DURING SUNRISE
             # check to make sure we haven't hit the stop condition
             if end_condition_func():
@@ -884,7 +868,7 @@ class RoboOperator(QtCore.QObject):
                 self.log('sun position is not okay for flats anymore, stopping')
                 #break
                 pass
-            
+            """
             try:
                 # estimate required exposure time
                 flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
@@ -943,16 +927,20 @@ class RoboOperator(QtCore.QObject):
         self.do('rotator_home')
         
         self.do(f'ccd_set_exposure 30.0')
-        
-        for i in range(5):
-            
-            self.do(f'robo_do_exposure -d')
+        ndarks = 5
+        for i in range(ndarks):
+            self.announce(f'Executing Auto Darks {i+1}/5')
+            qcomment = f"Auto Darks {i+1}/{ndarks}"
+
+            self.do(f'robo_do_exposure -d --comment "{qcomment}"')
             
         ### Take bias ###
         self.do(f'ccd_set_exposure 0.0')
-        
-        for i in range(5):
-            self.do(f'robo_do_exposure -b')
+        nbias = 5
+        for i in range(nbias):
+            self.announce(f'Executing Auto Bias {i+1}/5')
+            qcomment = f"Auto Bias {i+1}/{nbias}"
+            self.do(f'robo_do_exposure -b --comment "{qcomment}"')
             
         
         
@@ -1000,7 +988,11 @@ class RoboOperator(QtCore.QObject):
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
         
         if self.schedule.currentObs is None:
+            self.logger.info(f'robo: self.schedule.currentObs is None. Closing connection to db.')
             self.running = False
+            
+            self.handle_end_of_schedule()
+            
             return
         
         if self.running & self.ok_to_observe:
@@ -1137,13 +1129,17 @@ class RoboOperator(QtCore.QObject):
                 self.logger.info('robo: in log and goto next, but either there is no observation to log.')
             elif self.running == False:
                 self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
+                self.rotator_stop_and_reset()
             
+            
+            """
+            # don't want to do this if we just paused the schedule. need to figure that out, mauybe move it to a new shutdown method?
             if not self.schedulefile_name is None:
                 self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
                 ## TODO: Code to close connections to the databases.
                 self.schedule.closeConnection()
                 self.writer.closeConnection()
-                
+            """
                 
     def log_observation_and_gotoNext(self):
         self.logger.info('robo: image timer finished, logging observation and then going to the next one')
@@ -1167,8 +1163,13 @@ class RoboOperator(QtCore.QObject):
             
             
             if self.state["ok_to_observe"]:
-                    image_filename = str(self.lastSeen)+'.FITS'
-                    image_filepath = os.path.join(self.writer.base_directory, self.config['image_directory'], image_filename) 
+                
+                    #image_filename = str(self.lastSeen)+'.FITS'
+                    #image_filepath = os.path.join(self.writer.base_directory, self.config['image_directory'], image_filename) 
+                    
+                    image_directory, image_filename = self.ccd.getLastImagePath()
+                    image_filepath = os.path.join(image_directory, image_filename)
+                
                     # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
                     header_data = self.get_data_to_log()
                     # self.state.update(currentData)
@@ -1180,26 +1181,54 @@ class RoboOperator(QtCore.QObject):
             # get the next observation
             self.logger.info('robo: getting next observation from schedule database')
             self.schedule.gotoNextObs()
-            
-            # do the next observation and continue the cycle
-            self.do_currentObs()
-            
+        
+        
         else:  
             if self.schedule.currentObs is None:
-                self.logger.info('robo: in log and goto next, but either there is no observation to log.')
+                self.logger.info('robo: in log and goto next, but there is no observation to log.')
             elif self.running == False:
                 self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
-            
+            """
             if not self.schedulefile_name is None:
                 self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
                 
                 #NPL 08-03-21: adding this here since I turned off the reset at the top of the function. 
                 # if there are no more observations, we can stow the rotator:
                 self.rotator_stop_and_reset()
+            """
+            
+        # recheck if the newly loaded observation is None:
+        if self.schedule.currentObs is not None and self.running:
+            # do the next observation and continue the cycle
+            self.do_currentObs()
+            
+        else:  
+            if self.schedule.currentObs is None:
+                self.logger.info('robo: in log and goto next, but either there is no observation to log.')
                 
-                ## TODO: Code to close connections to the databases.
-                self.schedule.closeConnection()
-                self.writer.closeConnection()
+                if not self.schedulefile_name is None:
+                    self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
+                    
+                    self.handle_end_of_schedule()
+                    
+                    
+            elif self.running == False:
+                self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
+                self.rotator_stop_and_reset()
+            
+                
+    
+    def handle_end_of_schedule(self):
+        # this handles when we get to the end of the schedule, ie when next observation is None:
+        self.logger.info(f'robo: handling end of schedule')
+            
+        # FIRST: stow the rotator
+        self.rotator_stop_and_reset()
+        
+        # Now shut down the connection to the databases
+        self.logger.info(f'robo: closing connection to schedule and obslog databases')
+        self.schedule.closeConnection()
+        self.writer.closeConnection()
     
     def log_timer_finished(self):
         self.logger.info('robo: exposure timer finished.')
@@ -1210,6 +1239,8 @@ class RoboOperator(QtCore.QObject):
         # test method for making sure the roboOperator can communicate with the CCD daemon
         # 3: trigger image acquisition
         #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
+        
+        #self.announce(f'in doExposure: self.running = {self.running}')
         
         self.logger.info(f'robo: running ccd_do_exposure in thread {threading.get_ident()}')
         # if we got no comment, then do nothing
@@ -1244,10 +1275,15 @@ class RoboOperator(QtCore.QObject):
                 pass
             else:
                 msg = f'>> ephemeris body is too close to target! skipping...'
+                #self.log(msg)
+                #self.alertHandler.slack_log(msg, group = 'sudo')
+                #self.gotoNext()
+                #NOTE: NPL 9-27-21: don't want to put a gotoNext here b ecause it will start the schedule even if we're not running one yet
                 self.log(msg)
-                self.alertHandler.slack_log(msg, group = 'sudo')
-                self.gotoNext()
-                return
+                self.alertHandler.slack_log(msg, group = None)
+                self.target_ok = False
+                raise TargetError(msg)
+                #return
         
         # do the exposure and wrap with appropriate error handling
         system = 'ccd'
@@ -1287,7 +1323,11 @@ class RoboOperator(QtCore.QObject):
         if postPlot:
             # make a jpg of the last image and publish it to slack!
             postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
-        
+    
+    def point_and_slew(self, targtype, target = None, tracking = 'auto', field_angle = 'auto'):
+        pass
+    
+    
     def do_observation(self, targtype, target = None, tracking = 'auto', field_angle = 'auto', obstype = 'TEST', comment = ''):
         """
         A GENERIC OBSERVATION FUNCTION
@@ -1389,7 +1429,8 @@ class RoboOperator(QtCore.QObject):
                 # calculate the nominal target ra and dec
                 alt_object = astropy.coordinates.Angle(self.target_alt*u.deg)
                 az_object = astropy.coordinates.Angle(self.target_az*u.deg)
-                obstime = astropy.time.Time(datetime.utcnow())
+                obstime = astropy.time.Time(datetime.utcnow(), \
+                                    location=self.ephem.site)
                 
                 altaz = astropy.coordinates.SkyCoord(alt = alt_object, az = az_object, 
                                                      location = self.ephem.site, 
@@ -1398,6 +1439,7 @@ class RoboOperator(QtCore.QObject):
                 j2000 = altaz.transform_to('icrs')
                 self.target_ra_j2000_hours = j2000.ra.hour
                 self.target_dec_j2000_deg = j2000.dec.deg
+                ra_deg = j2000.ra.deg
                 msg = f'target: (ra, dec) = {self.target_ra_j2000_hours:0.1f}, {self.target_dec_j2000_deg:0.1f}'
                 self.log(msg)
             except Exception as e:
@@ -1431,8 +1473,10 @@ class RoboOperator(QtCore.QObject):
             j2000_ra = self.target_ra_j2000_hours * u.hour
             j2000_dec = self.target_dec_j2000_deg * u.deg
             j2000_coords = astropy.coordinates.SkyCoord(ra = j2000_ra, dec = j2000_dec, frame = 'icrs')
-            
-            obstime = astropy.time.Time(datetime.utcnow())
+
+            ra_deg = j2000_coords.ra.deg
+            obstime = astropy.time.Time(datetime.utcnow(),\
+                                        location=self.ephem.site)
             
             #lat = astropy.coordinates.Angle(self.config['site']['lat'])
             #lon = astropy.coordinates.Angle(self.config['site']['lon'])
@@ -1463,10 +1507,11 @@ class RoboOperator(QtCore.QObject):
                 j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
                 self.target_ra_j2000_hours = j2000_coords.ra.hour
                 self.target_dec_j2000_deg = j2000_coords.dec.deg
+                ra_deg = j2000_coords.ra.deg
                 
                 
-                
-                obstime = astropy.time.Time(datetime.utcnow())
+                obstime = astropy.time.Time(datetime.utcnow(),\
+                                            location=self.ephem.site)
                 lat = astropy.coordinates.Angle(self.config['site']['lat'])
                 lon = astropy.coordinates.Angle(self.config['site']['lon'])
                 height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
@@ -1495,7 +1540,66 @@ class RoboOperator(QtCore.QObject):
             self.target_field_angle = self.config['telescope']['rotator_field_angle_zeropoint']
         else:
             self.target_field_angle = field_angle
-        
+
+        ####### Check if field angle will violate cable wrap limits
+        #                 and adjust as needed.
+
+        if (True):
+            lat = astropy.coordinates.Angle(self.config['site']['lat']).rad
+            dec = self.target_dec_j2000_deg*np.pi/180.0
+            lst = obstime.sidereal_time('mean').rad
+            hour_angle = lst - ra_deg*np.pi/180.0
+            if (hour_angle < -1*np.pi):
+                hour_angle += 2 * np.pi
+            if (hour_angle > np.pi):
+                hour_angle -= 2 * np.pi
+
+            parallactic_angle = np.arctan2(np.sin(hour_angle), \
+                                         np.tan(lat)*np.cos(dec)- \
+                                         np.sin(dec)*np.cos(hour_angle)) * \
+                                         180 / np.pi
+            
+            predicted_rotator_mechangle = self.config['telescope']['rotator_field_angle_zeropoint'] - parallactic_angle + self.target_alt
+            
+            print("\n##########################################")
+            print("Predicted rotator angle: {} degrees".format(predicted_rotator_mechangle))
+            if (predicted_rotator_mechangle > \
+                self.config['telescope']['rotator_min_degs'] \
+                and predicted_rotator_mechangle < \
+                self.config['telescope']['rotator_max_degs']):
+                print("No rotator wrap predicted")
+                self.target_mech_angle = predicted_rotator_mechangle
+                
+            if (predicted_rotator_mechangle < \
+                self.config['telescope']['rotator_min_degs']):
+                print("Rotator wrapping < min, adjusting")
+                self.target_field_angle -= 360.0
+                self.target_mech_angle = predicted_rotator_mechangle + 360.0
+                
+            if (predicted_rotator_mechangle > \
+                self.config['telescope']['rotator_max_degs']):
+                print("Rotator wrapping > max, adjusting")
+                # Changed line below from + to -= as a test...RAS
+                self.target_field_angle -= 360.0
+                self.target_mech_angle = predicted_rotator_mechangle - 360.0
+                
+            # Check!
+
+            # self.state['rotator_mech_position']
+            # self.state['rotator_field_angle']
+            
+            # print("\nlatitude: {}".format(lat))
+            # print("ra,dec: {},{}".format(ra_deg*np.pi/180.0,dec))
+            # print("lst: {}".format(lst))
+            # print("HA: {}".format(hour_angle))
+            # print("Par. Angle: {}".format(parallactic_angle))
+
+                
+            print("##########################################")
+            
+            ###########################################
+
+
         
         #### Validate the observation ###
         # check if alt and az are in allowed ranges
@@ -1615,9 +1719,13 @@ class RoboOperator(QtCore.QObject):
             """
             # slew the rotator
             self.do(f'rotator_goto_field {self.target_field_angle}')
-            #self.do(f'rotator_goto_mech 161')
+            # self.do(f'rotator_goto_mech {self.target_mech_angle}')
             time.sleep(3)
-                
+            # if(tracking):
+            #     self.do(f'mount_tracking_on')
+            
+            self.current_mech_angle = self.target_mech_angle
+            
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)

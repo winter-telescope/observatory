@@ -59,6 +59,7 @@ import sys
 import numpy as np
 import unicodecsv
 from datetime import datetime,timedelta
+from astropy.time import Time
 import pytz
 import shutil
 
@@ -164,16 +165,19 @@ class Schedule(object):
             #TODO: this isn't handled properly!
         else:
             if schedulefile_name.lower() == 'nightly':
-                self.schedulefile_name = self.config['scheduleFile_nightly_prefix'] + utils.tonight() +'.db'
+                #self.schedulefile_name = self.config['scheduleFile_nightly_prefix'] + utils.tonight_local() +'.db'
+                self.schedulefile_name = 'data'
                 self.scheduleType = 'nightly'
+                self.schedulefile = os.readlink(os.path.join(os.getenv("HOME"), self.config['scheduleFile_nightly_link_directory'], self.config['scheduleFile_nightly_link_name']))
             else:
                 if '.db' not in schedulefile_name:
                     schedulefile_name = schedulefile_name + '.db'
                 self.schedulefile_name = schedulefile_name
                 self.scheduleType = 'target'
+                self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
             
         #self.schedulefile = self.base_directory + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
-        self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
+        #self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
         
         self.logger.info(f'scheduler: creating sql engine to schedule file at {self.schedulefile}')
         self.engine = db.create_engine('sqlite:///' + self.schedulefile)
@@ -237,7 +241,24 @@ class Schedule(object):
         When there are no more lines fetchone returns None and we know we've finished
         """
         #self.currentObs = dict(self.result.fetchone())
-        
+
+        # This would just choose the next item in the previously fetched
+        # query.  Instead we want to query the db every time to see what is
+        # the next object envisioned for the queue, i.e. the one that
+        # matches this mjd most closely.
+
+        metadata = db.MetaData()
+        summary  = db.Table('Summary',metadata,autoload=True,autoload_with=self.engine)
+        try:
+            mjdnow = Time(datetime.utcnow()).mjd
+            tmpresult = self.conn.execute(summary.select().where(summary.c.expMJD >= mjdnow-1))
+            self.result = tmpresult
+        except:
+            print("ERROR [schedule.py]: database query failed for next object")
+            # leaves self.result unchanged
+
+        # Grab the first row in the list of oservations for which the scheduled
+        # mjd is later than the current mjd.
         nextResult = self.result.fetchone()
         
         if nextResult is None:
@@ -251,13 +272,14 @@ class Schedule(object):
         #     self.closeConnection()
         
         
-        
-        
     def closeConnection(self):
         """
         Closes the result and the connection to the database
         """
-        self.result.close()
+        try:
+            self.result.close()
+        except Exception as e:
+            self.logger.warning(f'schedule: COULD NOT CLOSE RESULT DURING SHUTDOWN: {e}')
         self.conn.close()
 
 

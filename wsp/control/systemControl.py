@@ -87,7 +87,17 @@ class control(QtCore.QObject):
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['pyro5-ns', 'ccd_daemon.py' ,'domed.py', 'chillerd.py', 'small_chillerd.py', 'test_daemon.py','dome_simulator_gui.py','ephemd.py', 'dirfiled.py']
+        daemons_to_kill = ['pyro5-ns', 
+                           'ccd_daemon.py' ,
+                           'domed.py', 
+                           'chillerd.py', 
+                           'small_chillerd.py', 
+                           'test_daemon.py',
+                           'dome_simulator_gui.py',
+                           'ephemd.py', 
+                           'dirfiled.py',
+                           'roboManagerd.py',
+                           'sun_simulator.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -141,15 +151,25 @@ class control(QtCore.QObject):
                 self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
                 self.daemonlist.add_daemon(self.domesim)
                 
+            if '--sunsim' in opts:
+                # start up the fake sun_simulator
+                self.sunsimd = daemon_utils.PyDaemon(name = 'sun_simulator', filepath = f"{wsp_path}/ephem/sun_simulator_gui.py")
+                self.daemonlist.add_daemon(self.sunsimd)
                     
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
             self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py")
             self.daemonlist.add_daemon(self.ephemd)
+        
+        if mode in ['r']:
+            # ROBOTIC OPERATION MODE!
+            # ROBO MANAGER DAEMON
+            self.roboManagerd = daemon_utils.PyDaemon(name = 'robomanager', filepath = f"{wsp_path}/control/roboManagerd.py", args = opts)
+            self.daemonlist.add_daemon(self.roboManagerd)
             
             
-            
+        
         # Launch all hardware daemons
         self.daemonlist.launch_all()
         

@@ -109,6 +109,7 @@ class CCD(QtCore.QObject):
         self.tec_setpoint = None
         self.pcb_temp = None
         self.tec_status = None
+        self.lastfilename = ''
         
         ## set up site: used for putting LST into the header
         lat = astropy.coordinates.Angle(self.config['site']['lat'])
@@ -460,7 +461,8 @@ class CCD(QtCore.QObject):
         
         if image_directory == 'default':
             
-            tonight = utils.tonight()
+            #tonight = utils.tonight()
+            tonight = utils.tonight_local()
             
             ### SET UP NIGHTLY IMAGE DIRECTORY ###
             self.image_directory = os.path.join(os.getenv("HOME"), self.config['image_directory'], tonight)
@@ -714,6 +716,14 @@ class CCD(QtCore.QObject):
         self.getReadoutTime()
         self.exposureTimeout = self.cc._exposure[self.camnum] + self.readoutTime + timeout_buffer
     
+    @Pyro5.server.expose
+    def getLastImagePath(self):
+        # send the image name back over the pyro server for obsLogging
+        image_filename = self.lastfilename
+        image_directory = self.image_directory
+        
+        return image_directory, image_filename
+        
     @Pyro5.server.expose
     def doExposure(self, state = {}, image_suffix = None, dark = False):
         """

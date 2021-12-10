@@ -1,6 +1,6 @@
 {
   "Observation":{
-    "obsHistID": {"type": "Integer"},
+    "obsHistID": {"type": "Integer", "primaryKey": true},
     "fieldID": {"type": "Integer"},
     "filter": {"type": "Text"},
     "night": {"type": "Integer"},

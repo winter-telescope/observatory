@@ -83,11 +83,13 @@ class MirrorCovers:
             # followed by some text if the code is 255 (error). Parse this out.
             fields = response.split(" ")
             response_code = int(fields[0])
-            error_text = ""
+            if len(fields) > 1:
+                error_text = fields[1]
+            else:
+                error_text = ""
         except:
             # could not communicate
-            response = -1
-            error_text = ""
-        if len(fields) > 1:
-            error_text = fields[1]
+            response_code = -1
+            error_text    = ""
+
         return (response_code, error_text)

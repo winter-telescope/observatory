@@ -248,14 +248,14 @@ if __name__ == '__main__':
     
     
     subject = 'Test Alert: '
-    group = 'sudo'
+    group = 'operator'
     message = ':redsiren: This is a test of the WINTER emergency alert system :banana-dance:'
-    
+    message += f' you have been tagged due to membership in the group: "{group}"'
     #alertHandler.email_group(group, subject, message)
     #alertHandler.text_group(group,subject, message)
     #alertHandler.slack_message_group(group, message)
-    alertHandler.slack_log('just logging a normal old message', group = None)
-    
+    #alertHandler.slack_log('just logging a normal old message', group = None)
+    alertHandler.slack_log(message, group = group)
     
     """
     group = 'announcements'
@@ -263,6 +263,6 @@ if __name__ == '__main__':
     alertHandler.email_group(group, subject, message)
     """
     #%%
-    lastimagejpg = os.path.join(os.getenv("HOME"), 'data','last_image.jpg')
+    #lastimagejpg = os.path.join(os.getenv("HOME"), 'data','last_image.jpg')
     
-    alertHandler.slack_postImage(lastimagejpg, message = 'here is the last image taken by the observatory')
+    #alertHandler.slack_postImage(lastimagejpg, message = 'here is the last image taken by the observatory')

@@ -57,7 +57,7 @@ dirfilePath = os.getenv("HOME") + '/data/dm.lnk'
 program_to_monitor = 'wsp.py'
 df = getdata.dirfile(dirfilePath)
 
-args = ["python", program_to_monitor]
+args = ["python", program_to_monitor, "-r", "--smallchiller"]
 for arg in cmdline_args:
     args.append(arg)
 
@@ -84,11 +84,11 @@ while True:
         # get dt in seconds
         dt = now_timestamp - last_timestamp
         
-        if dt >= 5.0:
+        if dt >= 60.0:
             #print(f'dt = {dt:0.2f}, RELAUNCHING WRITER')
-            msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} last housekeeping update was {dt:0.1f} s ago. *Restarting wsp.py*"
+            msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} last housekeeping update was {dt:0.1f} s ago. *WATCHDOG Restarting wsp.py*"
 
-            alertHandler.slack_log(msg, group = None)
+            alertHandler.slack_log(msg, group = 'sudo')
             #time.sleep(60)
             # First let's kill any running wsp process running
             main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)

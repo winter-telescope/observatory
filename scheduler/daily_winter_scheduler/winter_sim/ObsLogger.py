@@ -14,7 +14,7 @@ import astropy.units as u
 import astroplan.moon
 from .Fields import Fields
 from .utils import *
-from .constants import BASE_DIR, FILTER_ID_TO_NAME, EXPOSURE_TIME, READOUT_TIME
+from .constants import VALIDITY_WINDOW_MJD, DITHER, BASE_DIR, FILTER_ID_TO_NAME, EXPOSURE_TIME, READOUT_TIME
 
 
 class ObsLogger(object):
@@ -130,6 +130,9 @@ class ObsLogger(object):
             filter             TEXT,
             expDate            INTEGER,
             expMJD             REAL,
+            validStart         REAL,
+            validStop          REAL, 
+            dither             TEXT,
             night              INTEGER,
             visitTime          REAL,
             visitExpTime       REAL,
@@ -181,6 +184,10 @@ class ObsLogger(object):
 
         record['expDate'] = (exposure_start - self.survey_start_time).sec
         record['expMJD'] = exposure_start.mjd
+        record['validStart'] = exposure_start.mjd - (VALIDITY_WINDOW_MJD/2)
+        record['validStop'] = exposure_start.mjd + (VALIDITY_WINDOW_MJD/2)
+        record['dither'] = DITHER
+
 
         record['night'] = np.floor((exposure_start - self.survey_start_time).jd
                                    ).astype(np.int)
@@ -207,7 +214,8 @@ class ObsLogger(object):
         record['altitude'] = altaz.alt.value
         record['azimuth'] = altaz.az.value
         
-        # W trying to get the simukations to run faster
+        '''
+        # W trying to get the simulations to run faster
         # Spending about 5 min per night recording moon and sun position
         # TODO: uncomment for production code
         
@@ -220,8 +228,8 @@ class ObsLogger(object):
         record['moonPhase'] = 0.
         record['sunAlt'] = 0.
         record['sunAz'] = 0.
-        
-        ''' sun = coord.get_sun(exposure_start)
+        '''
+        sun = coord.get_sun(exposure_start)
         sun_altaz = skycoord_to_altaz(sun, exposure_start)
         moon = coord.get_moon(exposure_start, W_loc)
         moon_altaz = skycoord_to_altaz(moon, exposure_start)
@@ -248,7 +256,7 @@ class ObsLogger(object):
         record['moonPhase'] = self.moon_illumination_tonight
 
         record['sunAlt'] = sun_altaz.alt.to(u.radian).value
-        record['sunAz'] = sun_altaz.az.to(u.radian).value '''
+        record['sunAz'] = sun_altaz.az.to(u.radian).value 
         
         if self.prev_obs is not None:
             sc_prev = coord.SkyCoord(self.prev_obs['fieldRA'] * u.radian,
