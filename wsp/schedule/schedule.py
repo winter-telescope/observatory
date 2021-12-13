@@ -132,7 +132,9 @@ class Schedule(object):
         #self.schedulefile = base_directory + '/schedule/scheduleFiles/1_night_test.db'
         #self.engine = db.create_engine('sqlite:///' + self.schedulefile)
         self.scheduleType = None
-
+        
+        # keep track of the last obsHistID observed
+        self.last_obsHistID = -1
 
     # def loadSchedule(self):
     #     try:
@@ -160,7 +162,9 @@ class Schedule(object):
             self.logger.log(level, msg)
     
     
+    #def loadSchedule(self, schedulefile_name, obsHistID = 0, startFresh=False):
     def loadSchedule(self, schedulefile_name, currentTime=0, startFresh=False):
+
         """
         Load the schedule starting at the currentTime.
         ### Note: At the moment currentTime is a misnomer, we are selecting by the IDs of the observations
@@ -199,7 +203,7 @@ class Schedule(object):
         
         self.summary = summary
         
-        
+        """
         #Query the database starting at the correct time of night
         try:
             # get all results that come after currentTime
@@ -213,9 +217,9 @@ class Schedule(object):
             #self.logger.error(f'query failed because of {type(e)}: {e}', exc_info=True )
             self.log(f'query failed because of {type(e)}: {e}')
         
-         
+        """
         # Don't need this anymore, just call gotoNextObs directly #
-        self.gotoNextObs(obstime_mjd = currentTime)
+        #self.gotoNextObs(obstime_mjd = currentTime)
         
         """
         # The fetchone method grabs the first row in the result of the query and stores it as currentObs
@@ -272,10 +276,15 @@ class Schedule(object):
         
         try:
             #mjdnow = Time(datetime.utcnow()).mjd
-            #tmpresult = self.conn.execute(self.summary.select().where(db.and_(self.summary.c.validStart <= obstime_mjd, self.summary.c.validStop >= obstime_mjd)) )
-            tmpresult = self.conn.execute(self.summary.select().where(self.summary.c.expMJD >= obstime_mjd))
+            tmpresult = schedule.conn.execute(schedule.summary.select().where(db.and_(schedule.summary.c.validStart <= obstime_mjd, 
+                                                                              schedule.summary.c.validStop >= obstime_mjd,
+                                                                              schedule.summary.c.obsHistID > self.last_obsHistID) 
+                                                                              ))
+            #tmpresult = self.conn.execute(self.summary.select().where(self.summary.c.expMJD >= obstime_mjd))
 
-            #self.result = tmpresult
+            self.result = tmpresult
+            
+            
         except Exception as e:
             print(f"ERROR [schedule.py]: database query failed for next object: {e}")
             
@@ -315,35 +324,39 @@ class Schedule(object):
         # mjd is later than the current mjd.
         
         """
+        self.getValidObs(obstime_mjd = obstime_mjd)
         nextResult = self.result.fetchone()
     
             
         #else:
         if nextResult is None:
             self.currentObs = None
-            self.log('schedule file has no more entries')
+            #self.log('schedule file has no more entries')
+            self.log('no valid entries at this time')
         else:
             
             nextResult_dict = dict(nextResult)
-            self.log(f'got next entry from schedule file: obsHistID = {nextResult_dict["obsHistID"]}, requestID = {nextResult_dict["requestID"]}')
+            self.log(f'got next entry from schedule file: obsHistID = {nextResult_dict["obsHistID"]}')#', requestID = {nextResult_dict["requestID"]}')
             # check to see if the nextResult is within valid times
-            time_is_valid = (nextResult_dict['validStart'] <= obstime_mjd) and (obstime_mjd <= nextResult_dict['validStop'])
-            self.log(f'entry within allowed times = {time_is_valid}')
-            if not time_is_valid:
-                self.log('current observation not in time window. searching for next valid obs...')
-                # rerun the next valid observation check
-                self.result = self.getValidObs(obstime_mjd)
-                nextResult = self.result.fetchone()
-                
+            #time_is_valid = (nextResult_dict['validStart'] <= obstime_mjd) and (obstime_mjd <= nextResult_dict['validStop'])
+            #self.log(f'entry within allowed times = {time_is_valid}')
             
-            if nextResult is None:
+            #if not time_is_valid:
+            #    self.log('current observation not in time window. searching for next valid obs...')
+                # rerun the next valid observation check
+                #self.result = self.getValidObs(obstime_mjd)
+                #nextResult = self.result.fetchone()
+            
+            
+            """if nextResult is None:
                 self.currentObs = None
-                self.log('schedule file has no more entries')
-            else:
-                #self.currentObs = dict(nextResult)
-                self.log('loading entry as currentObs')
-                nextResult_dict = dict(nextResult)
-                self.currentObs = nextResult_dict
+                self.log('schedule file has no more entries')"""
+            
+            #self.currentObs = dict(nextResult)
+            self.log('loading entry as currentObs')
+            nextResult_dict = dict(nextResult)
+            self.currentObs = nextResult_dict
+            self.last_obsHistID = self.currentObs['obsHistID']
                 #self.log(f'got next entry from schedule file: obsHistID = {self.currentObs["obsHistID"]}, requestID = {self.currentObs["requestID"]}')
             #Commented following lines to separate the close connection code from gotoNext. There are other situations which prompt closure
             # if self.currentObs == None:
@@ -382,16 +395,28 @@ if __name__ == '__main__':
     schedulefile_name = 'test_schedule.db'
     
     #%%
-    #mjd = 59557.1
+    0#mjd = 59557.1
     mjd = (59557.0698429301 + 59557.0712318189)/2
     
-    mjd_start = 59557.5556068189
+    #mjd_start = 59557.5556068189+1e-10 #for whatever reason it seems like it MUST be bigger to count, like the >= is only being read as > for wahtever reason
+    mjd_start = 59557.5556068189+2e-3
+
     mjd_end = 59557.5603521893
     
     schedule.loadSchedule(schedulefile_name, currentTime = mjd_start)
     
 
+    #%%
+    """ 
+    obstime_mjd = mjd
     
+    tmpresult = schedule.conn.execute(schedule.summary.select().where(db.and_(schedule.summary.c.validStart <= obstime_mjd, 
+                                                                              schedule.summary.c.validStop >= obstime_mjd,
+                                                                              schedule.summary.c.obsHistID > 1) 
+                                                                      ))
+    
+    for row in tmpresult:
+        print(f'obsHistID = {row["obsHistID"]}')"""
     
     #%%
     obstime_mjd = mjd_start
@@ -400,18 +425,65 @@ if __name__ == '__main__':
     obstimes = []
     obsHistIDs = []
     
+    last_obsHistID = 0
+    
     while obstime_mjd < mjd_end:
+        #print()
+        #print(obstime_mjd)
+        obstimes.append(obstime_mjd)
         t = astropy.time.Time(obstime_mjd, format = 'mjd')
-        dt = astropy.time.TimeDelta(30 * u.s) 
+        dt = astropy.time.TimeDelta(120 * u.s) 
         t_new = t+dt
         obstime_mjd = t_new.mjd
-        print(obstime_mjd)
-        obstimes.append(obstime_mjd)
+    
+    
+        
+        """
+        tmpresult = schedule.conn.execute(schedule.summary.select().where(db.and_(schedule.summary.c.validStart <= obstime_mjd, 
+                                                                                  schedule.summary.c.validStop >= obstime_mjd,
+                                                                                  schedule.summary.c.obsHistID > last_obsHistID) 
+                                                                          ))
+        
+        obs = tmpresult.fetchone()
+        if obs is None:
+            pass
+        else:
+            last_obsHistID = obs['obsHistID']
+            print(f'selecting first result: obsHistID = {last_obsHistID}')
+        """
+    
+    a = np.array([[59557.5556068189,	59557.5569957078],
+    [59557.5564170041,	59557.557805893],
+    [59557.5572271893,	59557.5586160782],
+    [59557.5580373745,	59557.5594262634],
+    [59557.5588475597,	59557.5602364486],
+    [59557.5596577449,	59557.5610466338]])
+    
+    
+    a_raw = a
+    a0 = a[0][0]
+    aScale = (a-a0)[1][-1]
+    
+    a_norm = (a-a0)/aScale
+    a = a_norm
+
+
+    a_dict = dict()
+    akey = 600
+    for j in range(len(a)):
+        a_dict.update({akey:a[j]})
+        akey+=1
+        
+    for i in range(len(obstimes)):  
+        #print(f'\n[{i+1} / {len(obstimes)}]: {obstimes[i]}')
+        obstime_mjd = obstimes[i]
+        print(f'\n[{i} / {len(obstimes)-1}]: ObsTime(scaled) = {(obstime_mjd-a0)/aScale:0.2f}')
+        schedule.gotoNextObs(obstime_mjd = obstime_mjd)
         if schedule.currentObs is None:
             obsHistIDs.append(np.nan)
         else:
             obsHistIDs.append(schedule.currentObs['obsHistID'])
-        schedule.gotoNextObs(obstime_mjd = obstime_mjd)
+        
         
     pass
     # date = 'today'
@@ -433,24 +505,22 @@ if __name__ == '__main__':
     #         print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
     #         print()
     #         print('Now go to the next line!')
-    a = np.array([[59557.5556068189,	59557.5569957078],
-    [59557.5564170041,	59557.557805893],
-    [59557.5572271893,	59557.5586160782],
-    [59557.5580373745,	59557.5594262634],
-    [59557.5588475597,	59557.5602364486],
-    [59557.5596577449,	59557.5610466338]])
     
+    obstimes = np.array(obstimes)
+    obstimes = (obstimes-a0)/aScale
     
-    lines = range(len(a))
-    fig, ax = plt.subplots(1,1,figsize = (10,10))    
+    lines = np.arange(len(a))+ 600
+    fig, ax = plt.subplots(1,1,figsize = (15,10))    
     for ob in obstimes:
         ax.plot(ob+0*np.array(lines), np.array(lines), 'k-', alpha = 0.5)
-        pass
-    for i in lines:
-        ax.plot(a[i], 0*a[i] + i, '-', linewidth = 20)
-    
-    ax1 = ax.twinx()
-    ax1.plot(obstimes, obsHistIDs, 'ko', linewidth = 5)
+    for i in range(len(lines)):
+        y1 = 0*a[i] +lines[i] - 0.1
+        y2 = 0*a[i] +lines[i] + 0.1
+        ax.fill_between(a[i], y1, y2)
+    #ax1 = ax.twinx()
+    ax.plot(obstimes, obsHistIDs, 'ko', linewidth = 5)
+    ax.set_xlabel('Normalized Time')
+    ax.set_ylabel('obsHistID')
     
     """plt.figure()
     plt.plot(np.ravel(a), (np.ravel(a))*0, 'o',label = 'obstimes 600-605')
