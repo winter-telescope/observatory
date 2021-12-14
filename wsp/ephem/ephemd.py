@@ -45,7 +45,7 @@ from utils import logging_setup
 
 
 class EphemMon(object):
-    def __init__(self, config, dt = 1000, name = 'ephemd', verbose = False, logger = None):
+    def __init__(self, config, dt = 1000, name = 'ephemd', sunsim = False, verbose = False, logger = None):
         
         self.config = config
         self.name = name
@@ -54,6 +54,7 @@ class EphemMon(object):
         self.sunalt = 0.0
         self.prev_sunalt = 0.0
         self.sun_rising = False
+        self.sunsim = sunsim
         self.verbose = verbose
         self.state = dict()
         self.observatoryState = dict() # this will hold the current state of the FULL instrument
@@ -72,6 +73,8 @@ class EphemMon(object):
         
         # set up the remote object to poll the observatory state
         self.init_remote_object()
+        if self.sunsim:
+            self.init_sunsim_remote_object()
         
         # Start QTimer which updates state
         self.timer = QtCore.QTimer()
@@ -109,48 +112,76 @@ class EphemMon(object):
         except Exception:
             self.logger.error('connection with remote object failed', exc_info = True)
         '''
+    
     def update_observatoryState(self):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
         if not self.connected:
             self.init_remote_object()
-            
         else:
             try:
                 self.observatoryState = self.remote_object.GetStatus()
-                
                 
             except Exception as e:
                 if self.verbose:
                     print(f'ephemd: could not update observatory state: {e}')
                 pass
+        if self.sunsim:
+            if not self.sunsim_connected:
+                self.init_sunsim_remote_object()
+            else:
+                try:
+                    self.sunsimState = self.sunsim_remote_object.GetStatus()
+                except Exception as e:
+                    if True:#self.verbose:
+                        print(f'ephemd: could not update sunsim state: {e}')
+                    pass
+        
             
         self.current_alt = self.observatoryState.get('mount_alt_deg', None)
         self.current_az = self.observatoryState.get('mount_az_deg', None)
-            
+    def init_sunsim_remote_object(self):
+        # init the remote object
+        try:
+            self.sunsim_remote_object = Pyro5.client.Proxy("PYRONAME:sunsim")
+            self.sunsim_connected = True
+        except Exception as e:
+            self.sunsim_connected = False
+            self.logger.error(f'ephemd: connection with sunsim remote object failed: {e}', exc_info = True)
+            pass
+        '''
+        except Exception:
+            self.logger.error('connection with remote object failed', exc_info = True)
+        '''
     def update(self):
         try:
-            time_utc = datetime.utcnow()
-            timestamp = time_utc.timestamp()
-            self.state.update({'timestamp' : timestamp})
-            
             # get the observatory state from the pyro5 server
             self.update_observatoryState()
             
+            if self.sunsim:
+                timestamp = self.sunsimState.get('timestamp', -888)
+                self.time_utc = datetime.fromtimestamp(timestamp)
+            else:
+                self.time_utc = datetime.utcnow()
+                timestamp = self.time_utc.timestamp()
+            self.state.update({'timestamp' : timestamp})
+            
+            #
+            
             # update the distance to the ephemeris
-            self.updateCurrentEphemDist()
+            self.updateCurrentEphemDist(obstime = self.time_utc, time_format = 'datetime')
             
             # update the flag for ephemeris in view
             self.state.update({'ephem_in_view' : self.ephemInViewCurrent()})
             
             # get sun altitude
             self.prev_sunalt = self.sunalt
-            self.sunalt = self.get_sun_alt(obstime = time_utc, time_format = 'datetime')
+            self.sunalt = self.get_sun_alt(obstime = self.time_utc, time_format = 'datetime')
             if self.sunalt > self.prev_sunalt:
                 self.sun_rising = True
             else:
                 self.sun_rising = False
-            self.moonalt, self.moonaz = self.get_moon_altaz(obstime = time_utc, time_format = 'datetime')
+            self.moonalt, self.moonaz = self.get_moon_altaz(obstime = self.time_utc, time_format = 'datetime')
             self.state.update({'sunalt' : self.sunalt})
             self.state.update({'moonalt' : self.moonalt})
             self.state.update({'moonaz' : self.moonaz})
@@ -169,6 +200,7 @@ class EphemMon(object):
             pass
         except Exception as e:
             #print(f'ephemd: error in update: {e}')
+            self.logger.exception(f'error in update: {e}')
             pass
     
     def get_sun_alt(self, obstime = 'now', time_format = 'datetime'):
@@ -215,7 +247,7 @@ class EphemMon(object):
             self.ephem_dist_dict.update({body : {'mindist' : self.config['ephem']['general_min_separation']}})
     """
         
-    def updateCurrentEphemDist(self):
+    def updateCurrentEphemDist(self, obstime = 'now', time_format = 'datetime'):
         # get the current distance to all tracked ephemeris objects
         # call: getTargetEphemDist_AltAz( target_alt, target_az, body, location, obstime = 'now', time_format = 'datetime'):
         # first handle the moon
@@ -238,7 +270,9 @@ class EphemMon(object):
                 dist = ephem_utils.getTargetEphemDist_AltAz(target_alt = self.current_alt,
                                                             target_az = self.current_az,
                                                             body = body,
-                                                            location = self.site)
+                                                            location = self.site,
+                                                            obstime = obstime,
+                                                            time_format = 'datetime')
                 
                 self.state.update({f'ephem_dist_{body}' : dist})
                 self.ephem_dist_dict.update({body : dist})
@@ -298,11 +332,11 @@ class EphemMon(object):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, config, verbose = False, logger = None, parent=None ):            
+    def __init__(self, config, sunsim = False, verbose = False, logger = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
-        self.ephem = EphemMon(config = config, dt = 200, name = 'ephem', verbose = verbose, logger = logger)
+        self.ephem = EphemMon(config = config, dt = 200, name = 'ephem', sunsim = sunsim, verbose = verbose, logger = logger)
                 
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.ephem, name = 'ephem')
         self.pyro_thread.start()
@@ -332,12 +366,12 @@ if __name__ == "__main__":
     
     modes = dict()
     modes.update({'-v' : "Running in VERBOSE mode"})
-
+    modes.update({'--sunsim' : "Running in simulated sun mode"})
     
     # set the defaults
     verbose = False
     doLogging = True
-    
+    sunsim = False
     #print(f'args = {args}')
     
     if len(args)<1:
@@ -351,14 +385,17 @@ if __name__ == "__main__":
                 # remove the dash when passing the option
                 opt = arg.replace('-','')
                 if opt == 'v':
-                    print(modes[arg])
+                    print(f'ephemd: {modes[arg]}')
                     verbose = True
                 elif opt == 'p':
-                    print(modes[arg])
+                    print(f'ephemd: {modes[arg]}')
                     doLogging = False
+                elif opt == 'sunsim':
+                    print(f'ephemd: {modes[arg]}')
+                    sunsim = True
 
             else:
-                print(f'Invalid mode {arg}')
+                print(f'ephemd: Invalid mode {arg}')
 
     ##### RUN THE APP #####
     app = QtCore.QCoreApplication(sys.argv)
@@ -376,7 +413,7 @@ if __name__ == "__main__":
     else:
         logger = None
     
-    main = PyroGUI(config, verbose = verbose, logger = logger)
+    main = PyroGUI(config, sunsim = sunsim, verbose = verbose, logger = logger)
 
     
     signal.signal(signal.SIGINT, sigint_handler)

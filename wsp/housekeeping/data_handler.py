@@ -118,7 +118,7 @@ class hk_loop(QtCore.QThread):
     
     def get_sunsim_timestamp(self):
         if self.connected:
-            
+            #print('trying to get sunsim timestamp')
             try:
                 remote_state = self.remote_object.GetStatus()
                 
@@ -142,10 +142,22 @@ class hk_loop(QtCore.QThread):
         self.index +=1
         
         # THIS IS USED TO ADD A TIMESTAMP TO THE STATE DICTIONARY
-        if self.sunsim:
+        """if self.sunsim:
             self.timestamp = self.get_sunsim_timestamp
             
             pass
+        else:
+            pass
+        """
+        if self.sunsim:
+            try:
+                sunsim_timestamp = self.get_sunsim_timestamp()
+                self.timestamp = sunsim_timestamp
+                
+                #print(f'sunsim_timestamp = {sunsim_timestamp}')
+            except Exception as e:
+                self.timestamp = -888
+                print(f'could not get sunsim timestamp: {e}')
         else:
             self.timestamp = datetime.utcnow().timestamp()
         self.state.update({'timestamp' : self.timestamp})

@@ -161,7 +161,7 @@ class control(QtCore.QObject):
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
-            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py")
+            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py", args = opts)
             self.daemonlist.add_daemon(self.ephemd)
         
         if mode in ['r']:
