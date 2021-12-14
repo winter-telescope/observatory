@@ -45,7 +45,7 @@ from daemon import daemon_utils
 
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, mirror_cover=None, dome = None, weather = None, chiller = None, pdu1 = None, counter = None, ephem = None, viscam = None, ccd = None, robostate = None, sunsim = False):
+    def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, mirror_cover=None, dome = None, weather = None, chiller = None, pdu1 = None, counter = None, ephem = None, viscam = None, ccd = None, robostate = None, sunsim = False, logger = None):
         
         
         # store the config
@@ -69,6 +69,7 @@ class housekeeping():
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
+        self.logger = logger
         # setup any labjacks that are in the config
         '''
         ### Labjack Definitions ###
@@ -154,7 +155,8 @@ class housekeeping():
                                                ccd = self.ccd,
                                                mirror_cover = self.mirror_cover,
                                                robostate = self.robostate,
-                                               sunsim = self.sunsim)
+                                               sunsim = self.sunsim,
+                                               logger = self.logger)
 
         
         # define the dirfile write loop

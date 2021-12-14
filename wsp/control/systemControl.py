@@ -271,7 +271,8 @@ class control(QtCore.QObject):
                                                 ccd = self.ccd, 
                                                 mirror_cover = self.mirror_cover,
                                                 robostate = self.robostate,
-                                                sunsim = self.sunsim
+                                                sunsim = self.sunsim,
+                                                logger = self.logger
                                                 )
         
         

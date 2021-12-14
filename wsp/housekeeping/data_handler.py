@@ -49,7 +49,7 @@ print(f'data_handler: wsp_path = {wsp_path}')
 
 class hk_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, schedule, telescope,weather, mirror_cover, labjacks, counter, dome, chiller, ephem, viscam, ccd, robostate, sunsim = False, verbose = False):
+    def __init__(self,config, state, curframe, schedule, telescope,weather, mirror_cover, labjacks, counter, dome, chiller, ephem, viscam, ccd, robostate, sunsim = False, verbose = False, logger = None):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -70,6 +70,7 @@ class hk_loop(QtCore.QThread):
         self.robostate = robostate
         self.verbose = verbose
         self.sunsim = sunsim
+        self.logger = logger
         # pass the config to the thread
         self.config = config
         
@@ -112,7 +113,11 @@ class hk_loop(QtCore.QThread):
             self.connected = True
         except Exception as e:
             self.connected = False
-            self.logger.error(f'data_handler: connection with remote sunsim object failed: {e}', exc_info = True)
+            msg = f'data_handler: connection with remote sunsim object failed: {e}'
+            if self.logger is None:
+                print(msg)
+            else:
+                self.logger.exception(msg)
             pass
         pass
     

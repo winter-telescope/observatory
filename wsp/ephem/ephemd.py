@@ -134,7 +134,7 @@ class EphemMon(object):
                     self.sunsimState = self.sunsim_remote_object.GetStatus()
                 except Exception as e:
                     if True:#self.verbose:
-                        print(f'ephemd: could not update sunsim state: {e}')
+                        self.logger.exception(f'ephemd: could not update sunsim state: {e}')
                     pass
         
             
