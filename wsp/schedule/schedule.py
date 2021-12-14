@@ -79,41 +79,7 @@ from utils import logging_setup
 
 
 class Schedule(object):
-    # This is a class that holds the full schedule
-    # def __init__(self,base_directory,date = 'today'):
-    #     """
-    #     # Initiatialization procedure:
-    #         1. look for a schedule based on the input date
-    #         2. check if there is an obslog for tonight
-    #         3. if there is an obslog:
-    #                >load up the last observation,
-    #                >then find where that observation is in the most recent
-    #              schedule, of just start from the beginning if it's not found
-    #            else:
-    #                >create a new obslog
-    #                >start observations at the first line in the schedule
-    #         4. load the current line in the schedule into a bunch of useful fields
-    #         5. when commanded (by systemControl), write the current observation
-    #            line to the obslog
-    #         6. when commanded (by systemControl), increment the schedule to the
-    #            next line
-    #         7. when the schedule is completed, go into stop mode
-    #     """
-    #
-    #
-    #     self.base_directory = base_directory
-    #     self.date = utils.getdatestr(date)
-    #     self.schedulefile = base_directory + '/schedule/scheduleFiles/n' + self.date  +'_sch.csv'#'.sch'
-    #     self.obslogfile = base_directory + '/schedule/obslog/n' + self.date + '_obs.csv'#'.obs'
-    #     try:
-    #         self.loadSchedule()
-    #         self.currentScheduleLine = 0 # by default the current line should be line zero
-    #                                      # if all observations are done, then currentScheduleLine is set to -1
-    #         self.forceRestart = False # a flag to force the scheduler to restart from the beginning of the schedule
-    #         self.loadObslog()
-    #         self.getCurrentObs()
-    #     except:
-    #         print("Unable to make an observing plan for tonight!")
+    # This is a class that handles the connection between WSP/roboOperator and the schedule file SQLite database
 
     def __init__(self, base_directory, config, logger):#, date = 'today'):
         """
@@ -128,33 +94,12 @@ class Schedule(object):
 
         self.base_directory = base_directory
         self.scheduleFile_directory = self.config['scheduleFile_directory']
-        # NL 9-21-20: moving these into the loadSchedule method
-        #self.schedulefile = base_directory + '/schedule/scheduleFiles/1_night_test.db'
-        #self.engine = db.create_engine('sqlite:///' + self.schedulefile)
         self.scheduleType = None
         
         # keep track of the last obsHistID observed
         self.last_obsHistID = -1
 
-    # def loadSchedule(self):
-    #     try:
-    #         # Try to load the schedule for the specified date
-    #         print(f' Importing schedule file for {self.date}')
-    #         self.schedule = utils.readcsv(self.schedulefile)
-    #
-    #         # Convert the altitude and azimuth from radians to degrees, which is easier for the telescope to ingest
-    #         for angle in ['altitude','azimuth']:
-    #             self.schedule[angle]= [(val*180.0/np.pi) for val in self.schedule[angle]]
-    #
-    #         # Some things should be converted to integers
-    #         #TODO there is a better way than this!
-    #         for intField in ['','requestID','obsHistID','propID','fieldID','totalRequestsTonight']:
-    #             self.schedule[intField]= [int(val) for val in self.schedule[intField]]
-    #
-    #
-    #     except:
-    #         #TODO log this error
-    #         print(f" error loading schedule file: {self.schedulefile} (probably because it doesn't exist!)")
+   
     def log(self, msg, level = logging.INFO):
         if self.logger is None:
             print(f'schedule: {msg}')
@@ -163,7 +108,7 @@ class Schedule(object):
     
     
     #def loadSchedule(self, schedulefile_name, obsHistID = 0, startFresh=False):
-    def loadSchedule(self, schedulefile_name, currentTime=0, startFresh=False):
+    def loadSchedule(self, schedulefile_name):
 
         """
         Load the schedule starting at the currentTime.
@@ -171,6 +116,10 @@ class Schedule(object):
         since the schedule database does not include any time information. Should change this to
         actually refer to time before deployment.
         """
+        # NPL: 12-14-21 removed any time stuff here and any calls to query the schedule
+        # now this method just loads up the schedule and tries to make a connection
+        # other methods are now used to actually try to pull observations
+        
         
         # set up the schedule file
         if schedulefile_name is None:
@@ -178,7 +127,6 @@ class Schedule(object):
             #TODO: this isn't handled properly!
         else:
             if schedulefile_name.lower() == 'nightly':
-                #self.schedulefile_name = self.config['scheduleFile_nightly_prefix'] + utils.tonight_local() +'.db'
                 self.schedulefile_name = 'data'
                 self.scheduleType = 'nightly'
                 self.schedulefile = os.readlink(os.path.join(os.getenv("HOME"), self.config['scheduleFile_nightly_link_directory'], self.config['scheduleFile_nightly_link_name']))
@@ -189,72 +137,29 @@ class Schedule(object):
                 self.scheduleType = 'target'
                 self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
             
-        #self.schedulefile = self.base_directory + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
-        #self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
-        
-        self.log(f'scheduler: creating sql engine to schedule file at {self.schedulefile}')
-        self.engine = db.create_engine('sqlite:///' + self.schedulefile)
-        #TODO: NPL: what happens if this file doesn't exist?
-
-        self.conn = self.engine.connect()
-        self.log('scheduler: successfully connected to db')
-        metadata = db.MetaData()
-        summary = db.Table('Summary', metadata, autoload=True, autoload_with=self.engine)
-        
-        self.summary = summary
-        
-        """
-        #Query the database starting at the correct time of night
         try:
-            # get all results that come after currentTime
-            #self.result = self.conn.execute(summary.select().where(summary.c.obsHistID >= currentTime))
-            self.result = self.conn.execute(summary.select().where(summary.c.expMJD >= currentTime))
             
-            # get only results that are within alid times
-            #self.result = self.getValidObs(obstime_mjd = currentTime)
-            #self.log('successfully queried db')
+            self.log(f'scheduler: attempting to create sql engine to schedule file at {self.schedulefile}')
+            self.engine = db.create_engine('sqlite:///' + self.schedulefile)    
+            self.conn = self.engine.connect()
+            self.log('scheduler: successfully connected to db')
+            metadata = db.MetaData()
+            summary = db.Table('Summary', metadata, autoload=True, autoload_with=self.engine)
+            
+            self.summary = summary
+        
         except Exception as e:
-            #self.logger.error(f'query failed because of {type(e)}: {e}', exc_info=True )
-            self.log(f'query failed because of {type(e)}: {e}')
-        
-        """
-        # Don't need this anymore, just call gotoNextObs directly #
-        #self.gotoNextObs(obstime_mjd = currentTime)
-        
-        """
-        # The fetchone method grabs the first row in the result of the query and stores it as currentObs
-        nextResult = self.result.fetchone()
-        self.logger.debug('popped first result')
-        if nextResult is None:
-            self.currentObs = None
-        else:
-            self.currentObs = dict(nextResult)
-        """
-        
-
-    # def getCurrentObs(self):
-    #     if self.currentScheduleLine == -1:
-    #         cur_keys = self.schedule.keys()
-    #         cur_vals = []
-    #         cur_vals = [cur_vals.append('None') for key in cur_keys]
-    #         self.currentObs = dict(zip(cur_keys,cur_vals))
-    #     else:
-    #         # makes a dictionary to hold the current observation
-    #         cur_vals = [elem[self.currentScheduleLine] for elem in self.schedule.values()]
-    #         cur_keys = self.schedule.keys()
-    #         self.currentObs = dict(zip(cur_keys,cur_vals))
-    # def gotoNextObs(self):
-    #     if self.forceRestart == True:
-    #         self.currentScheduleLine = 0
-    #     elif (self.currentScheduleLine >= self.schedule[''][-1]) or (self.currentScheduleLine == -1):
-    #         print('cannot go to next obs')
-    #         # you've hit the end of the schedule
-    #         self.currentScheduleLine = -1
-    #     else:
-    #         # increments the schedule and just goes to the next line
-    #         self.currentScheduleLine += 1
-    #
-    #     self.getCurrentObs()
+            self.log(f'schedule file could not be loaded! error: {e}', level = logging.WARNING)
+            # NPL 12-14-21 put this all in a try/except to handle bad schedule path
+            #TODO: note that there may be downstream effects to setting this stuff to None that may need debugging
+            self.conn = None
+            self.engine = None
+            self.summary = None
+            self.schedulefile = None
+            self.schedulefile_name = None
+            self.scheduleType = None
+            
+            
 
     def getCurrentObs(self):
         """
@@ -275,13 +180,10 @@ class Schedule(object):
             
         
         try:
-            #mjdnow = Time(datetime.utcnow()).mjd
             tmpresult = schedule.conn.execute(schedule.summary.select().where(db.and_(schedule.summary.c.validStart <= obstime_mjd, 
                                                                               schedule.summary.c.validStop >= obstime_mjd,
                                                                               schedule.summary.c.obsHistID > self.last_obsHistID) 
                                                                               ))
-            #tmpresult = self.conn.execute(self.summary.select().where(self.summary.c.expMJD >= obstime_mjd))
-
             self.result = tmpresult
             
             
@@ -296,72 +198,23 @@ class Schedule(object):
         Moves down a line in the database.
         When there are no more lines fetchone returns None and we know we've finished
         """
-        """
-        #self.currentObs = dict(self.result.fetchone())
-
-        # This would just choose the next item in the previously fetched
-        # query.  Instead we want to query the db every time to see what is
-        # the next object envisioned for the queue, i.e. the one that
-        # matches this mjd most closely.
         
-        # by default just evaluate the current time and use that to compare against the obstime, but can also take in one
-        if obstime_mjd == 'now':
-            obstime_mjd = astropy.time.Time(datetime.utcnow()).mjd
-        
-        
-        metadata = db.MetaData()
-        summary  = db.Table('Summary',metadata,autoload=True,autoload_with=self.engine)
-        self.summary = summary
-        try:
-            #mjdnow = Time(datetime.utcnow()).mjd
-            tmpresult = self.conn.execute(summary.select().where(summary.c.expMJD >= obstime_mjd))
-            self.result = tmpresult
-        except:
-            print("ERROR [schedule.py]: database query failed for next object")
-            # leaves self.result unchanged
-        
-        # Grab the first row in the list of oservations for which the scheduled
-        # mjd is later than the current mjd.
-        
-        """
         self.getValidObs(obstime_mjd = obstime_mjd)
         nextResult = self.result.fetchone()
     
             
-        #else:
         if nextResult is None:
             self.currentObs = None
-            #self.log('schedule file has no more entries')
             self.log('no valid entries at this time')
         else:
             
             nextResult_dict = dict(nextResult)
             self.log(f'got next entry from schedule file: obsHistID = {nextResult_dict["obsHistID"]}')#', requestID = {nextResult_dict["requestID"]}')
-            # check to see if the nextResult is within valid times
-            #time_is_valid = (nextResult_dict['validStart'] <= obstime_mjd) and (obstime_mjd <= nextResult_dict['validStop'])
-            #self.log(f'entry within allowed times = {time_is_valid}')
             
-            #if not time_is_valid:
-            #    self.log('current observation not in time window. searching for next valid obs...')
-                # rerun the next valid observation check
-                #self.result = self.getValidObs(obstime_mjd)
-                #nextResult = self.result.fetchone()
-            
-            
-            """if nextResult is None:
-                self.currentObs = None
-                self.log('schedule file has no more entries')"""
-            
-            #self.currentObs = dict(nextResult)
             self.log('loading entry as currentObs')
             nextResult_dict = dict(nextResult)
             self.currentObs = nextResult_dict
             self.last_obsHistID = self.currentObs['obsHistID']
-                #self.log(f'got next entry from schedule file: obsHistID = {self.currentObs["obsHistID"]}, requestID = {self.currentObs["requestID"]}')
-            #Commented following lines to separate the close connection code from gotoNext. There are other situations which prompt closure
-            # if self.currentObs == None:
-            #     self.closeConnection()
-        
         
     def closeConnection(self):
         """
@@ -405,18 +258,6 @@ if __name__ == '__main__':
     
     schedule.loadSchedule(schedulefile_name, currentTime = mjd_start)
     
-
-    #%%
-    """ 
-    obstime_mjd = mjd
-    
-    tmpresult = schedule.conn.execute(schedule.summary.select().where(db.and_(schedule.summary.c.validStart <= obstime_mjd, 
-                                                                              schedule.summary.c.validStop >= obstime_mjd,
-                                                                              schedule.summary.c.obsHistID > 1) 
-                                                                      ))
-    
-    for row in tmpresult:
-        print(f'obsHistID = {row["obsHistID"]}')"""
     
     #%%
     obstime_mjd = mjd_start
@@ -428,8 +269,6 @@ if __name__ == '__main__':
     last_obsHistID = 0
     
     while obstime_mjd < mjd_end:
-        #print()
-        #print(obstime_mjd)
         obstimes.append(obstime_mjd)
         t = astropy.time.Time(obstime_mjd, format = 'mjd')
         dt = astropy.time.TimeDelta(120 * u.s) 
@@ -437,21 +276,7 @@ if __name__ == '__main__':
         obstime_mjd = t_new.mjd
     
     
-        
-        """
-        tmpresult = schedule.conn.execute(schedule.summary.select().where(db.and_(schedule.summary.c.validStart <= obstime_mjd, 
-                                                                                  schedule.summary.c.validStop >= obstime_mjd,
-                                                                                  schedule.summary.c.obsHistID > last_obsHistID) 
-                                                                          ))
-        
-        obs = tmpresult.fetchone()
-        if obs is None:
-            pass
-        else:
-            last_obsHistID = obs['obsHistID']
-            print(f'selecting first result: obsHistID = {last_obsHistID}')
-        """
-    
+    # these are some time windows from the test schedule
     a = np.array([[59557.5556068189,	59557.5569957078],
     [59557.5564170041,	59557.557805893],
     [59557.5572271893,	59557.5586160782],
@@ -475,7 +300,6 @@ if __name__ == '__main__':
         akey+=1
         
     for i in range(len(obstimes)):  
-        #print(f'\n[{i+1} / {len(obstimes)}]: {obstimes[i]}')
         obstime_mjd = obstimes[i]
         print(f'\n[{i} / {len(obstimes)-1}]: ObsTime(scaled) = {(obstime_mjd-a0)/aScale:0.2f}')
         schedule.gotoNextObs(obstime_mjd = obstime_mjd)
@@ -484,27 +308,6 @@ if __name__ == '__main__':
         else:
             obsHistIDs.append(schedule.currentObs['obsHistID'])
         
-        
-    pass
-    # date = 'today'
-    # makeSampleSchedule(date = date)
-    # s = Schedule(base_directory = wsp_path, date = date)
-    # print()
-    # print(f" the current line in the schedule file is {s.currentScheduleLine}")
-    # print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
-    # print()
-    # print('Now go to the next line!')
-    #
-    # for j in range(2):
-    #     for i in range(100):
-    #         s.logCurrentObs()
-    #         s.gotoNextObs()
-    #
-    #         print()
-    #         print(f" the current line in the schedule file is {s.currentScheduleLine}")
-    #         print(f" the current RA/DEC = {s.currentObs['fieldRA']}/{s.currentObs['fieldDec']}"	)
-    #         print()
-    #         print('Now go to the next line!')
     
     obstimes = np.array(obstimes)
     obstimes = (obstimes-a0)/aScale
@@ -517,12 +320,8 @@ if __name__ == '__main__':
         y1 = 0*a[i] +lines[i] - 0.1
         y2 = 0*a[i] +lines[i] + 0.1
         ax.fill_between(a[i], y1, y2)
-    #ax1 = ax.twinx()
+        
     ax.plot(obstimes, obsHistIDs, 'ko', linewidth = 5)
     ax.set_xlabel('Normalized Time')
     ax.set_ylabel('obsHistID')
     
-    """plt.figure()
-    plt.plot(np.ravel(a), (np.ravel(a))*0, 'o',label = 'obstimes 600-605')
-    plt.plot(np.array(obstimes), 0*np.array(obstimes), label = 'obstimes')
-    plt.legend()"""

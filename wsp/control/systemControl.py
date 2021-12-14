@@ -155,7 +155,9 @@ class control(QtCore.QObject):
                 # start up the fake sun_simulator
                 self.sunsimd = daemon_utils.PyDaemon(name = 'sun_simulator', filepath = f"{wsp_path}/ephem/sun_simulator_gui.py")
                 self.daemonlist.add_daemon(self.sunsimd)
-                    
+                self.sunsim = True
+            else:
+                self.sunsim = False
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
@@ -268,7 +270,8 @@ class control(QtCore.QObject):
                                                 viscam = self.viscam, 
                                                 ccd = self.ccd, 
                                                 mirror_cover = self.mirror_cover,
-                                                robostate = self.robostate
+                                                robostate = self.robostate,
+                                                sunsim = self.sunsim
                                                 )
         
         
