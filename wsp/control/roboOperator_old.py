@@ -255,14 +255,6 @@ class RoboOperator(QtCore.QObject):
         #### FIX THIS SOON! NPL 6-13-21
         #self.ccd.imageSaved.connect(self.log_observation_and_gotoNext)
         
-        
-        ### a QTimer for handling the cadance of checking what to do
-        self.checktimer = QtCore.QTimer()
-        self.checktimer.setSingleShot(True)
-        self.checktimer.setInterval(30*1000)
-        self.checktimer.timeout.connect(self.checkWhatToDo)
-        
-        
         ### Some methods which will log things we pass to the fits header info
         self.operator = self.config.get('fits_header',{}).get('default_operator','')
         self.programPI = ''
@@ -448,61 +440,43 @@ class RoboOperator(QtCore.QObject):
         # if we're in this loop, the robotic schedule operator is running:
         self.running = True
         
-        self.checkWhatToDo()
-    
-    def get_dome_status(self, logcheck = False):
-        """
-        This checks for any weather and dome faults that would prevent observing
-        THE ACTUAL DOME CHECKING HAPPENS IN THE DOME DAEMON (self.dome.ok_to_open)
-        Examples: 
-            - Close_Status (remote closure)
-            - Weather_Status (weather okay)
-        Does not check:
-            - Shutter_Status (dome open or closed)
-            - Sun_Status (sun down)
-        If things are okay it returns True, otherwise False
-        """
-        if (self.dome.ok_to_open or self.dome_override):
-                
-            # make a note of why we're going ahead with opening the dome
-            if self.dome.ok_to_open:
-                #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
-                return True
-            elif self.dome_override:
-                if logcheck:
-                    self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
-                return True
-            else:
-                # shouldn't ever be here
-                self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with dome handling")
-                return False
+        while True:
+            # EXECUTE THE FULL ROBOTIC SEQUENCE
+            # return statements will exit and stop the robotic sequence
+            # every time there's a return there needs to be an error emitted
+            if not self.startup_complete:
+                # Do the startup routine
+                self.do_startup()
+                # If that didn't work, then return
+                if not self.startup_complete:
+                    return
+                    #break
+            # if we're done with the startup, continue
+            if not self.calibration_complete:
+                # do the calibration:
+                #TODO: NPL 8-19-21 just commented this out while fixing the auto cal function
+                #self.do_calibration()
+                self.calibration_complete = True
+                # If that didn't work, then return
+                if not self.calibration_complete:
+                    return
+                    #break
             
-    def get_sun_status(self, logcheck = False):
-        """
-        This checks that the sun is low enough to observe
-        
-        If things are okay to observe it returns True, otherwise False
-        """
-        if self.dome.Sunlight_Status == 'READY' or self.sun_override:
-            # make a note of why we want to open the dome
-            if self.dome.Sunlight_Status == 'READY': 
-                return True
-            elif self.sun_override:
-                if logcheck:
-                    self.logger.warning(f"robo: the SUN IS ABOVE THE HORIZON, but sun_override is active so I want to open the dome")
-                return True
+            self.check_ok_to_observe()
+            if self.ok_to_observe:
+                break
             else:
-                self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with sun handling")
-                return False
-
-    
+                time.sleep(0.5)
+            
+        # we escaped the loop!
+        # if it's okay to observe, then do the first observation!
+        self.logger.info(f'finished startup, calibration, and it is okay to observe: doing current observation')
+        self.do_currentObs()
+        return
+        
     def check_ok_to_observe(self, logcheck = False):
         """
         check if it's okay to observe/open the dome
-        
-        # NPL: 12-14-21 removed all the actions, this now is just a status check which can
-        raise any necessary flags during observations. Mostly it's biggest contribution is that
-        if the weather gets bad DURING an exposure that exposure will not be logged.
         
         
         # logcheck flag indicates whether the result of the check should be written to the log
@@ -510,11 +484,43 @@ class RoboOperator(QtCore.QObject):
             but if we're just loopin through restart_robo we can safely ignore the constant logging'
         """
         
-        if self.get_sun_status():
+        # if the sun is below the horizon, or if the sun_override is active, then we want to open the dome
+        if self.dome.Sunlight_Status == 'READY' or self.sun_override:#self.ephem.sun_below_horizon or self.sun_override:
+            
+            # make a note of why we want to open the dome
+            if self.dome.Sunlight_Status == 'READY': #self.ephem.sun_below_horizon:
+                #self.logger.info(f'robo: the sun is below the horizon, I want to open the dome.')
+                pass
+            elif self.sun_override:
+                if logcheck:
+                    self.logger.warning(f"robo: the SUN IS ABOVE THE HORIZON, but sun_override is active so I want to open the dome")
+            else:
+                # shouldn't ever be here
+                if logcheck:
+                    self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with sun handling")
+                self.ok_to_observe = False
+                #return
+                #break
             
             # if we can open up the dome, then do it!
-            if self.get_dome_status():
-            
+            if (self.dome.ok_to_open or self.dome_override):
+                
+                # make a note of why we're going ahead with opening the dome
+                if self.dome.ok_to_open:
+                    #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
+                    pass
+                elif self.dome_override:
+                    if logcheck:
+                        self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
+                else:
+                    # shouldn't ever be here
+                    self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with dome handling")
+                    self.ok_to_observe = False
+                    #return
+                    #break
+                
+               
+                
                 # Check if the dome is open:
                 if self.dome.Shutter_Status == 'OPEN':
                     if logcheck:
@@ -523,25 +529,36 @@ class RoboOperator(QtCore.QObject):
                     #####
                     # We're good to observe
                     self.ok_to_observe = True
-                    return
+                    #break
                     #####
                 
                 else:
                     # dome is closed.
+                    """
+                    #TODO: this is weird. This function should either be just a status poll
+                    that is executed regularly, or it should be only run rarely.
+                    having the open command in here makes it kind of a weird in-between
+                    
+                    """
+                    msg = f'robo: shutter is closed. attempting to open...'
+                    self.announce(msg)
+                     # SEND THE DOME OPEN COMMAND
+                    self.doTry('dome_open', context = 'startup', system = 'dome')
+                    self.logger.info(f'robo: error opening dome.')
                     self.ok_to_observe = False
-                    return
                     
             else:
                 # there is an issue with the dome
                 
                 self.ok_to_observe = False
-                return
+                    
             
         else:
             # the sun is up
             self.ok_to_observe = False
-            return
-
+        
+        # FOR TESTING ONLY
+        #self.ok_to_observe = True
             
     def checkWhatToDo(self):
         """
@@ -555,116 +572,8 @@ class RoboOperator(QtCore.QObject):
                             
                 if no:
                     -> stow the telescope safely
-        
-        Loop-like Action:
-            In some cases some action will be dispatched, and then it will be necessary to check again.
-                ex: the dome wasn't open, so an open command was sent
-                
-            In other cases everything will check out okay, but there will be no valid observations.
-            
-            In both of the above cases, the desired action will be to re-check what to do after a short
-            wait. This is handled by a one-shot QTimer which waits a predetermined amount of time. The timeout
-            of the QTimer (self.checktimer) is connected to this method, so that anytime that QTimer is started
-            checkWhatToDo will be rerun after the wait. This sets up looping events where this code will continue
-            to flow as necessary, without firing at unwanted times.
+        This will sometimes need to be executed on a regular cadance, using a QTimer
         """
-        #---------------------------------------------------------------------
-        ### check the dome
-        #---------------------------------------------------------------------
-        if self.get_dome_status():
-            # if True, then the dome is fine
-            pass
-        else:
-            # there is a problem with the dome.
-            self.stow_observatory(force = False)
-            # skip the rest of the checks, just start the timer for the next check
-            self.checktimer.start()
-            return
-        #---------------------------------------------------------------------
-        # check the sun
-        #---------------------------------------------------------------------
-        if self.get_sun_status():
-            # if True, then the sun is fine. just keep going
-            pass
-        else:
-            # the sun is up, can't proceed. just hang out.
-            self.checktimer.start()
-            return
-        #---------------------------------------------------------------------
-        # check if the observatory is ready
-        #---------------------------------------------------------------------
-        if self.get_observatory_ready_status():
-            # if True, then the observatory is ready (eg successful startup and focus sequence)
-            pass
-        else:
-            # we need to (re)run do_startup
-            self.do_startup()
-            # after running do_startup, kick back to the top of the loop
-            self.checktimer.start()
-        #---------------------------------------------------------------------        
-        # check the dome
-        #---------------------------------------------------------------------
-        if self.dome.Shutter_Status == 'OPEN':
-            # the dome is open and we're ready for observations. just pass
-            pass
-        else:
-            # the dome and sun are okay, but the dome is closed. we should open the dome
-            self.doTry('dome_open')
-            self.checktimer.start()
-            return
-        #---------------------------------------------------------------------
-        # check what we should be observing NOW
-        #---------------------------------------------------------------------
-        self.schedule.get_currentObs()
-        if self.schedule.currentObs is None:
-            # nothing is up right now, just loop back and check again
-            self.checktimer.start()
-            return
-        else:
-            # if we got an observation, then let's go do it!!
-            self.do_currentObs()
-        
-            
-    def get_observatory_ready_status(self):
-        """
-        Run a check to see if the observatory is ready. Basically:
-            - did startup run successfully
-            - has the telescope been focused recently
-        """
-        self.observatory_ready_status = False
-        
-        return self.observatory_ready_status
-    
-    def get_stowed_status(self):
-        """
-        Run a check to see if the observatory is in a safe stowed state.
-        This stowed state is where it should be during the daytime, and during
-        any remote closures.
-        """
-        # for now just returning False. always assume the observatory is *not* stowed.
-        self.stowed_status = False
-        
-        return self.stowed_status
-        
-    
-    def stow_observatory(self, force = False):
-        """
-        This is a method which checks to see if the observatory is stowed,
-        and if not stows everything safely.
-        
-        You can force it to stow, in which case it will first run startup and then
-        run shutdown
-        """
-        if self.get_stowed_status() and force == False:
-            # if True, then the observatory is stowed.
-            return
-        else:
-            # we need to shut down.
-            # this may require turning things on to move them and shutdown. so we start up and then shut down
-            self.do_startup()
-            
-            self.do_shutdown()
-   
         
     
     def setup_schedule(self):
@@ -898,19 +807,16 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
         self.announce(':greentick: telescope startup complete!')
-
+# =============================================================================
+#         
+# =============================================================================
+        # turn on 
+        
         # if we made it all the way to the bottom, say the startup is complete!
         self.startup_complete = True
             
         self.announce(':greentick: startup complete!')
     
-    def do_shutdown(self):
-        """
-        This is the counterpart to do_startup. It supercedes the old "total_shutdown"
-        script, replicating its essential functions but with better communications
-        and error handling.
-        """
-        pass
     
     def restartScheduleExecution(self):
         """
