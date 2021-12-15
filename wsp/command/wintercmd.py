@@ -1985,7 +1985,7 @@ class Wintercmd(QtCore.QObject):
 
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 120.0
+        
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
@@ -1993,6 +1993,33 @@ class Wintercmd(QtCore.QObject):
 
         # get the current timestamp
         start_timestamp = datetime.utcnow().timestamp()
+        
+        # wait for homing to start
+        timeout = 10
+        # need to split up the waiting. first we need to wait until the homing actually starts which is a while
+        # if we don't wait it tends to return way before the homing actually starts
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'dome never started homing! waited {timeout} seconds')
+            
+            stop_condition = (self.dome.Dome_Status == 'HOMING')
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+        self.logger.info('wintercmd: dome has started homing routine')
+        
+        # wait for homing to complete
+        timeout = 120.0
         while True:
             QtCore.QCoreApplication.processEvents()
             #print('entering loop')
