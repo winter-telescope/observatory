@@ -34,6 +34,7 @@ import Pyro5.core
 import Pyro5.server
 from PyQt5 import QtCore#, uic, QtGui, QtWidgets
 #import functools
+import traceback
 import threading
 
 # add the wsp directory to the PATH
@@ -513,6 +514,7 @@ class daq_loop(QtCore.QThread):
                 a problem. let this get handled elsewhere.
                 '''
                 print(f'could not execute function <{self.func.__name__}> because of {type(e)}: {e}')
+                print(f'FULL TRACEBACK: {traceback.format_exc()}')
                 pass
     
             self.index += 1

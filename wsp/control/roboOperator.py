@@ -383,7 +383,10 @@ class RoboOperator(QtCore.QObject):
 
         for field in fields:
             try:
-                self.robostate.update({field : getattr(self, field)})
+                val = getattr(self, field)
+                #if type(val) is bool:
+                #    val = int(val)
+                self.robostate.update({field : val})
             except Exception as e:
                 #print(f'error: {e}')
                 pass
@@ -650,7 +653,7 @@ class RoboOperator(QtCore.QObject):
         conds.append(self.dome.Home_Status == 'READY')
         
         ### TELESCOPE CHECKS ###
-        conds.append(self.state['mount_is_connected' == True])
+        conds.append(self.state['mount_is_connected'] == True)
         conds.append(self.state['mount_alt_is_enabled'] == True)
         conds.append(self.state['mount_az_is_enabled'] == True)
         conds.append(self.state['rotator_is_connected'] == True)
@@ -679,7 +682,7 @@ class RoboOperator(QtCore.QObject):
         # make sure we've given back control
         conds.append(self.dome.Control_Status == 'AVAILABLE')
         # make sure the dome is near it's park position
-        conds.append(np.abs(self.state['dome_az'] - self.config['dome_home_az_degs']) < 1.0)
+        conds.append(np.abs(self.state['dome_az_deg'] - self.config['dome_home_az_degs']) < 1.0)
         # make sure dome tracking is off
         conds.append(self.state['dome_tracking_status'] == False)
         
@@ -689,9 +692,9 @@ class RoboOperator(QtCore.QObject):
         conds.append(self.state['mount_is_tracking'] == False)
         
         # make sure the mount is near home
-        conds.append(np.abs(self.state['mount_az_deg'] - self.config['home_az_degs']) < 1.0)
-        #conds.append(np.abs(self.state['mount_alt_deg'] - self.config['home_alt_degs']) < 45.0) # home is 45 deg, so this isn't really doing anything
-        conds.append(np.abs(self.state['rotator_mech_position'] - self.config['rotator_home_degs']) < 1.0)
+        conds.append(np.abs(self.state['mount_az_deg'] - self.config['telescope']['home_az_degs']) < 1.0)
+        #conds.append(np.abs(self.state['mount_alt_deg'] - self.config['telescope']['home_alt_degs']) < 45.0) # home is 45 deg, so this isn't really doing anything
+        conds.append(np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs']) < 5.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
         
         # make sure the motors are off
         conds.append(self.state['mount_alt_is_enabled'] == False)

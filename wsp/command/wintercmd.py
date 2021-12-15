@@ -3162,7 +3162,7 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('Open mirror cover')
         self.mirror_cover.sendreceive("beginopen")
         
-        # NOTE: when OPEN, Mirror_Cover_Open == 0
+        # NOTE: when OPEN, Mirror_Cover_State == 0
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -3182,7 +3182,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'unable to open mirror cover: command timed out after {timeout} seconds before completing.')
             
-            stop_condition = ( (self.state['Mirror_Cover_Open'] == 0) and (self.state['Mirror_Cover_Connected']))
+            stop_condition = ( (self.state['Mirror_Cover_State'] == 0) and (self.state['Mirror_Cover_Connected']))
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -3198,7 +3198,7 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('Close mirror cover')
         self.mirror_cover.sendreceive("beginclose")
         
-        # NOTE: when CLOSED, Mirror_Cover_Open == 1
+        # NOTE: when CLOSED, Mirror_Cover_State == 1
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -3218,7 +3218,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'unable to close mirror cover: command timed out after {timeout} seconds before completing.')
             
-            stop_condition = ( (self.state['Mirror_Cover_Open'] == 1) and (self.state['Mirror_Cover_Connected']))
+            stop_condition = ( (self.state['Mirror_Cover_State'] == 1) and (self.state['Mirror_Cover_Connected']))
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -3506,6 +3506,40 @@ class Wintercmd(QtCore.QObject):
         
         self.roboThread.newCommand.emit(sigcmd)
         
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 300
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'unable to run startup: command timed out after {timeout} seconds before completing.')
+            stop_conditions = []
+            stop_conditions.append(self.state['robo_observatory_ready'] == 1)
+            stop_conditions.append()
+            
+            
+            stop_condition = all(stop_conditions)
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: startup completed successfully')
+                print('Startup has finished :-)')
+
+                break 
+        
         """
         if self.state['dome_control_status'] == 0:
             try:
@@ -3561,10 +3595,17 @@ class Wintercmd(QtCore.QObject):
         except Exception:
             print('Could not open dome')
         """
-        print('Startup has finished :-)')
     
     @cmd
     def total_shutdown(self):
+        # NPL 12-15-21: porting this over to roboOperator
+        sigcmd = signalCmd('do_shutdown')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+        
+        
+        """
         try:
             self.mount_tracking_off()
             self.dome_tracking_off()
@@ -3595,7 +3636,7 @@ class Wintercmd(QtCore.QObject):
             print('Shutdown has finished :-)')
         except Exception:
             print('Failed during closing step')
-
+        """
     @cmd
     def total_restart(self):
         self.total_shutdown()
