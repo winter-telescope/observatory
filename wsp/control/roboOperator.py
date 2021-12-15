@@ -842,6 +842,11 @@ class RoboOperator(QtCore.QObject):
         pass
     
     def do_startup(self):
+        """
+        NPL 12-15-21: porting over the steps from Josh's total_startup to here
+        for better error handling.
+        """
+        
         # this is for passing to errors
         context = 'do_startup'
         
@@ -854,12 +859,14 @@ class RoboOperator(QtCore.QObject):
             # take control of dome        
             self.do('dome_takecontrol')
             
-            #self.do('dome_tracking_off')
+            self.do('dome_tracking_off')
     
-            # home the dome
+            # re-home the dome (put the dome through it's homing routine)
+            #TODO: NPL 12-15-21: we might want to move this elsewhere, we should do it nightly but it doesn't have to be here.
             self.do('dome_home')
             
-            #self.do('dome_tracking_off')
+            # send the dome to it's home/park position
+            self.do('dome_go_home')
             
             # signal we're complete
             msg = 'dome startup complete'
@@ -878,17 +885,49 @@ class RoboOperator(QtCore.QObject):
         msg = 'starting telescope startup...'
         self.announce(msg)
         try:
-            # connect the telescope
-            self.do('mount_startup')
+            # start up the mount: 
+                # splitting this up so we get more feedback on where things crash
+            #self.do('mount_startup')
             
+            # connect the telescope
+            self.do('mount_connect')
+            
+            # turn off tracking
+            self.do('mount_tracking_off')
+            
+            # turn on the motors
+            self.do('mount_az_on')
+            self.do('mount_alt_on')
+
             # turn on the rotator
             self.do('rotator_enable')
-
-            # TURN ON WRAP CHECK 
-            # NPL 08-03-21 turning this off, it's causing an error.
-            #self.do('rotator_wrap_check_enable')
+            # home the rotator
+            self.do('rotator_home')
             
+            # turn on the focuser
+            self.do('m2_focuser_enable')
             
+            # poing the mount to home
+            self.do('mount_home')
+            
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        
+        
+        system = 'mirror cover'
+        msg = 'opening mirror covers'
+        self.announce(msg)
+        try:
+            # connect to the mirror cover
+            self.do('mirror_cover_connect')
+            
+            # open the mirror cover
+            self.do('mirror_cover_open')
         
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -897,6 +936,7 @@ class RoboOperator(QtCore.QObject):
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             return
+        
         self.announce(':greentick: telescope startup complete!')
 
         # if we made it all the way to the bottom, say the startup is complete!

@@ -3500,6 +3500,13 @@ class Wintercmd(QtCore.QObject):
         print("Finished")
     @cmd
     def total_startup(self):
+        
+        # NPL 12-15-21: porting this over to roboOperator
+        sigcmd = signalCmd('do_startup')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+        """
         if self.state['dome_control_status'] == 0:
             try:
                 self.dome_takecontrol()
@@ -3553,6 +3560,7 @@ class Wintercmd(QtCore.QObject):
             print('Opening dome')
         except Exception:
             print('Could not open dome')
+        """
         print('Startup has finished :-)')
     
     @cmd
