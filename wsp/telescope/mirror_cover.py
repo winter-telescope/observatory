@@ -40,6 +40,7 @@ class MirrorCovers:
     def update_state(self):
         if self.connected:
             (code, text) = self.sendreceive("isconnected")
+            print(f'mirror code for isconnected: {code}, {text}')
             if (code == 0 or code == 1):  
                 self.state.update({'mirror_cover_connected' : int(not(code))})
                 self.state.update({'mirror_cover_connected_last_timestamp'  : datetime.utcnow().timestamp()})
