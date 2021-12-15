@@ -227,6 +227,12 @@ class RoboOperator(QtCore.QObject):
         ## off of schedule alt/az rather than ra/dec
         self.test_mode = False
         
+        # a flag to denote whether the observatory (ie telescope and dome) are ready to observe, not including whether dome is open
+        self.observatory_ready = False
+        # a similar flag to denote whether the observatory is safely stowed
+        self.observatory_stowed = False
+        
+        
         ### SET UP THE WRITER ###
         # init the database writer
         writerpath = self.config['obslog_directory'] + '/' + self.config['obslog_database_name']
@@ -357,6 +363,8 @@ class RoboOperator(QtCore.QObject):
     
     
     def update_state(self):
+        self.get_observatory_ready_status()
+        self.get_observatory_stowed_status()
         fields = ['ok_to_observe', 
                   'target_alt', 
                   'target_az',
@@ -369,6 +377,8 @@ class RoboOperator(QtCore.QObject):
                   'programID',
                   'qcomment',
                   'targtype',
+                  'observatory_stowed',
+                  'observatory_ready',
                   ]
 
         for field in fields:
@@ -631,20 +641,74 @@ class RoboOperator(QtCore.QObject):
             - did startup run successfully
             - has the telescope been focused recently
         """
-        self.observatory_ready_status = False
         
-        return self.observatory_ready_status
+        conds = []
+        
+        ### DOME CHECKS ###
+        conds.append(self.dome.Control_Status == 'REMOTE')
+        #conds.append(self.state['dome_tracking_status'] == True)
+        conds.append(self.dome.Home_Status == 'READY')
+        
+        ### TELESCOPE CHECKS ###
+        conds.append(self.state['mount_is_connected' == True])
+        conds.append(self.state['mount_alt_is_enabled'] == True)
+        conds.append(self.state['mount_az_is_enabled'] == True)
+        conds.append(self.state['rotator_is_connected'] == True)
+        conds.append(self.state['rotator_is_enabled'] == True)
+        conds.append(self.state['rotator_wrap_check_enabled'] == True)
+        conds.append(self.state['focuser_is_connected'] == True)
+        conds.append(self.state['focuser_is_enabled'] == True)
+        conds.append(self.state['Mirror_Cover_State'] == 0)
+        
+        #TODO: add something about the focus here
+        
+        self.observatory_ready = all(conds)
+        
+        return self.observatory_ready
     
-    def get_stowed_status(self):
+    def get_observatory_stowed_status(self):
         """
         Run a check to see if the observatory is in a safe stowed state.
         This stowed state is where it should be during the daytime, and during
         any remote closures.
         """
-        # for now just returning False. always assume the observatory is *not* stowed.
-        self.stowed_status = False
         
-        return self.stowed_status
+        conds = []
+        
+        ### DOME CHECKS ###
+        # make sure we've given back control
+        conds.append(self.dome.Control_Status == 'AVAILABLE')
+        # make sure the dome is near it's park position
+        conds.append(np.abs(self.state['dome_az'] - self.config['dome_home_az_degs']) < 1.0)
+        # make sure dome tracking is off
+        conds.append(self.state['dome_tracking_status'] == False)
+        
+        
+        ### TELESCOPE CHECKS ###
+        # make sure mount tracking is off
+        conds.append(self.state['mount_is_tracking'] == False)
+        
+        # make sure the mount is near home
+        conds.append(np.abs(self.state['mount_az_deg'] - self.config['home_az_degs']) < 1.0)
+        #conds.append(np.abs(self.state['mount_alt_deg'] - self.config['home_alt_degs']) < 45.0) # home is 45 deg, so this isn't really doing anything
+        conds.append(np.abs(self.state['rotator_mech_position'] - self.config['rotator_home_degs']) < 1.0)
+        
+        # make sure the motors are off
+        conds.append(self.state['mount_alt_is_enabled'] == False)
+        conds.append(self.state['mount_az_is_enabled'] == False)
+        conds.append(self.state['rotator_is_enabled'] == False)
+        conds.append(self.state['focuser_is_enabled'] == False)
+        
+        # make sure the mount is disconnected?
+        # conds.append(self.state['mount_is_connected'] == False)
+        
+        ### MIRROR COVER ###
+        # make sure the mirror cover is closed
+        conds.append(self.state['Mirror_Cover_State'] == 1)
+        
+        self.observatory_stowed = all(conds)
+        
+        return self.observatory_stowed
         
     
     def stow_observatory(self, force = False):
@@ -655,7 +719,7 @@ class RoboOperator(QtCore.QObject):
         You can force it to stow, in which case it will first run startup and then
         run shutdown
         """
-        if self.get_stowed_status() and force == False:
+        if self.get_observatory_stowed_status() and force == False:
             # if True, then the observatory is stowed.
             return
         else:
@@ -910,6 +974,8 @@ class RoboOperator(QtCore.QObject):
             # poing the mount to home
             self.do('mount_home')
             
+            self.announce(':greentick: telescope startup complete!')
+            
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
@@ -937,7 +1003,7 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
         
-        self.announce(':greentick: telescope startup complete!')
+        self.announce(':greentick: mirror covers open!')
 
         # if we made it all the way to the bottom, say the startup is complete!
         self.startup_complete = True
@@ -950,7 +1016,107 @@ class RoboOperator(QtCore.QObject):
         script, replicating its essential functions but with better communications
         and error handling.
         """
-        pass
+        
+        # this is for passing to errors
+        context = 'do_startup'
+        
+        ### DOME SHUT DOWN ###
+        system = 'dome'
+        msg = 'starting dome shutdown...'
+        self.announce(msg)
+
+        try:
+            # make sure dome isn't tracking telescope anymore
+            self.do('dome_tracking_off')
+            
+            # send the dome to it's home/park position
+            self.do('dome_go_home')
+            
+            # give control of dome        
+            self.do('dome_givecontrol')
+            
+            # signal we're complete
+            msg = 'dome shutdown complete'
+            self.logger.info(f'robo: {msg}')
+            self.alertHandler.slack_log(f':greentick: {msg}')
+        except Exception as e:
+            msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+    
+        ### MOUNT SHUTDOWN ###
+        system = 'telescope'
+        msg = 'starting telescope shutdown...'
+        self.announce(msg)
+        try:
+            # start up the mount: 
+                # splitting this up so we get more feedback on where things crash
+            #self.do('mount_startup')
+            
+            # turn off tracking
+            self.do('mount_tracking_off')
+            
+            # point the mount to home
+            self.do('mount_home')
+            
+            # turn off the focuser
+            self.do('m2_focuser_disable')
+            
+            # home the rotator
+            self.do('rotator_home')
+            
+            # turn off the rotator
+            self.do('rotator_disable')
+            
+            # turn off the motors
+            self.do('mount_az_off')
+            self.do('mount_alt_off')
+
+            # disconnect the telescope
+            self.do('mount_disconnect')
+            
+            self.announce(':greentick: telescope shutdown complete!')
+            
+        except Exception as e:
+            msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        
+        ### MIRROR COVER CLOSURE ###
+    
+        system = 'mirror cover'
+        msg = 'closing mirror covers'
+        self.announce(msg)
+        try:
+            # connect to the mirror cover
+            self.do('mirror_cover_connect')
+            
+            # open the mirror cover
+            self.do('mirror_cover_close')
+        
+        except Exception as e:
+            msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        
+        self.announce(':greentick: mirror covers closed!')
+
+        # if we made it all the way to the bottom, say the startup is complete!
+        self.shutdown_complete = True
+            
+        self.announce(':greentick: shutdown complete!')
+    
+    
+    
+    
     
     def restartScheduleExecution(self):
         """

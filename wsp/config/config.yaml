@@ -1825,6 +1825,20 @@ fields:
         dtype: float64
         rate: slow
         var: robostate["lastseen"]
+    robo_observatory_ready:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: robostate["observatory_ready"]    
+    robo_observatory_stowed:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: robostate["observatory_stowed"]  
     
     ### LABJACK STUFF###
     V_LJ0_AIN0:
