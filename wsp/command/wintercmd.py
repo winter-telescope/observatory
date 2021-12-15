@@ -3523,12 +3523,26 @@ class Wintercmd(QtCore.QObject):
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
                 raise TimeoutError(f'unable to run startup: command timed out after {timeout} seconds before completing.')
-            stop_conditions = []
-            stop_conditions.append(self.state['robo_observatory_ready'] == 1)
-            stop_conditions.append()
+            conds = []
+            # make sure the observatory ready flag is true
+            conds.append(self.state['robo_observatory_ready'] == 1)
+            
+            # make sure a bunch of other conditions on things that are part of startup are satisfied
+            # make sure the dome is near it's park position
+            conds.append(np.abs(self.state['dome_az_deg'] - self.config['dome_home_az_degs']) < 1.0)
+            # make sure dome tracking is off
+            conds.append(self.state['dome_tracking_status'] == False)
+            
+            ### TELESCOPE CHECKS ###
+            # make sure mount tracking is off
+            conds.append(self.state['mount_is_tracking'] == False)
+            # make sure the mount is near home
+            conds.append(np.abs(self.state['mount_az_deg'] - self.config['telescope']['home_az_degs']) < 1.0)
+            conds.append(np.abs(self.state['mount_alt_deg'] - self.config['telescope']['home_alt_degs']) < 1.0) # home is 45 deg, so this isn't really doing anything
+            conds.append(np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs']) < 1.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
             
             
-            stop_condition = all(stop_conditions)
+            stop_condition = all(conds)
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -3603,6 +3617,35 @@ class Wintercmd(QtCore.QObject):
         
         self.roboThread.newCommand.emit(sigcmd)
         
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 300
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'unable to connect to shut down observatory: command timed out after {timeout} seconds before completing.')
+            
+            stop_condition = ( (self.state['robo_observatory_stowed'] == 1) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: successfully shut down observatory')
+                print('Shutdown has finished :-)')
+
+                break 
         
         
         """

@@ -1012,7 +1012,8 @@ class RoboOperator(QtCore.QObject):
         self.startup_complete = True
             
         self.announce(':greentick: startup complete!')
-    
+        print(f'robo: do_startup complete')
+        
     def do_shutdown(self):
         """
         This is the counterpart to do_startup. It supercedes the old "total_shutdown"
@@ -1116,7 +1117,8 @@ class RoboOperator(QtCore.QObject):
         self.shutdown_complete = True
             
         self.announce(':greentick: shutdown complete!')
-    
+        print(f'robo: do_shutdown complete')
+
     
     
     
