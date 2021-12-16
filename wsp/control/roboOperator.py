@@ -423,8 +423,9 @@ class RoboOperator(QtCore.QObject):
         self.rotator_stop_and_reset()
         
         # got to the next observation
-        self.gotoNext()
-    
+        #self.gotoNext()
+        self.checkWhatToDo()
+        
     def updateOperator(self, operator_name):
         if type(operator_name) is str:
             self.operator = operator_name
@@ -581,61 +582,74 @@ class RoboOperator(QtCore.QObject):
             checkWhatToDo will be rerun after the wait. This sets up looping events where this code will continue
             to flow as necessary, without firing at unwanted times.
         """
-        #---------------------------------------------------------------------
-        ### check the dome
-        #---------------------------------------------------------------------
-        if self.get_dome_status():
-            # if True, then the dome is fine
-            pass
-        else:
-            # there is a problem with the dome.
-            self.stow_observatory(force = False)
-            # skip the rest of the checks, just start the timer for the next check
-            self.checktimer.start()
-            return
-        #---------------------------------------------------------------------
-        # check the sun
-        #---------------------------------------------------------------------
-        if self.get_sun_status():
-            # if True, then the sun is fine. just keep going
-            pass
-        else:
-            # the sun is up, can't proceed. just hang out.
-            self.checktimer.start()
-            return
-        #---------------------------------------------------------------------
-        # check if the observatory is ready
-        #---------------------------------------------------------------------
-        if self.get_observatory_ready_status():
-            # if True, then the observatory is ready (eg successful startup and focus sequence)
-            pass
-        else:
-            # we need to (re)run do_startup
-            self.do_startup()
-            # after running do_startup, kick back to the top of the loop
-            self.checktimer.start()
-        #---------------------------------------------------------------------        
-        # check the dome
-        #---------------------------------------------------------------------
-        if self.dome.Shutter_Status == 'OPEN':
-            # the dome is open and we're ready for observations. just pass
-            pass
-        else:
-            # the dome and sun are okay, but the dome is closed. we should open the dome
-            self.doTry('dome_open')
-            self.checktimer.start()
-            return
-        #---------------------------------------------------------------------
-        # check what we should be observing NOW
-        #---------------------------------------------------------------------
-        self.schedule.get_currentObs()
-        if self.schedule.currentObs is None:
-            # nothing is up right now, just loop back and check again
-            self.checktimer.start()
-            return
-        else:
-            # if we got an observation, then let's go do it!!
-            self.do_currentObs()
+        if self.running:
+            #---------------------------------------------------------------------
+            ### check the dome
+            #---------------------------------------------------------------------
+            if self.get_dome_status():
+                # if True, then the dome is fine
+                pass
+            else:
+                # there is a problem with the dome.
+                self.stow_observatory(force = False)
+                # skip the rest of the checks, just start the timer for the next check
+                self.checktimer.start()
+                return
+            #---------------------------------------------------------------------
+            # check the sun
+            #---------------------------------------------------------------------
+            if self.get_sun_status():
+                # if True, then the sun is fine. just keep going
+                pass
+            else:
+                # the sun is up, can't proceed. just hang out.
+                self.checktimer.start()
+                return
+            #---------------------------------------------------------------------
+            # check if the observatory is ready
+            #---------------------------------------------------------------------
+            if self.get_observatory_ready_status():
+                # if True, then the observatory is ready (eg successful startup and focus sequence)
+                pass
+            else:
+                # we need to (re)run do_startup
+                self.do_startup()
+                # after running do_startup, kick back to the top of the loop
+                self.checktimer.start()
+            #---------------------------------------------------------------------        
+            # check the dome
+            #---------------------------------------------------------------------
+            if self.dome.Shutter_Status == 'OPEN':
+                # the dome is open and we're ready for observations. just pass
+                pass
+            else:
+                # the dome and sun are okay, but the dome is closed. we should open the dome
+                self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
+                self.doTry('dome_open')
+                
+                self.checktimer.start()
+                return
+            #---------------------------------------------------------------------
+            # check what we should be observing NOW
+            #---------------------------------------------------------------------
+            self.schedule.get_currentObs()
+            self.announce('getting next observation from schedule database')
+            if self.schedule.currentObs is None:
+                self.announce('no valid observations at this time, standing by...')
+                # first stow the rotator
+                self.rotator_stop_and_reset()
+                
+                # if we're at the bottom of the schedule, then handle the end of the schedule
+                if self.schedule.end_of_schedule == True:
+                        self.announce('schedule complete! shutting down scheule connection')
+                        self.handle_end_of_schedule()
+                else:
+                    # nothing is up right now, just loop back and check again
+                    self.checktimer.start()
+                return
+            else:
+                # if we got an observation, then let's go do it!!
+                self.do_currentObs()
         
             
     def get_observatory_ready_status(self):
@@ -734,6 +748,7 @@ class RoboOperator(QtCore.QObject):
         """
         if self.get_observatory_stowed_status() and force == False:
             # if True, then the observatory is stowed.
+            
             return
         else:
             # we need to shut down.
@@ -851,6 +866,9 @@ class RoboOperator(QtCore.QObject):
         else:
             self.logger.log(level = level, msg = msg)
     
+    """
+    # NPL 12-16-21: staged for deletion. commenting out to see if anything gets mad
+    
     def waitForCondition(self, condition, timeout = 60):
         ## Wait until end condition is satisfied, or timeout ##
         
@@ -878,6 +896,8 @@ class RoboOperator(QtCore.QObject):
             
             if all(entry == True for entry in stop_condition_buffer):
                 break 
+    """
+    
     def doTry(self, cmd, context = '', system = ''):
         """
         This does the command by calling wintercmd.parse.
@@ -1133,14 +1153,6 @@ class RoboOperator(QtCore.QObject):
     
     
     
-    def restartScheduleExecution(self):
-        """
-        Run this function anytime we are going to restart the robotic operations
-        it will:
-            1. refocus the telescope
-            2. start the robotic operator loop
-        """
-        
 
     
     def do_calibration(self):
@@ -1317,11 +1329,14 @@ class RoboOperator(QtCore.QObject):
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
         
         if self.schedule.currentObs is None:
+            """
+            # NPL shouldn't ever get here, if we do just leave anc check what to do
             self.logger.info(f'robo: self.schedule.currentObs is None. Closing connection to db.')
             self.running = False
             
             self.handle_end_of_schedule()
-            
+            """
+            self.checkWhatToDo()
             return
         
         if self.running & self.ok_to_observe:
@@ -1408,8 +1423,8 @@ class RoboOperator(QtCore.QObject):
             
             # if we got here the observation wasn't completed properly
             #return
-            self.gotoNext()
-            
+            #self.gotoNext()
+            self.checkWhatToDo()
             
             # 5: exit
             
@@ -1417,9 +1432,13 @@ class RoboOperator(QtCore.QObject):
             
         else:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
-            self.restart_robo()
+            self.checkWhatToDo()
+            #self.restart_robo()
     
     def gotoNext(self): 
+        # NPL 12-16-21: this is now deprecated.
+        
+        
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
         if not self.ok_to_observe:
@@ -1508,9 +1527,10 @@ class RoboOperator(QtCore.QObject):
                     self.writer.log_observation(header_data, image_filepath)
             
             # get the next observation
-            self.logger.info('robo: getting next observation from schedule database')
-            self.schedule.gotoNextObs()
-        
+            #self.logger.info('robo: getting next observation from schedule database')
+            #self.schedule.gotoNextObs()
+            
+            
         
         else:  
             if self.schedule.currentObs is None:
@@ -1525,7 +1545,14 @@ class RoboOperator(QtCore.QObject):
                 # if there are no more observations, we can stow the rotator:
                 self.rotator_stop_and_reset()
             """
-            
+        
+        # we're done with the observation and logging process. go figure out what to do next
+        self.checkWhatToDo()
+        
+        """
+        #TODO: NPL 12-16-21 need to implement some logic about the end of the schedule
+        
+        
         # recheck if the newly loaded observation is None:
         if self.schedule.currentObs is not None and self.running:
             # do the next observation and continue the cycle
@@ -1544,7 +1571,7 @@ class RoboOperator(QtCore.QObject):
             elif self.running == False:
                 self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
                 self.rotator_stop_and_reset()
-            
+        """
                 
     
     def handle_end_of_schedule(self):
@@ -2275,58 +2302,4 @@ class RoboOperator(QtCore.QObject):
         else:
             return False
     
-    def old_do_observing(self):
-        '''
-        This function must contain all of the database manipulation code to remain threadsafe and prevent
-        exceptions from being raised during operation
-        '''
-        self.running = True
- 
-
-        while self.schedule.currentObs is not None and self.running:
-            #print(f'scheduleExecutor: in the observing loop!')
-            self.lastSeen = self.schedule.currentObs['obsHistID']
-            self.current_field_alt = float(self.schedule.currentObs['altitude'])
-            self.current_field_az = float(self.schedule.currentObs['azimuth'])
-
-            for i in range(len(self.dither_alt)):
-                # step through the prescribed dither sequence
-                dither_alt = self.dither_alt[i]
-                dither_az = self.dither_az[i]
-                print(f'Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
-                self.alt_scheduled = self.current_field_alt + dither_alt
-                self.az_scheduled = self.current_field_az + dither_az
-
-                #self.newcmd.emit(f'mount_goto_alt_az {self.currentALT} {self.currentAZ}')
-                if self.state["ok_to_observe"]:
-                    print(f'Observing Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
-                    self.telescope.mount_goto_alt_az(alt_degs = self.alt_scheduled, az_degs = self.az_scheduled)
-                    # wait for the telescope to stop moving before returning
-                    while self.state['mount_is_slewing']:
-                       time.sleep(self.config['cmd_status_dt'])
-                else:
-                    print(f'Skipping Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
-                self.waittime = int(self.schedule.currentObs['visitTime'])/len(self.dither_alt)
-                ##TODO###
-                ## Step through current obs dictionairy and update the state dictionary to include it
-                ## append planned to the keys in the obs dictionary, to allow us to use the original names to record actual values.
-                ## for now we want to add actual waittime, and actual time.
-                #####
-                self.logger.info(f'robo: Taking a {self.waittime} second exposure...')
-                #time.sleep(self.waittime)
-                
-                if self.state["ok_to_observe"]:
-                    imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
-                    # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
-                    currentData = self.get_data_to_log()
-                    # self.state.update(currentData)
-                    # data_to_write = {**self.state}
-                    data_to_write = {**self.state, **currentData} ## can add other dictionaries here
-                    self.writer.log_observation(data_to_write, imagename)
-
-            self.schedule.gotoNextObs()
-
-        if not self.schedulefile_name is None:
-            ## TODO: Code to close connections to the databases.
-            self.schedule.closeConnection()
-            self.writer.closeConnection()
+    

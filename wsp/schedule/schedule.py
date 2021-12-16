@@ -98,6 +98,11 @@ class Schedule(object):
         
         # keep track of the last obsHistID observed
         self.last_obsHistID = -1
+        
+        # flag to track if we've hit the bottom of the schedule
+        self.end_of_schedule = False
+        # number of observations after the current time
+        self.remaining_valid_observations = 1000
 
    
     def log(self, msg, level = logging.INFO):
@@ -180,12 +185,19 @@ class Schedule(object):
             
         
         try:
-            tmpresult = schedule.conn.execute(schedule.summary.select().where(db.and_(schedule.summary.c.validStart <= obstime_mjd, 
-                                                                              schedule.summary.c.validStop >= obstime_mjd,
-                                                                              schedule.summary.c.obsHistID > self.last_obsHistID) 
+            tmpresult = schedule.conn.execute(self.summary.select().where(db.and_(self.summary.c.validStart <= obstime_mjd, 
+                                                                              self.summary.c.validStop >= obstime_mjd,
+                                                                              self.summary.c.obsHistID > self.last_obsHistID) 
                                                                               ))
             self.result = tmpresult
             
+            # calculate how many observations remain that have times after obstime_mjd
+            remaining_observations = schedule.conn.execute(self.summary.select().where(db.and_(self.summary.c.expMJD > obstime_mjd)))
+            self.remaining_valid_observations = len([observation for observation in remaining_observations])
+            if self.remaining_valid_observations == 0:
+                self.end_of_schedule = True
+            else:
+                self.end_of_schedule = False
             
         except Exception as e:
             print(f"ERROR [schedule.py]: database query failed for next object: {e}")
@@ -251,12 +263,12 @@ if __name__ == '__main__':
     0#mjd = 59557.1
     mjd = (59557.0698429301 + 59557.0712318189)/2
     
-    #mjd_start = 59557.5556068189+1e-10 #for whatever reason it seems like it MUST be bigger to count, like the >= is only being read as > for wahtever reason
-    mjd_start = 59557.5556068189+2e-3
+    mjd_start = 59557.5556068189+1e-10 #for whatever reason it seems like it MUST be bigger to count, like the >= is only being read as > for wahtever reason
+    #mjd_start = 59557.5556068189+2e-3
 
-    mjd_end = 59557.5603521893
+    mjd_end = 59557.5603521893 + 2e-3
     
-    schedule.loadSchedule(schedulefile_name, currentTime = mjd_start)
+    schedule.loadSchedule(schedulefile_name)
     
     
     #%%
@@ -267,11 +279,13 @@ if __name__ == '__main__':
     obsHistIDs = []
     
     last_obsHistID = 0
+    observations_remaining = []
+    end_of_schedule = []
     
     while obstime_mjd < mjd_end:
         obstimes.append(obstime_mjd)
         t = astropy.time.Time(obstime_mjd, format = 'mjd')
-        dt = astropy.time.TimeDelta(120 * u.s) 
+        dt = astropy.time.TimeDelta(60 * u.s) 
         t_new = t+dt
         obstime_mjd = t_new.mjd
     
@@ -307,16 +321,16 @@ if __name__ == '__main__':
             obsHistIDs.append(np.nan)
         else:
             obsHistIDs.append(schedule.currentObs['obsHistID'])
-        
-    
+        observations_remaining.append(schedule.remaining_valid_observations)
+        end_of_schedule.append(schedule.end_of_schedule)
     obstimes = np.array(obstimes)
     obstimes = (obstimes-a0)/aScale
     
-    lines = np.arange(len(a))+ 600
+    lines = np.arange(600,608,1)#np.arange(len(a))+ 600
     fig, ax = plt.subplots(1,1,figsize = (15,10))    
     for ob in obstimes:
         ax.plot(ob+0*np.array(lines), np.array(lines), 'k-', alpha = 0.5)
-    for i in range(len(lines)):
+    for i in range(len(a)):
         y1 = 0*a[i] +lines[i] - 0.1
         y2 = 0*a[i] +lines[i] + 0.1
         ax.fill_between(a[i], y1, y2)
@@ -324,4 +338,7 @@ if __name__ == '__main__':
     ax.plot(obstimes, obsHistIDs, 'ko', linewidth = 5)
     ax.set_xlabel('Normalized Time')
     ax.set_ylabel('obsHistID')
-    
+    ax.set_yticks(np.arange(600,608,1))
+    for i in range(len(obstimes)):
+        ax.annotate(f'Remaining Obs = {observations_remaining[i]}', (obstimes[i]+0.03, 605.1), rotation = 90)
+        ax.annotate(f'End of Sched. = {end_of_schedule[i]}', (obstimes[i]+0.08, 605.1), rotation = 90)
