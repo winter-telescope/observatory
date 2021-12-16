@@ -780,11 +780,14 @@ class RoboOperator(QtCore.QObject):
         
     
     def getSchedule(self, schedulefile_name, startFresh = True):
+        """
+        #NPL 12-16-21 this is deprecated
         if startFresh:
             currentTime = 0
         else:
             currentTime = self.lastseen + 1
-        self.schedule.loadSchedule(schedulefile_name, currentTime = currentTime)
+        """
+        self.schedule.loadSchedule(schedulefile_name)
 
     def interrupt(self):
         self.schedule.currentObs = None

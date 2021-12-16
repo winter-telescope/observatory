@@ -21,6 +21,7 @@ from PyQt5 import QtCore
 #import numpy as np
 import sys
 import signal
+import pytz
 #import queue
 import threading
 import astropy.coordinates
@@ -159,11 +160,17 @@ class EphemMon(object):
             self.update_observatoryState()
             
             if self.sunsim:
-                timestamp = self.sunsimState.get('timestamp', -888)
-                self.time_utc = datetime.fromtimestamp(timestamp)
+                local_timestamp = self.sunsimState.get('timestamp', -888)
+                time_local = datetime.fromtimestamp(local_timestamp, tz = pytz.timezone('America/Los_Angeles'))
+                self.time_utc = time_local.astimezone(pytz.utc)
+                timestamp = self.time_utc.timestamp()
+                #print(f'local time = {time_local}, local_timestamp = {local_timestamp}')
+                #print(f'utc   time = {time_utc}, utc timestamp = {timestamp}')
+
             else:
                 self.time_utc = datetime.utcnow()
                 timestamp = self.time_utc.timestamp()
+                
             self.state.update({'timestamp' : timestamp})
             
             #
