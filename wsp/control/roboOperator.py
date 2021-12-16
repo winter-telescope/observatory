@@ -682,7 +682,10 @@ class RoboOperator(QtCore.QObject):
         # make sure we've given back control
         conds.append(self.dome.Control_Status == 'AVAILABLE')
         # make sure the dome is near it's park position
-        conds.append(np.abs(self.state['dome_az_deg'] - self.config['dome_home_az_degs']) < 1.0)
+        # AZ: handle the fact that we may get something 359 or 0.6
+        delta_az = np.abs(self.state['dome_az_deg'] - self.config['dome_home_az_degs']) 
+        min_delta_az = np.min([360 - delta_az, delta_az])
+        conds.append(min_delta_az < 1.0)
         # make sure dome tracking is off
         conds.append(self.state['dome_tracking_status'] == False)
         
@@ -692,9 +695,16 @@ class RoboOperator(QtCore.QObject):
         conds.append(self.state['mount_is_tracking'] == False)
         
         # make sure the mount is near home
-        conds.append(np.abs(self.state['mount_az_deg'] - self.config['telescope']['home_az_degs']) < 1.0)
+        delta_az = np.abs(self.state['mount_az_deg'] - self.config['telescope']['home_az_degs']) 
+        min_delta_az = np.min([360 - delta_az, delta_az])
+        conds.append(min_delta_az < 1.0)
+        
+        # don't worry about the alt
         #conds.append(np.abs(self.state['mount_alt_deg'] - self.config['telescope']['home_alt_degs']) < 45.0) # home is 45 deg, so this isn't really doing anything
-        conds.append(np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs']) < 5.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
+        
+        delta_rot_angle = np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs'])
+        min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
+        conds.append( min_delta_rot_angle < 5.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
         
         # make sure the motors are off
         conds.append(self.state['mount_alt_is_enabled'] == False)
