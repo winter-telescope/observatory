@@ -135,7 +135,7 @@ def cmd(func):
             so do nothing here.
             '''
             msg = (f'wintercmd: Could not execute command {func.__name__}: {e}')
-            LOGGER.info(msg)
+            LOGGER.exception(msg)
             #NPL 8-2-21: adding these because some exceptions are getting lost (ie TargetError)
             raise Exception(e)
             
@@ -1995,7 +1995,7 @@ class Wintercmd(QtCore.QObject):
         start_timestamp = datetime.utcnow().timestamp()
         
         # wait for homing to start
-        timeout = 10
+        timeout = 20
         # need to split up the waiting. first we need to wait until the homing actually starts which is a while
         # if we don't wait it tends to return way before the homing actually starts
         while True:
@@ -2008,7 +2008,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'dome never started homing! waited {timeout} seconds')
             
-            stop_condition = (self.dome.Dome_Status == 'HOMING')
+            stop_condition = (self.state['dome_status'] == self.config['Dome_Status_Dict']['Dome_Status']['HOMING'])
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element

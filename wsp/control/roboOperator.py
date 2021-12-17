@@ -25,6 +25,7 @@ from astropy.io import fits
 import pathlib
 import subprocess
 import traceback
+import pytz
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -103,7 +104,7 @@ class RoboOperatorThread(QtCore.QThread):
     # a generic do command signal for executing any command in robothread
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -123,6 +124,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.robostate = robostate
+        self.sunsim = sunsim
     
     def run(self):           
         self.robo = RoboOperator(base_directory = self.base_directory, 
@@ -140,7 +142,8 @@ class RoboOperatorThread(QtCore.QThread):
                                      viscam = self.viscam,
                                      ccd = self.ccd,
                                      mirror_cover = self.mirror_cover,
-                                     robostate = self.robostate
+                                     robostate = self.robostate,
+                                     sunsim = self.sunsim,
                                      )
         
         # Put all the signal/slot connections here:
@@ -185,7 +188,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -208,6 +211,7 @@ class RoboOperator(QtCore.QObject):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.robostate = robostate
+        self.sunsim = sunsim
         
         
         # keep track of the last command executed so it can be broadcast as an error if needed
@@ -396,11 +400,13 @@ class RoboOperator(QtCore.QObject):
     
     def rotator_stop_and_reset(self):
         self.log(f'stopping rotator and resetting to home position')
-        # turn off tracking
-        self.doTry('mount_tracking_off')
-        self.doTry('rotator_home')
-        # turn on wrap check again
-        self.doTry('rotator_wrap_check_enable')
+        # if the rotator is on do this:
+        if self.state['rotator_is_enabled']:
+            # turn off tracking
+            self.doTry('mount_tracking_off')
+            self.doTry('rotator_home')
+            # turn on wrap check again
+            self.doTry('rotator_wrap_check_enable')
         
     def handle_wrap_warning(self, angle):
         
@@ -476,20 +482,21 @@ class RoboOperator(QtCore.QObject):
             - Sun_Status (sun down)
         If things are okay it returns True, otherwise False
         """
-        if (self.dome.ok_to_open or self.dome_override):
+        
                 
-            # make a note of why we're going ahead with opening the dome
-            if self.dome.ok_to_open:
-                #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
-                return True
-            elif self.dome_override:
-                if logcheck:
-                    self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
-                return True
-            else:
-                # shouldn't ever be here
-                self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with dome handling")
-                return False
+        # make a note of why we're going ahead with opening the dome
+        if self.dome.ok_to_open:
+            #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
+            return True
+        elif self.dome_override:
+            if logcheck:
+                self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
+            return True
+        else:
+            # shouldn't ever be here
+            self.logger.warning(f"robo: dome is NOT okay to open")
+            return False
+        
             
     def get_sun_status(self, logcheck = False):
         """
@@ -564,7 +571,7 @@ class RoboOperator(QtCore.QObject):
         The idea is that the workflow is now:
             -> check if it's okay to observe:
                 if yes:
-                    -> check what we should be observing now: run schedule.get_currentObs()
+                    -> check what we should be observing now: run schedule.gotoNextObs()
                         if schedule.currentObs is None:
                             
                 if no:
@@ -582,14 +589,18 @@ class RoboOperator(QtCore.QObject):
             checkWhatToDo will be rerun after the wait. This sets up looping events where this code will continue
             to flow as necessary, without firing at unwanted times.
         """
+        self.log('checking if robo operator is running')
         if self.running:
+            self.log('robo operator is running')
             #---------------------------------------------------------------------
             ### check the dome
             #---------------------------------------------------------------------
             if self.get_dome_status():
                 # if True, then the dome is fine
+                self.log('the dome status is good!')
                 pass
             else:
+                self.log('there is a problem with the dome (eg weather, etc). STOWING OBSERVATORY')
                 # there is a problem with the dome.
                 self.stow_observatory(force = False)
                 # skip the rest of the checks, just start the timer for the next check
@@ -599,9 +610,11 @@ class RoboOperator(QtCore.QObject):
             # check the sun
             #---------------------------------------------------------------------
             if self.get_sun_status():
+                self.log(f'the sun is low are we are ready to go!')
                 # if True, then the sun is fine. just keep going
                 pass
             else:
+                self.log(f'waiting for the sun to set')
                 # the sun is up, can't proceed. just hang out.
                 self.checktimer.start()
                 return
@@ -609,9 +622,11 @@ class RoboOperator(QtCore.QObject):
             # check if the observatory is ready
             #---------------------------------------------------------------------
             if self.get_observatory_ready_status():
+                self.log(f'the observatory is ready to observe!')
                 # if True, then the observatory is ready (eg successful startup and focus sequence)
                 pass
             else:
+                self.log(f'need to start up observatory')
                 # we need to (re)run do_startup
                 self.do_startup()
                 # after running do_startup, kick back to the top of the loop
@@ -620,6 +635,7 @@ class RoboOperator(QtCore.QObject):
             # check the dome
             #---------------------------------------------------------------------
             if self.dome.Shutter_Status == 'OPEN':
+                self.log(f'the dome is open and we are ready to start taking data')
                 # the dome is open and we're ready for observations. just pass
                 pass
             else:
@@ -632,7 +648,16 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
-            self.schedule.get_currentObs()
+            # turn the timestamp into mjd
+            if self.sunsim:
+                timestamp = self.ephem.state["timestamp"]
+                datetime_obj = datetime.fromtimestamp(timestamp)#, tz = pytz.timezone('America/Los_Angeles'))
+                time_obj = astropy.time.Time(datetime_obj, format = 'datetime')
+                obstime_mjd = time_obj.mjd
+                print(f'MJD = {obstime_mjd}')
+            else:
+                obstime_mjd = 'now'
+            self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
             self.announce('getting next observation from schedule database')
             if self.schedule.currentObs is None:
                 self.announce('no valid observations at this time, standing by...')
@@ -641,7 +666,7 @@ class RoboOperator(QtCore.QObject):
                 
                 # if we're at the bottom of the schedule, then handle the end of the schedule
                 if self.schedule.end_of_schedule == True:
-                        self.announce('schedule complete! shutting down scheule connection')
+                        self.announce('schedule complete! shutting down schedule connection')
                         self.handle_end_of_schedule()
                 else:
                     # nothing is up right now, just loop back and check again
@@ -751,6 +776,7 @@ class RoboOperator(QtCore.QObject):
             
             return
         else:
+            self.announce(f'stowing observatory from arbitrary state: starting up first and then shutting down')
             # we need to shut down.
             # this may require turning things on to move them and shutdown. so we start up and then shut down
             self.do_startup()
@@ -963,7 +989,7 @@ class RoboOperator(QtCore.QObject):
     
             # re-home the dome (put the dome through it's homing routine)
             #TODO: NPL 12-15-21: we might want to move this elsewhere, we should do it nightly but it doesn't have to be here.
-            self.do('dome_home')
+            #self.do('dome_home')
             
             # send the dome to it's home/park position
             self.do('dome_go_home')

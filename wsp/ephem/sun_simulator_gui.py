@@ -147,6 +147,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         day = now_local.day
         
         self.time = datetime(year = year, month = month, day = day, hour = 17, minute = 30, second = 0) 
+        self.time = self.tz.localize(self.time)
         self.sun_timestamp = self.time.timestamp()
         self.sun_timeiso = self.time.isoformat(sep = ' ')
         
@@ -188,7 +189,7 @@ class SunSimulator(QtWidgets.QMainWindow):
                                       second        = time_requested.second,
                                       microsecond   = time_requested.microsecond)
         
-        self.time = datetime_requested
+        self.time = self.tz.localize(datetime_requested)#NPL 12-17-21 added this localization to try and fix timezone errors
         
         self.update_state()
     
@@ -196,7 +197,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         
         
         # make sure we enforce the timezone
-        obstime = self.tz.localize(obstime)
+        #obstime = self.tz.localize(obstime)
         
         obstime_astropy = astropy.time.Time(obstime, format = time_format)
         
