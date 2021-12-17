@@ -771,6 +771,8 @@ class RoboOperator(QtCore.QObject):
         You can force it to stow, in which case it will first run startup and then
         run shutdown
         """
+        #TODO: add a check on if the observatory is ALREADY stowed!
+        
         if self.get_observatory_stowed_status() and force == False:
             # if True, then the observatory is stowed.
             
