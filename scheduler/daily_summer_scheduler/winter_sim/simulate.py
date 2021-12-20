@@ -7,13 +7,14 @@ import logging
 import numpy as np
 import astropy.coordinates as coord
 from astropy.time import Time
+import astroplan # W
 import astropy.units as u
 from .TelescopeStateMachine import TelescopeStateMachine
 from .Scheduler import Scheduler
 from .QueueManager import GreedyQueueManager, QueueEmptyError, GurobiQueueManager
 from .QueueManager import calc_pool_stats, calc_queue_stats
 from .configuration import SchedulerConfiguration
-from .constants import BASE_DIR, P48_loc, W_loc
+from .constants import BASE_DIR, P48_loc, W_loc, W_Observer
 from .utils import block_index
 
 
@@ -49,7 +50,20 @@ def simulate(scheduler_config_file, sim_config_file,
     start_time = sim_config['simulation']['start_time']
     
     if (start_time.lower() == "tonight"):
-        start_time = datetime.now().strftime("%Y-%m-%d") + ' 00:00:00'
+        # W
+        time_now = Time(datetime.utcnow(), scale='utc')
+
+        sun_rise = W_Observer.sun_rise_time(time_now, which="next") 
+        sun_set = W_Observer.sun_set_time(time_now, which="next")  
+    
+        # If currently running the scheduler in the day time
+        if sun_rise > sun_set:
+            start_time = sun_set.utc.strftime("%Y-%m-%d") + ' 00:00:00'
+            survey_start_time = Time(start_time, scale='utc', location=W_loc)
+        # If running the scheduler at night
+        else:
+            start_time = time_now.strftime("%Y-%m-%d") + ' 00:00:00'
+            survey_start_time = Time(start_time, scale='utc', location=W_loc)
     else:
         start_time = start_time
 
