@@ -2243,7 +2243,9 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = drivetime * 1.5 # give the drivetime some overhead
+        nominal_timeout = drivetime * 1.5 # give the drivetime some overhead
+        timeout = 300
+        
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
@@ -2259,6 +2261,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
+            
             stop_condition = ( (self.state['dome_status'] == self.config['Dome_Status_Dict']['Dome_Status']['STOPPED']) and (np.abs(self.state['dome_az_deg'] - az ) < 0.5 ) )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -2268,6 +2271,8 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 break 
         
+        if dt > drivetime:
+            self.alertHandler.announce(f'Warning: Dome took {dt} s to move but it should have only taken {drivetime} s')
         self.logger.info(f'wintercmd: actual dome drivetime = {dt} s')
         
     @cmd 
