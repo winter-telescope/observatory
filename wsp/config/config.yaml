@@ -677,6 +677,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'ephem.state["timestamp"]'
+    ephem_mjd:
+        ftype: raw
+        label: 'MJD'
+        units: None
+        dtype: float64
+        rate: slow
+        var: "ephem.state['mjd']"
     sun_alt:
         ftype: raw
         label: 'Alt'
@@ -778,6 +785,13 @@ fields:
         dtype: float64
         rate: slow
         var: "schedule.currentObs['azimuth']"
+    remaining_schedule_targets:
+        ftype: raw
+        label: 'Num'
+        units: None
+        dtype: int64
+        rate: hk
+        var: "schedule.remaining_valid_observations"
     
 #telescope
     pwi4_version_field0:

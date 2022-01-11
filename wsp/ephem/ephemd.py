@@ -160,17 +160,26 @@ class EphemMon(object):
             self.update_observatoryState()
             
             if self.sunsim:
-                local_timestamp = self.sunsimState.get('timestamp', -888)
-                time_local = datetime.fromtimestamp(local_timestamp, tz = pytz.timezone('America/Los_Angeles'))
-                self.time_utc = time_local.astimezone(pytz.utc)
-                timestamp = self.time_utc.timestamp()
+                #local_timestamp = self.sunsimState.get('timestamp', -888)
+                #time_local = datetime.fromtimestamp(local_timestamp, tz = pytz.timezone('America/Los_Angeles'))
+                #self.time_utc = time_local.astimezone(pytz.utc)
+                #timestamp = self.time_utc.timestamp()
                 #print(f'local time = {time_local}, local_timestamp = {local_timestamp}')
                 #print(f'utc   time = {time_utc}, utc timestamp = {timestamp}')
-
+                timestamp = self.sunsimState.get('timestamp', -888)
+                self.time_utc = datetime.fromtimestamp(timestamp)
+                mjd = self.sunsimState.get('mjd', -888)
+                
             else:
                 self.time_utc = datetime.utcnow()
                 timestamp = self.time_utc.timestamp()
+                astropy_time = astropy.time.Time(self.time_utc, format = 'datetime')
                 
+                mjd = astropy_time.mjd
+            # turn the timestamp into MJD
+        
+            
+            self.state.update({'mjd' : mjd})
             self.state.update({'timestamp' : timestamp})
             
             #

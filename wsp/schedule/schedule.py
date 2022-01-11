@@ -185,14 +185,14 @@ class Schedule(object):
             
         
         try:
-            tmpresult = schedule.conn.execute(self.summary.select().where(db.and_(self.summary.c.validStart <= obstime_mjd, 
+            tmpresult = self.conn.execute(self.summary.select().where(db.and_(self.summary.c.validStart <= obstime_mjd, 
                                                                               self.summary.c.validStop >= obstime_mjd,
                                                                               self.summary.c.obsHistID > self.last_obsHistID) 
                                                                               ))
             self.result = tmpresult
             
             # calculate how many observations remain that have times after obstime_mjd
-            remaining_observations = schedule.conn.execute(self.summary.select().where(db.and_(self.summary.c.expMJD > obstime_mjd)))
+            remaining_observations = self.conn.execute(self.summary.select().where(db.and_(self.summary.c.expMJD > obstime_mjd)))
             self.remaining_valid_observations = len([observation for observation in remaining_observations])
             if self.remaining_valid_observations == 0:
                 self.end_of_schedule = True

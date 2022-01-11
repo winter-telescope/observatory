@@ -137,7 +137,12 @@ class control(QtCore.QObject):
             # housekeeping data logging daemon (hkd = housekeeping daemon)
             self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
             self.daemonlist.add_daemon(self.hkd)
-            
+        
+        if '--sunsim' in opts:              
+            self.sunsim = True
+        else:
+            self.sunsim = False
+        
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
             
@@ -151,13 +156,11 @@ class control(QtCore.QObject):
                 self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
                 self.daemonlist.add_daemon(self.domesim)
                 
-            if '--sunsim' in opts:
+            if self.sunsim:
                 # start up the fake sun_simulator
                 self.sunsimd = daemon_utils.PyDaemon(name = 'sun_simulator', filepath = f"{wsp_path}/ephem/sun_simulator_gui.py")
                 self.daemonlist.add_daemon(self.sunsimd)
-                self.sunsim = True
-            else:
-                self.sunsim = False
+                
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
@@ -327,7 +330,9 @@ class control(QtCore.QObject):
                                                               viscam=self.viscam, 
                                                               ccd = self.ccd, 
                                                               mirror_cover = self.mirror_cover,
-                                                              robostate = self.robostate)
+                                                              robostate = self.robostate,
+                                                              sunsim = self.sunsim,
+                                                              )
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
