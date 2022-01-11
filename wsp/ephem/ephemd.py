@@ -168,10 +168,18 @@ class EphemMon(object):
                 #print(f'utc   time = {time_utc}, utc timestamp = {timestamp}')
                 timestamp = self.sunsimState.get('timestamp', -888)
                 self.time_utc = datetime.fromtimestamp(timestamp)
+                mjd = self.sunsimState.get('mjd', -888)
+                
             else:
                 self.time_utc = datetime.utcnow()
                 timestamp = self.time_utc.timestamp()
+                astropy_time = astropy.time.Time(self.time_utc, format = 'datetime')
                 
+                mjd = astropy_time.mjd
+            # turn the timestamp into MJD
+        
+            
+            self.state.update({'mjd' : mjd})
             self.state.update({'timestamp' : timestamp})
             
             #

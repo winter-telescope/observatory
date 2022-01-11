@@ -16,7 +16,7 @@ from .QueueManager import calc_pool_stats, calc_queue_stats
 from .configuration import SchedulerConfiguration
 from .constants import BASE_DIR, P48_loc, W_loc, W_Observer
 from .utils import block_index
-
+#import sys
 
 # check aggressively for setting with copy
 import pandas as pd
@@ -94,7 +94,8 @@ def simulate(scheduler_config_file, sim_config_file,
             profiler.start()
 
     survey_start_time = Time(start_time, scale='utc', location=W_loc)
-
+    print('\n \n SURVEY START', start_time, survey_start_time)
+    
     tel = TelescopeStateMachine(
         current_time=survey_start_time,
         historical_observability_year=weather_year)

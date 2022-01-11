@@ -148,6 +148,8 @@ class SunSimulator(QtWidgets.QMainWindow):
         
         self.time = datetime(year = year, month = month, day = day, hour = 17, minute = 30, second = 0) 
         self.time = self.tz.localize(self.time)
+        astropy_time = astropy.time.Time(self.time, format = 'datetime')
+        self.mjd = astropy_time.mjd
         self.sun_timestamp = self.time.timestamp()
         self.sun_timeiso = self.time.isoformat(sep = ' ')
         
@@ -233,8 +235,10 @@ class SunSimulator(QtWidgets.QMainWindow):
         newtime = self.time + timedelta(seconds = dt)
         
         self.time = newtime
+        astropy_time = astropy.time.Time(self.time, format = 'datetime')
+        self.mjd = astropy_time.mjd
         self.sun_timestamp = self.time.timestamp()
-        
+        #print(f'sunsim mjd = {self.mjd}')
         
     
     def update_state(self):
@@ -260,7 +264,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         self.state.update({'sun_rising' : self.sun_rising})
         
         self.state.update({'timestamp': self.sun_timestamp})
-        
+        self.state.update({'mjd' : self.mjd})
         
         # publisht the state
         self.state_json = json.dumps(self.state)

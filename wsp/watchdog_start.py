@@ -57,7 +57,9 @@ dirfilePath = os.getenv("HOME") + '/data/dm.lnk'
 program_to_monitor = 'wsp.py'
 df = getdata.dirfile(dirfilePath)
 
-args = ["python", program_to_monitor, "-r", "--smallchiller"]
+#args = ["python", program_to_monitor, "-r", "--smallchiller"]
+# npl 12-21-21 trying to get this to work again
+args = ["python", os.path.join(wsp_path,program_to_monitor), "-r", "--smallchiller"]
 for arg in cmdline_args:
     args.append(arg)
 

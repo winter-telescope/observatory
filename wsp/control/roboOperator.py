@@ -650,17 +650,14 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # turn the timestamp into mjd
             if self.sunsim:
-                timestamp = self.ephem.state["timestamp"]
-                datetime_obj = datetime.fromtimestamp(timestamp)#, tz = pytz.timezone('America/Los_Angeles'))
-                time_obj = astropy.time.Time(datetime_obj, format = 'datetime')
-                obstime_mjd = time_obj.mjd
-                print(f'MJD = {obstime_mjd}')
+                # for some reason self.state doesn't update if it's in this loop. look into that.
+                obstime_mjd = self.ephem.state.get('mjd',0)
             else:
                 obstime_mjd = 'now'
             self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
             self.announce('getting next observation from schedule database')
             if self.schedule.currentObs is None:
-                self.announce('no valid observations at this time, standing by...')
+                self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
                 # first stow the rotator
                 self.rotator_stop_and_reset()
                 
@@ -743,7 +740,7 @@ class RoboOperator(QtCore.QObject):
         
         delta_rot_angle = np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs'])
         min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
-        conds.append( min_delta_rot_angle < 5.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
+        conds.append( min_delta_rot_angle < 10.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
         
         # make sure the motors are off
         conds.append(self.state['mount_alt_is_enabled'] == False)
@@ -770,13 +767,25 @@ class RoboOperator(QtCore.QObject):
         
         You can force it to stow, in which case it will first run startup and then
         run shutdown
-        """
-        #TODO: add a check on if the observatory is ALREADY stowed!
-        
-        if self.get_observatory_stowed_status() and force == False:
-            # if True, then the observatory is stowed.
+        """        
+        # if the observatory is already stowed, do nothing
+        if self.get_observatory_stowed_status():
+            if force == False:
+                # if True, then the observatory is stowed.
+                #TODO: will want to mute this to avoid lots of messages.
+                self.announce(f'requested observatory be stowed, but it is already stowed. standing by.')
+                return
+            else:
+                # the observatory is already stowed, but we demanded it be shut down anyway
+                # just go down to the next part of the tree
+                pass
             
-            return
+        # if the observatory is in the ready state, then just shut down
+        elif self.get_observatory_ready_status():
+            self.announce(f'shutting down observatory from ready state:')
+            self.do_shutdown()
+            
+            
         else:
             self.announce(f'stowing observatory from arbitrary state: starting up first and then shutting down')
             # we need to shut down.
@@ -1140,7 +1149,7 @@ class RoboOperator(QtCore.QObject):
             self.do('mount_alt_off')
 
             # disconnect the telescope
-            self.do('mount_disconnect')
+            #self.do('mount_disconnect')
             
             self.announce(':greentick: telescope shutdown complete!')
             

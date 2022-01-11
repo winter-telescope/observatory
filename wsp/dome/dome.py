@@ -199,12 +199,12 @@ class local_dome(QtCore.QObject):
         
         self.dome_ok = (self.Dome_Status != 'UNKNOWN') & (self.Home_Status == 'READY') & (self.Shutter_Status != 'UNKNOWN') & (self.Control_Status in ['REMOTE', 'AVAILABLE']) & (self.Close_Status == 'READY')
         self.state.update({'dome_ok' : self.dome_ok})
-        self.weather_ok =  (self.Weather_Status == 'READY') #& (self.Sunlight_Status == 'READY') & (self.Wetness_Status == 'READY')
+        self.weather_ok =  (self.Weather_Status == 'READY') & (self.Wetness_Status == 'READY') #& (self.Sunlight_Status == 'READY') 
         self.state.update({'weather_ok' : self.weather_ok})
         self.faults_ok = (self.Faults == 0)
         self.state.update({'faults_ok' : self.faults_ok})
         
-        self.ok_to_open = self.dome_ok & self.weather_ok & self.faults_ok
+        self.ok_to_open = self.dome_ok & self.weather_ok & self.faults_ok 
         self.state.update({'ok_to_open' : self.ok_to_open})
         
         # record the azimuth goal of the dome

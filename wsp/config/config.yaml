@@ -677,6 +677,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'ephem.state["timestamp"]'
+    ephem_mjd:
+        ftype: raw
+        label: 'MJD'
+        units: None
+        dtype: float64
+        rate: slow
+        var: "ephem.state['mjd']"
     sun_alt:
         ftype: raw
         label: 'Alt'
