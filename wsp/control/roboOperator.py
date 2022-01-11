@@ -1201,6 +1201,79 @@ class RoboOperator(QtCore.QObject):
         self.running = True
         
         context = 'do_calibration'
+        # check to make sure conditions are okay before attempting cal routine. prevents weird hangups
+        # copied logic from checkWhatToDo(), but don't actually command any systems if there's an issue.
+        # instead just exit out of this routine. hopefully this avoids conflicting sets of instructions.
+        # 
+        self.announce('checking conditions before running auto calibration routine')
+
+        #---------------------------------------------------------------------
+        ### check the dome
+        #---------------------------------------------------------------------
+        if self.get_dome_status():
+            # if True, then the dome is fine
+            self.log('the dome status is good!')
+            pass
+        else:
+            self.announce(f'there is a problem with the dome (eg weather, etc) preventing operation. exiting calibration routine...')
+            """
+            self.log('there is a problem with the dome (eg weather, etc). STOWING OBSERVATORY')
+            # there is a problem with the dome.
+            self.stow_observatory(force = False)
+            # skip the rest of the checks, just start the timer for the next check
+            self.checktimer.start()
+            """
+            return
+        #---------------------------------------------------------------------
+        # check the sun
+        #---------------------------------------------------------------------
+        if self.get_sun_status():
+            self.log(f'the sun is low are we are ready to go!')
+            # if True, then the sun is fine. just keep going
+            pass
+        else:
+            self.announce(f'the sun is not ready for operation. exiting calibration routine...')
+            """
+            self.log(f'waiting for the sun to set')
+            # the sun is up, can't proceed. just hang out.
+            self.checktimer.start()
+            """
+            return
+        #---------------------------------------------------------------------
+        # check if the observatory is ready
+        #---------------------------------------------------------------------
+        if self.get_observatory_ready_status():
+            self.log(f'the observatory is ready to observe!')
+            # if True, then the observatory is ready (eg successful startup and focus sequence)
+            pass
+        else:
+            self.announce(f'the observatory is not ready to observe! exiting calibration routine...')
+            """
+            self.log(f'need to start up observatory')
+            # we need to (re)run do_startup
+            self.do_startup()
+            # after running do_startup, kick back to the top of the loop
+            self.checktimer.start()
+            """
+            return
+        #---------------------------------------------------------------------        
+        # check the dome
+        #---------------------------------------------------------------------
+        if self.dome.Shutter_Status == 'OPEN':
+            self.log(f'the dome is open and we are ready to start taking data')
+            # the dome is open and we're ready for observations. just pass
+            pass
+        else:
+            # the dome and sun are okay, but the dome is closed. we should open the dome
+            self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
+            self.doTry('dome_open')
+            """
+            self.checktimer.start()
+            return
+            """
+            
+        # if we made it to here, we're good to do the auto calibration
+        
         self.announce('starting auto calibration sequence.')
         #self.logger.info('robo: doing calibration routine. for now this does nothing.')
         
@@ -1218,22 +1291,35 @@ class RoboOperator(QtCore.QObject):
         # get the altitude
         flat_alt = 75.0
         
-        # slew the dome
-        self.doTry(f'dome_tracking_off')
-        self.doTry(f'dome_goto {flat_az}')
-        self.doTry(f'dome_tracking_on')
-        # slew the telescope
-        self.doTry(f'mount_goto_alt_az {flat_alt} {flat_az}')
         
-       
-        self.log(f'starting the flat observations')
+        system = 'dome'
+        try:
+            # slew the dome
+            self.do(f'dome_tracking_off')
+            self.do(f'dome_goto {flat_az}')
+            self.do(f'dome_tracking_on')
+            
+            system = 'telescope'
+            # slew the telescope
+            self.do(f'mount_goto_alt_az {flat_alt} {flat_az}')
+            
+           
+            self.log(f'starting the flat observations')
         
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
         # if we got here we're good to start
         # take 5 flats!
         nflats = 5
         
         ra_total_offset_arcmin = 0
         dec_total_offset_arcmin = 0
+        
         
         for i in range(nflats):
             self.log(f'setting up flat #{i + 1}')
@@ -1271,6 +1357,7 @@ class RoboOperator(QtCore.QObject):
                 else:
                     self.log(f'setting exptime to estimated {flat_exptime} s')
                 
+                system = 'ccd'
                 self.do(f'ccd_set_exposure {flat_exptime:0.3f}')
                 time.sleep(2)
                 
@@ -1281,8 +1368,10 @@ class RoboOperator(QtCore.QObject):
                 if i==0:
                     self.log(f'handling the i=0 case')
                     #self.do(f'robo_set_qcomment "{qcomment}"')
+                    system = 'robo routine'
                     self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
                 else:
+                    system = 'ccd'
                     self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
                 
                 # now dither. if i is odd do ra, otherwise dec
@@ -1299,31 +1388,61 @@ class RoboOperator(QtCore.QObject):
                 
                 
             except Exception as e:
-                self.log(f'could not run flat loop instance: {e}')
-            
+                msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                #return
         
         ### Take darks ###
         # send the rotator home
-        self.do('rotator_stop')
-        self.do('rotator_home')
+        system = 'rotator'
+        try:
+            self.do('rotator_stop')
+            self.do('rotator_home')
         
-        self.do(f'ccd_set_exposure 30.0')
-        ndarks = 5
-        for i in range(ndarks):
-            self.announce(f'Executing Auto Darks {i+1}/5')
-            qcomment = f"Auto Darks {i+1}/{ndarks}"
-
-            self.do(f'robo_do_exposure -d --comment "{qcomment}"')
+        except Exception as e:
+            msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+            
+        system = 'ccd'
+        try:
+            self.do(f'ccd_set_exposure 30.0')
+            ndarks = 5
+            for i in range(ndarks):
+                self.announce(f'Executing Auto Darks {i+1}/5')
+                qcomment = f"Auto Darks {i+1}/{ndarks}"
+    
+                self.do(f'robo_do_exposure -d --comment "{qcomment}"')
+        except Exception as e:
+            msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
             
         ### Take bias ###
-        self.do(f'ccd_set_exposure 0.0')
-        nbias = 5
-        for i in range(nbias):
-            self.announce(f'Executing Auto Bias {i+1}/5')
-            qcomment = f"Auto Bias {i+1}/{nbias}"
-            self.do(f'robo_do_exposure -b --comment "{qcomment}"')
-            
-        
+        try:
+            self.do(f'ccd_set_exposure 0.0')
+            nbias = 5
+            for i in range(nbias):
+                self.announce(f'Executing Auto Bias {i+1}/5')
+                qcomment = f"Auto Bias {i+1}/{nbias}"
+                self.do(f'robo_do_exposure -b --comment "{qcomment}"')
+                
+        except Exception as e:
+            msg = f'roboOperator: could not set up bias routine due to error with {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
         
         self.log(f'finished with calibration. no more to do.')    
         self.announce('auto calibration completed successfully!')
