@@ -232,7 +232,11 @@ class RoboOperator(QtCore.QObject):
     
         # a flag to indicate we're in a daylight test mode which will spoof some observations and trigger
         ## off of schedule alt/az rather than ra/dec
-        self.test_mode = False
+        #NPL 1-12-21: making it so that if we are in dometest or sunsim mode that we turn on test_mode
+        if self.sunsim or self.dometest:
+            self.test_mode = True
+        else:
+            self.test_mode = False
         
         # a flag to denote whether the observatory (ie telescope and dome) are ready to observe, not including whether dome is open
         self.observatory_ready = False
@@ -462,8 +466,8 @@ class RoboOperator(QtCore.QObject):
     
     def restart_robo(self, arg = 'auto'):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
-        
-        if arg == 'test':
+        # if we get passed test mode, or have already started in test mode, then turn on sun_override
+        if arg == 'test' or self.test_mode == True:
             # we're in test mode. turn on the sun override
             self.sun_override = True
             self.test_mode = True
