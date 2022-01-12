@@ -1839,7 +1839,7 @@ fields:
         units: None
         dtype: float64
         rate: slow
-        var: robostate["lastseen"]
+        var: robostate["lastSeen"]
     robo_observatory_ready:
         ftype: raw
         label: 'Status'
