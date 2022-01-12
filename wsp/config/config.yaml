@@ -198,7 +198,7 @@ robotic_manager_triggers:
                    type: 'sun'
                    val: -14.0
                    cond: '<'
-            repeat_on_restart: False
+            repeat_on_restart: True
             sundir: -1
             cmd: 'robo_run'
         stop_obs:
@@ -235,7 +235,7 @@ robotic_manager_triggers:
                     cond: '>'
             repeat_on_restart: False
             sundir: 1
-            cmd: 'total_shutdown'
+            cmd: 'stow_observatory'
         fans_off:
             conds:
                 cond1:

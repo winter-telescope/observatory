@@ -3693,10 +3693,25 @@ class Wintercmd(QtCore.QObject):
         except Exception:
             print('Failed during closing step')
         """
+    
+    @cmd
+    def stow_observatory(self):
+        """
+        this is a smarter version of total_shutdown which figures out what to
+        do depending on whether the observatory state is already stowed/ready/etc
+        """
+        self.defineCmdParser('stow the observatory')
+        sigcmd = signalCmd('stow_observatory')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    
     @cmd
     def total_restart(self):
         self.total_shutdown()
         self.total_startup()
+        
+    
     
         """
 class ManualCmd(Wintercmd):
