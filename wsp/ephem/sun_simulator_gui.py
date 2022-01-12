@@ -146,7 +146,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         month = now_local.month
         day = now_local.day
         
-        self.time = datetime(year = year, month = month, day = day, hour = 17, minute = 30, second = 0) 
+        self.time = datetime(year = year, month = month, day = day, hour = 16, minute = 30, second = 0) 
         self.time = self.tz.localize(self.time)
         astropy_time = astropy.time.Time(self.time, format = 'datetime')
         self.mjd = astropy_time.mjd

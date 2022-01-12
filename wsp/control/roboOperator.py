@@ -773,7 +773,9 @@ class RoboOperator(QtCore.QObject):
             if force == False:
                 # if True, then the observatory is stowed.
                 #TODO: will want to mute this to avoid lots of messages.
-                self.announce(f'requested observatory be stowed, but it is already stowed. standing by.')
+                msg = 'requested observatory be stowed, but it is already stowed. standing by.'
+                #self.log(msg)
+                #self.announce(msg)
                 return
             else:
                 # the observatory is already stowed, but we demanded it be shut down anyway
@@ -1302,7 +1304,7 @@ class RoboOperator(QtCore.QObject):
             system = 'telescope'
             # slew the telescope
             self.do(f'mount_goto_alt_az {flat_alt} {flat_az}')
-            
+           
            
             self.log(f'starting the flat observations')
         
@@ -1394,6 +1396,24 @@ class RoboOperator(QtCore.QObject):
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
                 #return
+        
+        # if we get here, we're done with the light exposure, so turn off dome and mount tracking
+                # so that the telescope doesn't drift
+        
+        system = 'dome'
+        try:
+            self.do('dome_tracking_off')
+            
+            system = 'telescope'
+            self.do('mount_tracking_off')
+        except Exception as e:
+                msg = f'roboOperator: could not stop tracking after flat fields due to error with {system}: due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                #return
+        
         
         ### Take darks ###
         # send the rotator home
@@ -2171,8 +2191,8 @@ class RoboOperator(QtCore.QObject):
             
             time.sleep(5)
             
-            # turn tracking back on
-            self.do('dome_tracking_on')
+            # turn tracking back on 
+            #self.do('dome_tracking_on')
             
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -2249,6 +2269,20 @@ class RoboOperator(QtCore.QObject):
             self.target_ok = False
             return
         
+        ### TURN DOME TRACKING BACK ON ###
+        
+        system = 'dome'
+        try:
+            # turn tracking back on
+            self.do('dome_tracking_on')
+            
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            self.target_ok = False
+            return
         
         
         

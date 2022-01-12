@@ -173,15 +173,16 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'robo_do_calibration'
-        test_image:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -11.0
-                    cond: '<'
-            repeat_on_restart: False
-            sundir: -1
-            cmd: 'robo_observe altaz 75 270'
+        # don't do the test image if you're not doing the focusing
+        #test_image:
+        #    conds:
+        #        cond1:
+        #            type: 'sun'
+        #            val: -11.0
+        #            cond: '<'
+        #    repeat_on_restart: False
+        #    sundir: -1
+        #    cmd: 'robo_observe altaz 75 270'
         #focus:
         #    conds:
         #        cond1:
