@@ -142,6 +142,12 @@ class control(QtCore.QObject):
             self.sunsim = True
         else:
             self.sunsim = False
+            
+        # option to ignore whether the shutter is open, which let you test with the dome closed
+        if '--dometest' in opts:
+            self.dometest = True
+        else:
+            self.dometest = False
         
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
@@ -332,6 +338,7 @@ class control(QtCore.QObject):
                                                               mirror_cover = self.mirror_cover,
                                                               robostate = self.robostate,
                                                               sunsim = self.sunsim,
+                                                              dometest = self.dometest,
                                                               )
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)

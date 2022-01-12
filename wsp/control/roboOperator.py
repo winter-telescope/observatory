@@ -104,7 +104,7 @@ class RoboOperatorThread(QtCore.QThread):
     # a generic do command signal for executing any command in robothread
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim, dometest):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -125,6 +125,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
+        self.dometest = dometest
     
     def run(self):           
         self.robo = RoboOperator(base_directory = self.base_directory, 
@@ -144,6 +145,7 @@ class RoboOperatorThread(QtCore.QThread):
                                      mirror_cover = self.mirror_cover,
                                      robostate = self.robostate,
                                      sunsim = self.sunsim,
+                                     dometest = self.dometest
                                      )
         
         # Put all the signal/slot connections here:
@@ -188,7 +190,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim, dometest):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -212,6 +214,7 @@ class RoboOperator(QtCore.QObject):
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
+        self.dometest = dometest
         
         
         # keep track of the last command executed so it can be broadcast as an error if needed
@@ -293,11 +296,15 @@ class RoboOperator(QtCore.QObject):
         #self.changeSchedule.connect(self.change_schedule)
         
         ## overrides
-        """ REMEMBER TO CHANGE BACK FOR NORMAL OPERATION """
-        # override the dome.ok_to_open flag
-        self.dome_override = False
-        # override the sun altitude flag
-        self.sun_override = False
+        """ Lets you run with the dome closed and ignore sun/weather/etc """
+        if self.dometest:
+            self.dome_override = True
+            self.sun_override = True
+        else:
+            # override the dome.ok_to_open flag
+            self.dome_override = False
+            # override the sun altitude flag
+            self.sun_override = False
         
         # some variables that hold the state of the sequences
         self.startup_complete = False
@@ -531,6 +538,11 @@ class RoboOperator(QtCore.QObject):
             but if we're just loopin through restart_robo we can safely ignore the constant logging'
         """
         
+        # if we're in dometest mode, ignore the full tree
+        if self.dometest:
+            self.ok_to_observe = True
+            return
+        
         if self.get_sun_status():
             
             # if we can open up the dome, then do it!
@@ -634,17 +646,21 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------        
             # check the dome
             #---------------------------------------------------------------------
-            if self.dome.Shutter_Status == 'OPEN':
-                self.log(f'the dome is open and we are ready to start taking data')
-                # the dome is open and we're ready for observations. just pass
+            if self.dometest:
+                self.log('dometest mode: ignoring whether the shutter is open!')
                 pass
             else:
-                # the dome and sun are okay, but the dome is closed. we should open the dome
-                self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
-                self.doTry('dome_open')
-                
-                self.checktimer.start()
-                return
+                if self.dome.Shutter_Status == 'OPEN':
+                    self.log(f'the dome is open and we are ready to start taking data')
+                    # the dome is open and we're ready for observations. just pass
+                    pass
+                else:
+                    # the dome and sun are okay, but the dome is closed. we should open the dome
+                    self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
+                    self.doTry('dome_open')
+                    
+                    self.checktimer.start()
+                    return
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
@@ -1542,7 +1558,13 @@ class RoboOperator(QtCore.QObject):
             self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
             
             # calculate the current Alt and Az of the target 
-            obstime_utc = astropy.time.Time(datetime.utcnow(), format = 'datetime')
+            if self.sunsim:
+                obstime_mjd = self.ephem.state.get('mjd',0)
+                obstime_utc = astropy.time.Time(obstime_mjd, format = 'mjd', \
+                                            location=self.ephem.site)
+            else:
+                obstime_utc = astropy.time.Time(datetime.utcnow(), format = 'datetime')
+                
             frame = astropy.coordinates.AltAz(obstime = obstime_utc, location = self.ephem.site)
             j2000_coords = astropy.coordinates.SkyCoord(ra = self.j2000_ra_scheduled, dec = self.j2000_dec_scheduled, frame = 'icrs')
             local_coords = j2000_coords.transform_to(frame)
@@ -1703,7 +1725,9 @@ class RoboOperator(QtCore.QObject):
                     # data_to_write = {**self.state}
                     #data_to_write = {**self.state, **header_data} ## can add other dictionaries here
                     #self.writer.log_observation(data_to_write, imagename)
-                    self.writer.log_observation(header_data, image_filepath)
+                    if not self.sunsim:
+                        # don't log if we're in test mode.
+                        self.writer.log_observation(header_data, image_filepath)
             
             # get the next observation
             #self.logger.info('robo: getting next observation from schedule database')
@@ -2010,8 +2034,14 @@ class RoboOperator(QtCore.QObject):
             j2000_coords = astropy.coordinates.SkyCoord(ra = j2000_ra, dec = j2000_dec, frame = 'icrs')
 
             ra_deg = j2000_coords.ra.deg
-            obstime = astropy.time.Time(datetime.utcnow(),\
-                                        location=self.ephem.site)
+            
+            if self.sunsim:
+                obstime_mjd = self.ephem.state.get('mjd',0)
+                obstime = astropy.time.Time(obstime_mjd, format = 'mjd', \
+                                            location=self.ephem.site)
+            else:
+                obstime = astropy.time.Time(datetime.utcnow(),\
+                                            location=self.ephem.site)
             
             #lat = astropy.coordinates.Angle(self.config['site']['lat'])
             #lon = astropy.coordinates.Angle(self.config['site']['lon'])
