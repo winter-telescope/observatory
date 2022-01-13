@@ -292,7 +292,19 @@ class control(QtCore.QObject):
         In this section we set up the appropriate command interface and executors for the chosen mode
         '''
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.base_directory, self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, pdu1 = self.pdu1, logger = self.logger, viscam = self.viscam, ccd = self.ccd, mirror_cover = self.mirror_cover)
+        self.wintercmd = wintercmd.Wintercmd(self.base_directory, 
+                                             self.config, 
+                                             state = self.hk.state, 
+                                             alertHandler = self.alertHandler,
+                                             daemonlist = self.daemonlist, 
+                                             telescope = self.telescope, 
+                                             dome = self.dome, 
+                                             chiller = self.chiller, 
+                                             pdu1 = self.pdu1, 
+                                             logger = self.logger, 
+                                             viscam = self.viscam, 
+                                             ccd = self.ccd, 
+                                             mirror_cover = self.mirror_cover)
         
         if mode in ['r','m']:
             #init the schedule executor

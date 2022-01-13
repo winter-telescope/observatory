@@ -168,7 +168,7 @@ class Wintercmd(QtCore.QObject):
     newCmdRequest = QtCore.pyqtSignal(object)
     
     
-    def __init__(self, base_directory, config, state, mirror_cover, daemonlist, telescope, dome, chiller, pdu1, logger, viscam, ccd):
+    def __init__(self, base_directory, config, state, alertHandler, mirror_cover, daemonlist, telescope, dome, chiller, pdu1, logger, viscam, ccd):
         # init the parent class
         #super().__init__()
         super(Wintercmd, self).__init__()
@@ -179,6 +179,7 @@ class Wintercmd(QtCore.QObject):
         
         # grab some useful inputs
         self.state = state
+        self.alertHandler = alertHandler
         self.daemonlist = daemonlist
         self.telescope = telescope
         self.dome = dome
@@ -2294,29 +2295,12 @@ class Wintercmd(QtCore.QObject):
             self.logger.info('dome needs to be homed')
             # the dome needs to be homed. home it:
             self.dome_home()
-            
+        
         # the dome is homed. now slew it:
         az = self.dome.home_az
-        sigcmd = signalCmd('GoTo', az)
-        self.dome.newCommand.emit(sigcmd)
+        self.parse(f'dome_goto {az}')
         
-        """# wait until the dome is homed.
-        #TODO add a timeout
-        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [True for i in range(n_buffer_samples)]
         
-        while True:
-            #self.logger.info(f'wintercmd: dome_go_home  STOP CONDITION BUFFER = {stop_condition_buffer}')
-            time.sleep(self.config['cmd_status_dt'])
-            stop_condition = ( (self.state['dome_status'] == self.config['Dome_Status_Dict']['Dome_Status']['STOPPED']) and (np.abs(self.state['dome_az_deg'] - az ) < 0.5 ) )
-            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-            # now replace the last element
-            stop_condition_buffer[-1] = stop_condition
-            
-            if all(entry == True for entry in stop_condition_buffer):
-                break
-        """
         self.logger.info('wintercmd: dome_go_home complete')
         
         
