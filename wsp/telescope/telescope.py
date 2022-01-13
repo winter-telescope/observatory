@@ -67,16 +67,19 @@ class Telescope(pwi4_client.PWI4):
         self.logger = logger
         
         # put things in a safe position on startup
-        self.mount_connect()
-        time.sleep(1)
-        self.mount_stop()
-        time.sleep(1)
-        self.mount_tracking_off()
-        time.sleep(1)
-        self.rotator_stop()
-        time.sleep(1)
-        self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
-        time.sleep(1)
+        try:
+            self.mount_connect()
+            time.sleep(1)
+            self.mount_stop()
+            time.sleep(1)
+            self.mount_tracking_off()
+            time.sleep(1)
+            self.rotator_stop()
+            time.sleep(1)
+            self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
+            time.sleep(1)
+        except Exception as e:
+            self.log(f'could not communicate with telescope! error: {e}')
         
     def log(self, msg):
         msg = f'telescope: {msg}'

@@ -30,8 +30,11 @@ import os
 import numpy as np
 #import time
 from datetime import datetime
+import Pyro5.core
+import Pyro5.server
 from PyQt5 import QtCore#, uic, QtGui, QtWidgets
 #import functools
+import traceback
 import threading
 
 # add the wsp directory to the PATH
@@ -47,7 +50,7 @@ print(f'data_handler: wsp_path = {wsp_path}')
 
 class hk_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, schedule, telescope,weather, mirror_cover, labjacks, counter, dome, chiller, ephem, viscam, ccd, robostate, verbose = False):
+    def __init__(self,config, state, curframe, schedule, telescope,weather, mirror_cover, labjacks, counter, dome, chiller, ephem, viscam, ccd, robostate, sunsim = False, verbose = False, logger = None):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -67,17 +70,23 @@ class hk_loop(QtCore.QThread):
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.verbose = verbose
+        self.sunsim = sunsim
+        self.logger = logger
         # pass the config to the thread
         self.config = config
-
+        
         # give thread access to these methods to update the data as it comes in
         self.state = state
         self.curframe = curframe
-
+        
         # describe the loop rate
         self.rate = 'hk'
         self.dt = self.config['daq_dt'][self.rate]
-
+        
+        # set up the connection to the pyro5 server to get the simulated time if we're in sunsim mode
+        if self.sunsim:
+            self.setup_sunsim_connection()
+        
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
         self.timer.timeout.connect(self.update_status)
@@ -95,12 +104,68 @@ class hk_loop(QtCore.QThread):
         except Exception as e:
             #print('could not get thing: ',e)
             return default_val
-
+        
+    def setup_sunsim_connection(self):
+        if self.verbose:
+            self.log(f'(Thread {threading.get_ident()}) hk_loop: creating pyro connection to sun simulator')
+        # init the remote object
+        try:
+            self.remote_object = Pyro5.client.Proxy(f"PYRONAME:sunsim")
+            self.connected = True
+        except Exception as e:
+            self.connected = False
+            msg = f'data_handler: connection with remote sunsim object failed: {e}'
+            if self.logger is None:
+                print(msg)
+            else:
+                self.logger.exception(msg)
+            pass
+        pass
+    
+    def get_sunsim_timestamp(self):
+        if self.connected:
+            #print('trying to get sunsim timestamp')
+            try:
+                remote_state = self.remote_object.GetStatus()
+                
+                return remote_state['timestamp']
+                
+            except Exception as e:
+                self.logger.error(f'could not get sunsim timestamp: {e}')
+                return -777
+                #print('WTF')
+                #if self.verbose:
+                #self.log(f'could not update observatory state: {e}')
+                #exc_info = sys.exc_info()
+                #traceback.print_exception(*exc_info)
+                pass
+        
+        else:
+            self.setup_sunsim_connection()
+            return -777
+            
     def update_status(self, default_value = -999):
         self.index +=1
         
         # THIS IS USED TO ADD A TIMESTAMP TO THE STATE DICTIONARY
-        self.timestamp = datetime.utcnow().timestamp()
+        """if self.sunsim:
+            self.timestamp = self.get_sunsim_timestamp
+            
+            pass
+        else:
+            pass
+        """
+        if self.sunsim:
+            try:
+                sunsim_timestamp = self.get_sunsim_timestamp()
+                self.timestamp = sunsim_timestamp
+                
+                #print(f'sunsim_timestamp = {sunsim_timestamp}')
+            except Exception as e:
+                self.timestamp = -888
+                print(f'could not get sunsim timestamp: {e}')
+        else:
+            self.timestamp = datetime.utcnow().timestamp()
         self.state.update({'timestamp' : self.timestamp})
         
         
@@ -449,6 +514,7 @@ class daq_loop(QtCore.QThread):
                 a problem. let this get handled elsewhere.
                 '''
                 print(f'could not execute function <{self.func.__name__}> because of {type(e)}: {e}')
+                print(f'FULL TRACEBACK: {traceback.format_exc()}')
                 pass
     
             self.index += 1

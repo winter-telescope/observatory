@@ -173,15 +173,16 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'robo_do_calibration'
-        test_image:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -11.0
-                    cond: '<'
-            repeat_on_restart: False
-            sundir: -1
-            cmd: 'robo_observe altaz 75 270'
+        # don't do the test image if you're not doing the focusing
+        #test_image:
+        #    conds:
+        #        cond1:
+        #            type: 'sun'
+        #            val: -11.0
+        #            cond: '<'
+        #    repeat_on_restart: False
+        #    sundir: -1
+        #    cmd: 'robo_observe altaz 75 270'
         #focus:
         #    conds:
         #        cond1:
@@ -197,7 +198,7 @@ robotic_manager_triggers:
                    type: 'sun'
                    val: -14.0
                    cond: '<'
-            repeat_on_restart: False
+            repeat_on_restart: True
             sundir: -1
             cmd: 'robo_run'
         stop_obs:
@@ -234,7 +235,7 @@ robotic_manager_triggers:
                     cond: '>'
             repeat_on_restart: False
             sundir: 1
-            cmd: 'total_shutdown'
+            cmd: 'stow_observatory'
         fans_off:
             conds:
                 cond1:
@@ -677,6 +678,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'ephem.state["timestamp"]'
+    ephem_mjd:
+        ftype: raw
+        label: 'MJD'
+        units: None
+        dtype: float64
+        rate: slow
+        var: "ephem.state['mjd']"
     sun_alt:
         ftype: raw
         label: 'Alt'
@@ -778,6 +786,13 @@ fields:
         dtype: float64
         rate: slow
         var: "schedule.currentObs['azimuth']"
+    remaining_schedule_targets:
+        ftype: raw
+        label: 'Num'
+        units: None
+        dtype: int64
+        rate: hk
+        var: "schedule.remaining_valid_observations"
     
 #telescope
     pwi4_version_field0:
@@ -1824,7 +1839,21 @@ fields:
         units: None
         dtype: float64
         rate: slow
-        var: robostate["lastseen"]
+        var: robostate["lastSeen"]
+    robo_observatory_ready:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: robostate["observatory_ready"]    
+    robo_observatory_stowed:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: robostate["observatory_stowed"]  
     
     ### LABJACK STUFF###
     V_LJ0_AIN0:

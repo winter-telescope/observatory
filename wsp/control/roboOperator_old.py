@@ -25,7 +25,6 @@ from astropy.io import fits
 import pathlib
 import subprocess
 import traceback
-import pytz
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -104,7 +103,7 @@ class RoboOperatorThread(QtCore.QThread):
     # a generic do command signal for executing any command in robothread
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim, dometest):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -124,8 +123,6 @@ class RoboOperatorThread(QtCore.QThread):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.robostate = robostate
-        self.sunsim = sunsim
-        self.dometest = dometest
     
     def run(self):           
         self.robo = RoboOperator(base_directory = self.base_directory, 
@@ -143,9 +140,7 @@ class RoboOperatorThread(QtCore.QThread):
                                      viscam = self.viscam,
                                      ccd = self.ccd,
                                      mirror_cover = self.mirror_cover,
-                                     robostate = self.robostate,
-                                     sunsim = self.sunsim,
-                                     dometest = self.dometest
+                                     robostate = self.robostate
                                      )
         
         # Put all the signal/slot connections here:
@@ -190,7 +185,7 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim, dometest):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -213,8 +208,6 @@ class RoboOperator(QtCore.QObject):
         self.ccd = ccd
         self.mirror_cover = mirror_cover
         self.robostate = robostate
-        self.sunsim = sunsim
-        self.dometest = dometest
         
         
         # keep track of the last command executed so it can be broadcast as an error if needed
@@ -232,17 +225,7 @@ class RoboOperator(QtCore.QObject):
     
         # a flag to indicate we're in a daylight test mode which will spoof some observations and trigger
         ## off of schedule alt/az rather than ra/dec
-        #NPL 1-12-21: making it so that if we are in dometest or sunsim mode that we turn on test_mode
-        if self.sunsim or self.dometest:
-            self.test_mode = True
-        else:
-            self.test_mode = False
-        
-        # a flag to denote whether the observatory (ie telescope and dome) are ready to observe, not including whether dome is open
-        self.observatory_ready = False
-        # a similar flag to denote whether the observatory is safely stowed
-        self.observatory_stowed = False
-        
+        self.test_mode = False
         
         ### SET UP THE WRITER ###
         # init the database writer
@@ -272,14 +255,6 @@ class RoboOperator(QtCore.QObject):
         #### FIX THIS SOON! NPL 6-13-21
         #self.ccd.imageSaved.connect(self.log_observation_and_gotoNext)
         
-        
-        ### a QTimer for handling the cadance of checking what to do
-        self.checktimer = QtCore.QTimer()
-        self.checktimer.setSingleShot(True)
-        self.checktimer.setInterval(30*1000)
-        self.checktimer.timeout.connect(self.checkWhatToDo)
-        
-        
         ### Some methods which will log things we pass to the fits header info
         self.operator = self.config.get('fits_header',{}).get('default_operator','')
         self.programPI = ''
@@ -300,15 +275,11 @@ class RoboOperator(QtCore.QObject):
         #self.changeSchedule.connect(self.change_schedule)
         
         ## overrides
-        """ Lets you run with the dome closed and ignore sun/weather/etc """
-        if self.dometest:
-            self.dome_override = True
-            self.sun_override = True
-        else:
-            # override the dome.ok_to_open flag
-            self.dome_override = False
-            # override the sun altitude flag
-            self.sun_override = False
+        """ REMEMBER TO CHANGE BACK FOR NORMAL OPERATION """
+        # override the dome.ok_to_open flag
+        self.dome_override = False
+        # override the sun altitude flag
+        self.sun_override = False
         
         # some variables that hold the state of the sequences
         self.startup_complete = False
@@ -378,8 +349,6 @@ class RoboOperator(QtCore.QObject):
     
     
     def update_state(self):
-        self.get_observatory_ready_status()
-        self.get_observatory_stowed_status()
         fields = ['ok_to_observe', 
                   'target_alt', 
                   'target_az',
@@ -392,16 +361,11 @@ class RoboOperator(QtCore.QObject):
                   'programID',
                   'qcomment',
                   'targtype',
-                  'observatory_stowed',
-                  'observatory_ready',
                   ]
 
         for field in fields:
             try:
-                val = getattr(self, field)
-                #if type(val) is bool:
-                #    val = int(val)
-                self.robostate.update({field : val})
+                self.robostate.update({field : getattr(self, field)})
             except Exception as e:
                 #print(f'error: {e}')
                 pass
@@ -411,13 +375,11 @@ class RoboOperator(QtCore.QObject):
     
     def rotator_stop_and_reset(self):
         self.log(f'stopping rotator and resetting to home position')
-        # if the rotator is on do this:
-        if self.state['rotator_is_enabled']:
-            # turn off tracking
-            self.doTry('mount_tracking_off')
-            self.doTry('rotator_home')
-            # turn on wrap check again
-            self.doTry('rotator_wrap_check_enable')
+        # turn off tracking
+        self.doTry('mount_tracking_off')
+        self.doTry('rotator_home')
+        # turn on wrap check again
+        self.doTry('rotator_wrap_check_enable')
         
     def handle_wrap_warning(self, angle):
         
@@ -440,9 +402,8 @@ class RoboOperator(QtCore.QObject):
         self.rotator_stop_and_reset()
         
         # got to the next observation
-        #self.gotoNext()
-        self.checkWhatToDo()
-        
+        self.gotoNext()
+    
     def updateOperator(self, operator_name):
         if type(operator_name) is str:
             self.operator = operator_name
@@ -466,8 +427,8 @@ class RoboOperator(QtCore.QObject):
     
     def restart_robo(self, arg = 'auto'):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
-        # if we get passed test mode, or have already started in test mode, then turn on sun_override
-        if arg == 'test' or self.test_mode == True:
+        
+        if arg == 'test':
             # we're in test mode. turn on the sun override
             self.sun_override = True
             self.test_mode = True
@@ -479,62 +440,43 @@ class RoboOperator(QtCore.QObject):
         # if we're in this loop, the robotic schedule operator is running:
         self.running = True
         
-        self.checkWhatToDo()
-    
-    def get_dome_status(self, logcheck = False):
-        """
-        This checks for any weather and dome faults that would prevent observing
-        THE ACTUAL DOME CHECKING HAPPENS IN THE DOME DAEMON (self.dome.ok_to_open)
-        Examples: 
-            - Close_Status (remote closure)
-            - Weather_Status (weather okay)
-        Does not check:
-            - Shutter_Status (dome open or closed)
-            - Sun_Status (sun down)
-        If things are okay it returns True, otherwise False
-        """
-        
-                
-        # make a note of why we're going ahead with opening the dome
-        if self.dome.ok_to_open:
-            #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
-            return True
-        elif self.dome_override:
-            if logcheck:
-                self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
-            return True
-        else:
-            # shouldn't ever be here
-            self.logger.warning(f"robo: dome is NOT okay to open")
-            return False
-        
+        while True:
+            # EXECUTE THE FULL ROBOTIC SEQUENCE
+            # return statements will exit and stop the robotic sequence
+            # every time there's a return there needs to be an error emitted
+            if not self.startup_complete:
+                # Do the startup routine
+                self.do_startup()
+                # If that didn't work, then return
+                if not self.startup_complete:
+                    return
+                    #break
+            # if we're done with the startup, continue
+            if not self.calibration_complete:
+                # do the calibration:
+                #TODO: NPL 8-19-21 just commented this out while fixing the auto cal function
+                #self.do_calibration()
+                self.calibration_complete = True
+                # If that didn't work, then return
+                if not self.calibration_complete:
+                    return
+                    #break
             
-    def get_sun_status(self, logcheck = False):
-        """
-        This checks that the sun is low enough to observe
-        
-        If things are okay to observe it returns True, otherwise False
-        """
-        if self.dome.Sunlight_Status == 'READY' or self.sun_override:
-            # make a note of why we want to open the dome
-            if self.dome.Sunlight_Status == 'READY': 
-                return True
-            elif self.sun_override:
-                if logcheck:
-                    self.logger.warning(f"robo: the SUN IS ABOVE THE HORIZON, but sun_override is active so I want to open the dome")
-                return True
+            self.check_ok_to_observe()
+            if self.ok_to_observe:
+                break
             else:
-                self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with sun handling")
-                return False
-
-    
+                time.sleep(0.5)
+            
+        # we escaped the loop!
+        # if it's okay to observe, then do the first observation!
+        self.logger.info(f'finished startup, calibration, and it is okay to observe: doing current observation')
+        self.do_currentObs()
+        return
+        
     def check_ok_to_observe(self, logcheck = False):
         """
         check if it's okay to observe/open the dome
-        
-        # NPL: 12-14-21 removed all the actions, this now is just a status check which can
-        raise any necessary flags during observations. Mostly it's biggest contribution is that
-        if the weather gets bad DURING an exposure that exposure will not be logged.
         
         
         # logcheck flag indicates whether the result of the check should be written to the log
@@ -542,16 +484,43 @@ class RoboOperator(QtCore.QObject):
             but if we're just loopin through restart_robo we can safely ignore the constant logging'
         """
         
-        # if we're in dometest mode, ignore the full tree
-        if self.dometest:
-            self.ok_to_observe = True
-            return
-        
-        if self.get_sun_status():
+        # if the sun is below the horizon, or if the sun_override is active, then we want to open the dome
+        if self.dome.Sunlight_Status == 'READY' or self.sun_override:#self.ephem.sun_below_horizon or self.sun_override:
+            
+            # make a note of why we want to open the dome
+            if self.dome.Sunlight_Status == 'READY': #self.ephem.sun_below_horizon:
+                #self.logger.info(f'robo: the sun is below the horizon, I want to open the dome.')
+                pass
+            elif self.sun_override:
+                if logcheck:
+                    self.logger.warning(f"robo: the SUN IS ABOVE THE HORIZON, but sun_override is active so I want to open the dome")
+            else:
+                # shouldn't ever be here
+                if logcheck:
+                    self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with sun handling")
+                self.ok_to_observe = False
+                #return
+                #break
             
             # if we can open up the dome, then do it!
-            if self.get_dome_status():
-            
+            if (self.dome.ok_to_open or self.dome_override):
+                
+                # make a note of why we're going ahead with opening the dome
+                if self.dome.ok_to_open:
+                    #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
+                    pass
+                elif self.dome_override:
+                    if logcheck:
+                        self.logger.warning(f"robo: the DOME IS NOT OKAY TO OPEN, but dome_override is active so I'm sending open command")
+                else:
+                    # shouldn't ever be here
+                    self.logger.warning(f"robo: I shouldn't ever be here. something is wrong with dome handling")
+                    self.ok_to_observe = False
+                    #return
+                    #break
+                
+               
+                
                 # Check if the dome is open:
                 if self.dome.Shutter_Status == 'OPEN':
                     if logcheck:
@@ -560,25 +529,36 @@ class RoboOperator(QtCore.QObject):
                     #####
                     # We're good to observe
                     self.ok_to_observe = True
-                    return
+                    #break
                     #####
                 
                 else:
                     # dome is closed.
+                    """
+                    #TODO: this is weird. This function should either be just a status poll
+                    that is executed regularly, or it should be only run rarely.
+                    having the open command in here makes it kind of a weird in-between
+                    
+                    """
+                    msg = f'robo: shutter is closed. attempting to open...'
+                    self.announce(msg)
+                     # SEND THE DOME OPEN COMMAND
+                    self.doTry('dome_open', context = 'startup', system = 'dome')
+                    self.logger.info(f'robo: error opening dome.')
                     self.ok_to_observe = False
-                    return
                     
             else:
                 # there is an issue with the dome
                 
                 self.ok_to_observe = False
-                return
+                    
             
         else:
             # the sun is up
             self.ok_to_observe = False
-            return
-
+        
+        # FOR TESTING ONLY
+        #self.ok_to_observe = True
             
     def checkWhatToDo(self):
         """
@@ -587,235 +567,13 @@ class RoboOperator(QtCore.QObject):
         The idea is that the workflow is now:
             -> check if it's okay to observe:
                 if yes:
-                    -> check what we should be observing now: run schedule.gotoNextObs()
+                    -> check what we should be observing now: run schedule.get_currentObs()
                         if schedule.currentObs is None:
                             
                 if no:
                     -> stow the telescope safely
-        
-        Loop-like Action:
-            In some cases some action will be dispatched, and then it will be necessary to check again.
-                ex: the dome wasn't open, so an open command was sent
-                
-            In other cases everything will check out okay, but there will be no valid observations.
-            
-            In both of the above cases, the desired action will be to re-check what to do after a short
-            wait. This is handled by a one-shot QTimer which waits a predetermined amount of time. The timeout
-            of the QTimer (self.checktimer) is connected to this method, so that anytime that QTimer is started
-            checkWhatToDo will be rerun after the wait. This sets up looping events where this code will continue
-            to flow as necessary, without firing at unwanted times.
+        This will sometimes need to be executed on a regular cadance, using a QTimer
         """
-        self.log('checking if robo operator is running')
-        if self.running:
-            self.log('robo operator is running')
-            #---------------------------------------------------------------------
-            ### check the dome
-            #---------------------------------------------------------------------
-            if self.get_dome_status():
-                # if True, then the dome is fine
-                self.log('the dome status is good!')
-                pass
-            else:
-                self.log('there is a problem with the dome (eg weather, etc). STOWING OBSERVATORY')
-                # there is a problem with the dome.
-                self.stow_observatory(force = False)
-                # skip the rest of the checks, just start the timer for the next check
-                self.checktimer.start()
-                return
-            #---------------------------------------------------------------------
-            # check the sun
-            #---------------------------------------------------------------------
-            if self.get_sun_status():
-                self.log(f'the sun is low are we are ready to go!')
-                # if True, then the sun is fine. just keep going
-                pass
-            else:
-                self.log(f'waiting for the sun to set')
-                # the sun is up, can't proceed. just hang out.
-                self.checktimer.start()
-                return
-            #---------------------------------------------------------------------
-            # check if the observatory is ready
-            #---------------------------------------------------------------------
-            if self.get_observatory_ready_status():
-                self.log(f'the observatory is ready to observe!')
-                # if True, then the observatory is ready (eg successful startup and focus sequence)
-                pass
-            else:
-                self.log(f'need to start up observatory')
-                # we need to (re)run do_startup
-                self.do_startup()
-                # after running do_startup, kick back to the top of the loop
-                self.checktimer.start()
-            #---------------------------------------------------------------------        
-            # check the dome
-            #---------------------------------------------------------------------
-            if self.dometest:
-                self.log('dometest mode: ignoring whether the shutter is open!')
-                pass
-            else:
-                if self.dome.Shutter_Status == 'OPEN':
-                    self.log(f'the dome is open and we are ready to start taking data')
-                    # the dome is open and we're ready for observations. just pass
-                    pass
-                else:
-                    # the dome and sun are okay, but the dome is closed. we should open the dome
-                    self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
-                    self.doTry('dome_open')
-                    
-                    self.checktimer.start()
-                    return
-            #---------------------------------------------------------------------
-            # check what we should be observing NOW
-            #---------------------------------------------------------------------
-            # turn the timestamp into mjd
-            if self.sunsim:
-                # for some reason self.state doesn't update if it's in this loop. look into that.
-                obstime_mjd = self.ephem.state.get('mjd',0)
-            else:
-                obstime_mjd = 'now'
-            self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
-            self.announce('getting next observation from schedule database')
-            if self.schedule.currentObs is None:
-                self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
-                # first stow the rotator
-                self.rotator_stop_and_reset()
-                
-                # if we're at the bottom of the schedule, then handle the end of the schedule
-                if self.schedule.end_of_schedule == True:
-                        self.announce('schedule complete! shutting down schedule connection')
-                        self.handle_end_of_schedule()
-                else:
-                    # nothing is up right now, just loop back and check again
-                    self.checktimer.start()
-                return
-            else:
-                # if we got an observation, then let's go do it!!
-                self.do_currentObs()
-        
-            
-    def get_observatory_ready_status(self):
-        """
-        Run a check to see if the observatory is ready. Basically:
-            - did startup run successfully
-            - has the telescope been focused recently
-        """
-        
-        conds = []
-        
-        ### DOME CHECKS ###
-        conds.append(self.dome.Control_Status == 'REMOTE')
-        #conds.append(self.state['dome_tracking_status'] == True)
-        conds.append(self.dome.Home_Status == 'READY')
-        
-        ### TELESCOPE CHECKS ###
-        conds.append(self.state['mount_is_connected'] == True)
-        conds.append(self.state['mount_alt_is_enabled'] == True)
-        conds.append(self.state['mount_az_is_enabled'] == True)
-        conds.append(self.state['rotator_is_connected'] == True)
-        conds.append(self.state['rotator_is_enabled'] == True)
-        conds.append(self.state['rotator_wrap_check_enabled'] == True)
-        conds.append(self.state['focuser_is_connected'] == True)
-        conds.append(self.state['focuser_is_enabled'] == True)
-        conds.append(self.state['Mirror_Cover_State'] == 0)
-        
-        #TODO: add something about the focus here
-        
-        self.observatory_ready = all(conds)
-        
-        return self.observatory_ready
-    
-    def get_observatory_stowed_status(self):
-        """
-        Run a check to see if the observatory is in a safe stowed state.
-        This stowed state is where it should be during the daytime, and during
-        any remote closures.
-        """
-        
-        conds = []
-        
-        ### DOME CHECKS ###
-        # make sure we've given back control
-        conds.append(self.dome.Control_Status == 'AVAILABLE')
-        # make sure the dome is near it's park position
-        # AZ: handle the fact that we may get something 359 or 0.6
-        delta_az = np.abs(self.state['dome_az_deg'] - self.config['dome_home_az_degs']) 
-        min_delta_az = np.min([360 - delta_az, delta_az])
-        conds.append(min_delta_az < 1.0)
-        # make sure dome tracking is off
-        conds.append(self.state['dome_tracking_status'] == False)
-        
-        
-        ### TELESCOPE CHECKS ###
-        # make sure mount tracking is off
-        conds.append(self.state['mount_is_tracking'] == False)
-        
-        # make sure the mount is near home
-        delta_az = np.abs(self.state['mount_az_deg'] - self.config['telescope']['home_az_degs']) 
-        min_delta_az = np.min([360 - delta_az, delta_az])
-        conds.append(min_delta_az < 1.0)
-        
-        # don't worry about the alt
-        #conds.append(np.abs(self.state['mount_alt_deg'] - self.config['telescope']['home_alt_degs']) < 45.0) # home is 45 deg, so this isn't really doing anything
-        
-        delta_rot_angle = np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs'])
-        min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
-        conds.append( min_delta_rot_angle < 10.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
-        
-        # make sure the motors are off
-        conds.append(self.state['mount_alt_is_enabled'] == False)
-        conds.append(self.state['mount_az_is_enabled'] == False)
-        conds.append(self.state['rotator_is_enabled'] == False)
-        conds.append(self.state['focuser_is_enabled'] == False)
-        
-        # make sure the mount is disconnected?
-        # conds.append(self.state['mount_is_connected'] == False)
-        
-        ### MIRROR COVER ###
-        # make sure the mirror cover is closed
-        conds.append(self.state['Mirror_Cover_State'] == 1)
-        
-        self.observatory_stowed = all(conds)
-        
-        return self.observatory_stowed
-        
-    
-    def stow_observatory(self, force = False):
-        """
-        This is a method which checks to see if the observatory is stowed,
-        and if not stows everything safely.
-        
-        You can force it to stow, in which case it will first run startup and then
-        run shutdown
-        """        
-        # if the observatory is already stowed, do nothing
-        if self.get_observatory_stowed_status():
-            if force == False:
-                # if True, then the observatory is stowed.
-                #TODO: will want to mute this to avoid lots of messages.
-                msg = 'requested observatory be stowed, but it is already stowed. standing by.'
-                #self.log(msg)
-                #self.announce(msg)
-                return
-            else:
-                # the observatory is already stowed, but we demanded it be shut down anyway
-                # just go down to the next part of the tree
-                pass
-            
-        # if the observatory is in the ready state, then just shut down
-        elif self.get_observatory_ready_status():
-            self.announce(f'shutting down observatory from ready state:')
-            self.do_shutdown()
-            
-            
-        else:
-            self.announce(f'stowing observatory from arbitrary state: starting up first and then shutting down')
-            # we need to shut down.
-            # this may require turning things on to move them and shutdown. so we start up and then shut down
-            self.do_startup()
-            
-            self.do_shutdown()
-   
         
     
     def setup_schedule(self):
@@ -839,14 +597,11 @@ class RoboOperator(QtCore.QObject):
         
     
     def getSchedule(self, schedulefile_name, startFresh = True):
-        """
-        #NPL 12-16-21 this is deprecated
         if startFresh:
             currentTime = 0
         else:
             currentTime = self.lastseen + 1
-        """
-        self.schedule.loadSchedule(schedulefile_name)
+        self.schedule.loadSchedule(schedulefile_name, currentTime = currentTime)
 
     def interrupt(self):
         self.schedule.currentObs = None
@@ -928,9 +683,6 @@ class RoboOperator(QtCore.QObject):
         else:
             self.logger.log(level = level, msg = msg)
     
-    """
-    # NPL 12-16-21: staged for deletion. commenting out to see if anything gets mad
-    
     def waitForCondition(self, condition, timeout = 60):
         ## Wait until end condition is satisfied, or timeout ##
         
@@ -958,8 +710,6 @@ class RoboOperator(QtCore.QObject):
             
             if all(entry == True for entry in stop_condition_buffer):
                 break 
-    """
-    
     def doTry(self, cmd, context = '', system = ''):
         """
         This does the command by calling wintercmd.parse.
@@ -1001,11 +751,6 @@ class RoboOperator(QtCore.QObject):
         pass
     
     def do_startup(self):
-        """
-        NPL 12-15-21: porting over the steps from Josh's total_startup to here
-        for better error handling.
-        """
-        
         # this is for passing to errors
         context = 'do_startup'
         
@@ -1018,14 +763,12 @@ class RoboOperator(QtCore.QObject):
             # take control of dome        
             self.do('dome_takecontrol')
             
-            self.do('dome_tracking_off')
+            #self.do('dome_tracking_off')
     
-            # re-home the dome (put the dome through it's homing routine)
-            #TODO: NPL 12-15-21: we might want to move this elsewhere, we should do it nightly but it doesn't have to be here.
-            #self.do('dome_home')
+            # home the dome
+            self.do('dome_home')
             
-            # send the dome to it's home/park position
-            self.do('dome_go_home')
+            #self.do('dome_tracking_off')
             
             # signal we're complete
             msg = 'dome startup complete'
@@ -1044,177 +787,45 @@ class RoboOperator(QtCore.QObject):
         msg = 'starting telescope startup...'
         self.announce(msg)
         try:
-            # start up the mount: 
-                # splitting this up so we get more feedback on where things crash
-            #self.do('mount_startup')
-            
             # connect the telescope
-            self.do('mount_connect')
+            self.do('mount_startup')
             
-            # turn off tracking
-            self.do('mount_tracking_off')
-            
-            # turn on the motors
-            self.do('mount_az_on')
-            self.do('mount_alt_on')
-
             # turn on the rotator
             self.do('rotator_enable')
-            # home the rotator
-            self.do('rotator_home')
-            
-            # turn on the focuser
-            self.do('m2_focuser_enable')
-            
-            # poing the mount to home
-            self.do('mount_home')
-            
-            self.announce(':greentick: telescope startup complete!')
-            
-        except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
-        
-        
-        system = 'mirror cover'
-        msg = 'opening mirror covers'
-        self.announce(msg)
-        try:
-            # connect to the mirror cover
-            self.do('mirror_cover_connect')
-            
-            # open the mirror cover
-            self.do('mirror_cover_open')
-        
-        except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
-        
-        self.announce(':greentick: mirror covers open!')
 
+            # TURN ON WRAP CHECK 
+            # NPL 08-03-21 turning this off, it's causing an error.
+            #self.do('rotator_wrap_check_enable')
+            
+            
+        
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        self.announce(':greentick: telescope startup complete!')
+# =============================================================================
+#         
+# =============================================================================
+        # turn on 
+        
         # if we made it all the way to the bottom, say the startup is complete!
         self.startup_complete = True
             
         self.announce(':greentick: startup complete!')
-        print(f'robo: do_startup complete')
-        
-    def do_shutdown(self):
+    
+    
+    def restartScheduleExecution(self):
         """
-        This is the counterpart to do_startup. It supercedes the old "total_shutdown"
-        script, replicating its essential functions but with better communications
-        and error handling.
+        Run this function anytime we are going to restart the robotic operations
+        it will:
+            1. refocus the telescope
+            2. start the robotic operator loop
         """
         
-        # this is for passing to errors
-        context = 'do_startup'
-        
-        ### DOME SHUT DOWN ###
-        system = 'dome'
-        msg = 'starting dome shutdown...'
-        self.announce(msg)
-
-        try:
-            # make sure dome isn't tracking telescope anymore
-            self.do('dome_tracking_off')
-            
-            # send the dome to it's home/park position
-            self.do('dome_go_home')
-            
-            # give control of dome        
-            self.do('dome_givecontrol')
-            
-            # signal we're complete
-            msg = 'dome shutdown complete'
-            self.logger.info(f'robo: {msg}')
-            self.alertHandler.slack_log(f':greentick: {msg}')
-        except Exception as e:
-            msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
-    
-        ### MOUNT SHUTDOWN ###
-        system = 'telescope'
-        msg = 'starting telescope shutdown...'
-        self.announce(msg)
-        try:
-            # start up the mount: 
-                # splitting this up so we get more feedback on where things crash
-            #self.do('mount_startup')
-            
-            # turn off tracking
-            self.do('mount_tracking_off')
-            
-            # point the mount to home
-            self.do('mount_home')
-            
-            # turn off the focuser
-            self.do('m2_focuser_disable')
-            
-            # home the rotator
-            self.do('rotator_home')
-            
-            # turn off the rotator
-            self.do('rotator_disable')
-            
-            # turn off the motors
-            self.do('mount_az_off')
-            self.do('mount_alt_off')
-
-            # disconnect the telescope
-            #self.do('mount_disconnect')
-            
-            self.announce(':greentick: telescope shutdown complete!')
-            
-        except Exception as e:
-            msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
-        
-        ### MIRROR COVER CLOSURE ###
-    
-        system = 'mirror cover'
-        msg = 'closing mirror covers'
-        self.announce(msg)
-        try:
-            # connect to the mirror cover
-            self.do('mirror_cover_connect')
-            
-            # open the mirror cover
-            self.do('mirror_cover_close')
-        
-        except Exception as e:
-            msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
-        
-        self.announce(':greentick: mirror covers closed!')
-
-        # if we made it all the way to the bottom, say the startup is complete!
-        self.shutdown_complete = True
-            
-        self.announce(':greentick: shutdown complete!')
-        print(f'robo: do_shutdown complete')
-
-    
-    
-    
-    
 
     
     def do_calibration(self):
@@ -1223,79 +834,6 @@ class RoboOperator(QtCore.QObject):
         self.running = True
         
         context = 'do_calibration'
-        # check to make sure conditions are okay before attempting cal routine. prevents weird hangups
-        # copied logic from checkWhatToDo(), but don't actually command any systems if there's an issue.
-        # instead just exit out of this routine. hopefully this avoids conflicting sets of instructions.
-        # 
-        self.announce('checking conditions before running auto calibration routine')
-
-        #---------------------------------------------------------------------
-        ### check the dome
-        #---------------------------------------------------------------------
-        if self.get_dome_status():
-            # if True, then the dome is fine
-            self.log('the dome status is good!')
-            pass
-        else:
-            self.announce(f'there is a problem with the dome (eg weather, etc) preventing operation. exiting calibration routine...')
-            """
-            self.log('there is a problem with the dome (eg weather, etc). STOWING OBSERVATORY')
-            # there is a problem with the dome.
-            self.stow_observatory(force = False)
-            # skip the rest of the checks, just start the timer for the next check
-            self.checktimer.start()
-            """
-            return
-        #---------------------------------------------------------------------
-        # check the sun
-        #---------------------------------------------------------------------
-        if self.get_sun_status():
-            self.log(f'the sun is low are we are ready to go!')
-            # if True, then the sun is fine. just keep going
-            pass
-        else:
-            self.announce(f'the sun is not ready for operation. exiting calibration routine...')
-            """
-            self.log(f'waiting for the sun to set')
-            # the sun is up, can't proceed. just hang out.
-            self.checktimer.start()
-            """
-            return
-        #---------------------------------------------------------------------
-        # check if the observatory is ready
-        #---------------------------------------------------------------------
-        if self.get_observatory_ready_status():
-            self.log(f'the observatory is ready to observe!')
-            # if True, then the observatory is ready (eg successful startup and focus sequence)
-            pass
-        else:
-            self.announce(f'the observatory is not ready to observe! exiting calibration routine...')
-            """
-            self.log(f'need to start up observatory')
-            # we need to (re)run do_startup
-            self.do_startup()
-            # after running do_startup, kick back to the top of the loop
-            self.checktimer.start()
-            """
-            return
-        #---------------------------------------------------------------------        
-        # check the dome
-        #---------------------------------------------------------------------
-        if self.dome.Shutter_Status == 'OPEN':
-            self.log(f'the dome is open and we are ready to start taking data')
-            # the dome is open and we're ready for observations. just pass
-            pass
-        else:
-            # the dome and sun are okay, but the dome is closed. we should open the dome
-            self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
-            self.doTry('dome_open')
-            """
-            self.checktimer.start()
-            return
-            """
-            
-        # if we made it to here, we're good to do the auto calibration
-        
         self.announce('starting auto calibration sequence.')
         #self.logger.info('robo: doing calibration routine. for now this does nothing.')
         
@@ -1313,35 +851,22 @@ class RoboOperator(QtCore.QObject):
         # get the altitude
         flat_alt = 75.0
         
+        # slew the dome
+        self.doTry(f'dome_tracking_off')
+        self.doTry(f'dome_goto {flat_az}')
+        self.doTry(f'dome_tracking_on')
+        # slew the telescope
+        self.doTry(f'mount_goto_alt_az {flat_alt} {flat_az}')
         
-        system = 'dome'
-        try:
-            # slew the dome
-            self.do(f'dome_tracking_off')
-            self.do(f'dome_goto {flat_az}')
-            self.do(f'dome_tracking_on')
-            
-            system = 'telescope'
-            # slew the telescope
-            self.do(f'mount_goto_alt_az {flat_alt} {flat_az}')
-           
-           
-            self.log(f'starting the flat observations')
+       
+        self.log(f'starting the flat observations')
         
-        except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
         # if we got here we're good to start
         # take 5 flats!
         nflats = 5
         
         ra_total_offset_arcmin = 0
         dec_total_offset_arcmin = 0
-        
         
         for i in range(nflats):
             self.log(f'setting up flat #{i + 1}')
@@ -1379,7 +904,6 @@ class RoboOperator(QtCore.QObject):
                 else:
                     self.log(f'setting exptime to estimated {flat_exptime} s')
                 
-                system = 'ccd'
                 self.do(f'ccd_set_exposure {flat_exptime:0.3f}')
                 time.sleep(2)
                 
@@ -1390,10 +914,8 @@ class RoboOperator(QtCore.QObject):
                 if i==0:
                     self.log(f'handling the i=0 case')
                     #self.do(f'robo_set_qcomment "{qcomment}"')
-                    system = 'robo routine'
                     self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
                 else:
-                    system = 'ccd'
                     self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
                 
                 # now dither. if i is odd do ra, otherwise dec
@@ -1410,79 +932,31 @@ class RoboOperator(QtCore.QObject):
                 
                 
             except Exception as e:
-                msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                #return
-        
-        # if we get here, we're done with the light exposure, so turn off dome and mount tracking
-                # so that the telescope doesn't drift
-        
-        system = 'dome'
-        try:
-            self.do('dome_tracking_off')
+                self.log(f'could not run flat loop instance: {e}')
             
-            system = 'telescope'
-            self.do('mount_tracking_off')
-        except Exception as e:
-                msg = f'roboOperator: could not stop tracking after flat fields due to error with {system}: due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                #return
-        
         
         ### Take darks ###
         # send the rotator home
-        system = 'rotator'
-        try:
-            self.do('rotator_stop')
-            self.do('rotator_home')
+        self.do('rotator_stop')
+        self.do('rotator_home')
         
-        except Exception as e:
-            msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
-            
-        system = 'ccd'
-        try:
-            self.do(f'ccd_set_exposure 30.0')
-            ndarks = 5
-            for i in range(ndarks):
-                self.announce(f'Executing Auto Darks {i+1}/5')
-                qcomment = f"Auto Darks {i+1}/{ndarks}"
-    
-                self.do(f'robo_do_exposure -d --comment "{qcomment}"')
-        except Exception as e:
-            msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
+        self.do(f'ccd_set_exposure 30.0')
+        ndarks = 5
+        for i in range(ndarks):
+            self.announce(f'Executing Auto Darks {i+1}/5')
+            qcomment = f"Auto Darks {i+1}/{ndarks}"
+
+            self.do(f'robo_do_exposure -d --comment "{qcomment}"')
             
         ### Take bias ###
-        try:
-            self.do(f'ccd_set_exposure 0.0')
-            nbias = 5
-            for i in range(nbias):
-                self.announce(f'Executing Auto Bias {i+1}/5')
-                qcomment = f"Auto Bias {i+1}/{nbias}"
-                self.do(f'robo_do_exposure -b --comment "{qcomment}"')
-                
-        except Exception as e:
-            msg = f'roboOperator: could not set up bias routine due to error with {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
+        self.do(f'ccd_set_exposure 0.0')
+        nbias = 5
+        for i in range(nbias):
+            self.announce(f'Executing Auto Bias {i+1}/5')
+            qcomment = f"Auto Bias {i+1}/{nbias}"
+            self.do(f'robo_do_exposure -b --comment "{qcomment}"')
+            
+        
         
         self.log(f'finished with calibration. no more to do.')    
         self.announce('auto calibration completed successfully!')
@@ -1528,14 +1002,11 @@ class RoboOperator(QtCore.QObject):
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
         
         if self.schedule.currentObs is None:
-            """
-            # NPL shouldn't ever get here, if we do just leave anc check what to do
             self.logger.info(f'robo: self.schedule.currentObs is None. Closing connection to db.')
             self.running = False
             
             self.handle_end_of_schedule()
-            """
-            self.checkWhatToDo()
+            
             return
         
         if self.running & self.ok_to_observe:
@@ -1562,13 +1033,7 @@ class RoboOperator(QtCore.QObject):
             self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
             
             # calculate the current Alt and Az of the target 
-            if self.sunsim:
-                obstime_mjd = self.ephem.state.get('mjd',0)
-                obstime_utc = astropy.time.Time(obstime_mjd, format = 'mjd', \
-                                            location=self.ephem.site)
-            else:
-                obstime_utc = astropy.time.Time(datetime.utcnow(), format = 'datetime')
-                
+            obstime_utc = astropy.time.Time(datetime.utcnow(), format = 'datetime')
             frame = astropy.coordinates.AltAz(obstime = obstime_utc, location = self.ephem.site)
             j2000_coords = astropy.coordinates.SkyCoord(ra = self.j2000_ra_scheduled, dec = self.j2000_dec_scheduled, frame = 'icrs')
             local_coords = j2000_coords.transform_to(frame)
@@ -1628,8 +1093,8 @@ class RoboOperator(QtCore.QObject):
             
             # if we got here the observation wasn't completed properly
             #return
-            #self.gotoNext()
-            self.checkWhatToDo()
+            self.gotoNext()
+            
             
             # 5: exit
             
@@ -1637,13 +1102,9 @@ class RoboOperator(QtCore.QObject):
             
         else:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
-            self.checkWhatToDo()
-            #self.restart_robo()
+            self.restart_robo()
     
     def gotoNext(self): 
-        # NPL 12-16-21: this is now deprecated.
-        
-        
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
         if not self.ok_to_observe:
@@ -1729,15 +1190,12 @@ class RoboOperator(QtCore.QObject):
                     # data_to_write = {**self.state}
                     #data_to_write = {**self.state, **header_data} ## can add other dictionaries here
                     #self.writer.log_observation(data_to_write, imagename)
-                    if not self.sunsim:
-                        # don't log if we're in test mode.
-                        self.writer.log_observation(header_data, image_filepath)
+                    self.writer.log_observation(header_data, image_filepath)
             
             # get the next observation
-            #self.logger.info('robo: getting next observation from schedule database')
-            #self.schedule.gotoNextObs()
-            
-            
+            self.logger.info('robo: getting next observation from schedule database')
+            self.schedule.gotoNextObs()
+        
         
         else:  
             if self.schedule.currentObs is None:
@@ -1752,14 +1210,7 @@ class RoboOperator(QtCore.QObject):
                 # if there are no more observations, we can stow the rotator:
                 self.rotator_stop_and_reset()
             """
-        
-        # we're done with the observation and logging process. go figure out what to do next
-        self.checkWhatToDo()
-        
-        """
-        #TODO: NPL 12-16-21 need to implement some logic about the end of the schedule
-        
-        
+            
         # recheck if the newly loaded observation is None:
         if self.schedule.currentObs is not None and self.running:
             # do the next observation and continue the cycle
@@ -1778,7 +1229,7 @@ class RoboOperator(QtCore.QObject):
             elif self.running == False:
                 self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
                 self.rotator_stop_and_reset()
-        """
+            
                 
     
     def handle_end_of_schedule(self):
@@ -2038,14 +1489,8 @@ class RoboOperator(QtCore.QObject):
             j2000_coords = astropy.coordinates.SkyCoord(ra = j2000_ra, dec = j2000_dec, frame = 'icrs')
 
             ra_deg = j2000_coords.ra.deg
-            
-            if self.sunsim:
-                obstime_mjd = self.ephem.state.get('mjd',0)
-                obstime = astropy.time.Time(obstime_mjd, format = 'mjd', \
-                                            location=self.ephem.site)
-            else:
-                obstime = astropy.time.Time(datetime.utcnow(),\
-                                            location=self.ephem.site)
+            obstime = astropy.time.Time(datetime.utcnow(),\
+                                        location=self.ephem.site)
             
             #lat = astropy.coordinates.Angle(self.config['site']['lat'])
             #lon = astropy.coordinates.Angle(self.config['site']['lon'])
@@ -2225,8 +1670,8 @@ class RoboOperator(QtCore.QObject):
             
             time.sleep(5)
             
-            # turn tracking back on 
-            #self.do('dome_tracking_on')
+            # turn tracking back on
+            self.do('dome_tracking_on')
             
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -2303,20 +1748,6 @@ class RoboOperator(QtCore.QObject):
             self.target_ok = False
             return
         
-        ### TURN DOME TRACKING BACK ON ###
-        
-        system = 'dome'
-        try:
-            # turn tracking back on
-            self.do('dome_tracking_on')
-            
-        except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            self.target_ok = False
-            return
         
         
         
@@ -2529,4 +1960,58 @@ class RoboOperator(QtCore.QObject):
         else:
             return False
     
-    
+    def old_do_observing(self):
+        '''
+        This function must contain all of the database manipulation code to remain threadsafe and prevent
+        exceptions from being raised during operation
+        '''
+        self.running = True
+ 
+
+        while self.schedule.currentObs is not None and self.running:
+            #print(f'scheduleExecutor: in the observing loop!')
+            self.lastSeen = self.schedule.currentObs['obsHistID']
+            self.current_field_alt = float(self.schedule.currentObs['altitude'])
+            self.current_field_az = float(self.schedule.currentObs['azimuth'])
+
+            for i in range(len(self.dither_alt)):
+                # step through the prescribed dither sequence
+                dither_alt = self.dither_alt[i]
+                dither_az = self.dither_az[i]
+                print(f'Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
+                self.alt_scheduled = self.current_field_alt + dither_alt
+                self.az_scheduled = self.current_field_az + dither_az
+
+                #self.newcmd.emit(f'mount_goto_alt_az {self.currentALT} {self.currentAZ}')
+                if self.state["ok_to_observe"]:
+                    print(f'Observing Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
+                    self.telescope.mount_goto_alt_az(alt_degs = self.alt_scheduled, az_degs = self.az_scheduled)
+                    # wait for the telescope to stop moving before returning
+                    while self.state['mount_is_slewing']:
+                       time.sleep(self.config['cmd_status_dt'])
+                else:
+                    print(f'Skipping Dither Offset (alt, az) = ({dither_alt}, {dither_az})')
+                self.waittime = int(self.schedule.currentObs['visitTime'])/len(self.dither_alt)
+                ##TODO###
+                ## Step through current obs dictionairy and update the state dictionary to include it
+                ## append planned to the keys in the obs dictionary, to allow us to use the original names to record actual values.
+                ## for now we want to add actual waittime, and actual time.
+                #####
+                self.logger.info(f'robo: Taking a {self.waittime} second exposure...')
+                #time.sleep(self.waittime)
+                
+                if self.state["ok_to_observe"]:
+                    imagename = self.writer.base_directory + '/data/testImage' + str(self.lastSeen)+'.FITS'
+                    # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
+                    currentData = self.get_data_to_log()
+                    # self.state.update(currentData)
+                    # data_to_write = {**self.state}
+                    data_to_write = {**self.state, **currentData} ## can add other dictionaries here
+                    self.writer.log_observation(data_to_write, imagename)
+
+            self.schedule.gotoNextObs()
+
+        if not self.schedulefile_name is None:
+            ## TODO: Code to close connections to the databases.
+            self.schedule.closeConnection()
+            self.writer.closeConnection()

@@ -11,6 +11,7 @@ Created on Sun Jun 13 01:42:46 2021
 
 import socket
 import io
+import time
 from datetime import datetime
 
 class MirrorCovers:
@@ -27,6 +28,7 @@ class MirrorCovers:
 
         
     def open_mirror_cover_socket(self, addr, port):
+        self.last_reconnect_timestamp = datetime.utcnow().timestamp()
         self.logger.info(f'MirrorCover: Attempting to connect to PWShutter TCP server at address {addr} and port {port}')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(0.5)
@@ -38,8 +40,12 @@ class MirrorCovers:
             self.connected = False
             
     def update_state(self):
+        now_timestamp = datetime.utcnow().timestamp()
+
         if self.connected:
+            """
             (code, text) = self.sendreceive("isconnected")
+            #print(f'mirror code for isconnected: {code}, {text}')
             if (code == 0 or code == 1):  
                 self.state.update({'mirror_cover_connected' : int(not(code))})
                 self.state.update({'mirror_cover_connected_last_timestamp'  : datetime.utcnow().timestamp()})
@@ -47,14 +53,21 @@ class MirrorCovers:
                 self.state.update({'mirror_cover_connected' : code})
                 self.logger.info(f'Error while connecting to mirror cover, code {code} ')
                 self.state.update({'mirror_cover_connected_last_timestamp'  : datetime.utcnow().timestamp()})    
-            
+            """
             (code, text) = self.sendreceive( "shutterstate")
             if (code == 0 or code == 1 or code == 2 or code == 3 or code == 4 or code == 5 or code == 255):  
                 self.state.update({'mirror_cover_state' : code})
-                self.state.update({'mirror_cover_state_last_timestamp'  : datetime.utcnow().timestamp()})
-        
+                self.state.update({'mirror_cover_state_last_timestamp'  : now_timestamp})
+                self.state.update({'mirror_cover_connected' : self.connected})
+                self.state.update({'mirror_cover_connected_last_timestamp': now_timestamp})
         else:
-            #self.open_mirror_cover_socket(self.addr, self.port)
+            # close and reset the socket
+            self.connected = False
+            self.state.update({'mirror_cover_connected' : self.connected})
+            # try to reconnect as long as its been a few seconds since the last connection attempt (ie don't flood the port)
+            if now_timestamp - self.last_reconnect_timestamp > 5.0:
+                self.sock.close()
+                self.open_mirror_cover_socket(self.addr, self.port)
             pass
 
     def readline(self):

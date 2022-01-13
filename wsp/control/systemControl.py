@@ -137,7 +137,18 @@ class control(QtCore.QObject):
             # housekeeping data logging daemon (hkd = housekeeping daemon)
             self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
             self.daemonlist.add_daemon(self.hkd)
+        
+        if '--sunsim' in opts:              
+            self.sunsim = True
+        else:
+            self.sunsim = False
             
+        # option to ignore whether the shutter is open, which let you test with the dome closed
+        if '--dometest' in opts:
+            self.dometest = True
+        else:
+            self.dometest = False
+        
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
             
@@ -151,15 +162,15 @@ class control(QtCore.QObject):
                 self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
                 self.daemonlist.add_daemon(self.domesim)
                 
-            if '--sunsim' in opts:
+            if self.sunsim:
                 # start up the fake sun_simulator
                 self.sunsimd = daemon_utils.PyDaemon(name = 'sun_simulator', filepath = f"{wsp_path}/ephem/sun_simulator_gui.py")
                 self.daemonlist.add_daemon(self.sunsimd)
-                    
+                
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
-            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py")
+            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py", args = opts)
             self.daemonlist.add_daemon(self.ephemd)
         
         if mode in ['r']:
@@ -268,7 +279,9 @@ class control(QtCore.QObject):
                                                 viscam = self.viscam, 
                                                 ccd = self.ccd, 
                                                 mirror_cover = self.mirror_cover,
-                                                robostate = self.robostate
+                                                robostate = self.robostate,
+                                                sunsim = self.sunsim,
+                                                logger = self.logger
                                                 )
         
         
@@ -279,7 +292,19 @@ class control(QtCore.QObject):
         In this section we set up the appropriate command interface and executors for the chosen mode
         '''
         ### SET UP THE COMMAND LINE INTERFACE
-        self.wintercmd = wintercmd.Wintercmd(self.base_directory, self.config, state = self.hk.state, daemonlist = self.daemonlist, telescope = self.telescope, dome = self.dome, chiller = self.chiller, pdu1 = self.pdu1, logger = self.logger, viscam = self.viscam, ccd = self.ccd, mirror_cover = self.mirror_cover)
+        self.wintercmd = wintercmd.Wintercmd(self.base_directory, 
+                                             self.config, 
+                                             state = self.hk.state, 
+                                             alertHandler = self.alertHandler,
+                                             daemonlist = self.daemonlist, 
+                                             telescope = self.telescope, 
+                                             dome = self.dome, 
+                                             chiller = self.chiller, 
+                                             pdu1 = self.pdu1, 
+                                             logger = self.logger, 
+                                             viscam = self.viscam, 
+                                             ccd = self.ccd, 
+                                             mirror_cover = self.mirror_cover)
         
         if mode in ['r','m']:
             #init the schedule executor
@@ -323,7 +348,10 @@ class control(QtCore.QObject):
                                                               viscam=self.viscam, 
                                                               ccd = self.ccd, 
                                                               mirror_cover = self.mirror_cover,
-                                                              robostate = self.robostate)
+                                                              robostate = self.robostate,
+                                                              sunsim = self.sunsim,
+                                                              dometest = self.dometest,
+                                                              )
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
         # connect the command server to the command executor
