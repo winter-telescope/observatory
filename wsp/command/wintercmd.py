@@ -1407,9 +1407,17 @@ class Wintercmd(QtCore.QObject):
 
     
     # Telescope Focuser Stuff
-      
+    
+    
     @cmd
     def doFocusLoop(self):
+        self.defineCmdParser('do a focus loop with current filter')
+        sigcmd = signalCmd('do_focusLoop')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def doFocusLoop_old(self):
         """
         Runs a focus loop for a given filter by taking a set of images and collecting the relative
         size of objects in the image. Will return focus to the optimal position.

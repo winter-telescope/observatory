@@ -24,6 +24,7 @@ import astropy.units as u
 from astropy.io import fits
 import pathlib
 import subprocess
+import pandas as pd
 import traceback
 import pytz
 
@@ -37,6 +38,7 @@ from schedule import ObsWriter
 from ephem import ephem_utils
 from telescope import pointingModelBuilder
 from housekeeping import data_handler
+from focuser import summerFocusLoop
 
 class TargetError(Exception):
     pass
@@ -1493,6 +1495,185 @@ class RoboOperator(QtCore.QObject):
         
         
         self.calibration_complete = True
+    
+    
+    def do_focusLoop(self, nom_focus = 'default', total_throw = 'default', nsteps = 'default'):
+        """
+        Runs a focus loop in the CURRENT filter.
+        Adaptation of Cruz Soto's doFocusLoop in wintercmd
+        
+        This runs a focus loop for the current filter, and returns the best focus position
+        
+        Does this without regard to where telescope is pointing. 
+        
+        # note the config has things like this:
+        filters:
+            summer:
+                r:
+                    name: "SDSS r' (Chroma)"
+                    nominal_focus: 10150
+                    active: True
+        filter_wheels:
+            summer:
+                positions:
+                    1: 'u'
+                    2: 'other2'
+                    3: 'r'
+                    4: 'other4'
+                    5: 'other5'
+                    6: 'other6'
+        """        
+        context = 'do_focusLoop'
+        # get the current filter
+        #TODO: make this flexible to handle winter or summer. eg, if cam == 'summer': ... elif cam == 'winter': ...
+        cam = 'summer'
+        if cam == 'summer':
+            
+            filterpos = self.state['Viscam_Filter_Wheel_Position'] # eg. 3
+            pixscale = self.config['viscam_platescale_as']
+            
+            
+        
+        filterID = self.config['filter_wheels'][cam]['positions'][filterpos] # eg. 'r'
+        filtername = self.config['filters'][cam][filterID]['name'] # eg. "SDSS r' (Chroma)"
+        
+        
+        if nom_focus == 'default':
+            nom_focus = self.config['filters'][cam][filterID]['nominal_focus']
+        if total_throw == 'default':
+            total_throw = self.config['focus_loop_param']['total_throw']
+        if nsteps == 'default':
+            nsteps = self.config['focus_loop_param']['nsteps']
+            
+        # init a focus loop object on the current filter
+        loop = summerFocusLoop.Focus_loop(nom_focus, total_throw, nsteps, pixscale)
+        self.log(f'focus loop: will take images at {loop.filter_range}')
+        
+        # note that the list of focus positions is loop.filter_range
+        
+        #### START THE FOCUS LOOP ####
+        self.log(f'setting up focus loop for {cam} {filtername} (filterpos = {filterpos}, filterID = {filterID})')
+        
+        # first drive the focuser in past the first position
+        # loop.filter_range is arranged small to big distances, so start smaller to ensure we approach all points from the same direction
+        focuser_start_pos = np.min(loop.filter_range_nom) - 500
+        
+        system = 'focuser'
+        try:
+            self.log(f'racking focuser below min position to pre-start position: {focuser_start_pos} before starting')
+            self.do(f'm2_focuser_goto {focuser_start_pos}')
+        
+        except Exception as e:
+            msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        # step through the focus positions and take images
+        
+        focuser_pos = []
+        images = []
+        image_log_path = self.config['focus_loop_param']['image_log_path']
+        
+        for dist in loop.filter_range_nom:
+            
+            try:
+                self.log(f'taking filter image at focuser position = {dist}')
+                
+                # drive the focuser
+                system = 'focuser'
+                self.do(f'm2_focuser_goto {dist}')
+    
+                # take an image
+                system = 'ccd'
+                self.do(f'robo_do_exposure -f')
+                
+                
+                image_directory, image_filename = self.ccd.getLastImagePath()
+                image_filepath = os.path.join(image_directory, image_filename)
+                
+                # add the filter position and image path to the list to analyze
+                focuser_pos.append(dist)
+                images.append(image_filepath)
+                self.log("focus image added to list")            
+                
+            except Exception as e:
+                msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                return
+        
+        # print out the files and positions to the terminal
+        print("FOCUS LOOP DATA:")
+        for i in range(len(focuser_pos)):
+            print(f'     [{i+1}] Focuser Pos: {focuser_pos[i]}, {images[i]}')
+        
+        # handle what to do in test mode
+        if self.test_mode:
+            focuser_pos = np.linspace(9000, 11150, 7)
+            images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits',
+                      '/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits',
+                      '/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits',
+                      '/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits',
+                      '/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits',
+                      '/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits',
+                      '/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
+        
+        
+        # save the data to a csv for later access
+        try:
+            data = {'images': images, 'focuser_pos' : list(focuser_pos)}
+            df = pd.DataFrame(data)
+            df.to_csv(image_log_path + 'focusLoop' + self.state['mount_timestamp_utc'] + '.csv')
+        
+        except Exception as e:
+            msg = f'Unable to save files to focus csv due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+        
+        
+        system = 'focuser'
+        # fit the data and find the best focus
+        try:
+            # drive back to start position so we approach from same direction
+            self.log(f'Focuser re-aligning at pre-start position: focuser_start_pos')
+            self.do(f'm2_focuser_goto {focuser_start_pos}')
+            
+            # now analyze the data (rate the images and load the observed filterpositions)
+            loop.analyzeData(filterpos, images)
+            
+            xvals, yvals = loop.plot_focus_curve(plotting = True)
+            focuser_pos_best = xvals[yvals.index(min(yvals))]
+            self.logger.info(f'Focuser_going to final position at focuser_pos_best microns')
+            self.do(f'm2_focuser_goto {focuser_pos_best}')
+
+        except FileNotFoundError as e:
+            self.log(f"You are trying to modify a catalog file or an image with no stars , {e}")
+            pass
+
+        except Exception as e:
+            msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+
+        # now print the best fit focus to the slack
+        try:        
+            focus_plot = '/home/winter/data/plots_focuser/latest_focusloop.jpg'
+            self.alertHandler.slack_postImage(focus_plot)
+        
+        except Exception as e:
+            msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+        
+        return focuser_pos_best
+        
+            
+            
     
     def do_currentObs(self):
         """
