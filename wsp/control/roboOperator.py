@@ -38,7 +38,7 @@ from schedule import ObsWriter
 from ephem import ephem_utils
 from telescope import pointingModelBuilder
 from housekeeping import data_handler
-from focuser import summerFocusLoop
+from focuser import focusing
 
 class TargetError(Exception):
     pass
@@ -1523,31 +1523,46 @@ class RoboOperator(QtCore.QObject):
                     5: 'other5'
                     6: 'other6'
         """        
+        self.announce('running focus loop!')
         context = 'do_focusLoop'
         # get the current filter
         #TODO: make this flexible to handle winter or summer. eg, if cam == 'summer': ... elif cam == 'winter': ...
+        
+        focus_target_type = self.config['focus_loop_param']['target_type']
+        focus_target = self.config['focus_loop_param']['target']
+        
         cam = 'summer'
-        if cam == 'summer':
+        try:
+            if cam == 'summer':
+                
+                filterpos = self.state['Viscam_Filter_Wheel_Position'] # eg. 3
+                pixscale = self.config['viscam_platescale_as']
+                
+                
             
-            filterpos = self.state['Viscam_Filter_Wheel_Position'] # eg. 3
-            pixscale = self.config['viscam_platescale_as']
+            filterID = self.config['filter_wheels'][cam]['positions'][filterpos] # eg. 'r'
+            filtername = self.config['filters'][cam][filterID]['name'] # eg. "SDSS r' (Chroma)"
             
             
+            if nom_focus == 'default':
+                nom_focus = self.config['filters'][cam][filterID]['nominal_focus']
+            if total_throw == 'default':
+                total_throw = self.config['focus_loop_param']['total_throw']
+            if nsteps == 'default':
+                nsteps = self.config['focus_loop_param']['nsteps']
+                
+            # init a focus loop object on the current filter
+            #    config, nom_focus, total_throw, nsteps, pixscale
+            loop = focusing.Focus_loop_v2(self.config, nom_focus, total_throw, nsteps, pixscale)
+            self.log(f'focus loop: will take images at {loop.filter_range}')
         
-        filterID = self.config['filter_wheels'][cam]['positions'][filterpos] # eg. 'r'
-        filtername = self.config['filters'][cam][filterID]['name'] # eg. "SDSS r' (Chroma)"
-        
-        
-        if nom_focus == 'default':
-            nom_focus = self.config['filters'][cam][filterID]['nominal_focus']
-        if total_throw == 'default':
-            total_throw = self.config['focus_loop_param']['total_throw']
-        if nsteps == 'default':
-            nsteps = self.config['focus_loop_param']['nsteps']
-            
-        # init a focus loop object on the current filter
-        loop = summerFocusLoop.Focus_loop(nom_focus, total_throw, nsteps, pixscale)
-        self.log(f'focus loop: will take images at {loop.filter_range}')
+        except Exception as e:
+            msg = f'roboOperator: could not run focus loop due to  due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            #err = roboError(context, self.lastcmd, system, msg)
+            #self.hardware_error.emit(err)
+            return
         
         # note that the list of focus positions is loop.filter_range
         
@@ -1576,6 +1591,9 @@ class RoboOperator(QtCore.QObject):
         images = []
         image_log_path = self.config['focus_loop_param']['image_log_path']
         
+        # keep track of which image we're on
+        i = 0
+        #for i in range(len(loop.filter_range_nom)):
         for dist in loop.filter_range_nom:
             
             try:
@@ -1587,7 +1605,24 @@ class RoboOperator(QtCore.QObject):
     
                 # take an image
                 system = 'ccd'
-                self.do(f'robo_do_exposure -f')
+                #self.do(f'robo_do_exposure -foc')
+                
+                qcomment = f"Focus Loop Image {i+1}/{nsteps} Focus Position = {dist} um"
+                #qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
+                # now trigger the actual observation. this also starts the mount tracking
+                self.announce(f'Executing {qcomment}')
+                if i==0:
+                    self.log(f'handling the i=0 case')
+                    #self.do(f'robo_set_qcomment "{qcomment}"')
+                    #system = 'robo routine'
+                    self.do(f'robo_observe {focus_target_type} {focus_target} -foc --comment "{qcomment}"')
+                else:
+                    system = 'ccd'
+                    self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
+
+                
+                
+                
                 
                 
                 image_directory, image_filename = self.ccd.getLastImagePath()
@@ -1605,7 +1640,8 @@ class RoboOperator(QtCore.QObject):
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
                 return
-        
+            # increase the image number counter
+            i += 1
         # print out the files and positions to the terminal
         print("FOCUS LOOP DATA:")
         for i in range(len(focuser_pos)):
@@ -1642,7 +1678,7 @@ class RoboOperator(QtCore.QObject):
             self.do(f'm2_focuser_goto {focuser_start_pos}')
             
             # now analyze the data (rate the images and load the observed filterpositions)
-            loop.analyzeData(filterpos, images)
+            loop.analyzeData(focuser_pos, images)
             
             xvals, yvals = loop.plot_focus_curve(plotting = True)
             focuser_pos_best = xvals[yvals.index(min(yvals))]
@@ -1654,7 +1690,7 @@ class RoboOperator(QtCore.QObject):
             pass
 
         except Exception as e:
-            msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}'
+            msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}'
             self.log(msg)
             self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
             err = roboError(context, self.lastcmd, system, msg)

@@ -471,6 +471,8 @@ focus_loop_param:
     total_throw: 300
     nsteps: 5
     micron_interval: 100
+    target_type: altaz
+    target: '75 270'
     fine_micron_interval: 10
     recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'
@@ -538,11 +540,13 @@ filters:
             nominal_focus: 10000
             active: False
             focus_exptime: 30
-        Y:  name: "MKO Y-band (Asahi)"
+        Y:  
+            name: "MKO Y-band (Asahi)"
             nominal_focus: 10000
             active: False
             focus_exptime: 30
-        Hs: name: "MKO Hs-band (Asahi)"
+        Hs: 
+            name: "MKO Hs-band (Asahi)"
             nominal_focus: 10000
             active: False
             focus_exptime: 30

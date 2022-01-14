@@ -1660,6 +1660,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument('position',
                                     nargs = 1,
                                     action = None,
+                                    type = float,
                                     help = '<position_steps>')
         
         self.getargs()
