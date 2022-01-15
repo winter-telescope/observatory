@@ -250,7 +250,11 @@ class Focus_loop:
         med_fwhms = np.array(self.med_fwhms)
         std_fwhms = np.array(self.std_fwhms)
         
-        popt = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
+        popt, pcov = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
+        # note here that popt are the fit parameters of the parabola: y = A + B*(x-x0)**2
+        # so the center of the parabola is x0 = popt[2]
+        
+        
         
         plotfoc = np.linspace(np.min(filter_range),np.max(filter_range),20)
         
@@ -275,8 +279,8 @@ class Focus_loop:
         
         #pid = process.pid
         
-        
-        return list(plotfoc), list(plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
+        return popt, pcov
+        #return list(plotfoc), list(plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
         
 
 if __name__ == '__main__':
