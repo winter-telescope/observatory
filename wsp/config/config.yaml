@@ -475,6 +475,7 @@ focus_loop_param:
     target: '75 270'
     focus_error_max: 100
     focus_log_path: 'data/df_focuser/focus_log.json'
+    focus_graceperiod_hours: 6
     fine_micron_interval: 10
     recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'

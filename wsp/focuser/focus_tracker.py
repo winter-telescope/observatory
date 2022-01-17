@@ -51,6 +51,8 @@ class FocusTracker(object):
         self.focus_log = dict()
         
         self.active_filters = dict()
+        
+        self.setupFocusLog()
     
     def log(self, msg, level = logging.INFO):
         if self.logger is None:
@@ -187,7 +189,7 @@ class FocusTracker(object):
         filterIDs_to_focus = []
         
         if obs_timestamp == 'now':
-            utc = datetime.utcnow()
+            utc = datetime.now(tz = pytz.timezone('utc'))
             obs_timestamp = utc.timestamp()
             
             
@@ -199,12 +201,16 @@ class FocusTracker(object):
             if last_focus_timestamp_utc is None:
                 filterIDs_to_focus.append(filterID)
             
+            
             elif obs_timestamp - last_focus_timestamp_utc > graceperiod_seconds:
+                dt_last_focus = obs_timestamp - last_focus_timestamp_utc
                 filterIDs_to_focus.append(filterID)
-                
+                print(f'filterID: {filterID}, dt since last focus = {dt_last_focus/3600} h')        
             else:
                 pass
-            
+      
+        if len(filterIDs_to_focus) == 0:
+            filterIDs_to_focus = None
         return filterIDs_to_focus
         
         
@@ -289,7 +295,7 @@ if __name__ == '__main__':
     
     print()
     focusTracker.printFocusLog()
-    
+    """
     print()
     print(f'updating a random filter name')
     
@@ -298,7 +304,7 @@ if __name__ == '__main__':
     
     print()
     focusTracker.printFocusLog()
-    
+    """
     
     
     

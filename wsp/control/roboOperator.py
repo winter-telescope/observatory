@@ -363,7 +363,7 @@ class RoboOperator(QtCore.QObject):
         self.rotator_stop_and_reset()
         
     def announce(self, msg):
-        self.logger.info(f'robo: {msg}')
+        self.log(f'robo: {msg}')
         self.alertHandler.slack_log(msg, group = None)
     
     def doCommand(self, cmd_obj):
@@ -613,7 +613,7 @@ class RoboOperator(QtCore.QObject):
             checkWhatToDo will be rerun after the wait. This sets up looping events where this code will continue
             to flow as necessary, without firing at unwanted times.
         """
-        self.log('checking if robo operator is running')
+        self.log('checking what to do!')
         if self.running:
             self.log('robo operator is running')
             #---------------------------------------------------------------------
@@ -674,14 +674,39 @@ class RoboOperator(QtCore.QObject):
                     self.checktimer.start()
                     return
             #---------------------------------------------------------------------
-            # check what we should be observing NOW
+            # get the current timestamp and MJD
             #---------------------------------------------------------------------
-            # turn the timestamp into mjd
+                # turn the timestamp into mjd
             if self.sunsim:
                 # for some reason self.state doesn't update if it's in this loop. look into that.
                 obstime_mjd = self.ephem.state.get('mjd',0)
+                obstime_timestamp_utc = astropy.time.Time(obstime_mjd, format = 'mjd').unix
             else:
                 obstime_mjd = 'now'
+                obstime_timestamp_utc = datetime.now(tz = pytz.utc).timestamp()
+                
+            #---------------------------------------------------------------------
+            # check if we need to focus the telescope
+            #---------------------------------------------------------------------
+            graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
+            filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, graceperiod_hours = graceperiod_hours)
+            
+            # here is a good place to insert a good check on temperature change,
+            # or even better a check on FWHM of previous images
+            
+            if not filterIDs_to_focus is None:     
+                self.announce(f'we need to focus the telescope in these filters: {filterIDs_to_focus}')
+                # there are filters to focus! run a focus sequence
+                self.do_focus_sequence(filterIDs = filterIDs_to_focus)
+                self.announce(f'got past the do_focus_sequence call in checkWhatToDo?')
+                
+                # now exit and rerun the check
+                self.checktimer.start()
+                return
+            #---------------------------------------------------------------------
+            # check what we should be observing NOW
+            #---------------------------------------------------------------------
+            
             self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
             self.announce('getting next observation from schedule database')
             if self.schedule.currentObs is None:
@@ -1546,8 +1571,8 @@ class RoboOperator(QtCore.QObject):
                 
                 
             
-            filterID = self.config['filter_wheels'][cam]['positions'][filterpos] # eg. 'r'
-            filtername = self.config['filters'][cam][filterID]['name'] # eg. "SDSS r' (Chroma)"
+            filterID = self.config['filter_wheels'][self.cam]['positions'][filterpos] # eg. 'r'
+            filtername = self.config['filters'][self.cam][filterID]['name'] # eg. "SDSS r' (Chroma)"
             
             if nom_focus == 'last':
                 #TODO: make this query the focusTracker to find the last focus position
@@ -1555,12 +1580,18 @@ class RoboOperator(QtCore.QObject):
                     last_focus, last_focus_timestamp = self.focusTracker.checkLastFocus(filterID)
                     # set the nominal focus to the last focus positiion
                     nom_focus = last_focus
+                    self.log(f'focusing around previous best focus location: {nom_focus}')
+
+                    
+                    if nom_focus is None:
+                        self.log(f'no previous focus position found, defaulting to nominal.')
+                        nom_focus = self.config['filters'][self.cam][filterID]['nominal_focus']
                     
                 except Exception as e:
                     self.log(f'could not get a value for the last focus position. defaulting to default focus. Traceback = {traceback.format_exc()}')
-                    nom_focus = self.config['filters'][cam][filterID]['nominal_focus']                    
+                    nom_focus = self.config['filters'][self.cam][filterID]['nominal_focus']                    
             elif nom_focus == 'default':
-                nom_focus = self.config['filters'][cam][filterID]['nominal_focus']
+                nom_focus = self.config['filters'][self.cam][filterID]['nominal_focus']
             
             if total_throw == 'default':
                 total_throw = self.config['focus_loop_param']['total_throw']
@@ -1570,11 +1601,12 @@ class RoboOperator(QtCore.QObject):
                 
             # init a focus loop object on the current filter
             #    config, nom_focus, total_throw, nsteps, pixscale
+            self.log(f'setting up focus loop object: nom_focus = {nom_focus}, total_throw = {total_throw}, nsteps = {nsteps}, pixscale = {pixscale}')
             loop = focusing.Focus_loop_v2(self.config, nom_focus, total_throw, nsteps, pixscale)
             self.log(f'focus loop: will take images at {loop.filter_range}')
         
         except Exception as e:
-            msg = f'roboOperator: could not run focus loop due to  due to {e.__class__.__name__}, {e}'
+            msg = f'roboOperator: could not run focus loop due to  due to {e.__class__.__name__}, {e}, tb = {traceback.format_exc()}'
             self.log(msg)
             self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
             #err = roboError(context, self.lastcmd, system, msg)
@@ -1584,7 +1616,7 @@ class RoboOperator(QtCore.QObject):
         # note that the list of focus positions is loop.filter_range
         
         #### START THE FOCUS LOOP ####
-        self.log(f'setting up focus loop for {cam} {filtername} (filterpos = {filterpos}, filterID = {filterID})')
+        self.log(f'setting up focus loop for {self.cam} {filtername} (filterpos = {filterpos}, filterID = {filterID})')
         
         # first drive the focuser in past the first position
         # loop.filter_range is arranged small to big distances, so start smaller to ensure we approach all points from the same direction
@@ -1695,14 +1727,15 @@ class RoboOperator(QtCore.QObject):
             self.do(f'm2_focuser_goto {focuser_start_pos}')
             
             # now analyze the data (rate the images and load the observed filterpositions)
-            loop.analyzeData(focuser_pos, images)
+            x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
             
-            popt, pcov = loop.plot_focus_curve(plotting = True)
-            perr = np.sqrt(np.diag(pcov))
-            x0_fit = popt[0]
-            x0_err = perr[0]
+            loop.plot_focus_curve(plotting = True)
             
-            self.announce(f'Fit Results: x0 = [{x0_fit:.0f} +/- {x0_err:.0f}] microns ({x0_err/x0_fit*100:.0f}%)')
+            
+            #print(f'x0_fit = {x0_fit}, type(x0_fit) = {type(x0_fit)}')
+            #print(f'x0_err = {x0_err}, type(x0_err) = {type(x0_err)}')
+            
+            self.announce(f'Fit Results: x0 = [{x0_fit:.0f} +/- {x0_err:.0f}] microns ({(x0_err/x0_fit*100):.0f}%)')
             
             # validate that the fit was good enough
             if x0_err > self.config['focus_loop_param']['focus_error_max']:
@@ -1752,7 +1785,7 @@ class RoboOperator(QtCore.QObject):
         return x0_fit
     
     
-    def do_focus_sequence(self, filterIDs):
+    def do_focus_sequence(self, filterIDs = 'active'):
         """
         run a focus loop for each of the filters specified
         
@@ -1761,8 +1794,15 @@ class RoboOperator(QtCore.QObject):
         """
         context = 'do_focus_sequence'
         system = ''
+        
+        
+        if filterIDs == 'active':
+            filterIDs = self.focusTracker.getActiveFilters()
+        
+        self.announce(f'running focus loops for filters: {filterIDs}')
+        
         for filterID in filterIDs:
-            
+            self.announce(f'executing focus loop for filter: {filterID}')
             try:
                 # step through each filter to focus, and run a focus loop
                 # 1. change filter to filterID

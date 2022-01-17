@@ -60,6 +60,14 @@ class Focus_loop_v2:
         self.filter_range = filterpos_list
         self.rate_images(imglist)
         
+        popt, pcov = plot_curve.fit_parabola(self.filter_range, self.med_fwhms, self.std_fwhms)
+        
+        perr = np.sqrt(np.diag(pcov))
+        x0_fit = popt[0]
+        x0_err = perr[0]
+        
+        return x0_fit, x0_err
+        
     def analyze_img_focus(self, imgname):
         mean, med, std = genstats.get_img_fwhm(imgname, self.pixscale,exclude = False)
         return med, std
@@ -125,12 +133,14 @@ class Focus_loop_v2:
             
         return images_16
     """
+    
+
     def plot_focus_curve(self, plotting):
         filter_range = np.array(self.filter_range)
         med_fwhms = np.array(self.med_fwhms)
         std_fwhms = np.array(self.std_fwhms)
         
-        popt = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
+        popt, pcov = plot_curve.fit_parabola(filter_range, med_fwhms, std_fwhms)
         
         plotfoc = np.linspace(np.min(filter_range),np.max(filter_range),20)
         
@@ -156,7 +166,7 @@ class Focus_loop_v2:
         #pid = process.pid
         
         
-        return list(plotfoc), list(plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
+        #return list(plotfoc), list(plot_curve.parabola(plotfoc,popt[0],popt[1],popt[2]))
 
 
 

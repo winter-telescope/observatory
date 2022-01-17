@@ -1417,6 +1417,13 @@ class Wintercmd(QtCore.QObject):
         self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
+    def doFocusSeq(self):
+        self.defineCmdParser('do a focus sequence on all active filters')
+        sigcmd = signalCmd('do_focus_sequence')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
     def doFocusLoop_old(self):
         """
         Runs a focus loop for a given filter by taking a set of images and collecting the relative
@@ -3252,6 +3259,37 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         fw_cmd = self.args.fw_cmd[0]
         self.viscam.send_filter_wheel_command(fw_cmd)
+        
+        fw_num = int(fw_cmd)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 30 
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'unable to move viscam filter wheel: command timed out after {timeout} seconds before completing.')
+            
+            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == fw_num) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: successfully completed viscam filter wheel move')
+                break 
+        
         
         
     @cmd
