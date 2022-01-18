@@ -112,7 +112,7 @@ class Site:
 
 
 SNR = 5.
-EXPOSURE_TIME = 30. * u.second
+EXPOSURE_TIME = 150. * u.second
 #READOUT_TIME = 2.1 * u.second
 READOUT_TIME = 40 * u.second #NPL 9-14-21 based on actual delay times with SUMMER
 # note: actual readout time to finish reading out and saving and validating ~15 s
@@ -146,7 +146,7 @@ PIXEL_SCALE = 0.46  # arcsec/pixel W, from proposal, double check
 
 VALIDITY_WINDOW_MINUTES = 2.0
 VALIDITY_WINDOW_MJD = VALIDITY_WINDOW_MINUTES / (24*60) # 24*60 minutes per day
-DITHER = 'N'
+DITHER = 'Y'
 
 def slew_time(axis, angle):
     vmax = W_slew_pars[axis]['vmax']
