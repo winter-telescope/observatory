@@ -706,6 +706,7 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
+            self.load_best_observing_target()
             
             self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
             self.announce('getting next observation from schedule database')
@@ -726,7 +727,58 @@ class RoboOperator(QtCore.QObject):
                 # if we got an observation, then let's go do it!!
                 self.do_currentObs()
         
+    
+    def load_best_observing_target(self):
+        """
+        Checks to see what the best target to observe is right now. 
+        
+        Decision tree:
+            1. check if there are any schedule files in the ToO High priority folder
+                if yes:
+                    load the most recent one.
+                else:
+                    pass
+            2. check if there are
+                if yes:
+                    load the most recent one.
+                else:
+                    pass
+            3. get the first valid entry from the current schedule
+                this is either a TOO, the baseline schedule (last loaded. eg through load_target_schedule or nightly), or None
+            4. run self.do_currentObs()
+        """
+        #TODO: handle what to do if another schedule is added during TOO observation
+        #This isn't quite the right behavior in any case... we want to actually see if there are valid observations in the TOO schedules
+        # if there are none, than we need to handle switching back to the normal operations. maybe we want to keep the baseline as nightly_tonight ALWAYS,
+        # and then keep self.targeSchedule or something that can be handled. this would stil let us load the target schedule from the wintercmd 
+        # interface, and also let WSP switch back and forth between them easily by changing schedules in here.
+        
+        highPriority_ToO_sched = utils.getLastModifiedFile(os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_HighPriority_directory']))
+        
+        if not highPriority_ToO_sched is None:
+            sched_filename = highPriority_ToO_sched.split('/')[-1]
+            self.log(f'found high priority ToO schedule: {sched_filename}')
+            # load the ToO schedule here.
+            return
+        
+        else:
+            pass
+        
+        lowPriority_ToO_sched = utils.getLastModifiedFile(os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_LowPriority_directory']))
+        
+        if not lowPriority_ToO_sched is None:
+            sched_filename = lowPriority_ToO_sched.split('/')[-1]
+            self.log(f'found low priority ToO schedule: {sched_filename}')
+            return
+        
+        else:
+            pass
+        
+        self.log(f'no ToO schedules. proceeding with baseline schedule')
+        #TODO: is this the correct logic? what happens if no schedule is loaded? do we need to entertain this possibility?
             
+        
+        
     def get_observatory_ready_status(self):
         """
         Run a check to see if the observatory is ready. Basically:

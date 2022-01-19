@@ -56,6 +56,11 @@ scheduleFile_nightly_prefix: 'nightly_'
 scheduleFile_nightly_link_directory: 'data'
 scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 
+# ToO: Target of Opportunity Scheduling
+scheduleFile_ToO_HighPriority_directory: 'data/schedules/ToO/HighPriority'
+scheduleFile_ToO_LowPriority_directory: ' data/schedules/ToO/LowPriority'
+
+
 # observation log
 obslog_directory: 'data'
 obslog_database_name: 'WINTER_ObsLog' #.db is implied
