@@ -753,7 +753,7 @@ class RoboOperator(QtCore.QObject):
         # and then keep self.targeSchedule or something that can be handled. this would stil let us load the target schedule from the wintercmd 
         # interface, and also let WSP switch back and forth between them easily by changing schedules in here.
         
-        highPriority_ToO_sched = utils.getLastModifiedFile(os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_HighPriority_directory']))
+        highPriority_ToO_sched = utils.getLastModifiedFile(os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_HighPriority_directory'], '*.db'))
         
         if not highPriority_ToO_sched is None:
             sched_filename = highPriority_ToO_sched.split('/')[-1]
@@ -1215,11 +1215,12 @@ class RoboOperator(QtCore.QObject):
             # send the dome to it's home/park position
             self.do('dome_go_home')
             
+            # close the dome
+            self.do('dome_close')
+            
             # give control of dome        
             self.do('dome_givecontrol')
             
-            # close the dome
-            self.do('dome_close')
             
             # signal we're complete
             msg = 'dome shutdown complete'
