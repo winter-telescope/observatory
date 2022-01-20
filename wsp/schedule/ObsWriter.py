@@ -163,7 +163,7 @@ class ObsWriter():
                 exists = self.conn.execute(dbTable.select().where(dbTable.c[primaryKey] == separatedData[table][primaryKey])).fetchone()
             except Exception as e:
                 exists = None
-                self.logger.error('query failed', exc_info=True )
+                self.logger.error('query for table: {table} failed', exc_info=True )
             if exists is None:
                 try:
                     record_row = pd.DataFrame(separatedData[table], index=[uuid.uuid4().hex])

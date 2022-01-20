@@ -294,6 +294,15 @@ if __name__ == '__main__':
     focusTracker.updateFilterFocus(filterID, focus_pos, timestamp)    
     
     print()
+    filterID = 'u'
+    focus_pos = random.randint(9000, 11000)
+    timestamp = datetime.now(tz = pytz.UTC).timestamp()
+    
+    print(f'updating the focus position of filter {filterID} to {focus_pos}, timestamp = {timestamp}')
+
+    focusTracker.updateFilterFocus(filterID, focus_pos, timestamp)  
+    
+    print()
     focusTracker.printFocusLog()
     """
     print()

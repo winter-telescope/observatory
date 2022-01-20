@@ -302,7 +302,7 @@ if __name__ == '__main__':
 
     
     image_log_path = config['focus_loop_param']['image_log_path']
-
+    """
     focuser_pos = np.linspace(9000, 11150, 7)
     images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits',
               '/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits',
@@ -312,7 +312,39 @@ if __name__ == '__main__':
               '/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits',
               '/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
         
-        
+    """
+    """
+    #u-band results, off by a bit
+     [1] Focuser Pos: 9650.0, /home/winter/data/images/20220119/SUMMER_20220119_214924_Camera0.fits
+     [2] Focuser Pos: 9775.0, /home/winter/data/images/20220119/SUMMER_20220119_215022_Camera0.fits
+     [3] Focuser Pos: 9900.0, /home/winter/data/images/20220119/SUMMER_20220119_215120_Camera0.fits
+     [4] Focuser Pos: 10025.0, /home/winter/data/images/20220119/SUMMER_20220119_215217_Camera0.fits
+     [5] Focuser Pos: 10150.0, /home/winter/data/images/20220119/SUMMER_20220119_215314_Camera0.fits
+     
+     # u-band results on second attempt:
+     FOCUS LOOP DATA:
+     [1] Focuser Pos: 9761.414819232772, /home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits
+     [2] Focuser Pos: 9861.414819232772, /home/winter/data/images/20220119/SUMMER_20220119_221444_Camera0.fits
+     [3] Focuser Pos: 9961.414819232772, /home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits
+     [4] Focuser Pos: 10061.414819232772, /home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits
+     [5] Focuser Pos: 10161.414819232772, /home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits
+     
+     # r-band results on second attempt
+      [1] Focuser Pos: 9771.63951636189, /home/winter/data/images/20220119/SUMMER_20220119_220748_Camera0.fits
+     [2] Focuser Pos: 9871.63951636189, /home/winter/data/images/20220119/SUMMER_20220119_220848_Camera0.fits
+     [3] Focuser Pos: 9971.63951636189, /home/winter/data/images/20220119/SUMMER_20220119_220943_Camera0.fits
+     [4] Focuser Pos: 10071.63951636189, /home/winter/data/images/20220119/SUMMER_20220119_221041_Camera0.fits
+     [5] Focuser Pos: 10171.63951636189, /home/winter/data/images/20220119/SUMMER_20220119_221141_Camera0.fits
+
+
+    """
+    focuser_pos = [9650, 9775.0, 9900.0, 10025.0, 10150.0]
+    images = ['/home/winter/data/images/20220119/SUMMER_20220119_214924_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_215022_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_215120_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_215217_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_215314_Camera0.fits']
+    
      # save the data to a csv for later access
     try:
         data = {'images': images, 'focuser_pos' : list(focuser_pos)}
@@ -330,10 +362,14 @@ if __name__ == '__main__':
         
         
         # now analyze the data (rate the images and load the observed filterpositions)
-        loop.analyzeData(focuser_pos, images)
+        #loop.analyzeData(focuser_pos, images)
+        # now analyze the data (rate the images and load the observed filterpositions)
+        x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
         
-        xvals, yvals = loop.plot_focus_curve(plotting = True)
-        focuser_pos_best = xvals[yvals.index(min(yvals))]
+        loop.plot_focus_curve(plotting = True)
+        #xvals, yvals = loop.plot_focus_curve(plotting = True)
+        #focuser_pos_best = xvals[yvals.index(min(yvals))]
+        focuser_pos_best = x0_fit
         print(f'Focuser_going to final position at {focuser_pos_best} microns')
         
 

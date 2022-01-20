@@ -263,7 +263,7 @@ class RoboOperator(QtCore.QObject):
         ### SCHEDULE ATTRIBUTES ###
         # load the dither list
         self.default_ditherfile_path = os.path.join(self.base_directory, self.config['dither_file'])
-        self.default_dither_ra_arcsec, self.default_dither_dec_arcsec = np.loadtxt(self.ditherfile_path, unpack = True)
+        self.default_dither_ra_arcsec, self.default_dither_dec_arcsec = np.loadtxt(self.default_ditherfile_path, unpack = True)
         # hold a variable to track remaining dithers in kst
         self.remaining_dithers = 0 
         
@@ -830,6 +830,8 @@ class RoboOperator(QtCore.QObject):
         # make sure dome tracking is off
         conds.append(self.state['dome_tracking_status'] == False)
         
+        # make sure the dome is closed
+        conds.append(self.dome.Shutter_Status == 'CLOSED')
         
         ### TELESCOPE CHECKS ###
         # make sure mount tracking is off
@@ -1215,6 +1217,9 @@ class RoboOperator(QtCore.QObject):
             
             # give control of dome        
             self.do('dome_givecontrol')
+            
+            # close the dome
+            self.do('dome_close')
             
             # signal we're complete
             msg = 'dome shutdown complete'
@@ -1931,42 +1936,44 @@ class RoboOperator(QtCore.QObject):
         
         # first get the dither parameters. put this first so we can set up the for loop through the dithers below
         # set up the dithers
-            dither_scheduled = self.schedule.currentObs['dither']
-            if dither_scheduled.lower() == 'n':
-                self.do_dithers = False
-                self.num_dithers = 1
-                
-            elif dither_scheduled.lower() == 'y':
+        dither_scheduled = self.schedule.currentObs['dither']
+        #print(f'dither_scheduled = {dither_scheduled}')
+        if dither_scheduled.lower() == 'n':
+            self.do_dithers = False
+            self.num_dithers = 1
+            
+        elif dither_scheduled.lower() == 'y':
+            self.do_dithers = True
+            # set the dithers to the default
+            ditherfile_path = self.default_ditherfile_path
+            dither_ra_arcsec = self.default_dither_ra_arcsec
+            dither_dec_arcsec = self.default_dither_dec_arcsec
+            
+            # insert a zero dither at the beginning of the list:
+            dither_ra_arcsec = np.insert(dither_ra_arcsec, 0, 0.0)
+            dither_dec_arcsec = np.insert(dither_dec_arcsec, 0, 0.0)
+            
+            self.num_dithers = len(dither_ra_arcsec)
+        else:
+            ditherfile_path = os.path.join(os.getenv("HOME"), dither_scheduled)
+            if os.path.exists(ditherfile_path):
                 self.do_dithers = True
-                # set the dithers to the default
-                ditherfile_path = self.default_ditherfile_path
-                dither_ra_arcsec = self.default_dither_ra_arcsec
-                dither_dec_arcsec = self.default_dither_dec_arcsec
+                dither_ra_arcsec, dither_dec_arcsec = np.loadtxt(ditherfile_path, unpack = True)
                 
                 # insert a zero dither at the beginning of the list:
-                dither_ra_arcsec = np.append(dither_ra_arcsec, 0, 0.0)
-                dither_dec_arcsec = np.append(dither_dec_arcsec, 0, 0.0)
+                dither_ra_arcsec = np.insert(dither_ra_arcsec, 0, 0.0)
+                dither_dec_arcsec = np.insert(dither_dec_arcsec, 0, 0.0)
                 
                 self.num_dithers = len(dither_ra_arcsec)
             else:
-                ditherfile_path = os.path.join(os.getenv("HOME"), dither_scheduled)
-                if os.path.exists(ditherfile_path):
-                    self.do_dithers = True
-                    dither_ra_arcsec, dither_dec_arcsec = np.loadtxt(ditherfile_path, unpack = True)
-                    
-                    # insert a zero dither at the beginning of the list:
-                    dither_ra_arcsec = np.append(dither_ra_arcsec, 0, 0.0)
-                    dither_dec_arcsec = np.append(dither_dec_arcsec, 0, 0.0)
-                    
-                    self.num_dithers = len(dither_ra_arcsec)
-                else:
-                    self.do_dithers = False
-                    self.num_dithers = 1
+                self.do_dithers = False
+                self.num_dithers = 1
         
         
         
         # put the dither for loop here:
         for dithnum in range(self.num_dithers):
+            self.log(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}')
             # how many dithers remain AFTER this one?
             self.remaining_dithers = self.num_dithers - self.remaining_dithers
             
@@ -1992,6 +1999,14 @@ class RoboOperator(QtCore.QObject):
                 # get the target RA (hours) and DEC (degs) in units we can pass to the telescope
                 self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
                 self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
+                
+                
+                # get the filter
+                self.filter_scheduled = self.schedule.currentObs['filter']
+                # handle bad filter name 'g' for the moment
+                #TODO: fix this when the filter name in the scheduler is fixed
+                if self.filter_scheduled == 'g':
+                    self.filter_scheduled = 'u'
                 
                 # calculate the current Alt and Az of the target 
                 if self.sunsim:
@@ -2021,7 +2036,7 @@ class RoboOperator(QtCore.QObject):
                     self.announce(f'>> Target Current (ALT, AZ) = ({self.local_alt_deg} deg, {self.local_az_deg} deg)')
                 
                 if self.do_dithers:
-                    self.announce(f'>> Executing Dither Number [{dithnum +1}/self.num_dithers]')
+                    self.announce(f'>> Executing Dither Number [{dithnum +1}/{self.num_dithers}]')
                 
                 # Do the observation
                 
@@ -2032,8 +2047,8 @@ class RoboOperator(QtCore.QObject):
                     # now dither the RA and DEC axes (don't do for dithnum = 0, that's the nominal pointing)
                     if dithnum > 0:
                         
-                        self.do(f'mount_dither ra {dither_ra_arcsec[dithnum]}')
-                        self.do(f'mount_dither dec {dither_dec_arcsec[dithnum]}')
+                        self.do(f'mount_dither_arcsec ra {dither_ra_arcsec[dithnum]}')
+                        self.do(f'mount_dither_arcsec dec {dither_dec_arcsec[dithnum]}')
                     
                     # 3: trigger image acquisition
                     #NPL 1-19-22 re-adding chopping up exposure time by number of dithers
@@ -2047,11 +2062,26 @@ class RoboOperator(QtCore.QObject):
                     else:
                         self.log(f'current exptime = {self.state["ccd_exptime"]}, changing to {self.exptime}')
                         self.do(f'ccd_set_exposure {self.exptime}')
-                        
+                    
+                    # changing the filter can take a little time so only do it if the filter is DIFFERENT than the current
+                    system = 'filter wheel'
+                    if self.cam == 'summer':
+                        # get filter number
+                        for position in self.config['filter_wheels'][self.cam]['positions']:
+                            if self.config['filter_wheels'][self.cam]['positions'][position] == self.filter_scheduled:
+                                filter_num = position
+                            else:
+                                pass
+                        if filter_num == self.state['Viscam_Filter_Wheel_Position']:
+                            self.log('requested filter matches current, no further action taken')
+                        else:
+                            self.log(f'current filter = {self.state["Viscam_Filter_Wheel_Position"]}, changing to {filter_num}')
+                            self.do(f'command_filter_wheel {filter_num}')
+                    
                     time.sleep(0.5)
                     
                     # do the observation. what we do depends on if we're in test mode
-                    self.announce(f'dither [{dithnum+1}/{self.num_dithers}]')
+                    #self.announce(f'dither [{dithnum+1}/{self.num_dithers}]')
 
                     if dithnum == 0:
                         if self.test_mode:
@@ -2115,9 +2145,8 @@ class RoboOperator(QtCore.QObject):
                 # if we got here the observation wasn't completed properly
                 #return
                 #self.gotoNext()
-                # NPL 1/19/22: replacing call to self.checkWhatToDo() with break to handle dither loop
+                # NPL 1/19/22: removing call to self.checkWhatToDo() 
                 #self.checkWhatToDo()
-                break
                 
                 # 5: exit
                 
@@ -2129,6 +2158,11 @@ class RoboOperator(QtCore.QObject):
                 # NPL 1/19/22: replacing call to self.checkWhatToDo() with break to handle dither loop
                 #self.checkWhatToDo()
                 break
+            
+            msg = f'got to the end of the dither loop, should go to top of loop?'
+            self.log(msg)
+            self.announce(msg)
+
             
         # if we got here, then we are out of the loop, either because we did all the dithers, or there was a problem
         self.checkWhatToDo()
