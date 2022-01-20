@@ -18,6 +18,7 @@ import subprocess
 import sys
 from datetime import datetime
 import traceback
+import pytz
 
 
 # add the wsp directory to the PATH
@@ -135,7 +136,7 @@ class Focus_loop_v2:
     """
     
 
-    def plot_focus_curve(self, plotting):
+    def plot_focus_curve(self, plotting, timestamp_utc = None):
         filter_range = np.array(self.filter_range)
         med_fwhms = np.array(self.med_fwhms)
         std_fwhms = np.array(self.std_fwhms)
@@ -159,8 +160,11 @@ class Focus_loop_v2:
             df = pd.DataFrame(data)
             path = '/home/winter/data/df_focuser/filter_range.csv'
             df.to_csv(path)
-        
-            args = ['python', 'plot_support.py', '--p','/home/winter/data/df_focuser/']
+            if timestamp_utc is None:
+                args = ['python', 'plot_support.py', '--p','/home/winter/data/df_focuser/']
+            
+            else:
+                args = ['python', 'plot_support.py', '--p','/home/winter/data/df_focuser/', '--t', str(timestamp_utc)]
             process = subprocess.call(args)
         
         #pid = process.pid
@@ -338,12 +342,12 @@ if __name__ == '__main__':
 
 
     """
-    focuser_pos = [9650, 9775.0, 9900.0, 10025.0, 10150.0]
-    images = ['/home/winter/data/images/20220119/SUMMER_20220119_214924_Camera0.fits',
-              '/home/winter/data/images/20220119/SUMMER_20220119_215022_Camera0.fits',
-              '/home/winter/data/images/20220119/SUMMER_20220119_215120_Camera0.fits',
-              '/home/winter/data/images/20220119/SUMMER_20220119_215217_Camera0.fits',
-              '/home/winter/data/images/20220119/SUMMER_20220119_215314_Camera0.fits']
+    focuser_pos = [9761.414819232772, 9861.414819232772, 9961.414819232772, 10061.414819232772, 10161.414819232772]
+    images = ['/home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_221444_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
     
      # save the data to a csv for later access
     try:
@@ -365,8 +369,8 @@ if __name__ == '__main__':
         #loop.analyzeData(focuser_pos, images)
         # now analyze the data (rate the images and load the observed filterpositions)
         x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
-        
-        loop.plot_focus_curve(plotting = True)
+        timestamp_utc = datetime.now(tz = pytz.utc).timestamp()
+        loop.plot_focus_curve(plotting = True, timestamp_utc = timestamp_utc)
         #xvals, yvals = loop.plot_focus_curve(plotting = True)
         #focuser_pos_best = xvals[yvals.index(min(yvals))]
         focuser_pos_best = x0_fit
@@ -381,7 +385,7 @@ if __name__ == '__main__':
         msg = f'could not run focus loop due due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}'
         print(msg)
         
-
+    """
     # now print the best fit focus to the slack
     try:        
         focus_plot = '/home/winter/data/plots_focuser/latest_focusloop.jpg'
@@ -406,4 +410,4 @@ if __name__ == '__main__':
         msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
         print(msg)
     
-    
+    """

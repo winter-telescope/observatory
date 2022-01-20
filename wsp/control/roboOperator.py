@@ -1620,7 +1620,6 @@ class RoboOperator(QtCore.QObject):
         focus_target_type = self.config['focus_loop_param']['target_type']
         focus_target = self.config['focus_loop_param']['target']
         
-        
         try:
             if self.cam == 'summer':
                 
@@ -1756,14 +1755,12 @@ class RoboOperator(QtCore.QObject):
         
         # handle what to do in test mode
         if self.test_mode:
-            focuser_pos = np.linspace(9000, 11150, 7)
-            images = ['/home/winter/data/images/20210730/SUMMER_20210729_225354_Camera0.fits',
-                      '/home/winter/data/images/20210730/SUMMER_20210729_225417_Camera0.fits',
-                      '/home/winter/data/images/20210730/SUMMER_20210729_225438_Camera0.fits',
-                      '/home/winter/data/images/20210730/SUMMER_20210729_225500_Camera0.fits',
-                      '/home/winter/data/images/20210730/SUMMER_20210729_225521_Camera0.fits',
-                      '/home/winter/data/images/20210730/SUMMER_20210729_225542_Camera0.fits',
-                      '/home/winter/data/images/20210730/SUMMER_20210729_225604_Camera0.fits']
+            focuser_pos = [9761.414819232772, 9861.414819232772, 9961.414819232772, 10061.414819232772, 10161.414819232772]
+            images = ['/home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits',
+                      '/home/winter/data/images/20220119/SUMMER_20220119_221444_Camera0.fits',
+                      '/home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits',
+                      '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
+                      '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
         
         
         # save the data to a csv for later access
@@ -1784,10 +1781,19 @@ class RoboOperator(QtCore.QObject):
             self.log(f'Focuser re-aligning at pre-start position: focuser_start_pos')
             self.do(f'm2_focuser_goto {focuser_start_pos}')
             
+            if self.sunsim:
+                #TODO: needs testing to be sure this is right...
+                obstime_mjd = self.ephem.state.get('mjd',0)
+                obstime = astropy.time.Time(obstime_mjd, format = 'mjd', \
+                                            location=self.ephem.site)
+                obstime_timestamp_utc = obstime.datetime.timestamp()
+            else:
+                obstime_timestamp_utc = datetime.now(tz = pytz.UTC).timestamp()
+            
             # now analyze the data (rate the images and load the observed filterpositions)
             x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
             
-            loop.plot_focus_curve(plotting = True)
+            loop.plot_focus_curve(plotting = True, timestamp_utc = obstime_timestamp_utc)
             
             
             #print(f'x0_fit = {x0_fit}, type(x0_fit) = {type(x0_fit)}')
@@ -1806,14 +1812,7 @@ class RoboOperator(QtCore.QObject):
                 #TODO: update the focusTracker
                 
                 if updateFocusTracker:
-                    if self.sunsim:
-                        #TODO: needs testing to be sure this is right...
-                        obstime_mjd = self.ephem.state.get('mjd',0)
-                        obstime = astropy.time.Time(obstime_mjd, format = 'mjd', \
-                                                    location=self.ephem.site)
-                        obstime_timestamp_utc = obstime.datetime.timestamp()
-                    else:
-                        obstime_timestamp_utc = datetime.now(tz = pytz.UTC).timestamp()
+                    
     
                     self.announce(f'updating the focus position of filter {filterID} to {x0_fit}, timestamp = {obstime_timestamp_utc}')
 
@@ -1832,6 +1831,7 @@ class RoboOperator(QtCore.QObject):
             return
 
         # now print the best fit focus to the slack
+        """
         try:        
             focus_plot = '/home/winter/data/plots_focuser/latest_focusloop.jpg'
             self.alertHandler.slack_postImage(focus_plot)
@@ -1839,7 +1839,7 @@ class RoboOperator(QtCore.QObject):
         except Exception as e:
             msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
             self.log(msg)
-        
+        """
         return x0_fit
     
     
