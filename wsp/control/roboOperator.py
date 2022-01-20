@@ -1973,10 +1973,10 @@ class RoboOperator(QtCore.QObject):
         
         # put the dither for loop here:
         for dithnum in range(self.num_dithers):
-            self.log(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}')
-            # how many dithers remain AFTER this one?
-            self.remaining_dithers = self.num_dithers - self.remaining_dithers
             
+            # how many dithers remain AFTER this one?
+            self.remaining_dithers = self.num_dithers - dithnum
+            #self.log(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}, self.remaining_dithers = {self.remaining_dithers}')
             # for each dither, execute the observation
             if self.running & self.ok_to_observe:
                 
@@ -2222,91 +2222,45 @@ class RoboOperator(QtCore.QObject):
             """
                 
     def log_observation_and_gotoNext(self, gotoNext = True):
-        self.logger.info('robo: image timer finished, logging observation and then going to the next one')
-        
-        #TODO: Check behavior:
-        # NPL 08-03-21: commenting this out. we don't need to run the rotator to home between every observation 
-        """
-        # first thing's first, stop and reset the rotator
-        self.rotator_stop_and_reset()
-        """
+        #self.logger.info(f'robo: image timer finished, logging observation with option gotoNext = {gotoNext}')
         
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
         if not self.ok_to_observe:
             # if it's not okay to observe, then restart the robo loop to wait for conditions to change
-            self.restart_robo()
-            return
-            
-        if self.schedule.currentObs is not None and self.running:
-            self.logger.info('robo: logging observation')
-            
-            
-            if self.state["ok_to_observe"]:
-                
-                    #image_filename = str(self.lastSeen)+'.FITS'
-                    #image_filepath = os.path.join(self.writer.base_directory, self.config['image_directory'], image_filename) 
-                    
-                    image_directory, image_filename = self.ccd.getLastImagePath()
-                    image_filepath = os.path.join(image_directory, image_filename)
-                
-                    # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
-                    header_data = self.get_data_to_log()
-                    # self.state.update(currentData)
-                    # data_to_write = {**self.state}
-                    #data_to_write = {**self.state, **header_data} ## can add other dictionaries here
-                    #self.writer.log_observation(data_to_write, imagename)
-                    if not self.sunsim:
-                        # don't log if we're in test mode.
-                        self.writer.log_observation(header_data, image_filepath)
-            
-            # get the next observation
-            #self.logger.info('robo: getting next observation from schedule database')
-            #self.schedule.gotoNextObs()
-            
-            
-        
-        else:  
-            if self.schedule.currentObs is None:
-                self.logger.info('robo: in log and goto next, but there is no observation to log.')
-            elif self.running == False:
-                self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
-            """
-            if not self.schedulefile_name is None:
-                self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
-                
-                #NPL 08-03-21: adding this here since I turned off the reset at the top of the function. 
-                # if there are no more observations, we can stow the rotator:
-                self.rotator_stop_and_reset()
-            """
-        if gotoNext:
-            # we're done with the observation and logging process. go figure out what to do next
+            #self.restart_robo()
+            #return
+            self.announce(f'in log_observation_and_gotoNext and it is no longer okay to observe!')
             self.checkWhatToDo()
-        
-        """
-        #TODO: NPL 12-16-21 need to implement some logic about the end of the schedule
-        
-        
-        # recheck if the newly loaded observation is None:
-        if self.schedule.currentObs is not None and self.running:
-            # do the next observation and continue the cycle
-            self.do_currentObs()
             
-        else:  
-            if self.schedule.currentObs is None:
-                self.logger.info('robo: in log and goto next, but either there is no observation to log.')
+        else:    
+    
+            if self.schedule.currentObs is not None and self.running:
+                self.logger.info('robo: logging observation')
+                                                
+                image_directory, image_filename = self.ccd.getLastImagePath()
+                image_filepath = os.path.join(image_directory, image_filename)
+            
+                header_data = self.get_data_to_log()
                 
-                if not self.schedulefile_name is None:
-                    self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
-                    
-                    self.handle_end_of_schedule()
-                    
-                    
-            elif self.running == False:
-                self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
-                self.rotator_stop_and_reset()
-        """
+                if not self.test_mode:
+                    # don't log if we're in test mode.
+                    self.writer.log_observation(header_data, image_filepath)
+                else:
+                    self.log(f"in test mode, so won't actually log_observation")
+            
+            else:  
+                if self.schedule.currentObs is None:
+                    self.logger.info('robo: in log and goto next, but there is no observation to log.')
+                elif self.running == False:
+                    self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
                 
+            if gotoNext:
+                msg = f" we're done with the observation and logging process. go figure out what to do next"
+                self.log(msg)
+                self.checkWhatToDo()
+        
+        
     
     def handle_end_of_schedule(self):
         # this handles when we get to the end of the schedule, ie when next observation is None:

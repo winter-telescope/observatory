@@ -2373,7 +2373,9 @@ class Wintercmd(QtCore.QObject):
                 break 
         
         if dt > drivetime:
-            self.alertHandler.announce(f'Warning: Dome took {dt} s to move but it should have only taken {drivetime} s')
+            msg = f'Warning: Dome took {dt} s to move but it should have only taken {drivetime} s'
+            self.logger.info(msg)
+            self.alertHandler.slack_log(msg)
         self.logger.info(f'wintercmd: actual dome drivetime = {dt} s')
         
     @cmd 

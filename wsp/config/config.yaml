@@ -513,12 +513,12 @@ filters:
     summer:
         r:
             name: "SDSS r' (Chroma)"
-            nominal_focus: 10150
+            nominal_focus: 9960
             active: True
             focus_exptime: 10
         u:
             name: "SDSS u' (Chroma)"
-            nominal_focus: 9900
+            nominal_focus: 9961
             active: True
             focus_exptime: 30
             
