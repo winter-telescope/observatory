@@ -262,10 +262,10 @@ class RoboOperator(QtCore.QObject):
         
         ### SCHEDULE ATTRIBUTES ###
         # load the dither list
-        self.dither_alt, self.dither_az = np.loadtxt(self.schedule.base_directory + '/' + self.config['dither_file'], unpack = True)
-        # convert from arcseconds to degrees
-        self.dither_alt *= (1/3600.0)
-        self.dither_az  *= (1/3600.0)
+        self.default_ditherfile_path = os.path.join(self.base_directory, self.config['dither_file'])
+        self.default_dither_ra_arcsec, self.default_dither_dec_arcsec = np.loadtxt(self.ditherfile_path, unpack = True)
+        # hold a variable to track remaining dithers in kst
+        self.remaining_dithers = 0 
         
         # create exposure timer to wait for exposure to finish
         self.waiting_for_exposure = False
@@ -1928,107 +1928,210 @@ class RoboOperator(QtCore.QObject):
             self.checkWhatToDo()
             return
         
-        if self.running & self.ok_to_observe:
-            
-            # grab some fields from the currentObs
-            self.lastSeen = self.schedule.currentObs['obsHistID']
-            self.requestID = self.schedule.currentObs['requestID']
-            #self.alt_scheduled = float(self.schedule.currentObs['altitude'])
-            #self.az_scheduled = float(self.schedule.currentObs['azimuth'])
-            
-            self.ra_radians_scheduled = float(self.schedule.currentObs['fieldRA'])
-            self.dec_radians_scheduled = float(self.schedule.currentObs['fieldDec'])
-            
-            self.alt_deg_scheduled = float(self.schedule.currentObs['altitude'])
-            self.az_deg_scheduled = float(self.schedule.currentObs['azimuth'])
-            
-            
-            # convert ra and dec from radians to astropy objects
-            self.j2000_ra_scheduled = astropy.coordinates.Angle(self.ra_radians_scheduled * u.rad)
-            self.j2000_dec_scheduled = astropy.coordinates.Angle(self.dec_radians_scheduled * u.rad)
-            
-            # get the target RA (hours) and DEC (degs) in units we can pass to the telescope
-            self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
-            self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
-            
-            # calculate the current Alt and Az of the target 
-            if self.sunsim:
-                obstime_mjd = self.ephem.state.get('mjd',0)
-                obstime_utc = astropy.time.Time(obstime_mjd, format = 'mjd', \
-                                            location=self.ephem.site)
+        
+        # first get the dither parameters. put this first so we can set up the for loop through the dithers below
+        # set up the dithers
+            dither_scheduled = self.schedule.currentObs['dither']
+            if dither_scheduled.lower() == 'n':
+                self.do_dithers = False
+                self.num_dithers = 1
+                
+            elif dither_scheduled.lower() == 'y':
+                self.do_dithers = True
+                # set the dithers to the default
+                ditherfile_path = self.default_ditherfile_path
+                dither_ra_arcsec = self.default_dither_ra_arcsec
+                dither_dec_arcsec = self.default_dither_dec_arcsec
+                
+                # insert a zero dither at the beginning of the list:
+                dither_ra_arcsec = np.append(dither_ra_arcsec, 0, 0.0)
+                dither_dec_arcsec = np.append(dither_dec_arcsec, 0, 0.0)
+                
+                self.num_dithers = len(dither_ra_arcsec)
             else:
-                obstime_utc = astropy.time.Time(datetime.utcnow(), format = 'datetime')
-                
-            frame = astropy.coordinates.AltAz(obstime = obstime_utc, location = self.ephem.site)
-            j2000_coords = astropy.coordinates.SkyCoord(ra = self.j2000_ra_scheduled, dec = self.j2000_dec_scheduled, frame = 'icrs')
-            local_coords = j2000_coords.transform_to(frame)
-            self.local_alt_deg = local_coords.alt.deg
-            self.local_az_deg = local_coords.az.deg
-            
-            #msg = f'executing observation of obsHistID = {self.lastSeen} at (alt, az) = ({self.alt_scheduled:0.2f}, {self.az_scheduled:0.2f})'
-            msg = f'executing observation of obsHistID = {self.lastSeen}'
-            self.qcomment = f'obsHistID = {self.lastSeen}, requestID = {self.requestID}'
-            self.announce(msg)
-            
-            self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
-            
-            self.announce(f'>> Target (RA, DEC) = ({self.j2000_ra_scheduled.hour} h, {self.j2000_dec_scheduled.deg} deg)')
-            
-            self.announce(f'>> Target Current (ALT, AZ) = ({self.local_alt_deg} deg, {self.local_az_deg} deg)')
-            
-            
-            # Do the observation
-            
-            context = 'do_currentObs'
-            system = 'observation'
-            try:
-                
-                # 3: trigger image acquisition
-                self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
-                self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
-                
-                # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
-                if self.exptime == self.state['ccd_exptime']:
-                    self.log('requested exposure time matches current setting, no further action taken')
-                    pass
-                else:
-                    self.log(f'current exptime = {self.state["ccd_exptime"]}, changing to {self.exptime}')
-                    self.do(f'ccd_set_exposure {self.exptime}')
+                ditherfile_path = os.path.join(os.getenv("HOME"), dither_scheduled)
+                if os.path.exists(ditherfile_path):
+                    self.do_dithers = True
+                    dither_ra_arcsec, dither_dec_arcsec = np.loadtxt(ditherfile_path, unpack = True)
                     
-                time.sleep(0.5)
-                
-                # do the observation. what we do depends on if we're in test mode
-                if self.test_mode:
-                    self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
-                    #self.do(f'robo_observe_altaz {self.alt_deg_scheduled} {self.az_deg_scheduled}')
-                    self.do(f'robo_observe altaz {self.alt_deg_scheduled} {self.az_deg_scheduled} --test')
+                    # insert a zero dither at the beginning of the list:
+                    dither_ra_arcsec = np.append(dither_ra_arcsec, 0, 0.0)
+                    dither_dec_arcsec = np.append(dither_dec_arcsec, 0, 0.0)
+                    
+                    self.num_dithers = len(dither_ra_arcsec)
                 else:
-                    #self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
-                    self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science')
-
-                # it is now okay to trigger going to the next observation
-                self.log_observation_and_gotoNext()
-                return
+                    self.do_dithers = False
+                    self.num_dithers = 1
+        
+        
+        
+        # put the dither for loop here:
+        for dithnum in range(self.num_dithers):
+            # how many dithers remain AFTER this one?
+            self.remaining_dithers = self.num_dithers - self.remaining_dithers
+            
+            # for each dither, execute the observation
+            if self.running & self.ok_to_observe:
                 
-            except Exception as e:
-                msg = f'roboOperator: could not execute current observation due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
+                # grab some fields from the currentObs
+                self.lastSeen = self.schedule.currentObs['obsHistID']
+                self.requestID = self.schedule.currentObs['requestID']
+                #self.alt_scheduled = float(self.schedule.currentObs['altitude'])
+                #self.az_scheduled = float(self.schedule.currentObs['azimuth'])
+                
+                self.ra_radians_scheduled = float(self.schedule.currentObs['fieldRA'])
+                self.dec_radians_scheduled = float(self.schedule.currentObs['fieldDec'])
+                
+                self.alt_deg_scheduled = float(self.schedule.currentObs['altitude'])
+                self.az_deg_scheduled = float(self.schedule.currentObs['azimuth'])            
+                
+                # convert ra and dec from radians to astropy objects
+                self.j2000_ra_scheduled = astropy.coordinates.Angle(self.ra_radians_scheduled * u.rad)
+                self.j2000_dec_scheduled = astropy.coordinates.Angle(self.dec_radians_scheduled * u.rad)
+                
+                # get the target RA (hours) and DEC (degs) in units we can pass to the telescope
+                self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
+                self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
+                
+                # calculate the current Alt and Az of the target 
+                if self.sunsim:
+                    obstime_mjd = self.ephem.state.get('mjd',0)
+                    obstime_utc = astropy.time.Time(obstime_mjd, format = 'mjd', \
+                                                location=self.ephem.site)
+                else:
+                    obstime_utc = astropy.time.Time(datetime.utcnow(), format = 'datetime')
+                    
+                frame = astropy.coordinates.AltAz(obstime = obstime_utc, location = self.ephem.site)
+                j2000_coords = astropy.coordinates.SkyCoord(ra = self.j2000_ra_scheduled, dec = self.j2000_dec_scheduled, frame = 'icrs')
+                local_coords = j2000_coords.transform_to(frame)
+                self.local_alt_deg = local_coords.alt.deg
+                self.local_az_deg = local_coords.az.deg
+                
+                #msg = f'executing observation of obsHistID = {self.lastSeen} at (alt, az) = ({self.alt_scheduled:0.2f}, {self.az_scheduled:0.2f})'
+                
+                # print out to the slack log a bunch of info (only once per target)
+                if dithnum == 0:
+                    msg = f'Executing observation of obsHistID = {self.lastSeen}'
+                    self.qcomment = f'obsHistID = {self.lastSeen}, requestID = {self.requestID}'
+                    self.announce(msg)
+                    self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
+                    
+                    self.announce(f'>> Target (RA, DEC) = ({self.j2000_ra_scheduled.hour} h, {self.j2000_dec_scheduled.deg} deg)')
+                    
+                    self.announce(f'>> Target Current (ALT, AZ) = ({self.local_alt_deg} deg, {self.local_az_deg} deg)')
+                
+                if self.do_dithers:
+                    self.announce(f'>> Executing Dither Number [{dithnum +1}/self.num_dithers]')
+                
+                # Do the observation
+                
+                context = 'do_currentObs'
+                system = 'observation'
+                try:
+                    
+                    # now dither the RA and DEC axes (don't do for dithnum = 0, that's the nominal pointing)
+                    if dithnum > 0:
+                        
+                        self.do(f'mount_dither ra {dither_ra_arcsec[dithnum]}')
+                        self.do(f'mount_dither dec {dither_dec_arcsec[dithnum]}')
+                    
+                    # 3: trigger image acquisition
+                    #NPL 1-19-22 re-adding chopping up exposure time by number of dithers
+                    self.exptime = float(self.schedule.currentObs['visitExpTime'])/self.num_dithers
+                    self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
+                    
+                    # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
+                    if self.exptime == self.state['ccd_exptime']:
+                        self.log('requested exposure time matches current setting, no further action taken')
+                        pass
+                    else:
+                        self.log(f'current exptime = {self.state["ccd_exptime"]}, changing to {self.exptime}')
+                        self.do(f'ccd_set_exposure {self.exptime}')
+                        
+                    time.sleep(0.5)
+                    
+                    # do the observation. what we do depends on if we're in test mode
+                    self.announce(f'dither [{dithnum+1}/{self.num_dithers}]')
+
+                    if dithnum == 0:
+                        if self.test_mode:
+                            self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
+                            #self.do(f'robo_observe_altaz {self.alt_deg_scheduled} {self.az_deg_scheduled}')
+                            self.do(f'robo_observe altaz {self.alt_deg_scheduled} {self.az_deg_scheduled} --test')
+                        else:
+                            #self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
+                            self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science')
+                    
+                    else:
+                        system = 'ccd'
+                        if self.test_mode:
+                            self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
+                            self.do(f'robo_do_exposure --test')
+                        else:
+                            self.do(f'robo_do_exposure --science')
+                    
+                    
+
+                    
+                    """
+                    # FOR REFERENCE: logic from do_calibration
+                    
+                    if i==0:
+                        self.log(f'handling the i=0 case')
+                        #self.do(f'robo_set_qcomment "{qcomment}"')
+                        system = 'robo routine'
+                        self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
+                    else:
+                        system = 'ccd'
+                        self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
+                    
+                    # now dither. if i is odd do ra, otherwise dec
+                    dither_arcmin = 5
+                    if i%2:
+                        axis = 'ra'
+                        ra_total_offset_arcmin += dither_arcmin
+                    else:
+                        axis = 'dec'
+                        dec_total_offset_arcmin += dither_arcmin
+                        
+                    self.do(f'mount_dither {axis} {dither_arcmin}')
+                    
+                    """
+                    # it is now okay to trigger going to the next observation
+                    # always log observation, but only gotoNext if we're on the last dither
+                    if self.remaining_dithers == 0:
+                        gotoNext = True
+                    else:
+                        gotoNext = False
+                    self.log_observation_and_gotoNext(gotoNext = gotoNext)
+                    #return #<- NPL 1/19/22 this return should never get executed, the log_observation_and_gotoNext call should handle exiting
+                    
+                except Exception as e:
+                    msg = f'roboOperator: could not execute current observation due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err)
+                
+                # if we got here the observation wasn't completed properly
+                #return
+                #self.gotoNext()
+                # NPL 1/19/22: replacing call to self.checkWhatToDo() with break to handle dither loop
+                #self.checkWhatToDo()
+                break
+                
+                # 5: exit
+                
+                
+                
+            else:
+                # if it's not okay to observe, then restart the robo loop to wait for conditions to change
+                #self.restart_robo()
+                # NPL 1/19/22: replacing call to self.checkWhatToDo() with break to handle dither loop
+                #self.checkWhatToDo()
+                break
             
-            # if we got here the observation wasn't completed properly
-            #return
-            #self.gotoNext()
-            self.checkWhatToDo()
-            
-            # 5: exit
-            
-            
-            
-        else:
-            # if it's not okay to observe, then restart the robo loop to wait for conditions to change
-            self.checkWhatToDo()
-            #self.restart_robo()
+        # if we got here, then we are out of the loop, either because we did all the dithers, or there was a problem
+        self.checkWhatToDo()
     
     def gotoNext(self): 
         # NPL 12-16-21: this is now deprecated.
@@ -2084,7 +2187,7 @@ class RoboOperator(QtCore.QObject):
                 self.writer.closeConnection()
             """
                 
-    def log_observation_and_gotoNext(self):
+    def log_observation_and_gotoNext(self, gotoNext = True):
         self.logger.info('robo: image timer finished, logging observation and then going to the next one')
         
         #TODO: Check behavior:
@@ -2142,9 +2245,9 @@ class RoboOperator(QtCore.QObject):
                 # if there are no more observations, we can stow the rotator:
                 self.rotator_stop_and_reset()
             """
-        
-        # we're done with the observation and logging process. go figure out what to do next
-        self.checkWhatToDo()
+        if gotoNext:
+            # we're done with the observation and logging process. go figure out what to do next
+            self.checkWhatToDo()
         
         """
         #TODO: NPL 12-16-21 need to implement some logic about the end of the schedule

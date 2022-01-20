@@ -67,6 +67,7 @@ obslog_database_name: 'WINTER_ObsLog' #.db is implied
 
 
 # dither table
+# base directory is wsp path
 dither_file: 'config/dither_list.conf'
 
 
