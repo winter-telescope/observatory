@@ -2372,7 +2372,7 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 break 
         
-        if dt > drivetime:
+        if dt > nominal_timeout:
             msg = f'Warning: Dome took {dt} s to move but it should have only taken {drivetime} s'
             self.logger.info(msg)
             self.alertHandler.slack_log(msg)

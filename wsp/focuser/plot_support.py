@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument("--p", type=str,help='filepath')
     parser.add_argument("--t", type=float, help = 'timestamp')
     args = parser.parse_args()
-    
+    print(f'plot_support: args = {args}')
     dirpath = args.p
     timestamp_utc = args.t
     

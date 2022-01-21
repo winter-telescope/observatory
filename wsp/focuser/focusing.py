@@ -161,10 +161,11 @@ class Focus_loop_v2:
             path = '/home/winter/data/df_focuser/filter_range.csv'
             df.to_csv(path)
             if timestamp_utc is None:
-                args = ['python', 'plot_support.py', '--p','/home/winter/data/df_focuser/']
+                args = ['python', os.path.join(wsp_path, 'focuser','plot_support.py'), '--p','/home/winter/data/df_focuser/']
             
             else:
-                args = ['python', 'plot_support.py', '--p','/home/winter/data/df_focuser/', '--t', str(timestamp_utc)]
+                args = ['python', os.path.join(wsp_path, 'focuser','plot_support.py'), '--p','/home/winter/data/df_focuser/', '--t', str(timestamp_utc)]
+                print(f'args = {args}')
             process = subprocess.call(args)
         
         #pid = process.pid

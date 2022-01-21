@@ -696,7 +696,7 @@ class RoboOperator(QtCore.QObject):
             # or even better a check on FWHM of previous images
             
             if not filterIDs_to_focus is None:     
-                self.announce(f'we need to focus the telescope in these filters: {filterIDs_to_focus}')
+                self.announce(f'**Out of date focus results**: we need to focus the telescope in these filters: {filterIDs_to_focus}')
                 # there are filters to focus! run a focus sequence
                 self.do_focus_sequence(filterIDs = filterIDs_to_focus)
                 self.announce(f'got past the do_focus_sequence call in checkWhatToDo?')
@@ -707,7 +707,7 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
-            self.load_best_observing_target()
+            #self.load_best_observing_target(obstime_mjd)
             
             self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
             self.announce('getting next observation from schedule database')
@@ -1761,7 +1761,19 @@ class RoboOperator(QtCore.QObject):
                 # drive the focuser
                 system = 'focuser'
                 self.do(f'm2_focuser_goto {dist}')
-    
+                
+                self.exptime = self.config['filters'][self.cam][filterID]['focus_exptime']
+                self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
+                
+                # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
+                if self.exptime == self.state['ccd_exptime']:
+                    self.log('requested exposure time matches current setting, no further action taken')
+                    pass
+                else:
+                    self.log(f'current exptime = {self.state["ccd_exptime"]}, changing to {self.exptime}')
+                    self.do(f'ccd_set_exposure {self.exptime}')
+                
+                
                 # take an image
                 system = 'ccd'
                 #self.do(f'robo_do_exposure -foc')
