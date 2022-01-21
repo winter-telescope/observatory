@@ -601,7 +601,7 @@ class CCD(QtCore.QObject):
         filterpos = state.get('Viscam_Filter_Wheel_Position', 0)
         try:
             filterID = self.config['filter_wheels']['summer']['positions'][filterpos]
-            filtername = self.config['filters'][filterID]['name']
+            filtername = self.config['filters']['summer'][filterID]['name']
         except Exception as e:
             filterID = '?'
             filtername = '?'

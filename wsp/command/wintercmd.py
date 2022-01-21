@@ -945,6 +945,90 @@ class Wintercmd(QtCore.QObject):
         cmd = f'mount_goto_ra_dec_j2000 {j2000_ra_hours} {j2000_dec_deg}'
         self.parse(cmd)
     
+    def mount_dither_arcsec(self):
+        """Usage: mount_dither <axis> <arcmin> """
+        # this is a handy wrapper around the more complicated mount_offset function below
+        
+        self.defineCmdParser('dither the mount in the specified axis by the specified arcminutes')
+        self.cmdparser.add_argument('axis',
+                                    nargs = 1,
+                                    type = str,
+                                    choices = ['ra', 'dec'],
+                                    action = None,
+                                    help = 'axis to dither: ra or dec',
+                                    )
+        self.cmdparser.add_argument('arcsec',
+                                    nargs = 1,
+                                    type = float,
+                                    action = None,
+                                    help = 'arcsec to dither')
+        
+        self.getargs()
+        
+        axis = self.args.axis[0]
+        arcsec = self.args.arcsec[0]
+        #arcsec = arcmin * 60.0
+        """
+        if axis == 'ra':
+            arcmin = arcmin * (1/0.0667) # this is a stupid thing we have to do because the ra offset doesn't work right
+        else:
+            pass
+        
+        max_arcmin = 100*
+        if arcmin > max_arcmin:
+            self.logger.warning(f'wintercmd: MAX DITHER DISTANCE IS {max_arcmin} ARCMIN. RETURNING...')
+            return
+        """
+        cmd = f'mount_offset {axis} add_arcsec {arcsec}'
+        
+        ra0_j2000_hours = self.state['mount_ra_j2000_hours']
+        dec0_j2000_deg = self.state['mount_dec_j2000_deg']
+        
+        ra_j2000_hours_goal = ra0_j2000_hours + (arcsec * (1/60.0/60.0) * (24/360.0))
+        dec_j2000_deg_goal = dec0_j2000_deg + (arcsec/60.0/60.0)
+
+        threshold_arcmin = 0.5
+        threshold_hours = threshold_arcmin * (1/60.0) * (24/360.0)
+
+        # dispatch the command
+        self.parse(cmd)
+        
+        
+        # wait for the dist to target to be low and the ra/dec near what they're meant to be
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 60.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1) )
+            ra_in_range = ((abs(self.state['mount_ra_j2000_hours']) - ra_j2000_hours_goal) < threshold_hours)
+            dec_in_range = ((abs(self.state['mount_dec_j2000_deg']) - dec_j2000_deg_goal) < threshold_arcmin)
+            stop_condition = dist_to_target_low & ra_in_range & dec_in_range
+            
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+        self.logger.info(f'Mount Dither complete')
+    
     @cmd
     def mount_dither(self):
         """Usage: mount_dither <axis> <arcmin> """
@@ -1407,9 +1491,24 @@ class Wintercmd(QtCore.QObject):
 
     
     # Telescope Focuser Stuff
-      
+    
+    
     @cmd
     def doFocusLoop(self):
+        self.defineCmdParser('do a focus loop with current filter')
+        sigcmd = signalCmd('do_focusLoop')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def doFocusSeq(self):
+        self.defineCmdParser('do a focus sequence on all active filters')
+        sigcmd = signalCmd('do_focus_sequence')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
+    def doFocusLoop_old(self):
         """
         Runs a focus loop for a given filter by taking a set of images and collecting the relative
         size of objects in the image. Will return focus to the optimal position.
@@ -1652,6 +1751,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument('position',
                                     nargs = 1,
                                     action = None,
+                                    type = float,
                                     help = '<position_steps>')
         
         self.getargs()
@@ -1660,7 +1760,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 5
+        timeout = 10
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
@@ -2272,8 +2372,10 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 break 
         
-        if dt > drivetime:
-            self.alertHandler.announce(f'Warning: Dome took {dt} s to move but it should have only taken {drivetime} s')
+        if dt > nominal_timeout:
+            msg = f'Warning: Dome took {dt} s to move but it should have only taken {drivetime} s'
+            self.logger.info(msg)
+            self.alertHandler.slack_log(msg)
         self.logger.info(f'wintercmd: actual dome drivetime = {dt} s')
         
     @cmd 
@@ -3243,6 +3345,37 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         fw_cmd = self.args.fw_cmd[0]
         self.viscam.send_filter_wheel_command(fw_cmd)
+        
+        fw_num = int(fw_cmd)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 30 
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'unable to move viscam filter wheel: command timed out after {timeout} seconds before completing.')
+            
+            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == fw_num) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: successfully completed viscam filter wheel move')
+                break 
+        
         
         
     @cmd

@@ -367,7 +367,7 @@ class MainWindow(QtWidgets.QMainWindow):
             worker = Worker(self.wait_for_shutter, seconds = self.open_time)
             self.threadpool.start(worker)
         
-            worker.signals.finished.connect(self.change_shutter_to_open)
+            worker.signals.finished.connect(self.change_shutter_to_closed)
             
     
     def change_shutter_to_open(self):

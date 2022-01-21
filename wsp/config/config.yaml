@@ -56,12 +56,18 @@ scheduleFile_nightly_prefix: 'nightly_'
 scheduleFile_nightly_link_directory: 'data'
 scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 
+# ToO: Target of Opportunity Scheduling
+scheduleFile_ToO_HighPriority_directory: 'data/schedules/ToO/HighPriority'
+scheduleFile_ToO_LowPriority_directory: ' data/schedules/ToO/LowPriority'
+
+
 # observation log
 obslog_directory: 'data'
 obslog_database_name: 'WINTER_ObsLog' #.db is implied
 
 
 # dither table
+# base directory is wsp path
 dither_file: 'config/dither_list.conf'
 
 
@@ -466,9 +472,15 @@ ephem:
 
         
 ########### FOCUSER LOOP PARAM ###########
-
 focus_loop_param:
+    total_throw: 400
+    nsteps: 5
     micron_interval: 100
+    target_type: altaz
+    target: '75 270'
+    focus_error_max: 100
+    focus_log_path: 'data/df_focuser/focus_log.json'
+    focus_graceperiod_hours: 6
     fine_micron_interval: 10
     recent_path: '/home/winter/data/last_image.lnk'
     file_type: '\*fits'
@@ -498,24 +510,55 @@ filt_limits:
         lower: 9800
 
 filters:
-    r:
-        name: "SDSS r' (Chroma)"
-        nominal_focus: 10150
-    u:
-        name: "SDSS u' (Chroma)"
-        nominal_focus: 10200
-    other2:
-        name: "Unknown filter posn 2"
-        nominal_focus: 10150
-    other4:
-        name: "Unknown filter posn 4"
-        nominal_focus: 10150
-    other5:
-        name: "SDSS r' (Chroma, filter error)"
-        nominal_focus: 10150
-    other6:
-        name: "Unknown filter posn 6"
-        nominal_focus: 10150
+    summer:
+        r:
+            name: "SDSS r' (Chroma)"
+            nominal_focus: 9960
+            active: True
+            focus_exptime: 10
+        u:
+            name: "SDSS u' (Chroma)"
+            nominal_focus: 9961
+            active: True
+            focus_exptime: 30
+            
+        other2:
+            name: "Unknown filter posn 2"
+            nominal_focus: 10150
+            active: False
+            focus_exptime: 10
+        other4:
+            name: "Unknown filter posn 4"
+            nominal_focus: 10150
+            active: False
+            focus_exptime: 10
+        other5:
+            name: "SDSS r' (Chroma, filter error)"
+            nominal_focus: 10150
+            active: False
+            focus_exptime: 10
+        other6:
+            name: "Unknown filter posn 6"
+            nominal_focus: 10150
+            active: False
+            focus_exptime: 10
+    winter:
+        J:
+            name: "MKO J-band (Asahi)"
+            nominal_focus: 10000
+            active: False
+            focus_exptime: 30
+        Y:  
+            name: "MKO Y-band (Asahi)"
+            nominal_focus: 10000
+            active: False
+            focus_exptime: 30
+        Hs: 
+            name: "MKO Hs-band (Asahi)"
+            nominal_focus: 10000
+            active: False
+            focus_exptime: 30
+        
 
 filter_wheels:
     summer:
@@ -526,6 +569,12 @@ filter_wheels:
             4: 'other4'
             5: 'other5'
             6: 'other6'
+    winter:
+        positions:
+            1: 'Y'
+            2: 'J'
+            3: 'Hs'
+            4: 'dark'
 
 ########### POINTING MODEL PARAMETERS ###########
 # Construct a grid of 3 x 6 = 18 Alt-Az points

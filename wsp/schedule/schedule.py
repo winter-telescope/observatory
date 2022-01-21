@@ -81,7 +81,7 @@ from utils import logging_setup
 class Schedule(object):
     # This is a class that handles the connection between WSP/roboOperator and the schedule file SQLite database
 
-    def __init__(self, base_directory, config, logger):#, date = 'today'):
+    def __init__(self, base_directory, config, logger, scheduleFile_directory = 'default'):#, date = 'today'):
         """
         sets up logging and opens connection to the database. Does
         not actually access any data yet.
@@ -93,7 +93,10 @@ class Schedule(object):
         self.logger = logger
 
         self.base_directory = base_directory
-        self.scheduleFile_directory = self.config['scheduleFile_directory']
+        if scheduleFile_directory == 'default':
+            self.scheduleFile_directory = os.path.join(os.getenv("HOME"), self.config['scheduleFile_directory'])
+        else:
+            self.scheduleFile_directory = scheduleFile_directory
         self.scheduleType = None
         
         # keep track of the last obsHistID observed
@@ -140,8 +143,8 @@ class Schedule(object):
                     schedulefile_name = schedulefile_name + '.db'
                 self.schedulefile_name = schedulefile_name
                 self.scheduleType = 'target'
-                self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
-            
+                #self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
+                self.schedulefile = os.path.join(self.scheduleFile_directory, self.schedulefile_name)
         try:
             
             self.log(f'scheduler: attempting to create sql engine to schedule file at {self.schedulefile}')
