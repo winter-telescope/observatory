@@ -268,6 +268,9 @@ class RoboOperator(QtCore.QObject):
         # hold a variable to track remaining dithers in kst
         self.remaining_dithers = 0 
         
+        # dictionary to hold TOO schedules
+        self.ToOschedules = dict()
+        
         # create exposure timer to wait for exposure to finish
         self.waiting_for_exposure = False
         self.exptimer = QtCore.QTimer()
@@ -707,11 +710,17 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
-            #self.load_best_observing_target(obstime_mjd)
+            ToO_currentObs = self.load_best_observing_target(obstime_mjd)
             
-            self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
-            self.announce('getting next observation from schedule database')
-            if self.schedule.currentObs is None:
+            if ToO_currentObs is None:
+                self.announce('getting next observation from schedule database')
+                self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
+                currentObs = self.schedule.currentObs
+            else:
+                currentObs = ToO_currentObs
+                
+            #if self.schedule.currentObs is None:
+            if currentObs is None:
                 self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
                 # first stow the rotator
                 self.rotator_stop_and_reset()
@@ -726,7 +735,7 @@ class RoboOperator(QtCore.QObject):
                 return
             else:
                 # if we got an observation, then let's go do it!!
-                self.do_currentObs()
+                self.do_currentObs(currentObs)
         
     
     def load_best_observing_target(self, obstime_mjd):
@@ -795,42 +804,46 @@ class RoboOperator(QtCore.QObject):
             
             if TOOschedule.currentObs is None:
                 self.announce(f'no valid observations at this time (MJD = {obstime_mjd}), standing by...')
+                return None
+                
             else:
                 # add the observation to the list of valid observations
                 validObs.append(TOOschedule.currentObs)
                 validSchedules.append(TOOschedule)
                 validSchedule_filenames.append(schedname)
         
-        # check to make sure things loaded right
-        self.log('')
-        self.log('Current Observations Loaded Up:')
-        for schedname in self.ToOschedules:
-            TOOschedule = self.ToOschedules[schedname]['schedule']
-            self.log(f' > {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+                # check to make sure things loaded right
+                self.log('')
+                self.log('Current Observations Loaded Up:')
+                for schedname in self.ToOschedules:
+                    TOOschedule = self.ToOschedules[schedname]['schedule']
+                    self.log(f' > {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+                
+                #  now sort all the valid observations by smallest validStop time. eg rank by which will be not valid soonest
+                self.log('')
+                self.log('list all the obsHistIDs in the list of current valid observations')
+                for obs in validObs:
+                    print(f'> obsHistID = {obs["obsHistID"]}, validStop = {obs["validStop"]}')
+                # make a list of the validStop times
+                validStopTimes = np.array([obs["validStop"] for obs in validObs])
+                
+                # get the indices that would sort by smallest validStop to largest
+                # turn these into numpy arrays so we can use their handy argsort and indexing scheme
+                sorted_indices = np.argsort(validStopTimes)
+                #validSchedules_numpy = np.array(validSchedules)
+                validObs_numpy = np.array(validObs)
+                validSchedule_filenames_numpy = np.array(validSchedule_filenames)
+                
+                #self.log(f'sorted_indices = {sorted_indices}')
+                #self.log(f'validObs_numpy[sorted_indices] = {validObs_numpy[sorted_indices]}')
+                #self.log(f'validSchedule_filenames_numpy[sorted_indices] = {validSchedule_filenames_numpy[sorted_indices]}')
+                # the first of the sorted validObs is the one we should observe
+                bestObservation = validObs_numpy[sorted_indices][0]
+                bestScheduleFilename = validSchedule_filenames_numpy[sorted_indices][0]
+                self.log('')
+                self.log(f'we should be observing from {bestScheduleFilename}, obsHistID = {bestObservation["obsHistID"]}')
+                return bestObservation
         
-        #  now sort all the valid observations by smallest validStop time. eg rank by which will be not valid soonest
-        self.log('')
-        self.log('list all the obsHistIDs in the list of current valid observations')
-        for obs in validObs:
-            print(f'> obsHistID = {obs["obsHistID"]}, validStop = {obs["validStop"]}')
-        # make a list of the validStop times
-        validStopTimes = np.array([obs["validStop"] for obs in validObs])
-        
-        # get the indices that would sort by smallest validStop to largest
-        # turn these into numpy arrays so we can use their handy argsort and indexing scheme
-        sorted_indices = np.argsort(validStopTimes)
-        #validSchedules_numpy = np.array(validSchedules)
-        validObs_numpy = np.array(validObs)
-        validSchedule_filenames_numpy = np.array(validSchedule_filenames)
-        
-        #self.log(f'sorted_indices = {sorted_indices}')
-        #self.log(f'validObs_numpy[sorted_indices] = {validObs_numpy[sorted_indices]}')
-        #self.log(f'validSchedule_filenames_numpy[sorted_indices] = {validSchedule_filenames_numpy[sorted_indices]}')
-        # the first of the sorted validObs is the one we should observe
-        bestObservation = validObs_numpy[sorted_indices][0]
-        bestScheduleFilename = validSchedule_filenames_numpy[sorted_indices][0]
-        self.log('')
-        self.log(f'we should be observing from {bestScheduleFilename}, obsHistID = {bestObservation["obsHistID"]}')
         
     def get_observatory_ready_status(self):
         """
@@ -1955,7 +1968,7 @@ class RoboOperator(QtCore.QObject):
                 return
                 
             
-    def do_currentObs(self):
+    def do_currentObs(self, currentObs = 'default'):
         """
         do the observation of whatever is the current observation in self.schedule.currentObs
         
@@ -1985,10 +1998,13 @@ class RoboOperator(QtCore.QObject):
                         3. emit a restartRobo signal so it gets kicked back to the top of the tree
         
         """
+        if currentObs == 'default':
+            currentObs = self.schedule.currentObs
+        
         self.check_ok_to_observe(logcheck = True)
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
         
-        if self.schedule.currentObs is None:
+        if currentObs is None:
             """
             # NPL shouldn't ever get here, if we do just leave anc check what to do
             self.logger.info(f'robo: self.schedule.currentObs is None. Closing connection to db.')
@@ -2002,7 +2018,7 @@ class RoboOperator(QtCore.QObject):
         
         # first get the dither parameters. put this first so we can set up the for loop through the dithers below
         # set up the dithers
-        dither_scheduled = self.schedule.currentObs['dither']
+        dither_scheduled = currentObs['dither']
         #print(f'dither_scheduled = {dither_scheduled}')
         if dither_scheduled.lower() == 'n':
             self.do_dithers = False
@@ -2047,16 +2063,16 @@ class RoboOperator(QtCore.QObject):
             if self.running & self.ok_to_observe:
                 
                 # grab some fields from the currentObs
-                self.lastSeen = self.schedule.currentObs['obsHistID']
-                self.requestID = self.schedule.currentObs['requestID']
+                self.lastSeen = currentObs['obsHistID']
+                self.requestID = currentObs['requestID']
                 #self.alt_scheduled = float(self.schedule.currentObs['altitude'])
                 #self.az_scheduled = float(self.schedule.currentObs['azimuth'])
                 
-                self.ra_radians_scheduled = float(self.schedule.currentObs['fieldRA'])
-                self.dec_radians_scheduled = float(self.schedule.currentObs['fieldDec'])
+                self.ra_radians_scheduled = float(currentObs['fieldRA'])
+                self.dec_radians_scheduled = float(currentObs['fieldDec'])
                 
-                self.alt_deg_scheduled = float(self.schedule.currentObs['altitude'])
-                self.az_deg_scheduled = float(self.schedule.currentObs['azimuth'])            
+                self.alt_deg_scheduled = float(currentObs['altitude'])
+                self.az_deg_scheduled = float(currentObs['azimuth'])            
                 
                 # convert ra and dec from radians to astropy objects
                 self.j2000_ra_scheduled = astropy.coordinates.Angle(self.ra_radians_scheduled * u.rad)
@@ -2068,7 +2084,7 @@ class RoboOperator(QtCore.QObject):
                 
                 
                 # get the filter
-                self.filter_scheduled = self.schedule.currentObs['filter']
+                self.filter_scheduled = currentObs['filter']
                 # handle bad filter name 'g' for the moment
                 #TODO: fix this when the filter name in the scheduler is fixed
                 if self.filter_scheduled == 'g':
@@ -2118,7 +2134,7 @@ class RoboOperator(QtCore.QObject):
                     
                     # 3: trigger image acquisition
                     #NPL 1-19-22 re-adding chopping up exposure time by number of dithers
-                    self.exptime = float(self.schedule.currentObs['visitExpTime'])/self.num_dithers
+                    self.exptime = float(currentObs['visitExpTime'])/self.num_dithers
                     self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
                     
                     # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
@@ -2199,7 +2215,7 @@ class RoboOperator(QtCore.QObject):
                         gotoNext = True
                     else:
                         gotoNext = False
-                    self.log_observation_and_gotoNext(gotoNext = gotoNext)
+                    self.log_observation_and_gotoNext(currentObs = currentObs, gotoNext = gotoNext)
                     #return #<- NPL 1/19/22 this return should never get executed, the log_observation_and_gotoNext call should handle exiting
                     
                 except Exception as e:
@@ -2287,8 +2303,11 @@ class RoboOperator(QtCore.QObject):
                 self.writer.closeConnection()
             """
                 
-    def log_observation_and_gotoNext(self, gotoNext = True):
+    def log_observation_and_gotoNext(self, currentObs = 'default', gotoNext = True):
         #self.logger.info(f'robo: image timer finished, logging observation with option gotoNext = {gotoNext}')
+        
+        if currentObs == 'default':
+            currentObs = self.schedule.currentObs
         
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
@@ -2301,7 +2320,7 @@ class RoboOperator(QtCore.QObject):
             
         else:    
     
-            if self.schedule.currentObs is not None and self.running:
+            if currentObs is not None and self.running:
                 self.logger.info('robo: logging observation')
                                                 
                 image_directory, image_filename = self.ccd.getLastImagePath()
@@ -2316,7 +2335,7 @@ class RoboOperator(QtCore.QObject):
                     self.log(f"in test mode, so won't actually log_observation")
             
             else:  
-                if self.schedule.currentObs is None:
+                if currentObs is None:
                     self.logger.info('robo: in log and goto next, but there is no observation to log.')
                 elif self.running == False:
                     self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")

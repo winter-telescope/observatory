@@ -143,43 +143,46 @@ class roboSim(object):
             
             if TOOschedule.currentObs is None:
                 self.announce(f'no valid observations at this time (MJD = {obstime_mjd}), standing by...')
+                return None
+                
             else:
                 # add the observation to the list of valid observations
                 validObs.append(TOOschedule.currentObs)
                 validSchedules.append(TOOschedule)
                 validSchedule_filenames.append(schedname)
         
-        # check to make sure things loaded right
-        self.log('')
-        self.log('Current Observations Loaded Up:')
-        for schedname in self.ToOschedules:
-            TOOschedule = self.ToOschedules[schedname]['schedule']
-            self.log(f' > {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
-        
-        #  now sort all the valid observations by smallest validStop time. eg rank by which will be not valid soonest
-        self.log('')
-        self.log('list all the obsHistIDs in the list of current valid observations')
-        for obs in validObs:
-            print(f'> obsHistID = {obs["obsHistID"]}, validStop = {obs["validStop"]}')
-        # make a list of the validStop times
-        validStopTimes = np.array([obs["validStop"] for obs in validObs])
-        
-        # get the indices that would sort by smallest validStop to largest
-        # turn these into numpy arrays so we can use their handy argsort and indexing scheme
-        sorted_indices = np.argsort(validStopTimes)
-        #validSchedules_numpy = np.array(validSchedules)
-        validObs_numpy = np.array(validObs)
-        validSchedule_filenames_numpy = np.array(validSchedule_filenames)
-        
-        #self.log(f'sorted_indices = {sorted_indices}')
-        #self.log(f'validObs_numpy[sorted_indices] = {validObs_numpy[sorted_indices]}')
-        #self.log(f'validSchedule_filenames_numpy[sorted_indices] = {validSchedule_filenames_numpy[sorted_indices]}')
-        # the first of the sorted validObs is the one we should observe
-        bestObservation = validObs_numpy[sorted_indices][0]
-        bestScheduleFilename = validSchedule_filenames_numpy[sorted_indices][0]
-        self.log('')
-        self.log(f'we should be observing from {bestScheduleFilename}, obsHistID = {bestObservation["obsHistID"]}')
-        
+                # check to make sure things loaded right
+                self.log('')
+                self.log('Current Observations Loaded Up:')
+                for schedname in self.ToOschedules:
+                    TOOschedule = self.ToOschedules[schedname]['schedule']
+                    self.log(f' > {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+                
+                #  now sort all the valid observations by smallest validStop time. eg rank by which will be not valid soonest
+                self.log('')
+                self.log('list all the obsHistIDs in the list of current valid observations')
+                for obs in validObs:
+                    print(f'> obsHistID = {obs["obsHistID"]}, validStop = {obs["validStop"]}')
+                # make a list of the validStop times
+                validStopTimes = np.array([obs["validStop"] for obs in validObs])
+                
+                # get the indices that would sort by smallest validStop to largest
+                # turn these into numpy arrays so we can use their handy argsort and indexing scheme
+                sorted_indices = np.argsort(validStopTimes)
+                #validSchedules_numpy = np.array(validSchedules)
+                validObs_numpy = np.array(validObs)
+                validSchedule_filenames_numpy = np.array(validSchedule_filenames)
+                
+                #self.log(f'sorted_indices = {sorted_indices}')
+                #self.log(f'validObs_numpy[sorted_indices] = {validObs_numpy[sorted_indices]}')
+                #self.log(f'validSchedule_filenames_numpy[sorted_indices] = {validSchedule_filenames_numpy[sorted_indices]}')
+                # the first of the sorted validObs is the one we should observe
+                bestObservation = validObs_numpy[sorted_indices][0]
+                bestScheduleFilename = validSchedule_filenames_numpy[sorted_indices][0]
+                self.log('')
+                self.log(f'we should be observing from {bestScheduleFilename}, obsHistID = {bestObservation["obsHistID"]}')
+                return bestObservation
+                
 if __name__ == '__main__':
     
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
@@ -195,6 +198,10 @@ if __name__ == '__main__':
     robo = roboSim(base_directory, config, logger)
     
     obstime_mjd = 59557.0705373745
+    
+    robo.load_best_observing_target(obstime_mjd = obstime_mjd)
+    
+    obstime_mjd = 59601.31180555555
     
     robo.load_best_observing_target(obstime_mjd = obstime_mjd)
 #schedule = schedule.Schedule(base_directory = base_directory, config = config, logger = logger)

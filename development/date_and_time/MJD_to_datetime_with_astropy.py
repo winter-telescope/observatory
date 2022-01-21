@@ -12,7 +12,9 @@ converting MJD to datetime with astropy
 import astropy.time
 from datetime import datetime
 
-t = 59341.1489157446
+#t = 59341.1489157446
+t = 59601.0896612906
+#t = 59341.14891574074
 
 t_obj = astropy.time.Time(t,format = 'mjd')
 
@@ -20,14 +22,16 @@ t_datetime_obj = t_obj.datetime
 
 timestamp_from_mjd = t_datetime_obj.timestamp()
 
+utc_time = t_datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")
+
 print(f'The MJD is:           {t}')
-print(f'The UTC time is:      {t_datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")} UTC')
+print(f'The UTC time is:      {utc_time} UTC')
 print(f'The UTC timestamp is: {timestamp_from_mjd}')
 
 
 # go from datetime to MJD
 
-utc_time = '2021-05-07 03:34:26.320'
+#utc_time = '2021-05-07 03:34:26.320'
 dt_obj = datetime.strptime(utc_time, "%Y-%m-%d %H:%M:%S.%f")
 T = astropy.time.Time(dt_obj, format = 'datetime')
 timestamp_from_datetime = dt_obj.timestamp()
