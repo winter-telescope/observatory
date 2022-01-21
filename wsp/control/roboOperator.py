@@ -15,7 +15,7 @@ import sys
 from datetime import datetime
 from PyQt5 import QtCore
 import time
-import json
+#import json
 import logging
 import threading
 import astropy.time
@@ -26,6 +26,7 @@ import pathlib
 import subprocess
 import pandas as pd
 import traceback
+import glob
 import pytz
 
 # add the wsp directory to the PATH
@@ -728,7 +729,7 @@ class RoboOperator(QtCore.QObject):
                 self.do_currentObs()
         
     
-    def load_best_observing_target(self):
+    def load_best_observing_target(self, obstime_mjd):
         """
         Checks to see what the best target to observe is right now. 
         
@@ -753,31 +754,83 @@ class RoboOperator(QtCore.QObject):
         # and then keep self.targeSchedule or something that can be handled. this would stil let us load the target schedule from the wintercmd 
         # interface, and also let WSP switch back and forth between them easily by changing schedules in here.
         
-        highPriority_ToO_sched = utils.getLastModifiedFile(os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_HighPriority_directory'], '*.db'))
+        # get all the files in the ToO High Priority folder
+        highPriority_schedule_directory = os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_HighPriority_directory'])
+        self.highPriority_schedules = glob.glob(os.path.join(highPriority_schedule_directory, '*.db'))
+        self.log(f'schedules in high priority folder: {self.highPriority_schedules}')
         
-        if not highPriority_ToO_sched is None:
-            sched_filename = highPriority_ToO_sched.split('/')[-1]
-            self.log(f'found high priority ToO schedule: {sched_filename}')
-            # load the ToO schedule here.
-            return
+        self.log('')
+        # check if the schedule is already in self.ToOschedules
+        for sched_filepath in self.highPriority_schedules:
+            sched_filename = sched_filepath.split('/')[-1]
+            sched_filedirectory = highPriority_schedule_directory
+            if sched_filename in self.ToOschedules:
+                pass
+            else:
+                self.log(f'need to add {sched_filename} to high priority schedules')
+                sched_obj = schedule.Schedule(base_directory = self.base_directory,
+                                              config = self.config,
+                                              logger = self.logger,
+                                              scheduleFile_directory = sched_filedirectory)
+                
+                # set up the ToO schedule
+                sched_obj.loadSchedule(schedulefile_name  = sched_filepath)
+                
+                self.ToOschedules.update({sched_filename : {'filepath' : sched_filepath,
+                                                            'priority' : 'high',
+                                                            'schedule' : sched_obj}})
         
-        else:
-            pass
+        # now query if there are valid observations in any of the TOO schedule
         
-        lowPriority_ToO_sched = utils.getLastModifiedFile(os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_LowPriority_directory']))
-        
-        if not lowPriority_ToO_sched is None:
-            sched_filename = lowPriority_ToO_sched.split('/')[-1]
-            self.log(f'found low priority ToO schedule: {sched_filename}')
-            return
-        
-        else:
-            pass
-        
-        self.log(f'no ToO schedules. proceeding with baseline schedule')
-        #TODO: is this the correct logic? what happens if no schedule is loaded? do we need to entertain this possibility?
+        # init a list of valid observations
+        validObs = []
+        validSchedules = []
+        validSchedule_filenames = []
+                
+        for schedname in self.ToOschedules:
+            self.log('')
+            self.announce(f'searching for valid observation in {schedname}')
+            TOOschedule = self.ToOschedules[schedname]['schedule']
+            TOOschedule.gotoNextObs(obstime_mjd = obstime_mjd)
             
+            if TOOschedule.currentObs is None:
+                self.announce(f'no valid observations at this time (MJD = {obstime_mjd}), standing by...')
+            else:
+                # add the observation to the list of valid observations
+                validObs.append(TOOschedule.currentObs)
+                validSchedules.append(TOOschedule)
+                validSchedule_filenames.append(schedname)
         
+        # check to make sure things loaded right
+        self.log('')
+        self.log('Current Observations Loaded Up:')
+        for schedname in self.ToOschedules:
+            TOOschedule = self.ToOschedules[schedname]['schedule']
+            self.log(f' > {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+        
+        #  now sort all the valid observations by smallest validStop time. eg rank by which will be not valid soonest
+        self.log('')
+        self.log('list all the obsHistIDs in the list of current valid observations')
+        for obs in validObs:
+            print(f'> obsHistID = {obs["obsHistID"]}, validStop = {obs["validStop"]}')
+        # make a list of the validStop times
+        validStopTimes = np.array([obs["validStop"] for obs in validObs])
+        
+        # get the indices that would sort by smallest validStop to largest
+        # turn these into numpy arrays so we can use their handy argsort and indexing scheme
+        sorted_indices = np.argsort(validStopTimes)
+        #validSchedules_numpy = np.array(validSchedules)
+        validObs_numpy = np.array(validObs)
+        validSchedule_filenames_numpy = np.array(validSchedule_filenames)
+        
+        #self.log(f'sorted_indices = {sorted_indices}')
+        #self.log(f'validObs_numpy[sorted_indices] = {validObs_numpy[sorted_indices]}')
+        #self.log(f'validSchedule_filenames_numpy[sorted_indices] = {validSchedule_filenames_numpy[sorted_indices]}')
+        # the first of the sorted validObs is the one we should observe
+        bestObservation = validObs_numpy[sorted_indices][0]
+        bestScheduleFilename = validSchedule_filenames_numpy[sorted_indices][0]
+        self.log('')
+        self.log(f'we should be observing from {bestScheduleFilename}, obsHistID = {bestObservation["obsHistID"]}')
         
     def get_observatory_ready_status(self):
         """
