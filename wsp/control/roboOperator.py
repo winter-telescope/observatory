@@ -795,15 +795,17 @@ class RoboOperator(QtCore.QObject):
         validObs = []
         validSchedules = []
         validSchedule_filenames = []
-                
+        
+        self.announce('querying all schedules in High Priority ToO folder...')
+        
         for schedname in self.ToOschedules:
             self.log('')
-            self.announce(f'searching for valid observation in {schedname}')
+            self.announce(f'...searching for valid observation in {schedname}')
             TOOschedule = self.ToOschedules[schedname]['schedule']
             TOOschedule.gotoNextObs(obstime_mjd = obstime_mjd)
             
             if TOOschedule.currentObs is None:
-                self.announce(f'no valid observations at this time (MJD = {obstime_mjd}), standing by...')
+                self.announce(f'no valid TOO observations at this time (MJD = {obstime_mjd}), defaulting to survey schedule')
                 return None
                 
             else:
@@ -2242,8 +2244,8 @@ class RoboOperator(QtCore.QObject):
                 break
             
             msg = f'got to the end of the dither loop, should go to top of loop?'
-            self.log(msg)
-            self.announce(msg)
+            #self.log(msg)
+            #self.announce(msg)
 
             
         # if we got here, then we are out of the loop, either because we did all the dithers, or there was a problem
