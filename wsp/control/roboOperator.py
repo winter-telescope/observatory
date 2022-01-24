@@ -689,6 +689,7 @@ class RoboOperator(QtCore.QObject):
                 obstime_mjd = 'now'
                 obstime_timestamp_utc = datetime.now(tz = pytz.utc).timestamp()
                 
+                
             #---------------------------------------------------------------------
             # check if we need to focus the telescope
             #---------------------------------------------------------------------
@@ -762,6 +763,9 @@ class RoboOperator(QtCore.QObject):
         # if there are none, than we need to handle switching back to the normal operations. maybe we want to keep the baseline as nightly_tonight ALWAYS,
         # and then keep self.targeSchedule or something that can be handled. this would stil let us load the target schedule from the wintercmd 
         # interface, and also let WSP switch back and forth between them easily by changing schedules in here.
+        
+        if obstime_mjd == 'now':
+            obstime_mjd = self.ephem.state.get('mjd',0)
         
         # get all the files in the ToO High Priority folder
         highPriority_schedule_directory = os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_HighPriority_directory'])
