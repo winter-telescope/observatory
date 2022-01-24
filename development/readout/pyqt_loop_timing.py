@@ -200,14 +200,14 @@ class Counter(QtCore.QObject):
         self.dt_start = np.array(self.dt_start[1:])
         self.dt_loop = np.array(self.dt_loop[1:])
         
-        fig, axes = plt.subplots(1,2, figsize = (10, 5))
+        fig, axes = plt.subplots(2,2, figsize = (10, 10))
         # plot the time between loop executions
-        ax = axes[0]
+        ax = axes[0][0]
         ax.plot(self.counts, self.dt_start, 'o')
         median_dt = np.median(self.dt_start)
         std_dt = np.std(self.dt_start)
         max_dt = np.max(self.dt_start)
-        #min_dt = np.min(self.dt_start)
+        min_dt = np.min(self.dt_start)
         
         ax.plot(self.counts, median_dt + 0*self.dt_start, 'r--', label = f'Median')
         ax.plot(self.counts, median_dt + std_dt + 0*self.dt_start, 'g--', label = f'Median + 1$\sigma$')
@@ -218,15 +218,21 @@ class Counter(QtCore.QObject):
 
         ax.legend()
         
+        # histogram
+        axes[1][0].hist(self.dt_start, bins = np.arange(0, 25, 0.5))
+        
+        
+        
+        
         # plot the loop execution time
         
         # plot the time between loop executions
-        ax = axes[1]
+        ax = axes[0][1]
         ax.plot(self.counts, self.dt_loop, 'o')
         median_dt = np.median(self.dt_loop)
         std_dt = np.std(self.dt_loop)
         max_dt = np.max(self.dt_loop)
-        #min_dt = np.min(self.dt_loop)
+        min_dt = np.min(self.dt_loop)
         
         ax.plot(self.counts, median_dt + 0*self.dt_loop, 'r--', label = f'Median')
         ax.plot(self.counts, median_dt + std_dt + 0*self.dt_loop, 'g--', label = f'Median + 1$\sigma$')
@@ -236,7 +242,12 @@ class Counter(QtCore.QObject):
         ax.set_xlabel('Loop Number')
         ax.legend()
         
+        axes[1][1].hist(self.dt_loop, bins = np.arange(0, 25, 0.5))
+
+        
         plt.tight_layout()
+        
+        
         
         
 def sigint_handler( *args):
