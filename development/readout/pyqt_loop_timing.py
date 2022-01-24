@@ -117,7 +117,8 @@ class Counter(QtCore.QObject):
         self.name = name
         self.dt = dt
         self.count = 0
-        self.loop_starttime = datetime.now().timestamp()
+        self.init_time = datetime.now().timestamp()
+        self.loop_starttime = self.init_time
         
         NROWS = 1920
         NCOLS = 1080
@@ -136,11 +137,12 @@ class Counter(QtCore.QObject):
         
         
         self.setupDataFile()
-        
+        self.dt_total = np.array([])
         self.counts = np.array([])
         self.dt_start = np.array([])
         self.dt_loop = np.array([])
         
+        print('starting loop...')
         if verbose:
             self.daqloop = daq_loop(self.update, dt = self.dt, name = self.name, print_thread_name_in_update = True, thread_numbering = 'norm')
         else:
@@ -162,6 +164,7 @@ class Counter(QtCore.QObject):
         now = datetime.now().timestamp()
         self.dt_since_last_loop_ms = (now - self.loop_starttime)*1.0e3
         self.loop_starttime = now
+        
         
         """
         # update the frame?
@@ -186,63 +189,68 @@ class Counter(QtCore.QObject):
         
         self.loop_endtime = datetime.now().timestamp()
         dt_loop = (self.loop_endtime - self.loop_starttime)*1.0e3
+        dt_since_start = self.loop_starttime - self.init_time
         
         # update the log of the data
         self.counts = np.append(self.counts, self.count)
         self.dt_start = np.append(self.dt_start, self.dt_since_last_loop_ms)
         self.dt_loop = np.append(self.dt_loop,dt_loop)
+        self.dt_total = np.append(self.dt_total, dt_since_start)
+
         
     def PrintResults(self):
         # print and summarize the results
         
         # turn the data to numpy arrays
-        self.counts = np.array(self.counts[1:])
-        self.dt_start = np.array(self.dt_start[1:])
-        self.dt_loop = np.array(self.dt_loop[1:])
+        self.counts = self.counts[1:]
+        self.dt_start = self.dt_start[1:]
+        self.dt_loop = self.dt_loop[1:]
+        self.dt_total = self.dt_total[1:]
         
         fig, axes = plt.subplots(2,2, figsize = (10, 10))
         # plot the time between loop executions
         ax = axes[0][0]
-        ax.plot(self.counts, self.dt_start, 'o')
+        ax.plot(self.dt_total, self.dt_start, 'o')
         median_dt = np.median(self.dt_start)
         std_dt = np.std(self.dt_start)
         max_dt = np.max(self.dt_start)
         min_dt = np.min(self.dt_start)
         
-        ax.plot(self.counts, median_dt + 0*self.dt_start, 'r--', label = f'Median')
-        ax.plot(self.counts, median_dt + std_dt + 0*self.dt_start, 'g--', label = f'Median + 1$\sigma$')
-        ax.plot(self.counts, median_dt - std_dt + 0*self.dt_start, 'g--', label = 'Median - 1$\sigma$')
+        ax.plot(self.dt_total, median_dt + 0*self.dt_start, 'r--', label = f'Median')
+        ax.plot(self.dt_total, median_dt + std_dt + 0*self.dt_start, 'g--', label = f'Median + 1$\sigma$')
+        ax.plot(self.dt_total, median_dt - std_dt + 0*self.dt_start, 'g--', label = 'Median - 1$\sigma$')
         ax.set_ylabel('Time Between Loop Executions (ms)')
         ax.set_title(f'Nominal $\Delta$t = {self.dt} ms: Median $\Delta$t: {median_dt:.1f} ms\n$\sigma$ = {std_dt:.1f} ms, max $\Delta$t = {max_dt:.1f} ms, Num Points = {len(self.counts)}')
-        ax.set_xlabel('Loop Number')
+        ax.set_xlabel('Runtime (s)')
 
         ax.legend()
         
         # histogram
         axes[1][0].hist(self.dt_start, bins = np.arange(0, 25, 0.5))
         
-        
+        axes[1][0].set_yscale('log')
         
         
         # plot the loop execution time
         
         # plot the time between loop executions
         ax = axes[0][1]
-        ax.plot(self.counts, self.dt_loop, 'o')
+        ax.plot(self.dt_total, self.dt_loop, 'o')
         median_dt = np.median(self.dt_loop)
         std_dt = np.std(self.dt_loop)
         max_dt = np.max(self.dt_loop)
         min_dt = np.min(self.dt_loop)
         
-        ax.plot(self.counts, median_dt + 0*self.dt_loop, 'r--', label = f'Median')
-        ax.plot(self.counts, median_dt + std_dt + 0*self.dt_loop, 'g--', label = f'Median + 1$\sigma$')
-        ax.plot(self.counts, median_dt - std_dt + 0*self.dt_loop, 'g--', label = 'Median - 1$\sigma$')
+        ax.plot(self.dt_total, median_dt + 0*self.dt_loop, 'r--', label = f'Median')
+        ax.plot(self.dt_total, median_dt + std_dt + 0*self.dt_loop, 'g--', label = f'Median + 1$\sigma$')
+        ax.plot(self.dt_total, median_dt - std_dt + 0*self.dt_loop, 'g--', label = 'Median - 1$\sigma$')
         ax.set_ylabel('Time for Loop to Execute (ms)')
         ax.set_title(f'Nominal $\Delta$t = {self.dt} ms: Median $\Delta$t: {median_dt:.1f} ms\n$\sigma$ = {std_dt:.1f} ms, max $\Delta$t = {max_dt:.1f} ms, Num Points = {len(self.counts)}')
-        ax.set_xlabel('Loop Number')
+        ax.set_xlabel('Runtime (s)')
         ax.legend()
         
         axes[1][1].hist(self.dt_loop, bins = np.arange(0, 25, 0.5))
+        axes[1][1].set_yscale('log')
 
         
         plt.tight_layout()
@@ -267,7 +275,7 @@ if __name__ == "__main__":
     app = QtCore.QCoreApplication(sys.argv)
 
     
-    main = Counter(dt = 5, name = 'counter', verbose = False)
+    main = Counter(dt = 10, name = 'counter', verbose = False)
 
     
     signal.signal(signal.SIGINT, sigint_handler)
