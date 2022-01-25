@@ -38,144 +38,57 @@ DTYPE_DICT = dict({'FLOAT64' : 'd',
                    'UINT16' : 'H'})
 
 
-class daq_loop(QtCore.QThread):
-    """
-    This version follows the approach here: https://stackoverflow.com/questions/52036021/qtimer-on-a-qthread
-    This makes sure that the QTimer belongs to *this* thread, not the thread that instantiated this QThread.
-    To do this it forces the update function and Qtimer to be in the namespace of the run function,
-    so that the timer is instantiated by the run (eg start) command
-    
-    This is a generic QThread which will execute the specified function
-    at the specified cadence.
-
-    It is meant for polling different sensors or instruments or servers
-    each in their own thread so they don't bog each other down.
-    """
-    def __init__(self, func, dt, name = '', print_thread_name_in_update = False, thread_numbering = 'PyQt', autostart = True, *args, **kwargs):
-        QtCore.QThread.__init__(self)
-
-        self.index = 0
-        self.name = name
-        
-        # define the function and options that will be run in this daq loop
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-        # describe the loop rate
-        self.dt = dt
-        
-        # keep this as an option to debug and print out the thread of each operation
-        self._print_thread_name_in_update_ = print_thread_name_in_update
-        # how do you want to display the thread? if either specify 'pyqt', or it will assume normal, eg threading.get_ident()
-        self._thread_numbering_ = thread_numbering.lower()
-        
-        # start the thread itself
-        if autostart:
-            self.start()
-    
-    
-    def run(self):
-        def update():
-            ### POLL THE DATA ###
-            try:
-                self.func(*self.args, **self.kwargs)
-                
-                if self._print_thread_name_in_update_:
-                    if self._thread_numbering_ == 'pyqt':
-                        print(f'{self.name}: running func: <{self.func.__name__}> in thread {self.currentThread()}')
-                    else:
-                        print(f'{self.name}: running func: <{self.func.__name__}> in thread {threading.get_ident()}')
-            except Exception as e:
-                '''
-                do nothing, don't want to clog up the program with errors if there's
-                a problem. let this get handled elsewhere.
-                '''
-                print(f'could not execute function <{self.func.__name__}> because of {type(e)}: {e}')
-                print(f'FULL TRACEBACK: {traceback.format_exc()}')
-                pass
-    
-            self.index += 1
-        
-        print(f'{self.name}: starting timed loop')
-        self.timer = QtCore.QTimer(timerType = QtCore.Qt.PreciseTimer)
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(update)
-        self.timer.start()
-        self.exec()
-        
-    def __del__(self):
-        self.wait()
 
 
-
-class Counter(QtCore.QObject):
-    StartNewFileSignal = QtCore.pyqtSignal()
-    
+class Counter(object):
     def __init__(self, dt , name = 'counter', verbose = False):
         
-        
-        
-        super(Counter, self).__init__()   
         
         self.name = name
         self.dt = dt
         self.count = 0
         self.init_time = datetime.now().timestamp()
         self.loop_starttime = self.init_time
-        
-        self.StartNewFileSignal.connect(self.StartNewFile)
+        self.dt_since_start = 0
         
         NROWS = 1920
         NCOLS = 1080
         
-        self.filenum = 0
-        self.streamFile = f'stream_{self.filenum}.dat'
+        
         
         self.dataPath = os.path.join(os.getenv("HOME"), 'data', 'streamTest')
         
-        #self.framelen = int(NCOLS*NROWS*2)
-        #self.framebuf = bytearray(self.framelen)
+        self.filenum = 0
+        self.streamFile = f'stream_{self.filenum}.dat'
+        
+        self.framelen = int(NCOLS*NROWS*2)
+        self.framebuf = bytearray(self.framelen)
         
         frame_float = np.zeros((NROWS, NCOLS))
         self.frame = frame_float.astype(np.uint16)
         self.bindata = self.frame.flatten().tobytes()
         
         
-        #self.setupDataFiles(Nfiles = 100)
-        self.setupDataFile()
         
+        self.setupDataFile()
         self.dt_total = np.array([])
         self.counts = np.array([])
         self.dt_start = np.array([])
         self.dt_loop = np.array([])
-        """
-        self.timer = QtCore.QTimer(timerType = QtCore.Qt.PreciseTimer)
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update)
-        self.timer.start()
-        """
-        
-        
-        print('starting loop...')
-        if verbose:
-            self.daqloop = daq_loop(self.update, dt = self.dt, name = self.name, print_thread_name_in_update = True, 
-                                    thread_numbering = 'norm', autostart = True)
-        else:
-            self.daqloop = daq_loop(self.update, dt = self.dt, name = self.name, autostart = True)
-        
     
-    def setupDataFiles(self, Nfiles):
+        self.runUpdateLoop()
+    
+    def runUpdateLoop(self, nsecs = 5):
+        print(f'starting update loop')
+        while self.dt_since_start < nsecs:
+            self.update()
+    
+                
+        # close the file
+        self.fp.close()
         
-        self.fps = []
+        self.PrintResults()
         
-        for i in range(Nfiles):
-            
-            fp = open(os.path.join(self.dataPath, f'stream_{i}.dat'), mode = 'wb')
-            self.fps.append(fp)
-        self.iters_since_file_setup = 0
-        self.filenum = 0
-        self.fp = self.fps[self.filenum]
         
     def setupDataFile(self):
         """
@@ -191,18 +104,10 @@ class Counter(QtCore.QObject):
         
         self.filenum += 1
         
-        self.streamFile = f'stream_{self.filenum}.dat'
+        self.streamFile = self.streamFile = f'stream_{self.filenum}.dat'
         
         self.setupDataFile()
         
-    def SwitchToNextFile(self):
-        self.iters_since_file_setup = 0
-        self.filenum += 1
-        self.fp = self.fps[self.filenum]
-    
-    def CloseAllFiles(self):
-        for fp in self.fps:
-            fp.close()
         
     def update(self):
         now = datetime.now().timestamp()
@@ -218,13 +123,12 @@ class Counter(QtCore.QObject):
         # turn the data to binary
         self.bindata = self.frame.tobytes()
         """
-        if self.iters_since_file_setup> 500:
-            self.StartNewFileSignal.emit()
-            #self.SwitchToNextFile()
+        if self.iters_since_file_setup> 1000:
+            self.StartNewFile()
         
         # save the data here?
-        self.fp.write(self.bindata)
-        #self.fp.write(self.framebuf)
+        #self.fp.write(self.bindata)
+        self.fp.write(self.framebuf)
         
         # don't forget to flush!
         self.fp.flush()
@@ -235,16 +139,16 @@ class Counter(QtCore.QObject):
         
         self.count += 1
         self.iters_since_file_setup += 1
-
+        
         self.loop_endtime = datetime.now().timestamp()
         dt_loop = (self.loop_endtime - self.loop_starttime)*1.0e3
-        dt_since_start = self.loop_starttime - self.init_time
+        self.dt_since_start = self.loop_starttime - self.init_time
         
         # update the log of the data
         self.counts = np.append(self.counts, self.count)
         self.dt_start = np.append(self.dt_start, self.dt_since_last_loop_ms)
         self.dt_loop = np.append(self.dt_loop,dt_loop)
-        self.dt_total = np.append(self.dt_total, dt_since_start)
+        self.dt_total = np.append(self.dt_total, self.dt_since_start)
 
         
     def PrintResults(self):
@@ -306,34 +210,14 @@ class Counter(QtCore.QObject):
         
         
         
-        
-def sigint_handler( *args):
-    """Handler for the SIGINT signal."""
-    sys.stderr.write('\r')
+ 
     
-    main.daqloop.quit()
     
-    QtCore.QCoreApplication.quit()
-    
-    #main.CloseAllFiles()
-    main.PrintResults()
-    
-    # close the file
-    main.fp.close()
-
 if __name__ == "__main__":
     app = QtCore.QCoreApplication(sys.argv)
 
     
-    main = Counter(dt = 5, name = 'counter', verbose = False)
+    main = Counter(dt = 0, name = 'counter', verbose = False)
 
     
-    signal.signal(signal.SIGINT, sigint_handler)
-
-    # Run the interpreter every so often to catch SIGINT
-    timer = QtCore.QTimer()
-    timer.start(500) 
-    timer.timeout.connect(lambda: None) 
-
-    sys.exit(app.exec_())
-
+    

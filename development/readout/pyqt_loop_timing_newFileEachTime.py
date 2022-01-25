@@ -110,11 +110,7 @@ class daq_loop(QtCore.QThread):
 
 
 class Counter(QtCore.QObject):
-    StartNewFileSignal = QtCore.pyqtSignal()
-    
     def __init__(self, dt , name = 'counter', verbose = False):
-        
-        
         
         super(Counter, self).__init__()   
         
@@ -123,8 +119,6 @@ class Counter(QtCore.QObject):
         self.count = 0
         self.init_time = datetime.now().timestamp()
         self.loop_starttime = self.init_time
-        
-        self.StartNewFileSignal.connect(self.StartNewFile)
         
         NROWS = 1920
         NCOLS = 1080
@@ -142,19 +136,14 @@ class Counter(QtCore.QObject):
         self.bindata = self.frame.flatten().tobytes()
         
         
-        #self.setupDataFiles(Nfiles = 100)
-        self.setupDataFile()
-        
+        self.setupDataFiles(Nfiles = 10)
         self.dt_total = np.array([])
         self.counts = np.array([])
         self.dt_start = np.array([])
         self.dt_loop = np.array([])
-        """
-        self.timer = QtCore.QTimer(timerType = QtCore.Qt.PreciseTimer)
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update)
-        self.timer.start()
-        """
+        
+        
+    
         
         
         print('starting loop...')
@@ -182,6 +171,7 @@ class Counter(QtCore.QObject):
         init a file pointer where we'll save the data
         the mode is 'wb': 'w': write/overwrite the file, 'b': use bytes, eg binary data
         """
+        self.streamFile = f'stream_{self.filenum}.dat'
         self.iters_since_file_setup = 0
         self.fp = open(os.path.join(self.dataPath, self.streamFile), mode = 'wb')
         
@@ -191,7 +181,7 @@ class Counter(QtCore.QObject):
         
         self.filenum += 1
         
-        self.streamFile = f'stream_{self.filenum}.dat'
+        self.streamFile = self.streamFile = f'stream_{self.filenum}.dat'
         
         self.setupDataFile()
         
@@ -218,9 +208,8 @@ class Counter(QtCore.QObject):
         # turn the data to binary
         self.bindata = self.frame.tobytes()
         """
-        if self.iters_since_file_setup> 500:
-            self.StartNewFileSignal.emit()
-            #self.SwitchToNextFile()
+        self.filenum += 1
+        self.setupDataFile()
         
         # save the data here?
         self.fp.write(self.bindata)
@@ -315,7 +304,7 @@ def sigint_handler( *args):
     
     QtCore.QCoreApplication.quit()
     
-    #main.CloseAllFiles()
+    main.CloseAllFiles()
     main.PrintResults()
     
     # close the file

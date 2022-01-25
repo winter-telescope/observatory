@@ -27,6 +27,7 @@ frame = np.zeros((NCOL, NROW)).astype(DTYPE_DICT['UINT16'])
 #framelen = int(NCOL*NROW*2)
 #framebuf = bytearray(framelen)
 
+inittime = datetime.utcnow().timestamp()
 fp = open(file, mode = 'wb')
 
 #fp.write(struct.pack(DTYPE_DICT['UINT16'], frame))
@@ -46,5 +47,6 @@ fp.close()
 
 
 dt_ms = (endtime - starttime)*1.0e3
-
+dt_since_open_ms = (endtime-starttime)*1.0e3
 print(f'Time to Save {NCOL}x{NROW} frame = {dt_ms:.1f} ms')
+print(f'Time to Create File and Save = {dt_since_open_ms:.1f} ms')
