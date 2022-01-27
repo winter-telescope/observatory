@@ -22,6 +22,7 @@ from datetime import datetime
 import subprocess
 import yaml
 import pygetdata as getdata
+import traceback
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.abspath(__file__))
@@ -85,60 +86,68 @@ while True:
         watchdogStateMonitor.update_state()
         
         # check if there are any bad timestamps
-        watchdogStateMonitor.get_bad_timestamps(dt_max = 60.0)
+        watchdogStateMonitor.get_bad_timestamps(dt_max = 600.0)
         
-        
-        
-        
-        
-        if len(watchdogStateMonitor.bad_timestamps) > 0:
-            #print(f'dt = {dt:0.2f}, RELAUNCHING WRITER')
-            #msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} last housekeeping update was {dt:0.1f} s ago. *WATCHDOG Restarting wsp.py*"
+        # if there are any timestamps in the state dict greater than dt_max then prepare to restart
+        num_bad_timestamps = len(watchdogStateMonitor.bad_timestamps)
+        if num_bad_timestamps > 0:
             
-            msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} detected dead process(es). (field : dt_since_active) = {watchdogStateMonitor.bad_timestamps} *WATCHDOG Restarting wsp.py*"
+            if False:
+                pass
+            # make a carveout for the CCD daemon since it doesn't update during exposures
+            #if watchdogStateMonitor.bad_timestamps.get('ccd_last_update_timestamp', 0.0) < 600.0:
+            #    pass
             
-            alertHandler.slack_log(msg, group = 'sudo')
-            #time.sleep(60)
-            """
-            # First let's kill any running wsp process running
-            main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)
-            
-            # if wsp is running, kill it and wait until it's dead
-            if not main_pid is None:
-                daemon_utils.killPIDS(main_pid)
-                time.sleep(1)
+            else:
+                #print(f'dt = {dt:0.2f}, RELAUNCHING WRITER')
+                #msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} last housekeeping update was {dt:0.1f} s ago. *WATCHDOG Restarting wsp.py*"
+                
+                msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} detected dead process(es). (field : dt_since_active) = {watchdogStateMonitor.bad_timestamps} *WATCHDOG Restarting wsp.py*"
+                
+                alertHandler.slack_log(msg, group = 'sudo')
+                #time.sleep(60)
+                """
+                # First let's kill any running wsp process running
                 main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)
                 
-                while not main_pid is None:
-                    # wait for it to die
+                # if wsp is running, kill it and wait until it's dead
+                if not main_pid is None:
+                    daemon_utils.killPIDS(main_pid)
                     time.sleep(1)
                     main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)
-            """
-            watchdog.kill_wsp()
-            
-            
-            
-            # Now relaunch
-            wsp_process = subprocess.Popen(args, shell = False, start_new_session = True)
-            
-            # wait a bit for it to get set up
-            time.sleep(60)
-            
-            # relink since the dirfile may need to be reconnected
-            #filePath = os.getenv("HOME") + '/data/dm.lnk'
-            watchdogStateMonitor.df.close()
-            watchdogStateMonitor = watchdog.StateMonitor(verbose = True)
-            watchdogStateMonitor.setupDirfileMonitor(dirfilePath)
-            #df = getdata.dirfile(dirfilePath)
-            watchdogStateMonitor.setupDirfileMonitor(dirfilePath)
+                    
+                    while not main_pid is None:
+                        # wait for it to die
+                        time.sleep(1)
+                        main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)
+                """
+                watchdog.kill_wsp()
+                
+                
+                
+                # Now relaunch
+                wsp_process = subprocess.Popen(args, shell = False, start_new_session = True)
+                
+                # wait a bit for it to get set up
+                time.sleep(60)
+                
+                # relink since the dirfile may need to be reconnected
+                #filePath = os.getenv("HOME") + '/data/dm.lnk'
+                watchdogStateMonitor.df.close()
+                watchdogStateMonitor = watchdog.StateMonitor(verbose = False)
+                watchdogStateMonitor.setupDirfileMonitor(dirfilePath)
+                #df = getdata.dirfile(dirfilePath)
+                watchdogStateMonitor.setupDirfileMonitor(dirfilePath)
             
         
         # sleep before running loop again
         time.sleep(0.5)
-
+    
     except KeyboardInterrupt:
         print('exiting watchdog loop.')
         break
+    except Exception as e:
+        print(f'Error in watchdog loop: {traceback.format_exc()}')
     
 # close the connection to the dirfile
 #df.close()
