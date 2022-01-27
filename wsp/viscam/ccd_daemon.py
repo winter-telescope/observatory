@@ -248,7 +248,8 @@ class CCD(QtCore.QObject):
         self.state.update({'doing_exposure' : self.doing_exposure})
         
         
-
+        # only update the last_update_timestamp when we've actually made a successful query of the camera
+        
         
         #if self.doPolling and False: # for muting the polling during tests/dev
         if self.doPolling:
@@ -264,6 +265,8 @@ class CCD(QtCore.QObject):
                     # USE THIS IF YOU WANT TO ACTUALLY READ FROM CAMERA
                     self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
                     self.waitForClientIdle()
+                    self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+
                     
                 else:
                    # just read from client register
@@ -271,32 +274,40 @@ class CCD(QtCore.QObject):
                 
                 #print(f"EXPOSURE TIME = {self.exptime}")
                 self.state.update({'exptime' : self.exptime})
-                time.sleep(1)
+                
             except Exception as e:
                 #self.log(f'badness while polling exposure time: {e}')
                 self.log(e)
-                
+           
+            time.sleep(1)
+            
             try:
                 #print('polling ccd temp')
                 #self.log(f'polling ccd temp')
                 self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
                 self.waitForClientIdle()
                 self.state.update({'tec_temp' : self.tec_temp})
-                time.sleep(1)
+                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+                
             except Exception as e:
                 #self.log(f'badness while polling ccd temp: {e}')
                 self.log(e)
-                
+            
+            time.sleep(1)
+            
             try:
                 #print('polling tec setpoint')
                 #self.log('polling tec setpoint')
                 self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
                 self.waitForClientIdle()
                 self.state.update({'tec_setpoint' : self.tec_setpoint})
-                time.sleep(1)
+                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+                
             except Exception as e:
                 #self.log(f'badness while polling tec setpoint: {e}')
                 self.log(e)
+            
+            time.sleep(1)
             
             try:
                 #print('polling pcb temp')
@@ -304,11 +315,14 @@ class CCD(QtCore.QObject):
                 self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
                 self.waitForClientIdle()
                 self.state.update({'pcb_temp' : self.pcb_temp})
-                time.sleep(1)
+                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+                
             except Exception as e:
                 #self.log(f'badness while polling pcb temp: {e}')
                 self.log(e)
-
+            
+            time.sleep(1)
+            
             try:
                 #print('polling tec status')
                 #self.log('polling tec status')
@@ -316,10 +330,13 @@ class CCD(QtCore.QObject):
                 self.waitForClientIdle()
                 self.tec_status = int(fpgastatus_str[0])
                 self.state.update({'tec_status' : self.tec_status})
-                time.sleep(1)
+                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+                
             except Exception as e:
                 #self.log(f'badness while polling tec status: {e}')
                 self.log(e)
+            
+            time.sleep(1)
             
             try:
                 self.getExposureTimeout()
@@ -329,8 +346,8 @@ class CCD(QtCore.QObject):
                 self.log(e)
                 
             # record this update time
-            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
+            
+            self.state.update({'last_poll_attempt_timestamp': datetime.utcnow().timestamp()})   
                 
                 #print(f'>> TEC TEMP = {self.tec_temp}')
             
