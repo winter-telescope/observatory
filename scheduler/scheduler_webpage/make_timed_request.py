@@ -19,7 +19,7 @@ from datetime import datetime
 def make_timed_request(env, ra, dec, exptime, n_exp, start, stop, exp_arr, filt, dither): 
     
     if env == "PRODUCTION":
-        save_path = 'sqlite:////home/users/winter/data/schedules/ToO/HighPriority/'
+        save_path = 'sqlite:////home/winter/data/schedules/ToO/HighPriority/'
     else:
         save_path = 'sqlite:///'
         
