@@ -19,9 +19,9 @@ def make_untimed_request(env, camera, data, field_opts, filters):
     date = datetime.now().strftime('%m_%d_%Y_%H_%s')
     if env == "PRODUCTION":
         if camera == 'WINTER':
-            write_path = '/home/users/winter/data/schedules/requests/winter_untimed_request'+date+'.json'
+            write_path = '/home/winter/data/schedules/requests/winter_untimed_request'+date+'.json'
         else:
-             write_path = '/home/users/winter/data/schedules/requests/summer_untimed_request'+date+'.json'
+             write_path = '/home/winter/data/schedules/requests/summer_untimed_request'+date+'.json'
     else:
         if camera == 'WINTER':
             write_path = './winter_untimed_request'+date+'.json'
@@ -112,13 +112,18 @@ def make_untimed_request(env, camera, data, field_opts, filters):
  		 "filter_ids": filter_ids,
  		 "internight_gap_days": int(data['internight_gap_days']),
  		 "n_visits_per_night": int(data['n_visits_per_night']),
- 		 "intranight_gap_min": int(data['intranight_gap_min']),
- 		 "intranight_half_width_min": int(data['intranight_half_width_min']),
  		 "nightly_priority": nightly_priority,
-          "exposure_time": float(data['exp']),
+                 "exposure_time": float(data['exp']),
  		 "active_months": "all"
     
     }
+
+    # add optional arguments
+    if data['intranight_gap_min'] != None:
+        program_data['intranight_gap_min'] =int(data['intranight_gap_min'])
+
+    if data['intranight_half_width_min'] != None:
+        program_data['intranight_half_width_min'] =int(data['intranight_half_width_min'])
     
     json_data = json.dumps(program_data)
     
