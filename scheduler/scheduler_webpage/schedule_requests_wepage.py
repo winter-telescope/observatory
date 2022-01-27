@@ -12,18 +12,20 @@ import astropy.units as u
 from astropy.time import Time, TimeDelta
 import numpy as np
 
+import yaml
 from astroplan import Observer
 import datetime
 import pytz
 from astropy.coordinates import SkyCoord
 import sys
 
-env = "TEST"
+env = "PRODUCTION"
 
 if env == "PRODUCTION":
-    save_path = '/home/users/winter/data/schedules/ToO/high_priority/'
-    # import the alert handler
-    sys.path.insert(0, '/home/users/winter/WINTER_GIT/observatory/wsp/')
+    too_path = '/home/winter/data/schedules/ToO/high_priority/'
+    req_path = '/home/winter/data/schedules/requests/'
+    wsp_path = '../../wsp'
+    sys.path.insert(0, '../../wsp')
     from alerts import alert_handler
 
 else:
@@ -107,11 +109,11 @@ def web_form():
     
        
         try:
-        # check formatting
+            # check formatting
             if time_sensitive['units_time'] == 'MJD':
                 tonight = np.floor(float(time_sensitive['start_time']))
-                start_time = Time(float(time_sensitive['start_time'], format='mjd'))
-                stop_time = Time(float(time_sensitive['stop_time'], format='mjd'))
+                start_time = Time(float(time_sensitive['start_time']), format='mjd')
+                stop_time = Time(float(time_sensitive['stop_time']), format='mjd')
             else: 
                 Pacific = pytz.timezone("PST8PDT")
                 # convert iso string to datetime object to astropy time object
@@ -173,9 +175,9 @@ def web_form():
                     
                     alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
                     
-                    msg = f"Name: {time_sensitive['name']}\ at Email: {time_sensitive['email']} has submitted a timed ToO request. \
-                        The request has been added to {save_path}. "
+                    msg = f"Name: {time_sensitive['name']} at email: {time_sensitive['email']} has submitted a timed ToO request. The request has been added to {too_path}. "
                     
+                    alertHandler.slack_message_group('scheduler', msg)
                     alertHandler.slack_log(msg, group = None)
                     
             else: 
@@ -240,7 +242,7 @@ def web_form():
                         # allowed months?
                         
                         # Exposure time
-                        input('Exposure time (s)', name='exp', type=FLOAT, required=False, PlaceHolder=""),
+                        input('Exposure time (s)', name='exp', type=FLOAT, required=True, PlaceHolder=""),
                         
                         
                         # Filters
@@ -288,9 +290,10 @@ def web_form():
                 
                 alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
                 
-                msg = f"Name: {time_insensitive['name']}\ at Email: {time_insensitive['email']} has submitted a timed ToO request. \
-                    The request has been added to {save_path}. "
-                
+                msg = f"Name: {time_insensitive['name']} at email: {time_insensitive['email']} has submitted an observing request. The request has been added to {req_path}. "
+              
+                #alertHandler.email_group('scheduler', 'Schedule config request', msg)
+                alertHandler.slack_message_group('scheduler', msg)
                 alertHandler.slack_log(msg, group = None)
             
         else:
