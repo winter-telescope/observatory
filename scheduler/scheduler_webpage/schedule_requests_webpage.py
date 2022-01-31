@@ -74,7 +74,7 @@ def web_form():
     if type_obs['camera'] == 'WINTER':
         filters = ['Y',  'J', 'Hs']
     else:
-        filters = ['u',  'g']
+        filters = ['u',  'r']
     
     # time sensitive options
     if type_obs['timing'] == 'Time sensitive':
