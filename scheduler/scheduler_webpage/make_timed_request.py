@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 from datetime import datetime
+from utils import get_alt_az
 
 
 
@@ -40,6 +41,9 @@ def make_timed_request(env, ra, dec, exptime, n_exp, start, stop, exp_arr, filt,
         key_array.append(key)
         #print(key)
         
+    # get alt and az from coordinates and time
+    alt, az = get_alt_az(exp_arr, ra, dec)
+        
     # make dataframe structure
     n_lines = n_exp
     ind = range(n_lines)
@@ -60,6 +64,8 @@ def make_timed_request(env, ra, dec, exptime, n_exp, start, stop, exp_arr, filt,
     save_df["expMJD"] = exp_arr
     save_df["filter"] = filt
     save_df["dither"] = dither
+    save_df["azimuth"] = az
+    save_df["altitude"] = alt
     save_df["fieldID"] = 999999999 # protected id for guest obs
     
     #save_df.reset_index(drop=True, inplace=True)
