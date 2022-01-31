@@ -93,9 +93,9 @@ def web_form():
                         
                         select(label='Select your units for the start and stop time', options=units_time, value='MJD', name='units_time'),
                         
-                        input('Start time', name='start_time', type=TEXT, required=True, PlaceHolder="59605.0339 or 2022-01-25 16:55:54.420535"),
+                        input('Start time', name='start_time', type=TEXT, required=True, PlaceHolder="59605.0339 or 2022-01-25 16:55:54"),
                         
-                        input('Stop time', name='stop_time', type=TEXT, required=True, PlaceHolder="59605.0339 or 2022-01-25 16:55:54.420535"),
+                        input('Stop time', name='stop_time', type=TEXT, required=True, PlaceHolder="59605.0339 or 2022-01-25 16:55:54"),
                         
                         input('Exposure time (s)', name='exp', type=FLOAT, required=True, PlaceHolder=""),
                         
@@ -185,8 +185,8 @@ def web_form():
                   closable=True)
                 
                 
-        except: 
-            popup("Something went wrong! \n Try checking your units and try again",
+        except Exception as e: 
+            popup(f"Something went wrong! \n Try checking your units and try again. Exception: {e}",
                   closable=True)
 
     
