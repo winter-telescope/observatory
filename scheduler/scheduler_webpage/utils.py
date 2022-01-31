@@ -22,6 +22,18 @@ W_loc = coords.EarthLocation(lat=coords.Latitude('33d21m25.5s'),
 
 W_Observer = astroplan.Observer(location=W_loc)
 
+# get alt and az of observations
+# in decimal degrees
+def get_alt_az(times, ra, dec):
+    loc = SkyCoord(ra=ra, dec=dec, frame='icrs')
+    time = Time(times, format='mjd')         
+    altaz = loc.transform_to(AltAz(obstime=time,location=W_loc))
+    degs = SkyCoord(altaz.az, altaz.alt, frame='icrs')
+    #print('altaz'  , altaz)
+    alt_array = degs.dec.degree
+    az_array = degs.ra.degree
+    
+    return (alt_array, az_array)
 
 # what is up (above altitude 20 deg) in a given night?
 # date in MJD (median Julian Date), e.g. 59480 (Sept 23)
