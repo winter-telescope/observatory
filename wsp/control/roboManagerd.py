@@ -595,11 +595,12 @@ class RoboTriggerCond(object):
         
         
 class RoboTrigger(object):
-    def __init__(self, cmd, sundir, triglist = [], repeat_on_restart = False):
+    def __init__(self, cmd, sundir, triglist = [], repeat_on_restart = False, nextmorning = False):
         self.cmd = cmd
         self.sundir = int(sundir)
         self.triglist = triglist
         self.repeat_on_restart = repeat_on_restart
+        self.nextmorning = nextmorning
 
 class TriggeredCommandRequest(object):
     def __init__(self, cmd, trigname = None, sun_alt = -888, time_string = ''):
@@ -758,6 +759,7 @@ class RoboManager(QtCore.QObject):
             print(f'handling trigger: {trig}')
             
             trigsundir  = self.config['robotic_manager_triggers']['triggers'][trig]['sundir']
+            trignextmorning = self.config['robotic_manager_triggers']['triggers'][trig].get('nextmorning', False)
             trigcmd     = self.config['robotic_manager_triggers']['triggers'][trig]['cmd']
             repeat_on_restart = self.config['robotic_manager_triggers']['triggers'][trig]['repeat_on_restart']
             
@@ -776,7 +778,7 @@ class RoboManager(QtCore.QObject):
             
                 
             # add the trigger object to the trigger dictionary
-            roboTrigger = RoboTrigger(trigcmd, trigsundir, triglist, repeat_on_restart)
+            roboTrigger = RoboTrigger(trigcmd, trigsundir, triglist, repeat_on_restart, trignextmorning)
             self.triggers.update({trig : roboTrigger})
         
         # set up the log file
@@ -873,7 +875,7 @@ class RoboManager(QtCore.QObject):
         
         print(f'\ntriglog = {json.dumps(self.triglog, indent = 2)}')
     
-    def getTrigCurVals(self, triggercond):
+    def getTrigCurVals(self, triggercond, nextmorning = False):
         """:
         get the trigger value (the value on which to trigger), and the current value of the given trigger
         trigger must be in self.config['robotic_manager_triggers']['triggers']
@@ -931,8 +933,16 @@ class RoboManager(QtCore.QObject):
                                            second = trig_second,
                                            microsecond = trig_microsecond)
             
+            # HANDLE MORNING TIME TRIGGERS
+            # NPL 2-2-22: update 
+            """
             # if the trigger time is between 0:00 and 8:00 then we need to shove it forward by a day
             if (trig_hour < 8.0) & (now_datetime.hour > 8) & (now_datetime.hour <= 24):
+                trig_datetime_today += timedelta(days = 1)
+            """
+            
+            # if the trigger time is in the "next morning" then we need to shover the day forward by one
+            if nextmorning:
                 trig_datetime_today += timedelta(days = 1)
             
             #NOW we have two times on the same day. subtract to get the 
@@ -1043,7 +1053,7 @@ class RoboManager(QtCore.QObject):
         for i in range(num_trigs):
             
             trig_i = triglist[i]
-            trigval, curval = self.getTrigCurVals(triggercond = trig_i)
+            trigval, curval = self.getTrigCurVals(triggercond = trig_i, nextmorning = trig.nextmorning)
             trig_condition = f'{curval} {trig_i.cond} {trigval}'
             trig_condition_met = eval(trig_condition)
             trig_type = trig_i.trigtype

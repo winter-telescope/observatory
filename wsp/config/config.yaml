@@ -217,6 +217,7 @@ robotic_manager_triggers:
                     type: 'time'
                     val: '8:0:0.0'
                     cond: '<'
+            nextmorning: True
             sundir: 1
             repeat_on_restart: False
             cmd: 'robo_stop'
@@ -229,7 +230,8 @@ robotic_manager_triggers:
                 cond2:
                     type: 'sun'
                     val: -5.0
-                    cond: '<'     
+                    cond: '<'  
+            nextmorning: True   
             repeat_on_restart: False          
             sundir: 1
             cmd: 'robo_do_calibration'
@@ -239,6 +241,7 @@ robotic_manager_triggers:
                     type: 'sun'
                     val: -4
                     cond: '>'
+            nextmorning: True
             repeat_on_restart: False
             sundir: 1
             cmd: 'stow_observatory'
@@ -248,6 +251,7 @@ robotic_manager_triggers:
                     type: 'sun'
                     val: 0
                     cond: '>'
+            nextmorning: True
             repeat_on_restart: False
             sundir: 1
             cmd: 'mount_fans_off'
@@ -269,6 +273,7 @@ robotic_manager_triggers:
                     type: 'time'
                     val: '12:01:0.0'
                     cond: '<'
+            nextmorning: True
             repeat_on_restart: False
             sundir: 1
             cmd: 'kill'
