@@ -916,18 +916,26 @@ class RoboManager(QtCore.QObject):
             # now the issue is that the timestamp from trig_datetime has a real time but a nonsense date. so we can't subtract
             # to be able to subtract, let's make the two times on the same day, and use the now_datetime to get the day.
             
-            now_year = now_datetime.year
-            now_month = now_datetime.month
-            now_day = now_datetime.day
+            #now_year = now_datetime.year
+            #now_month = now_datetime.month
+            #now_day = now_datetime.day
             
             trig_hour = trig_datetime.hour
             trig_minute = trig_datetime.minute
             trig_second = trig_datetime.second
             trig_microsecond = trig_datetime.microsecond
             
-            trig_datetime_today = datetime(year = now_year, 
-                                           month = now_month, 
-                                           day = now_day,
+            # get the night of the observation. 
+            # use the utils.tonight_local() utility which returns a string, eg: '20220202'
+            tonight = datetime.strptime(utils.tonight_local(), '%Y%m%d')
+            
+            trig_year = tonight.year
+            trig_month = tonight.month
+            trig_day = tonight.day
+            
+            trig_datetime_today = datetime(year = trig_year, 
+                                           month = trig_month, 
+                                           day = trig_day,
                                            hour = trig_hour,
                                            minute = trig_minute,
                                            second = trig_second,
@@ -941,7 +949,7 @@ class RoboManager(QtCore.QObject):
                 trig_datetime_today += timedelta(days = 1)
             """
             
-            # if the trigger time is in the "next morning" then we need to shover the day forward by one
+            # if the trigger time is in the "next morning" then we need to shove the day forward by one
             if nextmorning:
                 trig_datetime_today += timedelta(days = 1)
             
