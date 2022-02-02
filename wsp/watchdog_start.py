@@ -86,17 +86,17 @@ while True:
         watchdogStateMonitor.update_state()
         
         # check if there are any bad timestamps
-        watchdogStateMonitor.get_bad_timestamps(dt_max = 600.0)
+        # make a carve out for the ccd since it doesn't update during exposures
+        deadtime_overrides = dict({'ccd_last_update_timestamp' : 600.0})
+        watchdogStateMonitor.get_bad_timestamps(dt_max = 60.0, overrides = deadtime_overrides)
         
         # if there are any timestamps in the state dict greater than dt_max then prepare to restart
         num_bad_timestamps = len(watchdogStateMonitor.bad_timestamps)
+        
         if num_bad_timestamps > 0:
             
             if False:
                 pass
-            # make a carveout for the CCD daemon since it doesn't update during exposures
-            #if watchdogStateMonitor.bad_timestamps.get('ccd_last_update_timestamp', 0.0) < 600.0:
-            #    pass
             
             else:
                 #print(f'dt = {dt:0.2f}, RELAUNCHING WRITER')

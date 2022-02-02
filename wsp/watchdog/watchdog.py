@@ -138,12 +138,18 @@ class StateMonitor(object):
                 if self.verbose:   
                     print(f'{field:40}: {dt}')
                 
-    def get_bad_timestamps(self, dt_max):
+    def get_bad_timestamps(self, dt_max, overrides = dict()):
         # start with no bad timestamps
         self.bad_timestamps = dict()
         # now see if any fields have dt >= dt_max
         for field in self.timestamp_dts:
-            if self.timestamp_dts[field] >= dt_max:
+            
+            # make a carveout for any field in the overrides dictionary
+            # overrides needs to be something like {'ccd_last_update_timestamp' : 600.0}
+            # try to get the dt for the field from the override dictionary
+            dt_max_field = overrides.get(field, dt_max)
+            
+            if self.timestamp_dts[field] >= dt_max_field:
                 self.bad_timestamps.update({field : self.timestamp_dts[field]})
         
             
