@@ -44,6 +44,7 @@ except:
 
 from utils import utils
 from utils import logging_setup
+from watchdog import watchdog
 
 class StateGetter(QtCore.QObject):
     
@@ -123,6 +124,12 @@ class StateGetter(QtCore.QObject):
         
 if __name__ == '__main__':
     
+    dirfilePath = os.getenv("HOME") + '/data/dm.lnk'
+    program_to_monitor = 'wsp.py'
+    #df = getdata.dirfile(dirfilePath)
+    monitor = watchdog.StateMonitor(verbose = True)
+    monitor.setupDirfileMonitor(dirfilePath)
+    
     # set the wsp path as the base directory
     base_directory = wsp_path
 
@@ -137,7 +144,7 @@ if __name__ == '__main__':
         logger = logging_setup.setup_logger(base_directory, config)    
     else:
         logger = None
-    monitor = StateGetter(base_directory = base_directory, config = config, logger = logger)
+    #monitor = StateGetter(base_directory = base_directory, config = config, logger = logger)
     monitor.update_state()
     
     

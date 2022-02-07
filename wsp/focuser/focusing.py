@@ -9,7 +9,7 @@ import os
 import glob
 from astropy.io import fits
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 #import numpy as np
 import pandas as pd
 #from scipy.optimize import curve_fit
@@ -302,8 +302,8 @@ if __name__ == '__main__':
     # test area
     
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
-    
-    loop = Focus_loop_v2(config, nom_focus = 10000, total_throw = 300, nsteps = 5, pixscale = 0.466)
+    pixscale = 0.466
+    loop = Focus_loop_v2(config, nom_focus = 10000, total_throw = 300, nsteps = 5, pixscale = pixscale)
 
     
     image_log_path = config['focus_loop_param']['image_log_path']
@@ -350,6 +350,8 @@ if __name__ == '__main__':
               '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
               '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
     
+    
+    
      # save the data to a csv for later access
     try:
         data = {'images': images, 'focuser_pos' : list(focuser_pos)}
@@ -385,30 +387,35 @@ if __name__ == '__main__':
     except Exception as e:
         msg = f'could not run focus loop due due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}'
         print(msg)
-        
-    """
-    # now print the best fit focus to the slack
-    try:        
-        focus_plot = '/home/winter/data/plots_focuser/latest_focusloop.jpg'
-        
-        auth_config_file  = wsp_path + '/credentials/authentication.yaml'
-        user_config_file = wsp_path + '/credentials/alert_list.yaml'
-        alert_config_file = wsp_path + '/config/alert_config.yaml'
-
-        auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
-        user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
-        alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
-
-        alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
     
-        focus_plot = '/home/winter/data/plots_focuser/latest_focusloop.jpg'
-        alertHandler.slack_postImage(focus_plot)
-        
-        
-        
     
-    except Exception as e:
-        msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
-        print(msg)
+    # Try something else
     
-    """
+    HFD_mean = []
+    HFD_med = []
+    HFD_std = []
+    HFD_stderr_mean = []
+    HFD_stderr_med = []
+    
+    
+    for image in images:
+        try:
+            #mean, median, std, stderr_mean, stderr_med
+            mean, median, std, stderr_mean, stderr_med = genstats.get_img_fluxdiameter(image, 0.466, exclude = False)
+            HFD_mean.append(mean*pixscale)
+            HFD_med.append(median*pixscale)
+            HFD_std.append(std*pixscale)
+            HFD_stderr_mean.append(stderr_mean*pixscale)
+            HFD_stderr_med.append(stderr_med*pixscale)
+        except Exception as e:
+            print(f'could not analyze image {image}: {e}')
+    plt.figure()
+    #plt.plot(focuser_pos, HFD_meds, 'ks')
+    plt.errorbar(focuser_pos, HFD_med, yerr = HFD_stderr_med, capsize = 5, fmt = 'ks', label = 'Median')
+    plt.errorbar(focuser_pos, HFD_mean, yerr = HFD_stderr_mean, capsize = 5, fmt = 'ro', label = 'Mean')
+    plt.legend()
+    plt.xlabel('Focuser Position [micron]')
+    plt.ylabel('Half-Focus Diameter [arcseconds]')
+    
+    # F
+    
