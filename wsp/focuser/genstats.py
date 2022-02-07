@@ -41,7 +41,22 @@ def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='focuser/weight.
 			for row in t:
 				f.write('CIRCLE(%s,%s,%s) # text={%.2f,%.2f}\n'%(row['X_IMAGE'],row['Y_IMAGE'],row['FWHM_IMAGE']/2,row['FWHM_IMAGE'],row['SNR_WIN']))
 
+def get_img_fluxdiameter(imgname,pixscale=0.47,weightimg='focuser/weight.fits',xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
+	if not os.path.exists(imgname+'.cat'):
+		run_sextractor(imgname,pixscale,weightimg=weightimg)
 
+	img_cat = aw.get_table_from_ldac(imgname+'.cat')
+	print('Found %s sources'%(len(img_cat)))
+
+	center_mask = (img_cat['X_IMAGE']<xuplim) & (img_cat['X_IMAGE']>xlolim) & (img_cat['Y_IMAGE']<yuplim) & (img_cat['Y_IMAGE']>ylolim)
+	if exclude :
+		center_mask = np.invert(center_mask)
+	n_sources = len(img_cat[center_mask])
+	print('Using %s sources'%(n_sources))
+	mean, median, std = sigma_clipped_stats(2*img_cat[center_mask]['FLUX_RADIUS'])
+	stderr_mean = std/(n_sources)**0.5
+	stderr_med = (np.pi/2)**0.5 * stderr_mean
+	return mean, median, std, stderr_mean, stderr_med
 
 
 def get_img_fwhm(imgname,pixscale=0.47,weightimg='focuser/weight.fits',xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
