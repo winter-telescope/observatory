@@ -1803,7 +1803,7 @@ class RoboOperator(QtCore.QObject):
                 system = 'ccd'
                 #self.do(f'robo_do_exposure -foc')
                 
-                qcomment = f"Focus Loop Image {i+1}/{nsteps} Focus Position = {dist} um"
+                qcomment = f"Focus Loop Image {i+1}/{nsteps} Focus Position = {dist:.0f} um"
                 #qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
                 # now trigger the actual observation. this also starts the mount tracking
                 self.announce(f'Executing {qcomment}')

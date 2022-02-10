@@ -124,7 +124,7 @@ robotic_manager_triggers:
                     cond: '>'
                 cond2:
                     type: 'time'
-                    val: '14:00:0.0'
+                    val: '13:00:0.0'
                     cond: '>'        
             sundir: 0
             repeat_on_restart: True
@@ -213,10 +213,6 @@ robotic_manager_triggers:
                     type: 'sun'
                     val:  -14.0
                     cond: '>'
-                cond2:
-                    type: 'time'
-                    val: '8:0:0.0'
-                    cond: '<'
             nextmorning: True
             sundir: 1
             repeat_on_restart: False
@@ -259,7 +255,7 @@ robotic_manager_triggers:
             conds:
                 cond1:
                     type: 'time'
-                    val: '8:01:0.0'
+                    val: '7:59:30.0'
                     cond: '>'
                 cond2:
                     type: 'sun'
@@ -480,9 +476,12 @@ ephem:
 focus_loop_param:
     total_throw: 400
     nsteps: 5
+    #total_throw: 1000
+    #nsteps: 50
     micron_interval: 100
     target_type: altaz
-    target: '75 270'
+    #target: '75 270'
+    target: '85 200'
     focus_error_max: 100
     focus_log_path: 'data/df_focuser/focus_log.json'
     focus_graceperiod_hours: 6

@@ -386,15 +386,20 @@ def readcsv(filename,skiprows=0):
         return csv
 
 
-def tonight_local():
+def tonight_local(timestamp = 'now', tz = 'America/Los_Angeles'):
     # a similar version of the minerva function by NPL
     # NPL: 4/27/21 changing the conventions. 
     # Want the night of a given day to be defined from 8a that day, to 7:59 the next day LOCAL TIME so it's easy to keep track of.
     # All the images will be stored with UTC dates, so this is just for labeling logs and telemetry data. THis way it's in a sensible format
     
-    # Get the current LOCAL time in California
-    calitz = pytz.timezone('America/Los_Angeles')
-    now_cali = datetime.now(calitz)
+    tz = pytz.timezone(tz)
+
+    if timestamp == 'now':
+        # Get the current LOCAL time in California
+        now_cali = datetime.now(tz)
+    
+    else:
+        now_cali = tz.localize(datetime.fromtimestamp(timestamp))
     
     # if the local time is between midnight and 8am (ie, >=0 and <8) then subtract off a day
     if now_cali.hour >= 0 and now_cali.hour < 8:
