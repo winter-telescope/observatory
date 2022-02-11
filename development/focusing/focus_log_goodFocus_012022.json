@@ -1,0 +1,18 @@
+{
+  "r": {
+    "name": "SDSS r' (Chroma)",
+    "cam": "summer",
+    "nominal_focus": 10150,
+    "last_focus": 9960.12885336099,
+    "last_focus_timestamp_utc": 1642659161.874531,
+    "last_focus_time_local": "2022-01-19 22:12:41.874531"
+  },
+  "u": {
+    "name": "SDSS u' (Chroma)",
+    "cam": "summer",
+    "nominal_focus": 9900,
+    "last_focus": 9961.573427672618,
+    "last_focus_timestamp_utc": 1642659521.593801,
+    "last_focus_time_local": "2022-01-19 22:18:41.593801"
+  }
+}

@@ -292,7 +292,7 @@ if __name__ == '__main__':
     HFD_out = np.column_stack((pos, HFD_med, HFD_mean, HFD_stderr_mean, HFD_stderr_med, FWHM_mean, FWHM_med, FWHM_std))
     
 
-    np.savetxt(os.path.join(os.getenv("HOME"), 'data', 'df_focuser', outputfilename),
+    np.savetxt(os.path.join(os.path.dirname(wsp_path),'development','focusing', outputfilename),
                X = HFD_out,
                delimiter = '\t',
                header = 'pos\tHFD_med\tHFD_mean\tHFD_stderr_mean\tHFD_stderr_med\tFWHM_mean\tFWHM_med\tFWHM_std')
