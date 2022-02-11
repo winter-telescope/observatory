@@ -111,58 +111,8 @@ if __name__ == '__main__':
      ]
     """
     
+    
     """
-    [1] Focuser Pos: 9470.0, /home/winter/data/images/20220209/SUMMER_20220209_222247_Camera0.fits
-     [2] Focuser Pos: 9490.408163265307, /home/winter/data/images/20220209/SUMMER_20220209_222326_Camera0.fits
-     [3] Focuser Pos: 9510.816326530612, /home/winter/data/images/20220209/SUMMER_20220209_222401_Camera0.fits
-     [4] Focuser Pos: 9531.224489795919, /home/winter/data/images/20220209/SUMMER_20220209_222436_Camera0.fits
-     [5] Focuser Pos: 9551.632653061224, /home/winter/data/images/20220209/SUMMER_20220209_222516_Camera0.fits
-     [6] Focuser Pos: 9572.040816326531, /home/winter/data/images/20220209/SUMMER_20220209_222556_Camera0.fits
-     [7] Focuser Pos: 9592.448979591836, /home/winter/data/images/20220209/SUMMER_20220209_222636_Camera0.fits
-     [8] Focuser Pos: 9612.857142857143, /home/winter/data/images/20220209/SUMMER_20220209_222716_Camera0.fits
-     [9] Focuser Pos: 9633.265306122448, /home/winter/data/images/20220209/SUMMER_20220209_222756_Camera0.fits
-     [10] Focuser Pos: 9653.673469387755, /home/winter/data/images/20220209/SUMMER_20220209_222836_Camera0.fits
-     [11] Focuser Pos: 9674.081632653062, /home/winter/data/images/20220209/SUMMER_20220209_222916_Camera0.fits
-     [12] Focuser Pos: 9694.489795918367, /home/winter/data/images/20220209/SUMMER_20220209_222956_Camera0.fits
-     [13] Focuser Pos: 9714.897959183674, /home/winter/data/images/20220209/SUMMER_20220209_223036_Camera0.fits
-     [14] Focuser Pos: 9735.30612244898, /home/winter/data/images/20220209/SUMMER_20220209_223119_Camera0.fits
-     [15] Focuser Pos: 9755.714285714286, /home/winter/data/images/20220209/SUMMER_20220209_223156_Camera0.fits
-     [16] Focuser Pos: 9776.122448979591, /home/winter/data/images/20220209/SUMMER_20220209_223236_Camera0.fits
-     [17] Focuser Pos: 9796.530612244898, /home/winter/data/images/20220209/SUMMER_20220209_223316_Camera0.fits
-     [18] Focuser Pos: 9816.938775510203, /home/winter/data/images/20220209/SUMMER_20220209_223356_Camera0.fits
-     [19] Focuser Pos: 9837.34693877551, /home/winter/data/images/20220209/SUMMER_20220209_223436_Camera0.fits
-     [20] Focuser Pos: 9857.755102040815, /home/winter/data/images/20220209/SUMMER_20220209_223516_Camera0.fits
-     [21] Focuser Pos: 9878.163265306122, /home/winter/data/images/20220209/SUMMER_20220209_223556_Camera0.fits
-     [22] Focuser Pos: 9898.57142857143, /home/winter/data/images/20220209/SUMMER_20220209_223636_Camera0.fits
-     [23] Focuser Pos: 9918.979591836734, /home/winter/data/images/20220209/SUMMER_20220209_223716_Camera0.fits
-     [24] Focuser Pos: 9939.387755102041, /home/winter/data/images/20220209/SUMMER_20220209_223756_Camera0.fits
-     [25] Focuser Pos: 9959.795918367347, /home/winter/data/images/20220209/SUMMER_20220209_223836_Camera0.fits
-     [26] Focuser Pos: 9980.204081632653, /home/winter/data/images/20220209/SUMMER_20220209_223916_Camera0.fits
-     [27] Focuser Pos: 10000.612244897959, /home/winter/data/images/20220209/SUMMER_20220209_223956_Camera0.fits
-     [28] Focuser Pos: 10021.020408163266, /home/winter/data/images/20220209/SUMMER_20220209_224036_Camera0.fits
-     [29] Focuser Pos: 10041.42857142857, /home/winter/data/images/20220209/SUMMER_20220209_224116_Camera0.fits
-     [30] Focuser Pos: 10061.836734693878, /home/winter/data/images/20220209/SUMMER_20220209_224156_Camera0.fits
-     [31] Focuser Pos: 10082.244897959183, /home/winter/data/images/20220209/SUMMER_20220209_224229_Camera0.fits
-     [32] Focuser Pos: 10102.65306122449, /home/winter/data/images/20220209/SUMMER_20220209_224304_Camera0.fits
-     [33] Focuser Pos: 10123.061224489797, /home/winter/data/images/20220209/SUMMER_20220209_224339_Camera0.fits
-     [34] Focuser Pos: 10143.469387755102, /home/winter/data/images/20220209/SUMMER_20220209_224416_Camera0.fits
-     [35] Focuser Pos: 10163.877551020409, /home/winter/data/images/20220209/SUMMER_20220209_224456_Camera0.fits
-     [36] Focuser Pos: 10184.285714285714, /home/winter/data/images/20220209/SUMMER_20220209_224536_Camera0.fits
-     [37] Focuser Pos: 10204.69387755102, /home/winter/data/images/20220209/SUMMER_20220209_224616_Camera0.fits
-     [38] Focuser Pos: 10225.102040816326, /home/winter/data/images/20220209/SUMMER_20220209_224656_Camera0.fits
-     [39] Focuser Pos: 10245.510204081633, /home/winter/data/images/20220209/SUMMER_20220209_224736_Camera0.fits
-     [40] Focuser Pos: 10265.918367346938, /home/winter/data/images/20220209/SUMMER_20220209_224816_Camera0.fits
-     [41] Focuser Pos: 10286.326530612245, /home/winter/data/images/20220209/SUMMER_20220209_224856_Camera0.fits
-     [42] Focuser Pos: 10306.734693877552, /home/winter/data/images/20220209/SUMMER_20220209_224937_Camera0.fits
-     [43] Focuser Pos: 10327.142857142857, /home/winter/data/images/20220209/SUMMER_20220209_225019_Camera0.fits
-     [44] Focuser Pos: 10347.551020408164, /home/winter/data/images/20220209/SUMMER_20220209_225057_Camera0.fits
-     [45] Focuser Pos: 10367.959183673469, /home/winter/data/images/20220209/SUMMER_20220209_225138_Camera0.fits
-     [46] Focuser Pos: 10388.367346938776, /home/winter/data/images/20220209/SUMMER_20220209_225216_Camera0.fits
-     [47] Focuser Pos: 10408.775510204081, /home/winter/data/images/20220209/SUMMER_20220209_225256_Camera0.fits
-     [48] Focuser Pos: 10429.183673469388, /home/winter/data/images/20220209/SUMMER_20220209_225336_Camera0.fits
-     [49] Focuser Pos: 10449.591836734693, /home/winter/data/images/20220209/SUMMER_20220209_225416_Camera0.fits
-     [50] Focuser Pos: 10470.0, /home/winter/data/images/20220209/SUMMER_20220209_225456_Camera0.fits
-     """
     focuser_pos = [9470.0,
      9490.408163265307,
      9510.816326530612, 
@@ -265,7 +215,24 @@ if __name__ == '__main__':
      '/home/winter/data/images/20220209/SUMMER_20220209_225336_Camera0.fits',
      '/home/winter/data/images/20220209/SUMMER_20220209_225416_Camera0.fits',
      '/home/winter/data/images/20220209/SUMMER_20220209_225456_Camera0.fits']
-     
+    outputfilename = 'HFD_Focus_Test_Data.txt'
+
+    """
+    
+    # Focus loop in r' on night of 2022-02-11
+    focuser_pos = [9786.677307283413, 
+     9886.677307283413, 
+     9986.677307283413, 
+     10086.677307283413, 
+     10186.677307283413]
+
+    images = ['/home/winter/data/images/20220210/SUMMER_20220211_013122_Camera0.fits',
+    '/home/winter/data/images/20220210/SUMMER_20220211_013200_Camera0.fits',
+    '/home/winter/data/images/20220210/SUMMER_20220211_013240_Camera0.fits',
+    '/home/winter/data/images/20220210/SUMMER_20220211_013320_Camera0.fits',
+    '/home/winter/data/images/20220210/SUMMER_20220211_013400_Camera0.fits']
+    outputfilename = 'SampleFocus_r_20220211.txt'
+    
     
     # Try something else
     
@@ -323,7 +290,9 @@ if __name__ == '__main__':
     
     # save for access later
     HFD_out = np.column_stack((pos, HFD_med, HFD_mean, HFD_stderr_mean, HFD_stderr_med, FWHM_mean, FWHM_med, FWHM_std))
-    np.savetxt(os.path.join(os.getenv("HOME"), 'data', 'df_focuser', 'HFD_Focus_Test_Data.txt'),
+    
+
+    np.savetxt(os.path.join(os.getenv("HOME"), 'data', 'df_focuser', outputfilename),
                X = HFD_out,
                delimiter = '\t',
                header = 'pos\tHFD_med\tHFD_mean\tHFD_stderr_mean\tHFD_stderr_med\tFWHM_mean\tFWHM_med\tFWHM_std')
