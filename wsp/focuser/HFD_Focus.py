@@ -218,8 +218,8 @@ if __name__ == '__main__':
     outputfilename = 'HFD_Focus_Test_Data.txt'
 
     """
-    
-    # Focus loop in r' on night of 2022-02-11
+    """
+    # Focus loop in r' on night of 2022-02-11 around 1:32
     focuser_pos = [9786.677307283413, 
      9886.677307283413, 
      9986.677307283413, 
@@ -232,8 +232,40 @@ if __name__ == '__main__':
     '/home/winter/data/images/20220210/SUMMER_20220211_013320_Camera0.fits',
     '/home/winter/data/images/20220210/SUMMER_20220211_013400_Camera0.fits']
     outputfilename = 'SampleFocus_r_20220211.txt'
+    """
+    """
+    # Data from 2 Focus loop attempts in r' on night of 2022-02-11 around 19:10  
+    focuser_pos = [9700,
+                   9800,
+                   9900,
+                   10000,
+                   10100,
+                   10023, 
+                   10123, 
+                   10223, 
+                   10323, 
+                   10423]
+
+    images = ['/home/winter/data/images/20220210/SUMMER_20220210_191456_Camera0.fits',
+              '/home/winter/data/images/20220210/SUMMER_20220210_191536_Camera0.fits',
+              '/home/winter/data/images/20220210/SUMMER_20220210_191614_Camera0.fits',
+              '/home/winter/data/images/20220210/SUMMER_20220210_191657_Camera0.fits',
+              '/home/winter/data/images/20220210/SUMMER_20220210_191735_Camera0.fits'
+        '/home/winter/data/images/20220210/SUMMER_20220210_190703_Camera0.fits',
+        '/home/winter/data/images/20220210/SUMMER_20220210_190742_Camera0.fits',
+        '/home/winter/data/images/20220210/SUMMER_20220210_190822_Camera0.fits',
+        '/home/winter/data/images/20220210/SUMMER_20220210_190855_Camera0.fits',
+        '/home/winter/data/images/20220210/SUMMER_20220210_190929_Camera0.fits']
+    outputfilename = 'SampleFocus_r_20220211_2.txt'
+    """
     
-    
+    focuser_pos = [9761.414819232772, 9861.414819232772, 9961.414819232772, 10061.414819232772, 10161.414819232772]
+    images = ['/home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_221444_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
+              '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
+    outputfilename = 'SampleFocus_r_20220119.txt'
     # Try something else
     
     HFD_mean = []
