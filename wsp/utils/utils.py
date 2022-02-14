@@ -23,7 +23,6 @@ import numpy as np
 from datetime import datetime,timedelta
 import time
 import os
-import sys
 import pytz
 import logging
 import yaml
@@ -35,13 +34,17 @@ try:
 except:
     from astropy.io import fits as pyfits
 import re
-import subprocess, psutil, os, signal
+import subprocess
 import matplotlib.pyplot as plt
 from astropy.visualization import astropy_mpl_style
 plt.style.use(astropy_mpl_style)
 
-from astropy.utils.data import get_pkg_data_filename
+#from astropy.utils.data import get_pkg_data_filename
 from astropy.io import fits
+import astropy.visualization
+import matplotlib.pyplot as plt
+import  astropy.time
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 
@@ -333,6 +336,7 @@ def connect_to_server(config,servername,logger = None, verbose = False):
 
     return sock
 '''
+"""
 def plotFITS(filename):
     plt.close('all')
     image_file = filename
@@ -346,8 +350,172 @@ def plotFITS(filename):
     imgplot = plt.imshow(image_data,cmap = 'gray')
     plt.show(block = False)
     plt.pause(0.1)
-    
+"""
 
+def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None, ymax = None, hist = True, min_bin_counts = 1, savefigpath = None):
+    plt.close('all')
+    
+    
+    
+    
+    
+    
+    image_file = filename
+    #plt.ion()
+    hdu_list = fits.open(image_file,ignore_missing_end = True)
+    if printinfo:
+        hdu_list.info()
+    
+    image_data = hdu_list[0].data
+    
+    if xmin is None:
+        xmin = 0
+    if ymin is None:
+        ymin = 0
+    if xmax is None:
+        xmax = np.shape(image_data)[0]
+    if ymax is None:
+        ymax = np.shape(image_data)[1]
+        
+    
+    header = hdu_list[0].header
+    image = image_data[xmin:xmax, ymin:ymax]
+    
+    filename = header.get("FILENAME", filename.split('/')[-1])
+    median_counts = np.median(image)
+    stddev = np.std(image)
+    
+    if "OBSTYPE" in header.keys():
+        """
+        if header.get("OBSTYPE", "?") in ["BIAS", "DARK", "FLAT"]:
+            hist = True
+        """
+            #hist = False
+            #print(f'hist = {hist}')
+    
+    if hist:
+        fig, axarr = plt.subplots(2,1, gridspec_kw = {'height_ratios' : [3,1]}, figsize = (6,8))
+        ax0 = axarr[0]
+    else:
+        fig, axarr = plt.subplots(1,1, figsize = (8,8))
+        ax0 = axarr
+    
+    if "AEXPTIME" in header.keys():
+        exptime_str = f'{header["AEXPTIME"]:0.1f}'
+    else:
+        exptime_str = '?'
+    
+    
+    
+    title = f'Last Image Taken: {filename}\nMedian Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s'
+    title+= f'\nFilter: {header.get("FILTERID","?")}, ObsType = {header.get("OBSTYPE", "?")}'
+    title+=f'\nComment: {header.get("QCOMMENT", "?")}'
+    if "UTC" in header:
+        tstr = header['UTCISO']
+        
+        
+        image_write_time = datetime.fromisoformat(tstr)
+        now = datetime.utcnow()
+        
+        #td = tend - tstart
+        td = now-image_write_time
+        
+        days = td.days
+        hours, remainder = divmod(td.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        # If you want to take into account fractions of a second
+        seconds += td.microseconds / 1e6
+        
+        #print(f'elapsed time = {days} days, {hours} hours, {minutes} minutes, {seconds} seconds')
+        msg = f'{hours}:{minutes}:{seconds:0.2f}'
+        msg =  f'{seconds:0.1f} sec'
+        if minutes>0.0:
+            msg = f'{minutes} min ' + msg
+        if hours>0.0:
+            msg = f'{hours} hours ' + msg
+        if days>0.0:
+            msg = f'{days} days ' + msg
+        msg = f'Image taken {msg} ago'
+        title = title + f'\n{msg}'
+    ax0.set_title(title)#', stddev = {stddev}')
+    
+    
+    #if header.get("OBSTYPE", "?") in ['BIAS', 'DARK']:
+    #    hist = True
+    
+    
+    #norm = astropy.visualization.simple_norm(image, 'sqrt')
+    
+    norm = astropy.visualization.ImageNormalize(image, 
+                                             interval = astropy.visualization.ZScaleInterval(),
+                                             stretch = astropy.visualization.SqrtStretch())
+    
+    
+    im = ax0.imshow(image, cmap = 'gray', origin = 'lower', norm = norm)
+    ax0.set_xlabel('X [pixels]')
+    ax0.set_ylabel('Y [pixels]')
+    
+    # set up the colorbar. this is a pain in this format...
+    # source: https://stackoverflow.com/questions/32462881/add-colorbar-to-existing-axis
+    divider = make_axes_locatable(ax0)
+    cax = divider.append_axes('right', size = '5%', pad = 0.05)
+    fig.colorbar(im, cax = cax, orientation = 'vertical')
+    
+    
+    
+    # PLOT THE HISTOGRAM
+    if hist:
+        # Plot a histogram, do this iteratively to figure out good limits and binning
+        # first flatten the data to 1d
+        vec = np.ravel(image)
+        
+        # now make an initial histogram. use the full range
+        lowerlim0 = 0
+        upperlim0 = 2**16
+        bins0 = np.linspace(lowerlim0, upperlim0, 1000)
+        #n, bins, patches = axarr[1].hist(vec, bins = bins0)
+        
+        n0, bins0 = np.histogram(vec, bins = bins0)
+        
+        
+        bin_left_edges0 = bins0[0:-1]
+        
+        # now remake the histogram to only make bins that have some minimum number of counts
+        
+        threshold = min_bin_counts
+        full_bins = bin_left_edges0[n0>threshold]
+        
+        lowerlim = np.min(full_bins)
+        upperlim = np.max(full_bins)
+        
+        # use arange for the bins since we only expect integer counts
+        
+        bins = np.arange(lowerlim, upperlim, 1)
+        n, bins, patches = axarr[1].hist(vec, bins = bins, color = 'black')
+        
+        axarr[1].set_xlabel('Counts')
+        axarr[1].set_ylabel('Nbins')
+    
+        axarr[1].set_yscale('log')
+    
+    if not (savefigpath is None):
+        #plt.savefig(os.path.join(os.getenv("HOME"),'data','last_image.jpg'))
+        plt.savefig(savefigpath)
+    #plt.show()#block = False)
+    #plt.pause(0.1)
+    
+    
+    return header, image_data
+
+def getFromFITSHeader(filename, keyword):
+    image_file = filename
+    #plt.ion()
+    hdu_list = fits.open(image_file,ignore_missing_end = True)
+    hdu_list.info()
+    
+    header = hdu_list[0].header
+    value = header[keyword]
+    return value
 
 def getdatestr(date = 'today'):
     try:

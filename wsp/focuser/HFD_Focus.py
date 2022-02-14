@@ -31,7 +31,7 @@ print(f'focusing: wsp_path = {wsp_path}')
 from alerts import alert_handler
 from focuser import plot_curve
 from focuser import genstats
-
+from utils import utils
 
 
 
@@ -258,7 +258,7 @@ if __name__ == '__main__':
         '/home/winter/data/images/20220210/SUMMER_20220210_190929_Camera0.fits']
     outputfilename = 'SampleFocus_r_20220211_2.txt'
     """
-    
+    """
     focuser_pos = [9761.414819232772, 9861.414819232772, 9961.414819232772, 10061.414819232772, 10161.414819232772]
     images = ['/home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits',
               '/home/winter/data/images/20220119/SUMMER_20220119_221444_Camera0.fits',
@@ -266,6 +266,37 @@ if __name__ == '__main__':
               '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
               '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
     outputfilename = 'SampleFocus_r_20220119.txt'
+    
+    """
+    
+    starttime = '20220211_190647'
+    endtime = '20220211_193927'
+    
+    #starttime = '20220212_032207'
+    #endtime = '20220212_035447'
+
+    #starttime = '20220212_015358'
+    #endtime = '20220212_022607'
+
+    
+    outputfilename = f'SampleFocus_r_{starttime}.txt'
+
+    
+    datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S') 
+    datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
+    impath = os.path.join(os.getenv("HOME"),'data','images','20220211')
+    filelist = glob.glob(os.path.join(impath, '*.fits'))
+    select_files = []
+    images = []
+    focuser_pos = []
+    for file in filelist:
+        timestr = file.split('SUMMER_')[1].split('_Camera0.fits')[0]
+        datetime_file = datetime.strptime(timestr, '%Y%m%d_%H%M%S')
+        if (datetime_file <= datetime_end) & (datetime_file >= datetime_start):
+            images.append(file)
+            focuser_pos.append(utils.getFromFITSHeader(file, 'FOCPOS'))
+    
+    #%
     # Try something else
     
     HFD_mean = []
