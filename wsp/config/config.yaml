@@ -523,7 +523,7 @@ filters:
         u:
             name: "SDSS u' (Chroma)"
             nominal_focus: 9961
-            active: True
+            active: False
             focus_exptime: 30
             
         other2:
