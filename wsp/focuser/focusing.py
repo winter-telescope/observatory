@@ -19,7 +19,7 @@ import sys
 from datetime import datetime
 import traceback
 import pytz
-
+from scipy.optimize import curve_fit
 
 # add the wsp directory to the PATH
 wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
@@ -35,6 +35,133 @@ from focuser import genstats
 
 
 
+class Focus_loop_v3:
+    """
+    # this is the 2-step version of the focus loop which handles the V-curve focus loop
+    
+    it is called like this in roboOperator.do_focusLoop:
+        
+        x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
+    
+    """
+    def __init__(self, config, nom_focus, total_throw, nsteps, pixscale):
+        
+        self.config = config
+        self.nom_focus = nom_focus
+        self.total_throw = total_throw
+        self.nsteps = nsteps
+        self.pixscale = pixscale
+        self.filter_range_nom = np.linspace(nom_focus - total_throw/2, nom_focus + total_throw/2, nsteps)
+        
+        self.fitresults = dict()
+    
+    def analyzeData(self, filterpos_list, imglist, do_parabola = True):
+        """
+        Takes in list of filter position and image paths
+        outputs the best focus position and an estimate of the std error of that position
+        """
+        # first analyze the images
+        self.rate_images(imglist)
+        
+        # now fit the v-curve to the data
+        cond = (self.HFD_med > 2)
+        self.pos_vcurve = self.pos[cond]
+        self.HFD_med_vcurve = self.HFD_med[cond]
+        self.HFD_med_stderr_vcurve = self.HFD_med_stderr[cond]
+        
+        ml0 = -0.01
+        xc0 = self.nom_focus
+        delta0 = 286
+        y00 = max(HFD_med_vcurve)#HFD_med[0]
+        
+        popt, pcov = plot_curve.Fit_FocV(self.pos_vcurve, self.HFD_med_vcurve, self.HFD_med_stderr_vcurve, ml = ml0, xc = xc0, delta = delta0, y0 = y00)
+        
+        self.mlfit = popt[0]
+        self.xcfit_vcurve = popt[1]
+        self.deltafit = popt[2]
+        self.y0fit = popt[3]
+        
+        perr = np.sqrt(np.diag(pcov))
+        self.xcfit_vcurve_err = perr[1]
+        
+        # make a curve to save for later plotting and get the start and stop of the v (xa, xb)
+        self.vcurve_fit_x = np.linspace(min(pos_vcurve), max(pos_vcurve), 1000)
+        self.vcurve_fit_y, self.xafit, self.xbfit, xcfit = plot_curve.FocV(self.vcurve_fit_x, self.mlfit, self.xcvit_vcurve, self.deltafit, self.y0fit, return_x = True)
+        
+        # update the fit results for the v-curve fit
+        self.fitresults.update({'vcurve_fit':
+                                {'param':
+                                     {'ml' : self.mlfit,
+                                      'xc' : self.xcfit_vcurve,
+                                      'xc_err' : self.xcfit_vcurve_err,
+                                      'y0' : self.y0fit,
+                                      'xa' : self.xafit,
+                                      'xb' : self.xbfit},
+                                 'fit_data':
+                                     {'x' : self.vcurve_fit_x,
+                                      'y' : self.vcurve_fit_y},
+                                 'raw_data':
+                                     {'x' : self.pos_vcurve,
+                                      'y' : self.HFD_med_vcurve,
+                                      'yerr': self.HFD_med_stderr_vcurve}
+                                     }
+                                    })
+        
+        # now try to fit a parabola to the data within the linear region based on the v-curve results
+        
+        
+    
+    def rate_images(self, imglist):
+        focuser_pos_good = []
+        images_good = []
+        HFD_mean = []
+        HFD_med = []
+        HFD_std = []
+        HFD_stderr_mean = []
+        HFD_stderr_med = []
+        FWHM_mean = []
+        FWHM_med = []
+        FWHM_std = []
+        for i in range(len(imglist)):#image in images:
+            image = images[i]
+            focus = focuser_pos[i]
+            try:
+                #mean, median, std, stderr_mean, stderr_med
+                mean, median, std, stderr_mean, stderr_med = genstats.get_img_fluxdiameter(image, pixscale = self.pixscale, 
+                                                                                           exclude = False)
+                mean_fwhm, med_fwhm, std_fwhm = genstats.get_img_fwhm(image, pixscale = self.pixscale, 
+                                                                                           exclude = False)
+                focuser_pos_good.append(focus)
+                images_good.append(image)
+                
+                HFD_mean.append(mean*pixscale)
+                HFD_med.append(median*pixscale)
+                HFD_std.append(std*pixscale)
+                HFD_stderr_mean.append(stderr_mean*self.pixscale)
+                HFD_stderr_med.append(stderr_med*self.pixscale)
+                
+                FWHM_mean.append(mean_fwhm*self.pixscale)
+                FWHM_med.append(med_fwhm*self.pixscale)
+                FWHM_std.append(std_fwhm*self.pixscale)
+                
+            except Exception as e:
+                print(f'could not analyze image {image}: {e}')
+                
+        self.pos = np.array(focuser_pos_good)
+        self.images = np.array(images_good)
+        self.HFD_mean = np.array(HFD_mean)
+        self.HFD_med = np.array(HFD_med)
+        self.HFD_std = np.array(HFD_std)
+        self.HFD_stderr_mean = np.array(HFD_stderr_mean)
+        self.HFD_stderr_med = np.array(HFD_stderr_med)
+        self.FWHM_mean = np.array(self.FWHM_mean)
+        self.FWHM_med = np.array(self.FWHM_med)
+        self.FWHM_std = np.array(self.FWHM_std)
+        
+    def plot_focus_curve(self, plotting, timestamp_utc = None):
+        
+        pass
+        
 class Focus_loop_v2:
     
     def __init__(self, config, nom_focus, total_throw, nsteps, pixscale): 
@@ -96,45 +223,6 @@ class Focus_loop_v2:
     
     def nantest(self, value):
         return np.isnan([value])[0]
-        
-    """
-    def return_Range(self):
-        return self.filter_range
-    
-    def return_Path(self):
-        real_path = os.readlink(self.path)
-        return real_path   
-
-    def get_Recent_File(self):
-        list_of_files = glob.glob(self.path)
-        return max(list_of_files, key=os.path.getctime)
-    
-    def fits_64_to_16(self, images, filter_range):
-        images_16 = []
-        try:
-            for index in range(0, len(images)):
-                sf_file = fits.open(images[index])
-                data = sf_file[0].data
-                head = sf_file[0].header
-                
-                try:
-                    filename = '/home/winter/data/images/focusing/' + head['FILENAME']
-                    
-                except Exception as e:
-                    msg = f'Error in header format: {e}, saving with temporary filename'
-                    print(msg)
-                    filename = '/home/winter/data/images/focusing/' + filter_range[index] + '.fits'
-                    pass
-                
-                fits.writeto(filename, data.astype(np.int16))
-        
-        except Exception as e:
-            msg = f'wintercmd: Focuser could not convert images due to {e.__class__.__name__}, {e}'
-            print(msg)
-            
-        return images_16
-    """
-    
 
     def plot_focus_curve(self, plotting, timestamp_utc = None):
         filter_range = np.array(self.filter_range)
@@ -303,7 +391,7 @@ if __name__ == '__main__':
     
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
     pixscale = 0.466
-    loop = Focus_loop_v2(config, nom_focus = 10000, total_throw = 300, nsteps = 5, pixscale = pixscale)
+    loop = Focus_loop_v3(config, nom_focus = 10000, total_throw = 300, nsteps = 5, pixscale = pixscale)
 
     
     image_log_path = config['focus_loop_param']['image_log_path']
@@ -351,7 +439,7 @@ if __name__ == '__main__':
               '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
     
     
-    
+    """
      # save the data to a csv for later access
     try:
         data = {'images': images, 'focuser_pos' : list(focuser_pos)}
@@ -361,7 +449,7 @@ if __name__ == '__main__':
     except Exception as e:
         msg = f'Unable to save files to focus csv due to {e.__class__.__name__}, {e}'
         print(msg)
-    
+    """
     
     system = 'focuser'
     # fit the data and find the best focus
@@ -388,7 +476,7 @@ if __name__ == '__main__':
         msg = f'could not run focus loop due due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}'
         print(msg)
     
-    
+    """
     # Try something else
     
     HFD_mean = []
@@ -418,4 +506,5 @@ if __name__ == '__main__':
     plt.ylabel('Half-Focus Diameter [arcseconds]')
     
     # F
+    """
     

@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import scipy.interpolate
-
+import scipy.ndimage
 pixscale = 0.466
 
 wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
@@ -22,33 +22,45 @@ from focuser import plot_curve
 
 
 datafilename = 'HFD_Focus_Test_Data.txt'
-#datafilename = 'SampleFocus_r_20220211.txt'
+datafilename = 'SampleFocus_r_20220211_190647.txt'
+#datafilename = 'SampleFocus_r_20220212_032207.txt'
+
+
 datapath = os.path.join(os.path.dirname(wsp_path), 'development','focusing', datafilename)
 pos_ref, HFD_med_ref, HFD_mean_ref, HFD_stderr_mean_ref, HFD_stderr_med_ref, FWHM_mean_ref, FWHM_med_ref, FWHM_std_ref = np.loadtxt(datapath, unpack = True)
+
+# sort all by position
+pos_indx = pos_ref.argsort()
+pos_ref = pos_ref[pos_indx]
+HFD_med_ref = HFD_med_ref[pos_indx]
 
 pos_ref_orig = pos_ref
 HFD_med_ref_orig = HFD_med_ref
 
-#%% DETERMINE WHICH DATA TO USE FOR HFD LINEAR FITTING
-
-pos_select = pos_ref_orig[(HFD_med_ref_orig > 2.0) & (HFD_med_ref_orig < 4.0)]
-HFD_select = HFD_med_ref_orig[(HFD_med_ref_orig > 2.0) & (HFD_med_ref_orig < 4.0)]
+#% DETERMINE WHICH DATA TO USE FOR HFD LINEAR FITTING
+cond = (HFD_med_ref_orig > 2.0) & (HFD_med_ref_orig < 3.5) #& (pos_ref_orig > 9600) & (pos_ref_orig < 13000)
+pos_select = pos_ref_orig[cond]
+HFD_select = HFD_med_ref_orig[cond]
 
 fig2,ax2 = plt.subplots(1,1)
 fit_x = np.linspace(min(pos_select), max(pos_select), 1000)
 ax2.plot(pos_select, HFD_select,'o')
+HFD_smooth = scipy.ndimage.median_filter(HFD_select, 10)
 HFD_interp = scipy.interpolate.interp1d(pos_select, HFD_select, kind = 'linear')
 HFD_interp_spline = scipy.interpolate.UnivariateSpline(fit_x, HFD_interp(fit_x))
 
 ax2.plot(fit_x, HFD_interp(fit_x),'-')
 ax2.plot(fit_x, HFD_interp_spline(fit_x),'--')
+ax2.plot(pos_select, HFD_smooth, '--')
 
 ax3 = ax2.twinx()
 HFD_deriv = HFD_interp_spline.derivative()(pos_select)
 ax3.plot(fit_x, HFD_interp_spline.derivative()(fit_x),'-')
 
-cond_lh = (HFD_deriv < -0.005)
-cond_rh = (HFD_deriv > 0.005)
+    
+
+cond_lh = (HFD_deriv < -0.004)
+cond_rh = (HFD_deriv > 0.004)
 pos_lh = pos_select[cond_lh]
 pos_rh = pos_select[cond_rh]
 HFD_med_lh = HFD_select[cond_lh]
@@ -73,14 +85,14 @@ FWHM_std_ref = FWHM_std_ref[cond]
 nomfoc = 9967
 
 # fit the right hand line
-cond_rh = (pos_ref>nomfoc + 50) & (pos_ref<10300)
+#cond_rh = (pos_ref>nomfoc + 50) & (pos_ref<10300)
 #pos_rh = pos_ref[cond_rh]
 #HFD_med_rh = HFD_med_ref[cond_rh]
 rh_fit = np.polyfit(pos_rh, HFD_med_rh, 1)
 HFD_ref_fit_rh = np.polyval(rh_fit, pos_ref)
 
 # fit the left hand line
-cond_lh = (pos_ref>9650) & (pos_ref<nomfoc-50)
+#cond_lh = (pos_ref>9650) & (pos_ref<nomfoc-50)
 #pos_lh = pos_ref[cond_lh]
 #HFD_med_lh = HFD_med_ref[cond_lh]
 lh_fit = np.polyfit(pos_lh, HFD_med_lh, 1)
@@ -121,14 +133,14 @@ ax.set_ylabel('Half-Focus Diameter [arcseconds]')
 ax.set_ylim(-1,8)
 
 
-
+'''
 
 #%% Pull up the next night's focus data to compare
 
 datafilename = 'SampleFocus_r_20220211.txt'
 #datafilename = 'SampleFocus_r_20220211_2.txt' # BAD
-#datafilename = 'SampleFocus_r_20220119.txt'
-#datafilename = 'SampleFocus_r_20220211_190647.txt'
+datafilename = 'SampleFocus_r_20220119.txt'
+datafilename = 'SampleFocus_r_20220211_190647.txt'
 
 date = datafilename.strip('SampleFocus_r_').strip('.txt')
 
@@ -156,8 +168,8 @@ ax3 = ax2.twinx()
 HFD_deriv = HFD_interp_spline.derivative()(pos_select)
 ax3.plot(fit_x, HFD_interp_spline.derivative()(fit_x),'-')
 
-cond_lh = (HFD_deriv < -0.00)
-cond_rh = (HFD_deriv > 0.00)
+cond_lh = (HFD_deriv < -0.005)
+cond_rh = (HFD_deriv > 0.005)
 pos_lh = pos_select[cond_lh]
 pos_rh = pos_select[cond_rh]
 HFD_med_lh = HFD_select[cond_lh]
@@ -297,3 +309,4 @@ ax.plot(xint_lh,0,'go')
 ax.legend()
 
 plt.tight_layout()
+'''
