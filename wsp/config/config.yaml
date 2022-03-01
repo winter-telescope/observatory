@@ -474,24 +474,31 @@ ephem:
         
 ########### FOCUSER LOOP PARAM ###########
 focus_loop_param:
-    total_throw: 400
-    nsteps: 5
-    #total_throw: 1000
-    #nsteps: 50
-    micron_interval: 100
+    sweep_param:
+        narrow:
+            total_throw: 400
+            nsteps: 5
+        wide:
+            total_throw: 800
+            nsteps: 12
+    #micron_interval: 100
     target_type: altaz
-    #target: '75 270'
     target: '85 200'
     focus_error_max: 100
-    focus_log_path: 'data/df_focuser/focus_log.json'
+    focus_log_path: 'data/focusing/focus_log.json'
     focus_graceperiod_hours: 6
-    fine_micron_interval: 10
-    recent_path: '/home/winter/data/last_image.lnk'
-    file_type: '\*fits'
+    #fine_micron_interval: 10
+    #recent_path: '/home/winter/data/last_image.lnk'
+    #file_type: '\*fits'
     pixscale: 0.466
-    current_filter: 'rband'
-    save_dir: '/home/winter/data/images/focusing/'
+    #current_filter: 'rband'
+    #save_dir: '/home/winter/data/images/focusing/'
     image_log_path: '/home/winter/data/plots_focuser/img_logs/'
+    # nate added these below:
+    results_log_parent_dir: 'data/focusing'
+    results_log_dir: 'results'
+    results_log_last_link: 'last_focus_results.lnk'
+    results_plot_last_link: 'last_focus_plot.lnk'
 
 filt_limits:
     uband:

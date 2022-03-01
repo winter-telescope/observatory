@@ -228,7 +228,7 @@ for datafilename in files:
     ax = axes[1]
     
     # get just the FWHM data that is near the rough center
-    cond = (pos_downsampled > xafit) & (pos_downsampled < (xbfit)) & (pos_downsampled > 9600) & (pos_downsampled < 10400)
+    cond = (pos_downsampled > xafit) & (pos_downsampled < (xbfit)) #& (pos_downsampled > 9600) & (pos_downsampled < 10400)
     #cond = (pos_ref > (xcfit-300)) & (pos_ref < (xcfit + 300))
     pos_parabola = pos_downsampled[cond]
     FWHM_med_parabola = FWHM_med_downsampled[cond]

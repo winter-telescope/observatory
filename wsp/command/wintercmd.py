@@ -1022,9 +1022,7 @@ class Wintercmd(QtCore.QObject):
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
-            if dt > timeout:
-                self.logger.info(f'Mount dither timed out after {timeout} seconds before completing')
-                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
             #print(f"alt dist to target = {abs(self.state['mount_alt_dist_to_target'])}")
             #print(f"az dist to target  = {abs(self.state['mount_az_dist_to_target'])}")
             dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1) )
@@ -1048,6 +1046,11 @@ class Wintercmd(QtCore.QObject):
             
             if all(entry == condition for entry in stop_condition_buffer):
                 break    
+            if dt > timeout:
+                msg = f'wintercmd: mount dither timed out after {timeout} seconds before completing: ra_dist_arcsec = {ra_dist_arcsec}, dec_dist_arcsec = {dec_dist_arcsec}'
+                self.logger.info(msg)
+                self.alertHandler.slack_log(msg)
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
         self.logger.info(f'Mount Dither complete')
     
     @cmd
