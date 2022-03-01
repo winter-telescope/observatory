@@ -226,7 +226,7 @@ class RoboOperator(QtCore.QObject):
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger = self.logger)
         # a variable to keep track of how many times we've attempted to focus. different numbers have different affects on focus routine
-        self.focus_attempt_number = 1
+        self.focus_attempt_number = 0
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
@@ -702,7 +702,7 @@ class RoboOperator(QtCore.QObject):
             # or even better a check on FWHM of previous images
             
             if not filterIDs_to_focus is None:   
-                if self.focus_attempt_number < 3:
+                if self.focus_attempt_number > 0:
                     self.announce(f'**Out of date focus results**: we need to focus the telescope in these filters: {filterIDs_to_focus}')
                     # there are filters to focus! run a focus sequence
                     self.do_focus_sequence(filterIDs = filterIDs_to_focus)
@@ -1932,7 +1932,7 @@ class RoboOperator(QtCore.QObject):
 
                     self.focusTracker.updateFilterFocus(filterID, x0_fit, obstime_timestamp_utc) 
                     
-                    self.focus_attempt_number = 1
+                    self.focus_attempt_number = 0
                     
         except FileNotFoundError as e:
             self.log(f"You are trying to modify a catalog file or an image with no stars , {e}")
@@ -1995,13 +1995,16 @@ class RoboOperator(QtCore.QObject):
                 system = 'focus_loop'
                 
                 # handle the loop parameters depending on what attempt this is:
+                """
                 if self.focus_attempt_number == 0:
                     total_throw = self.config['focus_loop_param']['sweep_param']['narrow']['total_throw']
                     nsteps = self.config['focus_loop_param']['sweep_param']['narrow']['nsteps']
                     nom_focus = 'last'
                     if focusType == 'default':    
                         focusType = 'Parabola'
-                elif self.focus_attempt_number == 1:
+                """
+                #elif self.focus_attempt_number == 1:
+                if self.focus_attempt_number == 0:
                     total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
                     nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
                     nom_focus = 'default'

@@ -94,20 +94,15 @@ if __name__ == '__main__':
     results_plot_filepath = os.path.join(results_log_dir, results_plot_filename+'.png')
     starttime_string = results_plot_filename.strip('focusResults_')
     
-    title = f'Best FWHM: {FWHM_at_xc:.2f} arcmin @ focus = {xc_par:.0f}'
+    df = np.abs(xc - xc_par)
+    title = f'Focus = [{xc:.0f} +/- {df:.0f}] micron ({100*df/xc:.0f}%)'
+    title += f'\nBest FWHM (est): {FWHM_at_xc:.2f} arcsec'
 
-    """
-    if timestamp_utc is None:
-        pass
-    else:
-        utc = datetime.fromtimestamp(timestamp_utc, tz = pytz.utc)
-        local_datetime_str = datetime.strftime(utc.astimezone(tz = pytz.timezone('America/Los_Angeles')), '%Y-%m-%d %H:%M:%S')
-        title = title + f'\nLocal Time = {local_datetime_str}'
-    """
     try:
         title = title + f'\n{starttime_string}'
     except:
         pass
+    
     
     fig, axes = plt.subplots(2,1, figsize = (8,8))
     
@@ -115,14 +110,15 @@ if __name__ == '__main__':
     #ax = axes
     ### Upper plot: V-curve fit to HFD ###
     ax.errorbar(pos, HFD_med, yerr = HFD_stderr_med, fmt = 'ko', capsize = 5, capthick = 2, label = 'data')
-    
-    ax.plot(pos_fit, HFD_fit, '-', label = f'V-Curve Fit')
     ax.set_title(title)
+    ax.plot(pos_fit, HFD_fit, '-', label = f'V-Curve Fit')
     ax.set_xlim(9500, 10500)
     ax.set_ylabel('HFD [arcsec]')
     ax.set_xlabel('Focuser Position [micron]')
     yline = np.linspace(-10, 10, 100)
-    ax.plot(xc_par+0*yline, yline, 'r--', label = f'xc = [{xc_par:.0f} +/- {xc_err:.0f}] ({100*xc_err/xc:.0f}%)')
+    #xc_label = f'xc = [{xc:.0f} +/- {xc_err:.0f}] ({100*xc_err/xc:.0f}%)'
+    xc_label = f'xc = {xc:.0f}'
+    ax.plot(xc+0*yline, yline, 'r--', label = xc_label)
 
     
     ax.legend(fontsize = 8)
@@ -136,8 +132,13 @@ if __name__ == '__main__':
     ax.set_xlim(9500, 10500)
     ax.set_ylabel('FWHM [arcsec]')
     yline = np.linspace(0, 8, 100)
-    ax.plot(xc+0*yline, yline, 'r--', label = f'xc = [{xc:.0f} +/- {xc_par_err:.0f}] ({100*xc_par_err/xc_par:.0f}%)')
+    #xc_label = f'xc = [{xc_par:.0f} +/- {xc_par_err:.0f}] ({100*xc_par_err/xc_par:.0f}%)'
+    xc_label = f'xc = {xc_par:.0f}'
+    ax.plot(xc+0*yline, yline, 'r--', label = xc_label)
     ax.legend(fontsize = 8)
+    
+    
+    
     
     plt.tight_layout()
     # now save the plot

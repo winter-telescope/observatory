@@ -31,7 +31,7 @@ print(f'focusing: wsp_path = {wsp_path}')
 from alerts import alert_handler
 from focuser import plot_curve
 from focuser import genstats
-
+from utils import utils
 
 
 
@@ -97,7 +97,7 @@ class Focus_loop_v3:
         
         ####### NOW DO THE FOLLOW-UP PARABOLIC FIT TO THE FWHM #######
         
-        cond = (self.pos > self.xafit) & (self.pos < (self.xbfit)) #& (pos_downsampled > 9600) & (pos_downsampled < 10400)
+        cond = (self.pos > self.xafit) & (self.pos < (self.xbfit)) & (self.FWHM_med > 1) & (self.FWHM_med < 7)
         
         self.pos_parabola = self.pos[cond]
         self.FWHM_med_parabola = self.FWHM_med[cond]
@@ -128,6 +128,8 @@ class Focus_loop_v3:
         print(f'parabola: x0 = [{self.xc_parfit:.1f} +/- {self.xc_parfit_err:.1f}] ({(100*self.xc_parfit_err/self.xc_parfit):.0f}%)')
         print()
         
+        # get the difference between the two fits and use this as a measure for the error
+        self.delta_xc = np.abs(self.xcfit_vcurve - self.xc_parfit)
         
         # update the fit results for the v-curve fit
         self.fitresults.update({'raw_data':
@@ -170,12 +172,8 @@ class Focus_loop_v3:
         
         # now try to fit a parabola to the data within the linear region based on the v-curve results
         
-            
-        #x0_fit = self.xcfit_vcurve
-        #x0_err = self.xcfit_vcurve_err
-        
-        x0_fit = self.xc_parfit
-        x0_err = self.xc_parfit_err
+        x0_fit = self.xcfit_vcurve
+        x0_err = self.delta_xc
             
         self.save_focus_data()
         
@@ -548,8 +546,8 @@ if __name__ == '__main__':
 
 
     """
-    Focuser_pos = [9761.414819232772, 9861.414819232772, 9961.414819232772, 10061.414819232772, 10161.414819232772]
-    Images = ['/home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits',
+    focuser_pos = [9761.414819232772, 9861.414819232772, 9961.414819232772, 10061.414819232772, 10161.414819232772]
+    images = ['/home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits',
               '/home/winter/data/images/20220119/SUMMER_20220119_221444_Camera0.fits',
               '/home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits',
               '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
@@ -560,19 +558,31 @@ if __name__ == '__main__':
               '/home/winter/data/images/20220119/SUMMER_20220119_215022_Camera0.fits',
               '/home/winter/data/images/20220119/SUMMER_20220119_215120_Camera0.fits',
               '/home/winter/data/images/20220119/SUMMER_20220119_215217_Camera0.fits',
-              '/home/winter/data/images/20220119/SUMMER_20220119_215314_Camera0.fits']"""
-    
+              '/home/winter/data/images/20220119/SUMMER_20220119_215314_Camera0.fits']
     """
-     # save the data to a csv for later access
-    try:
-        data = {'images': images, 'focuser_pos' : list(focuser_pos)}
-        df = pd.DataFrame(data)
-        df.to_csv(image_log_path + 'focusLoop_' + str(datetime.utcnow().timestamp()) + '.csv')
+    #starttime = '20220301_045946'
+    #endtime = '20220301_050946'
+    starttime= '20220228_183604'
+    endtime = '20220228_184153'
+    night = '20220228'
     
-    except Exception as e:
-        msg = f'Unable to save files to focus csv due to {e.__class__.__name__}, {e}'
-        print(msg)
-    """
+
+    
+    datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S') 
+    datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
+    impath = os.path.join(os.getenv("HOME"),'data','images',night)
+    filelist = glob.glob(os.path.join(impath, '*.fits'))
+    select_files = []
+    images = []
+    focuser_pos = []
+    for file in filelist:
+        timestr = file.split('SUMMER_')[1].split('_Camera0.fits')[0]
+        datetime_file = datetime.strptime(timestr, '%Y%m%d_%H%M%S')
+        if (datetime_file <= datetime_end) & (datetime_file >= datetime_start):
+            images.append(file)
+            focuser_pos.append(utils.getFromFITSHeader(file, 'FOCPOS'))
+     
+    
     
     system = 'focuser'
     # fit the data and find the best focus
@@ -582,7 +592,7 @@ if __name__ == '__main__':
         # now analyze the data (rate the images and load the observed filterpositions)
         #loop.analyzeData(focuser_pos, images)
         # now analyze the data (rate the images and load the observed filterpositions)
-        x0_fit, x0_err = loop.analyzeData(Focuser_pos, Images)
+        x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
         timestamp_utc = datetime.now(tz = pytz.utc).timestamp()
         loop.plot_focus_curve(timestamp_utc = timestamp_utc)
         #xvals, yvals = loop.plot_focus_curve(plotting = True)
@@ -599,43 +609,6 @@ if __name__ == '__main__':
         msg = f'could not run focus loop due due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}'
         print(msg)
     
-    """
-    # plot the v-curve
-    plt.figure()
-    fitresults = loop.fitresults
-    plt.plot(fitresults['vcurve_fit']['raw_data']['x'], fitresults['vcurve_fit']['raw_data']['y'], 'ko')
-    plt.plot(fitresults['vcurve_fit']['fit_data']['x'], fitresults['vcurve_fit']['fit_data']['y'], 'r-')
-    """
-    
-    """
-    # Try something else
-    
-    HFD_mean = []
-    HFD_med = []
-    HFD_std = []
-    HFD_stderr_mean = []
-    HFD_stderr_med = []
     
     
-    for image in images:
-        try:
-            #mean, median, std, stderr_mean, stderr_med
-            mean, median, std, stderr_mean, stderr_med = genstats.get_img_fluxdiameter(image, 0.466, exclude = False)
-            HFD_mean.append(mean*pixscale)
-            HFD_med.append(median*pixscale)
-            HFD_std.append(std*pixscale)
-            HFD_stderr_mean.append(stderr_mean*pixscale)
-            HFD_stderr_med.append(stderr_med*pixscale)
-        except Exception as e:
-            print(f'could not analyze image {image}: {e}')
-    plt.figure()
-    #plt.plot(focuser_pos, HFD_meds, 'ks')
-    plt.errorbar(focuser_pos, HFD_med, yerr = HFD_stderr_med, capsize = 5, fmt = 'ks', label = 'Median')
-    plt.errorbar(focuser_pos, HFD_mean, yerr = HFD_stderr_mean, capsize = 5, fmt = 'ro', label = 'Mean')
-    plt.legend()
-    plt.xlabel('Focuser Position [micron]')
-    plt.ylabel('Half-Focus Diameter [arcseconds]')
-    
-    # F
-    """
     
