@@ -110,11 +110,11 @@ def get_field_ids(ras, decs, units="degrees"):
         print(ra, dec)
         # sort dec
         dec_sort = summer_fields.iloc[((summer_fields['dec']-dec_degs).abs() <= camera_field_size).values]
-        print('dec', dec_sort)
+        #print('dec', dec_sort)
         
         # sort ra
         ra_sort = dec_sort.iloc[((dec_sort['ra']-ra_degs).abs() <= camera_field_size).values]
-        print('ra', ra_sort)
+        #print('ra', ra_sort)
         
         field_num = ra_sort.index[0]
         field_list.append(int(field_num))
