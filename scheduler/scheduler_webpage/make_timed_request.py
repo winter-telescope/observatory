@@ -17,12 +17,8 @@ from utils import get_alt_az
 
 
 
-def make_timed_request(env, ra, dec, exptime, n_exp, start, stop, exp_arr, filt, dither): 
+def make_timed_request(save_path, config_path, ra, dec, exptime, n_exp, start, stop, exp_arr, filt, dither): 
     
-    if env == "PRODUCTION":
-        save_path = 'sqlite:////home/winter/data/schedules/ToO/HighPriority/'
-    else:
-        save_path = 'sqlite:///'
         
     # make sqlite database
     date = datetime.now().strftime('%m_%d_%Y_%H_%s')
@@ -30,9 +26,7 @@ def make_timed_request(env, ra, dec, exptime, n_exp, start, stop, exp_arr, filt,
     sqlite_connection = engine.connect()
     
     # get header keys
-    config_file = '../../wsp/config/scheduleconfig.json'
-    
-    with open(config_file, "r") as jsonfile:
+    with open(config_path, "r") as jsonfile:
         data = json.load(jsonfile)
     
     keys = data['Summary'].keys()
@@ -58,7 +52,9 @@ def make_timed_request(env, ra, dec, exptime, n_exp, start, stop, exp_arr, filt,
     save_df["propID"] = 4
     save_df["fieldRA"] = ra
     save_df["fieldDec"] = dec
-    save_df["propID"] = 4
+    save_df["visitTime"] = exptime
+    save_df["visitExpTime"] = exptime
+    save_df["expDate"] = np.floor(start)
     save_df["validStart"] = start
     save_df["validStop"] = stop
     save_df["expMJD"] = exp_arr
