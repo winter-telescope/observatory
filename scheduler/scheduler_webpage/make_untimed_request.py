@@ -13,21 +13,16 @@ from utils import get_field_ids
 import re
 
 
-def make_untimed_request(env, camera, data, field_opts, filters): 
+def make_untimed_request(write_path, camera, data, field_opts, filters): 
     
     
     date = datetime.now().strftime('%m_%d_%Y_%H_%s')
-    if env == "PRODUCTION":
-        if camera == 'WINTER':
-            write_path = '/home/winter/data/schedules/requests/winter_untimed_request'+date+'.json'
-        else:
-             write_path = '/home/winter/data/schedules/requests/summer_untimed_request'+date+'.json'
+
+    if camera == 'WINTER':
+        write_path = write_path+'winter_untimed_request'+date+'.json'
     else:
-        if camera == 'WINTER':
-            write_path = './winter_untimed_request'+date+'.json'
-        else:
-             write_path = './summer_untimed_request'+date+'.json'
-    
+         write_path = write_path+'summer_untimed_request'+date+'.json'
+
     # parse priority (get string before : )
     nightly_priority = str(data['priority'])[:str(data['priority']) .index(":")]
     
@@ -45,7 +40,7 @@ def make_untimed_request(env, camera, data, field_opts, filters):
             ra = [i for i in ra if i]
             dec = re.split(r',|\[|\]', data['dec'])
             dec = [i for i in dec if i]
-            field_cut = get_field_ids(ra, dec, units="degrees")
+            field_cut = get_field_ids(camera, ra, dec, units="degrees")
     
     # sort by ra and dec cuts
     elif data['field_selection'] == field_opts[1]: 
