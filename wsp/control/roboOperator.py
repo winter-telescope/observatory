@@ -1749,12 +1749,18 @@ class RoboOperator(QtCore.QObject):
         
         # first drive the focuser in past the first position
         # loop.filter_range is arranged small to big distances, so start smaller to ensure we approach all points from the same direction
-        focuser_start_pos = np.min(loop.filter_range_nom) - 500
+        focuser_start_pos = np.min(loop.filter_range_nom) - 100
         
         system = 'focuser'
         try:
             self.log(f'racking focuser below min position to pre-start position: {focuser_start_pos} before starting')
-            self.do(f'm2_focuser_goto {focuser_start_pos}')
+            cur_focus = nom_focus
+            while (cur_focus > focuser_start_pos):
+                next_pos = max([cur_focus-100,focuser_start_pos])
+                print(f"Current focus: {cur_focus} -> {next_pos}")
+                # self.do(f'm2_focuser_goto {focuser_start_pos}')
+                self.do(f'm2_focuser_goto {next_pos}')
+                cur_focus = next_pos
         
         except Exception as e:
             msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}'
@@ -1863,7 +1869,14 @@ class RoboOperator(QtCore.QObject):
         try:
             # drive back to start position so we approach from same direction
             self.log(f'Focuser re-aligning at pre-start position: focuser_start_pos')
-            self.do(f'm2_focuser_goto {focuser_start_pos}')
+            while (cur_focus > focuser_start_pos):
+                next_pos = max([cur_focus-100,focuser_start_pos])
+                print(f"Current focus: {cur_focus} -> {next_pos}")
+                # self.do(f'm2_focuser_goto {focuser_start_pos}')
+                self.do(f'm2_focuser_goto {next_pos}')
+                cur_focus = next_pos
+
+            # self.do(f'm2_focuser_goto {focuser_start_pos}')
             
             if self.sunsim:
                 #TODO: needs testing to be sure this is right...
@@ -1892,6 +1905,14 @@ class RoboOperator(QtCore.QObject):
             
             else:
                 self.logger.info(f'Focuser_going to final position at {x0_fit} microns')
+
+                while (cur_focus < x0_fit):
+                    next_pos = min([cur_focus+100,x0_fit])
+                    print(f"Current focus: {cur_focus} -> {next_pos}")
+                    # self.do(f'm2_focuser_goto {focuser_start_pos}')
+                    self.do(f'm2_focuser_goto {next_pos}')
+                    cur_focus = next_pos
+
                 self.do(f'm2_focuser_goto {x0_fit}')
                 #TODO: update the focusTracker
                 

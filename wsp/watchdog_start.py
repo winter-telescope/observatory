@@ -22,6 +22,7 @@ from datetime import datetime
 import subprocess
 import yaml
 import pygetdata as getdata
+import traceback
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.abspath(__file__))
@@ -31,6 +32,11 @@ sys.path.insert(1, wsp_path)
 from alerts import alert_handler
 from utils import utils
 from daemon import daemon_utils
+from watchdog import watchdog
+
+
+
+
 
 
 #### GET ANY COMMAND LINE ARGUMENTS #####
@@ -48,6 +54,7 @@ alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
 
 alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
 
+
 msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} Starting wsp.py watchdog"
 
 alertHandler.slack_log(msg, group = None)
@@ -55,7 +62,10 @@ alertHandler.slack_log(msg, group = None)
 # set up the link to the dirfile (df)
 dirfilePath = os.getenv("HOME") + '/data/dm.lnk'
 program_to_monitor = 'wsp.py'
-df = getdata.dirfile(dirfilePath)
+#df = getdata.dirfile(dirfilePath)
+watchdogStateMonitor = watchdog.StateMonitor(verbose = False)
+
+watchdogStateMonitor.setupDirfileMonitor(dirfilePath)
 
 #args = ["python", program_to_monitor, "-r", "--smallchiller"]
 # npl 12-21-21 trying to get this to work again
@@ -68,64 +78,78 @@ args.append('>> wspterm.log 2>&1')
 
 
 
-#print('starting watchdog loop')
+print('starting watchdog loop')
 while True:
     
     try:
-        # Get the last timestamp written to the dirfile
-        #last_timestamp = os.path.getatime(filePath)
-        # sometimes it seems like it might not want to read the *last* frame?
-        frame_to_read = df.nframes-1
-        last_timestamp = df.getdata('timestamp',first_frame = frame_to_read, num_frames = 1)[0]
-
-        """# DO ALL THE CALCULATIONS LOCALLY OTHERWISE THEY WILL BE WRONG! DON'T USE UTC
-        now_timestamp = datetime.now().timestamp()"""
-        # THE DIRFILE TIMESTAMPS ARE UTC
-        now_timestamp = datetime.utcnow().timestamp()
-        #print(f'last update timestamp = {lastmod_timestamp}')
-        # get dt in seconds
-        dt = now_timestamp - last_timestamp
         
-        if dt >= 60.0:
-            #print(f'dt = {dt:0.2f}, RELAUNCHING WRITER')
-            msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} last housekeeping update was {dt:0.1f} s ago. *WATCHDOG Restarting wsp.py*"
-
-            alertHandler.slack_log(msg, group = 'sudo')
-            #time.sleep(60)
-            # First let's kill any running wsp process running
-            main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)
+        watchdogStateMonitor.update_state()
+        
+        # check if there are any bad timestamps
+        # make a carve out for the ccd since it doesn't update during exposures
+        deadtime_overrides = dict({'ccd_last_update_timestamp' : 600.0})
+        watchdogStateMonitor.get_bad_timestamps(dt_max = 60.0, overrides = deadtime_overrides)
+        
+        # if there are any timestamps in the state dict greater than dt_max then prepare to restart
+        num_bad_timestamps = len(watchdogStateMonitor.bad_timestamps)
+        
+        if num_bad_timestamps > 0:
             
-            # if wsp is running, kill it and wait until it's dead
-            if not main_pid is None:
-                daemon_utils.killPIDS(main_pid)
-                time.sleep(1)
+            if False:
+                pass
+            
+            else:
+                #print(f'dt = {dt:0.2f}, RELAUNCHING WRITER')
+                #msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} last housekeeping update was {dt:0.1f} s ago. *WATCHDOG Restarting wsp.py*"
+                
+                msg = f"{datetime.now().strftime('%m/%d/%Y %H:%M')} detected dead process(es). (field : dt_since_active) = {watchdogStateMonitor.bad_timestamps} *WATCHDOG Restarting wsp.py*"
+                
+                alertHandler.slack_log(msg, group = 'sudo')
+                #time.sleep(60)
+                """
+                # First let's kill any running wsp process running
                 main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)
                 
-                while not main_pid is None:
-                    # wait for it to die
+                # if wsp is running, kill it and wait until it's dead
+                if not main_pid is None:
+                    daemon_utils.killPIDS(main_pid)
                     time.sleep(1)
                     main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)
+                    
+                    while not main_pid is None:
+                        # wait for it to die
+                        time.sleep(1)
+                        main_pid, child_pids = daemon_utils.checkParent(program_to_monitor,printall = False)
+                """
+                watchdog.kill_wsp()
+                
+                
+                
+                # Now relaunch
+                wsp_process = subprocess.Popen(args, shell = False, start_new_session = True)
+                
+                # wait a bit for it to get set up
+                time.sleep(60)
+                
+                # relink since the dirfile may need to be reconnected
+                #filePath = os.getenv("HOME") + '/data/dm.lnk'
+                watchdogStateMonitor.df.close()
+                watchdogStateMonitor = watchdog.StateMonitor(verbose = False)
+                watchdogStateMonitor.setupDirfileMonitor(dirfilePath)
+                #df = getdata.dirfile(dirfilePath)
+                watchdogStateMonitor.setupDirfileMonitor(dirfilePath)
             
-            # Now relaunch
-            wsp_process = subprocess.Popen(args, shell = False, start_new_session = True)
-            
-            # wait a bit for it to get set up
-            time.sleep(60)
-            
-            # relink since the dirfile may need to be reconnected
-            #filePath = os.getenv("HOME") + '/data/dm.lnk'
-            df.close()
-            df = getdata.dirfile(dirfilePath)
-
-
         
         # sleep before running loop again
         time.sleep(0.5)
-
+    
     except KeyboardInterrupt:
         print('exiting watchdog loop.')
         break
+    except Exception as e:
+        print(f'Error in watchdog loop: {traceback.format_exc()}')
     
 # close the connection to the dirfile
-df.close()
+#df.close()
+watchdogStateMonitor.df.close()
 print('done.')

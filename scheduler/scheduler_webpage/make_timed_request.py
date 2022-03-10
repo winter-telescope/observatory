@@ -58,6 +58,8 @@ def make_timed_request(save_path, config_path, ra, dec, exptime, n_exp, start, s
     save_df["validStart"] = start
     save_df["validStop"] = stop
     save_df["expMJD"] = exp_arr
+    save_df["visitTime"] = exptime
+    save_df["visitExpTime"] = exptime
     save_df["filter"] = filt
     save_df["dither"] = dither
     save_df["azimuth"] = az

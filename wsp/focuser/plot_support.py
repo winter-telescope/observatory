@@ -82,7 +82,7 @@ if __name__ == '__main__':
     
     plt.title(title)
     plt.xlabel('Focus Position [microns]')
-    plt.ylabel('Mean FWHM [arcmin]')
+    plt.ylabel('Median FWHM [arcsec]')
     plt.grid('on')
     plt.savefig('/home/winter/data/plots_focuser/latest_focusloop.jpg', bbox_inches='tight')
     
