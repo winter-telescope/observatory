@@ -113,83 +113,83 @@ def web_form():
         
     
        
-        #try:
-        # check formatting
-        if time_sensitive['units_time'] == 'MJD':
-            tonight = np.floor(float(time_sensitive['start_time']))
-            start_time = Time(float(time_sensitive['start_time']), format='mjd')
-            stop_time = Time(float(time_sensitive['stop_time']), format='mjd')
-        else: 
-            Pacific = pytz.timezone("PST8PDT")
-            # convert iso string to datetime object to astropy time object
-            dt = datetime.datetime.fromisoformat(str(time_sensitive['start_time']))
-            dt2 = Pacific.localize(datetime.datetime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond))
-            dt3 = dt2.astimezone(pytz.utc)
-            start_time = Time(dt3, scale='utc')
-            
-            dt = datetime.datetime.fromisoformat(str(time_sensitive['stop_time']))
-            dt2 = Pacific.localize(datetime.datetime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond))
-            dt3 = dt2.astimezone(pytz.utc)
-            stop_time = Time(dt3, scale='utc')
-            
-            tonight = np.floor(start_time.mjd)
+        try:
+            # check formatting
+            if time_sensitive['units_time'] == 'MJD':
+                tonight = np.floor(float(time_sensitive['start_time']))
+                start_time = Time(float(time_sensitive['start_time']), format='mjd')
+                stop_time = Time(float(time_sensitive['stop_time']), format='mjd')
+            else: 
+                Pacific = pytz.timezone("PST8PDT")
+                # convert iso string to datetime object to astropy time object
+                dt = datetime.datetime.fromisoformat(str(time_sensitive['start_time']))
+                dt2 = Pacific.localize(datetime.datetime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond))
+                dt3 = dt2.astimezone(pytz.utc)
+                start_time = Time(dt3, scale='utc')
 
-        
-        if time_sensitive['units_coord'] == 'Radians':
-            ra = float(time_sensitive['ra'])*u.radian
-            dec = float(time_sensitive['dec'])*u.radian
-        else: 
-            ra = str(time_sensitive['ra'])
-            dec = str(time_sensitive['dec'])
-            loc = SkyCoord(ra=ra, dec=dec, frame='icrs')
-            ra = loc.ra.radian*u.radian
-            dec = loc.dec.radian*u.radian
-            
-        # make array of exposure start times
-        duration_seconds = (stop_time.mjd-start_time.mjd)*24*60*60
-        n_exp = int(duration_seconds / time_sensitive['exp'])
-        exposures_arr = np.linspace(start_time.mjd, stop_time.mjd, n_exp)
-        
-        
-        # check if target is up tonight
-        is_up, str_up = up_tonight(tonight, ra, dec)
-            
-        
-                      
-        if is_up == True:
-            # make databse 
-            make_timed_request(too_path, config_path, ra, dec, time_sensitive['exp'], n_exp,
-                               start_time.mjd, stop_time.mjd,  exposures_arr,
-                               time_sensitive['filters'], time_sensitive['dither'])        
+                dt = datetime.datetime.fromisoformat(str(time_sensitive['stop_time']))
+                dt2 = Pacific.localize(datetime.datetime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond))
+                dt3 = dt2.astimezone(pytz.utc)
+                stop_time = Time(dt3, scale='utc')
 
-            # Display output using popup
-            popup("Your target is up on the night requested and your request has been recorded. \n Details will be sent to:",
-              f"Name: {time_sensitive['name']}\
-              \nEmail: {time_sensitive['email']}",
-              closable=True)
-                
-            if env == "PRODUCTION":
-                    # set up the alert system to post to slack
-                auth_config_file  = wsp_path + '/credentials/authentication.yaml'
-                user_config_file = wsp_path + '/credentials/alert_list.yaml'
-                alert_config_file = wsp_path + '/config/alert_config.yaml'
-                
-                auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
-                user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
-                alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
-                
-                alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
-                
-                msg = f"Name: {time_sensitive['name']} at email: {time_sensitive['email']} has submitted a timed ToO request. The request has been added to {too_path}. "
-                
-                alertHandler.slack_message_group('scheduler', msg)
-                alertHandler.slack_log(msg, group = None)
-                
-        else: 
-            popup("Your target is not up on the night requested. Please try again. ",
-              closable=True)
-                
-                
+                tonight = np.floor(start_time.mjd)
+
+
+            if time_sensitive['units_coord'] == 'Radians':
+                ra = float(time_sensitive['ra'])*u.radian
+                dec = float(time_sensitive['dec'])*u.radian
+            else: 
+                ra = str(time_sensitive['ra'])
+                dec = str(time_sensitive['dec'])
+                loc = SkyCoord(ra=ra, dec=dec, frame='icrs')
+                ra = loc.ra.radian*u.radian
+                dec = loc.dec.radian*u.radian
+
+            # make array of exposure start times
+            duration_seconds = (stop_time.mjd-start_time.mjd)*24*60*60
+            n_exp = int(duration_seconds / time_sensitive['exp'])
+            exposures_arr = np.linspace(start_time.mjd, stop_time.mjd, n_exp)
+
+
+            # check if target is up tonight
+            is_up, str_up = up_tonight(tonight, ra, dec)
+
+
+
+            if is_up == True:
+                # make databse 
+                make_timed_request(too_path, config_path, ra, dec, time_sensitive['exp'], n_exp,
+                                   start_time.mjd, stop_time.mjd,  exposures_arr,
+                                   time_sensitive['filters'], time_sensitive['dither'])        
+
+                # Display output using popup
+                popup("Your target is up on the night requested and your request has been recorded. \n Details will be sent to:",
+                  f"Name: {time_sensitive['name']}\
+                  \nEmail: {time_sensitive['email']}",
+                  closable=True)
+
+                if env == "PRODUCTION":
+                        # set up the alert system to post to slack
+                    auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+                    user_config_file = wsp_path + '/credentials/alert_list.yaml'
+                    alert_config_file = wsp_path + '/config/alert_config.yaml'
+
+                    auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
+                    user_config = yaml.load(open(user_config_file), Loader = yaml.FullLoader)
+                    alert_config = yaml.load(open(alert_config_file), Loader = yaml.FullLoader)
+
+                    alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
+
+                    msg = f"Name: {time_sensitive['name']} at email: {time_sensitive['email']} has submitted a timed ToO request. The request has been added to {too_path}. "
+
+                    alertHandler.slack_message_group('scheduler', msg)
+                    alertHandler.slack_log(msg, group = None)
+
+            else: 
+                popup("Your target is not up on the night requested. Please try again. ",
+                  closable=True)
+
+
         # except: 
         #     popup("Something went wrong! \n Try checking your units and try again",
         #           closable=True)
