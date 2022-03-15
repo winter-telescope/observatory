@@ -44,9 +44,10 @@ class Focus_loop_v3:
         x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
     
     """
-    def __init__(self, config, nom_focus, total_throw, nsteps, pixscale):
+    def __init__(self, config, nom_focus, total_throw, nsteps, pixscale, state = {}):
         
         self.config = config
+        self.state = state
         self.nom_focus = nom_focus
         self.total_throw = total_throw
         self.nsteps = nsteps
@@ -168,7 +169,13 @@ class Focus_loop_v3:
                                          {'x' : list(self.pos_parabola),
                                           'y' : list(self.FWHM_med_parabola),
                                           'yerr': list(self.FWHM_std_parabola),
-                                          'images': list(self.images_parabola)}}
+                                          'images': list(self.images_parabola)}},
+                                'temperatures':
+                                    {'m1' : self.state.get('telescope_temp_m1', None),
+                                     'm2' : self.state.get('telescope_temp_m2', None),
+                                     'm3' : self.state.get('telescope_temp_m1', None),
+                                     'telescope_ambient' : self.state.get('telescope_temp_ambient', None),
+                                     'outside_pcs' : self.state.get('T_outside_pcs', None)},
                                         })
         
         # now try to fit a parabola to the data within the linear region based on the v-curve results

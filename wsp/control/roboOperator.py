@@ -826,21 +826,22 @@ class RoboOperator(QtCore.QObject):
         validSchedules = []
         validSchedule_filenames = []
         
-        self.announce('querying all schedules in High Priority ToO folder...')
+        #self.announce('querying all schedules in High Priority ToO folder...')
         
         for schedname in self.ToOschedules:
             self.log('')
-            self.announce(f'searching for valid observation in {schedname}...')
+            #self.announce(f'searching for valid observation in {schedname}...')
             TOOschedule = self.ToOschedules[schedname]['schedule']
             TOOschedule.gotoNextObs(obstime_mjd = obstime_mjd)
             
             if TOOschedule.currentObs is None:
-                self.announce(f'... no valid TOO observations at this time (MJD = {obstime_mjd}), defaulting to survey schedule')
+                pass
+                #self.announce(f'... no valid TOO observations at this time (MJD = {obstime_mjd}), defaulting to survey schedule')
                 #return None
                 
             else:
                 # add the observation to the list of valid observations
-                self.announce(f'... found valid observation with obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+                #self.announce(f'... found valid observation with obsHistID = {TOOschedule.currentObs["obsHistID"]}')
                 #self.announce(f'  {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
                 validObs.append(TOOschedule.currentObs)
                 validSchedules.append(TOOschedule)
@@ -1784,7 +1785,7 @@ class RoboOperator(QtCore.QObject):
             if focusType.lower() == 'parabola':
                 loop = focusing.Focus_loop_v2(self.config, nom_focus, total_throw, nsteps, pixscale)
             else:
-                loop = focusing.Focus_loop_v3(self.config, nom_focus, total_throw, nsteps, pixscale)
+                loop = focusing.Focus_loop_v3(self.config, nom_focus, total_throw, nsteps, pixscale, state = self.state)
             self.log(f'focus loop: will take images at {loop.filter_range}')
         
         except Exception as e:
