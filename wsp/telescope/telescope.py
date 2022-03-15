@@ -147,7 +147,13 @@ class Telescope(pwi4_client.PWI4):
         # poll telescope status
         try:
             #self.state = self.status()
-            self.state = self.status_text_to_dict_parse(self.request("/status"))
+            #self.state = self.status_text_to_dict_parse(self.request("/status"))
+            # get the mount status
+            status = self.getStatus()
+            # get the mirror temperatures
+            mirror_temps = self.getMirrorTemps()
+            # merge all status dictionaries into single self.state dictionary
+            self.state = {**status, **mirror_temps}
             self.state.update({'rotator_wrap_check_enabled' : self.wrap_check_enabled})
             self.check_for_wrap()
             
@@ -196,6 +202,19 @@ class Telescope(pwi4_client.PWI4):
         
     def fans_off(self): 
         self.request_with_status("/fans/off")
+    
+    def getStatus(self):
+        response = self.request("/status")
+        status_dict = self.status_text_to_dict_parse(response)
+        return status_dict
+        
+    def getMirrorTemps(self):
+        response = self.request("/temperatures/pw1000")
+        temp_dict = self.status_text_to_dict_parse(response)
+        return temp_dict
+
+    
+
     
 if __name__ == '__main__':
         
