@@ -134,7 +134,7 @@ class Telescope(pwi4_client.PWI4):
                     value = datetime_obj.timestamp()
                 else:
                     try:
-                        value = np.float(value)
+                        value = float(value)
                     except:
                         pass
                 # this is the normal thing:

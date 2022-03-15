@@ -11,22 +11,28 @@ converting MJD to datetime with astropy
 
 import astropy.time
 from datetime import datetime
+import pytz
 
 #t = 59341.1489157446
 t = 59601.0896612906
 #t = 59341.14891574074
+t = 59652.7291666667
 
 t_obj = astropy.time.Time(t,format = 'mjd')
 
 t_datetime_obj = t_obj.datetime
+t_datetime_obj_utc = pytz.utc.localize(t_datetime_obj)
+t_datetime_obj_local = t_datetime_obj_utc.astimezone(pytz.timezone('America/Los_Angeles'))
 
 timestamp_from_mjd = t_datetime_obj.timestamp()
 
-utc_time = t_datetime_obj.strftime("%Y-%m-%d %H:%M:%S.%f")
+utc_time = t_datetime_obj_utc.strftime("%Y-%m-%d %H:%M:%S.%f")
+local_time = t_datetime_obj_local.strftime("%Y-%m-%d %H:%M:%S.%f")
 
 print(f'The MJD is:           {t}')
 print(f'The UTC time is:      {utc_time} UTC')
 print(f'The UTC timestamp is: {timestamp_from_mjd}')
+print(f'The Local time is:    {local_time} Pacific')
 
 
 # go from datetime to MJD

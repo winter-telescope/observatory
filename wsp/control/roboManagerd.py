@@ -927,7 +927,7 @@ class RoboManager(QtCore.QObject):
             
             # get the night of the observation. 
             # use the utils.tonight_local() utility which returns a string, eg: '20220202'
-            tonight = datetime.strptime(utils.tonight_local(), '%Y%m%d')
+            tonight = datetime.strptime(utils.tonight_local(now_datetime.timestamp()), '%Y%m%d')
             
             trig_year = tonight.year
             trig_month = tonight.month
@@ -1107,12 +1107,41 @@ class RoboManager(QtCore.QObject):
                 trig_sun_ok = True
             else:
                 trig_sun_ok = False
-        
         if self.verbose:
             print(f'trigger sun rising condition okay: {trig_sun_ok}')
+            
+        # if nextmorning flag is true, check if it is the next morning 
+        if trig.nextmorning:
+            if self.sunsim:
+                
+                now_datetime = datetime.fromtimestamp(self.state['timestamp'])
+                if self.verbose:
+                    print(f'\t>>using suntim time: {now_datetime}')
+            else:
+                now_datetime = datetime.now()
+                if self.verbose:
+                    print(f'\t>> using local time: {now_datetime}')
+            
+            # get the night of the observation. 
+            # use the utils.tonight_local() utility which returns a string, eg: '20220202'
+            tonight = datetime.strptime(utils.tonight_local(now_datetime.timestamp()), '%Y%m%d')    
+            nextmorning = tonight + timedelta(days = 1)
+            
+            # is the current time greater than the next morning?
+            if now_datetime > nextmorning:
+                nextmorning_ok = True
+            else:
+                nextmorning_ok = False
+        else:
+            # if no flag or false we don't care
+            nextmorning_ok = True
+            
+        if self.verbose:
+            print(f'trigger nextmorning condition okay: {nextmorning_ok}')
+        
         #print(f'\ttrig condition: {trig_condition} --> {trig_condition_met}')
         
-        if all_conditions_met & trig_sun_ok:
+        if all_conditions_met & trig_sun_ok & nextmorning_ok:
             # the trigger condition is met!
             print()
             print(f'Time to send the {trig.cmd} command!')

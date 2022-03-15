@@ -984,11 +984,21 @@ class Wintercmd(QtCore.QObject):
         ra0_j2000_hours = self.state['mount_ra_j2000_hours']
         dec0_j2000_deg = self.state['mount_dec_j2000_deg']
         
-        ra_j2000_hours_goal = ra0_j2000_hours + (arcsec * (1/60.0/60.0) * (24/360.0))
-        dec_j2000_deg_goal = dec0_j2000_deg + (arcsec/60.0/60.0)
-
-        threshold_arcmin = 0.5
-        threshold_hours = threshold_arcmin * (1/60.0) * (24/360.0)
+        if axis == 'ra':
+            delta_ra_hours = (arcsec * (1/60.0/60.0) * (24/360.0))
+            delta_dec_deg = 0.0
+        elif axis == 'dec':
+            delta_ra_hours = 0.0
+            delta_dec_deg = (arcsec/60.0/60.0)
+        
+        #print(f'delta_ra = {delta_ra_hours} hours, delta_dec = {delta_dec_deg}')
+        ra_j2000_hours_goal = ra0_j2000_hours + delta_ra_hours
+        dec_j2000_deg_goal = dec0_j2000_deg + delta_dec_deg
+        #print(f'ra: {ra0_j2000_hours} --> {ra_j2000_hours_goal}')
+        #print(f'dec: {dec0_j2000_deg} --> {dec_j2000_deg_goal}')
+        #threshold_arcmin = 0.5
+        threshold_arcsec = 1
+        #threshold_hours = threshold_arcsec * (1/3600.0) * (24/360.0)
 
         # dispatch the command
         self.parse(cmd)
@@ -1012,13 +1022,22 @@ class Wintercmd(QtCore.QObject):
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
-            if dt > timeout:
-                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
             
-            dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < 0.1) & (abs(self.state['mount_alt_dist_to_target']) < 0.1) )
-            ra_in_range = ((abs(self.state['mount_ra_j2000_hours']) - ra_j2000_hours_goal) < threshold_hours)
-            dec_in_range = ((abs(self.state['mount_dec_j2000_deg']) - dec_j2000_deg_goal) < threshold_arcmin)
-            stop_condition = dist_to_target_low & ra_in_range & dec_in_range
+            #print(f"alt dist to target = {abs(self.state['mount_alt_dist_to_target'])}")
+            #print(f"az dist to target  = {abs(self.state['mount_az_dist_to_target'])}")
+            dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < threshold_arcsec) & (abs(self.state['mount_alt_dist_to_target']) < threshold_arcsec) )
+           
+            ra_dist_hours = abs(self.state['mount_ra_j2000_hours'] - ra_j2000_hours_goal)
+            ra_dist_arcsec = ra_dist_hours * (360/24.0) * 3600.0
+            #print(f'ra dist to target = {ra_dist_arcsec:.2f} arcsec')
+            ra_in_range = (ra_dist_arcsec < threshold_arcsec)
+            
+            dec_dist_deg = abs(self.state['mount_dec_j2000_deg'] - dec_j2000_deg_goal)
+            dec_dist_arcsec = dec_dist_deg * 3600.0
+            #print(f'dec dist to target = {dec_dist_arcsec:.2f} arcsec')
+            dec_in_range = (dec_dist_arcsec < threshold_arcsec)
+            
+            stop_condition = (dist_to_target_low and ra_in_range and dec_in_range)
             
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -1027,6 +1046,12 @@ class Wintercmd(QtCore.QObject):
             
             if all(entry == condition for entry in stop_condition_buffer):
                 break    
+            if dt > timeout:
+                msg = f'wintercmd: mount dither timed out after {timeout} seconds before completing: ra_dist_arcsec = {ra_dist_arcsec}, dec_dist_arcsec = {dec_dist_arcsec}, '
+                msg += f"dist to target arcsec (alt, az) = ({self.state['mount_az_dist_to_target']}, {self.state['mount_alt_dist_to_target']}"
+                self.logger.info(msg)
+                self.alertHandler.slack_log(msg)
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
         self.logger.info(f'Mount Dither complete')
     
     @cmd
@@ -3015,9 +3040,11 @@ class Wintercmd(QtCore.QObject):
                                     help = 'line number of first point to use')
         
         self.getargs()
-        #print(f'wintercmd: args = {self.args}')
+        print(f'wintercmd: args = {self.args}')
         append = self.args.append
-        firstpoint = self.args.firstline[0]
+        #firstpoint = self.args.firstline[0]
+        firstpoint = self.args.firstline
+
         
         sigcmd = signalCmd('remakePointingModel',
                            append = append,

@@ -23,6 +23,42 @@ def fit_parabola(focus_vals, fwhms, stds):
     print(popt)
     return popt, pcov
 
+def FocV(x, ml, xc, delta, y0, return_x = False):
+    
+        mr = -ml
+        cr = xc + (ml/(ml - mr))*(-1*delta)
+        cl = cr - (-1*delta)
+        
+        xa = (y0 + ml*cl)/ml
+        xb = -(y0 + mr*cr)/ml
+    
+        y = 0*x
+        
+        cond = (x <= xa)
+        y[cond] = y0
+        
+        cond = ((x > xa) & (x <= xc))
+        y[cond] = ml * (x[cond] - cl)
+        
+        cond = ((x > xc) & (x <= xb))
+        y[cond] = mr * (x[cond] - cr)
+        
+        cond = (x > xb)
+        y[cond] = y0
+        if return_x:
+            return y, xa, xb, xc
+        else:
+            return y
+
+    
+def Fit_FocV(x, y, yerr, ml, xc, delta, y0):
+    
+    #p0 = [ml, mr, cl, cr, y0]
+    p0 = [ml, xc, delta, y0]
+    popt, pcov = curve_fit(FocV, x, y, p0, sigma = yerr)
+    
+    return popt, pcov
+
 if __name__ == '__main__':
     focus_vals = np.array([ 9000. ,9358.33333333,  9716.66666667, 10075., 10433.33333333, 10791.66666667, 11150.        ])
     fwhms = np.array([2.97752818, 2.82161681, 2.39297943, 2.03755009, 2.32122086, 2.62719668, 3.28458147])

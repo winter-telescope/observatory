@@ -46,6 +46,7 @@ qresult = np.array(result.fetchall())
 
 ra  = np.array(qresult[:,27],dtype=np.float32)
 ra = ra / 24.0 * 360.0 * np.pi/180.0
+ra[ra > np.pi] -= 2*np.pi
 dec = np.array(qresult[:,28],dtype=np.float32)
 dec = dec * np.pi / 180.0
 
@@ -72,11 +73,12 @@ qresult = np.array(result.fetchall())
     
 # Already in radians
 ra  = np.array(qresult[:,4],dtype=np.float32)
+ra[ra > np.pi] -= 2*np.pi
 dec = np.array(qresult[:,5],dtype=np.float32)
 
 plt.scatter(ra,dec,alpha=0.2, color='r',label='Tonight')
 plt.legend(loc='lower right',frameon=True)
-#plt.show()
+# plt.show()
 
 figname = os.path.join(os.getenv("HOME"),'data','skymap_tonight.jpg')
 plt.savefig(figname)

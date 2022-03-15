@@ -5,23 +5,32 @@ from glob import glob
 import os
 import subprocess
 import warnings
+import sys
 import numpy as np
-from focuser import ldactools as aw
+#from focuser import ldactools as aw
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
 
+# add the wsp directory to the PATH
+wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
+# switch to this when ported to wsp
+#wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-astrom_scamp = 'focuser/sex_config/scamp.conf'
-astrom_sex = 'focuser/sex_config/astrom.sex'
-astrom_param = 'focuser/sex_config/astrom.param'
-astrom_filter = 'focuser/sex_config/default.conv'
-astrom_swarp = 'focuser/sex_config/config.swarp'
-astrom_nnw = 'focuser/sex_config/default.nnw'
-photom_sex = 'focuser/sex_config/photomCat.sex'
+sys.path.insert(1, wsp_path)
+print(f'genstats: wsp_path = {wsp_path}')
+from focuser import ldactools as aw
+sex_config_path = os.path.join(wsp_path,'focuser','sex_config')
+astrom_scamp = os.path.join(sex_config_path, 'scamp.conf')
+astrom_sex = os.path.join(sex_config_path, 'astrom.sex')
+astrom_param = os.path.join(sex_config_path, 'astrom.param')
+astrom_filter = os.path.join(sex_config_path, 'default.conv')
+astrom_swarp = os.path.join(sex_config_path, '/onfig.swarp')
+astrom_nnw = os.path.join(sex_config_path, 'default.nnw')
+photom_sex = os.path.join(sex_config_path, 'photomCat.sex')
 
 
-def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='focuser/weight.fits'):
+def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg=os.path.join(wsp_path,'focuser','weight.fits')):
 	#Run sextractor on the proc image file
 	try:
 		command = 'sex -c ' + astrom_sex + ' ' + imgname + ' ' + '-CATALOG_NAME ' + imgname + '.cat' + ' -CATALOG_TYPE FITS_LDAC ' + '-PARAMETERS_NAME ' + astrom_param + ' ' + '-FILTER_NAME ' + astrom_filter + ' ' + '-STARNNW_NAME ' + astrom_nnw + ' ' + '-WEIGHT_TYPE NONE -CHECKIMAGE_TYPE NONE -PIXEL_SCALE ' + str(pixscale) + ' -DETECT_THRESH 10 -ANALYSIS_THRESH 10 -SATUR_LEVEL 60000 -WEIGHT_TYPE MAP_WEIGHT -WEIGHT_IMAGE ' + weightimg + ' -CHECKIMAGE_NAME '+imgname+'.seg,'+imgname+'.bkg,'+imgname+'.bkg.rms'
@@ -41,7 +50,7 @@ def run_sextractor(imgname,pixscale=0.47,regions=True,weightimg='focuser/weight.
 			for row in t:
 				f.write('CIRCLE(%s,%s,%s) # text={%.2f,%.2f}\n'%(row['X_IMAGE'],row['Y_IMAGE'],row['FWHM_IMAGE']/2,row['FWHM_IMAGE'],row['SNR_WIN']))
 
-def get_img_fluxdiameter(imgname,pixscale=0.47,weightimg='focuser/weight.fits',xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
+def get_img_fluxdiameter(imgname,pixscale=0.47,weightimg=os.path.join(wsp_path,'focuser','weight.fits'),xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
 	if not os.path.exists(imgname+'.cat'):
 		run_sextractor(imgname,pixscale,weightimg=weightimg)
 
@@ -59,7 +68,7 @@ def get_img_fluxdiameter(imgname,pixscale=0.47,weightimg='focuser/weight.fits',x
 	return mean, median, std, stderr_mean, stderr_med
 
 
-def get_img_fwhm(imgname,pixscale=0.47,weightimg='focuser/weight.fits',xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
+def get_img_fwhm(imgname,pixscale=0.47,weightimg=os.path.join(wsp_path,'focuser','weight.fits'),xlolim=10,xuplim=2000,ylolim=10,yuplim=2000,exclude=False):
 	if not os.path.exists(imgname+'.cat'):
 		run_sextractor(imgname,pixscale,weightimg=weightimg)
 
@@ -74,7 +83,7 @@ def get_img_fwhm(imgname,pixscale=0.47,weightimg='focuser/weight.fits',xlolim=10
 	return mean,median, std
 
 
-def gen_map(imgname,pixscale=0.466,weightimg='focuser/weight.fits',regions=False):
+def gen_map(imgname,pixscale=0.466,weightimg=os.path.join(wsp_path,'focuser','weight.fits'),regions=False):
 	npix = 2000
 	x_inds = np.linspace(0,npix,5)
 	y_inds = np.linspace(0,npix,5)
@@ -144,4 +153,4 @@ if __name__ == '__main__':
 
 	if args.plot:
 		gen_map(args.imgname,pixscale=args.pixscale)
-
+    

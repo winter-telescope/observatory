@@ -124,7 +124,7 @@ robotic_manager_triggers:
                     cond: '>'
                 cond2:
                     type: 'time'
-                    val: '14:00:0.0'
+                    val: '13:00:0.0'
                     cond: '>'        
             sundir: 0
             repeat_on_restart: True
@@ -213,10 +213,6 @@ robotic_manager_triggers:
                     type: 'sun'
                     val:  -14.0
                     cond: '>'
-                cond2:
-                    type: 'time'
-                    val: '8:0:0.0'
-                    cond: '<'
             nextmorning: True
             sundir: 1
             repeat_on_restart: False
@@ -259,7 +255,7 @@ robotic_manager_triggers:
             conds:
                 cond1:
                     type: 'time'
-                    val: '8:01:0.0'
+                    val: '7:59:30.0'
                     cond: '>'
                 cond2:
                     type: 'sun'
@@ -478,21 +474,39 @@ ephem:
         
 ########### FOCUSER LOOP PARAM ###########
 focus_loop_param:
-    total_throw: 400
-    nsteps: 5
-    micron_interval: 100
+    sweep_param:
+        narrow:
+            total_throw: 400
+            nsteps: 5
+        wide:
+            total_throw: 800
+            nsteps: 12
+    #micron_interval: 100
+    targets:
+        targ1:
+            target_type: altaz
+            target: '55 287'
+        targ2:
+            target_type: altaz
+            target: '85 270'
     target_type: altaz
-    target: '75 270'
-    focus_error_max: 100
-    focus_log_path: 'data/df_focuser/focus_log.json'
-    focus_graceperiod_hours: 6
-    fine_micron_interval: 10
-    recent_path: '/home/winter/data/last_image.lnk'
-    file_type: '\*fits'
+    target: '85 200'
+    focus_error_max: 50
+    focus_log_path: 'data/focusing/focus_log.json'
+    focus_graceperiod_hours: 12
+    max_focus_attempts: 2
+    #fine_micron_interval: 10
+    #recent_path: '/home/winter/data/last_image.lnk'
+    #file_type: '\*fits'
     pixscale: 0.466
-    current_filter: 'rband'
-    save_dir: '/home/winter/data/images/focusing/'
+    #current_filter: 'rband'
+    #save_dir: '/home/winter/data/images/focusing/'
     image_log_path: '/home/winter/data/plots_focuser/img_logs/'
+    # nate added these below:
+    results_log_parent_dir: 'data/focusing'
+    results_log_dir: 'results'
+    results_log_last_link: 'last_focus_results.lnk'
+    results_plot_last_link: 'last_focus_plot.lnk'
 
 filt_limits:
     uband:
@@ -524,7 +538,7 @@ filters:
         u:
             name: "SDSS u' (Chroma)"
             nominal_focus: 9961
-            active: True
+            active: False
             focus_exptime: 30
             
         other2:
@@ -594,7 +608,8 @@ pointing_model:
         num_az: 6
         min_az: 5
         max_az: 355
-        
+    # current default pointing model to use
+    pointing_model_file: 'pointing_model_20220311.pxp'
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
     default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'
