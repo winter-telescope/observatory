@@ -482,11 +482,19 @@ focus_loop_param:
             total_throw: 800
             nsteps: 12
     #micron_interval: 100
+    targets:
+        targ1:
+            target_type: altaz
+            target: '55 287'
+        targ2:
+            target_type: altaz
+            target: '85 270'
     target_type: altaz
     target: '85 200'
-    focus_error_max: 25
+    focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
     focus_graceperiod_hours: 12
+    max_focus_attempts: 2
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
     #file_type: '\*fits'
@@ -600,7 +608,8 @@ pointing_model:
         num_az: 6
         min_az: 5
         max_az: 355
-        
+    # current default pointing model to use
+    pointing_model_file: 'pointing_model_20220311.pxp'
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
     default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'

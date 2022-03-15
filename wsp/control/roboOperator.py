@@ -702,22 +702,45 @@ class RoboOperator(QtCore.QObject):
             # or even better a check on FWHM of previous images
             
             if not filterIDs_to_focus is None:   
-                if self.focus_attempt_number > 0:
+                print(f'robo: focus attempt #{self.focus_attempt_number}')
+                if self.focus_attempt_number <= self.config['focus_loop_param']['max_focus_attempts']:
                     self.announce(f'**Out of date focus results**: we need to focus the telescope in these filters: {filterIDs_to_focus}')
                     # there are filters to focus! run a focus sequence
                     self.do_focus_sequence(filterIDs = filterIDs_to_focus)
                     self.announce(f'got past the do_focus_sequence call in checkWhatToDo?')
-                    
+                    self.focus_attempt_number += 1
                     # now exit and rerun the check
                     self.checktimer.start()
                     return
+                """ # do we have to do anything if we just want to leave the focus at the last position? that's already loaded in the focusTracker...
+                elif self.focus_attempt_number == self.config['focus_loop_param']['max_focus_attempts'] + 1:
+                    # this should send focus to last good position
+                    for filterID in filterIDs_to_focus:
+                    last_focus, last_focus_timestamp = self.focusTracker.checkLastFocus(filterID)
+                    system = 'focuser'
+                    try:
+                        #TODO: do rob's thing of splitting into multiple steps
+                        self.announce(f'having a bad time focusing. sending to last good focus')
+                        self.do(f'm2_focuser_goto {last_focus}')
+                            
+                        
+                        
+        
+                    except Exception as e:
+                        msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}'
+                        self.log(msg)
+                        self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                        err = roboError(context, self.lastcmd, system, msg)
+                        self.hardware_error.emit(err)
+                        return
+                """
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
             ToO_currentObs = self.load_best_observing_target(obstime_mjd)
             
             if ToO_currentObs is None:
-                self.announce('getting next observation from schedule database')
+                self.announce('no valid TOO observations, getting next observation from schedule database')
                 self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
                 currentObs = self.schedule.currentObs
             else:
@@ -807,52 +830,66 @@ class RoboOperator(QtCore.QObject):
         
         for schedname in self.ToOschedules:
             self.log('')
-            self.announce(f'...searching for valid observation in {schedname}')
+            self.announce(f'searching for valid observation in {schedname}...')
             TOOschedule = self.ToOschedules[schedname]['schedule']
             TOOschedule.gotoNextObs(obstime_mjd = obstime_mjd)
             
             if TOOschedule.currentObs is None:
-                self.announce(f'no valid TOO observations at this time (MJD = {obstime_mjd}), defaulting to survey schedule')
-                return None
+                self.announce(f'... no valid TOO observations at this time (MJD = {obstime_mjd}), defaulting to survey schedule')
+                #return None
                 
             else:
                 # add the observation to the list of valid observations
+                self.announce(f'... found valid observation with obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+                #self.announce(f'  {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
                 validObs.append(TOOschedule.currentObs)
                 validSchedules.append(TOOschedule)
                 validSchedule_filenames.append(schedname)
-        
-                # check to make sure things loaded right
-                self.log('')
-                self.log('Current Observations Loaded Up:')
-                for schedname in self.ToOschedules:
-                    TOOschedule = self.ToOschedules[schedname]['schedule']
-                    self.log(f' > {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
-                
-                #  now sort all the valid observations by smallest validStop time. eg rank by which will be not valid soonest
-                self.log('')
-                self.log('list all the obsHistIDs in the list of current valid observations')
-                for obs in validObs:
-                    print(f'> obsHistID = {obs["obsHistID"]}, validStop = {obs["validStop"]}')
-                # make a list of the validStop times
-                validStopTimes = np.array([obs["validStop"] for obs in validObs])
-                
-                # get the indices that would sort by smallest validStop to largest
-                # turn these into numpy arrays so we can use their handy argsort and indexing scheme
-                sorted_indices = np.argsort(validStopTimes)
-                #validSchedules_numpy = np.array(validSchedules)
-                validObs_numpy = np.array(validObs)
-                validSchedule_filenames_numpy = np.array(validSchedule_filenames)
-                
-                #self.log(f'sorted_indices = {sorted_indices}')
-                #self.log(f'validObs_numpy[sorted_indices] = {validObs_numpy[sorted_indices]}')
-                #self.log(f'validSchedule_filenames_numpy[sorted_indices] = {validSchedule_filenames_numpy[sorted_indices]}')
-                # the first of the sorted validObs is the one we should observe
-                bestObservation = validObs_numpy[sorted_indices][0]
-                bestScheduleFilename = validSchedule_filenames_numpy[sorted_indices][0]
-                self.log('')
-                self.log(f'we should be observing from {bestScheduleFilename}, obsHistID = {bestObservation["obsHistID"]}')
-                return bestObservation
-        
+        #NPL 3-13-22 un-indented by 2 levels everything below
+        # check to make sure things loaded right
+        self.log('')
+        """
+        self.log('Current Observations Loaded Up:')
+        for schedname in self.ToOschedules:
+            TOOschedule = self.ToOschedules[schedname]['schedule']
+            self.log(f' > {schedname}:')
+            self.log(f' >>> {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+        """
+        #  now sort all the valid observations by smallest validStop time. eg rank by which will be not valid soonest
+        self.log('')
+        self.log('list all the obsHistIDs in the list of current valid observations')
+        #for obs in validObs:
+        if len(validObs) == 0:
+            self.log(f'there are no valid TOO observations')
+            bestObservation = None
+        else:
+            for i in range(len(validObs)):
+                obs = validObs[i]
+                schedname = validSchedule_filenames[i]
+                self.log(f' >>> {schedname}: currentObs obsHistID = {obs["obsHistID"]}')
+                print(f'> {schedname}: currentObs obsHistID = {obs["obsHistID"]}, validStop = {obs["validStop"]}')
+            # make a list of the validStop times
+            validStopTimes = np.array([obs["validStop"] for obs in validObs])
+            
+            # get the indices that would sort by smallest validStop to largest
+            # turn these into numpy arrays so we can use their handy argsort and indexing scheme
+            sorted_indices = np.argsort(validStopTimes)
+            #validSchedules_numpy = np.array(validSchedules)
+            validObs_numpy = np.array(validObs)
+            validSchedule_filenames_numpy = np.array(validSchedule_filenames)
+            
+            #self.log(f'sorted_indices = {sorted_indices}')
+            #self.log(f'validObs_numpy[sorted_indices] = {validObs_numpy[sorted_indices]}')
+            #self.log(f'validSchedule_filenames_numpy[sorted_indices] = {validSchedule_filenames_numpy[sorted_indices]}')
+            # the first of the sorted validObs is the one we should observe
+            
+            bestObservation = validObs_numpy[sorted_indices][0]
+            bestScheduleFilename = validSchedule_filenames_numpy[sorted_indices][0]
+            self.log('')
+            self.announce(f'we should be observing from {bestScheduleFilename}, obsHistID = {bestObservation["obsHistID"]}')
+            #self.announce()
+        return bestObservation
+    
         
     def get_observatory_ready_status(self):
         """
@@ -1034,20 +1071,24 @@ class RoboOperator(QtCore.QObject):
         #NPL 4-29-21:
         self.setup_schedule()
 
-    def get_data_to_log(self):
+    def get_data_to_log(self,currentObs = 'default',):
+        
+        if currentObs == 'default':
+            currentObs = self.schedule.currentObs
+            
         data = {}
         # First, handle all the keys from self.schedule.currentObs.
         # THESE ARE SPECIAL KEYS WHICH ARE REQUIRED FOR THE SCHEDULER TO WORK PROPERLY
         
         keys_with_actual_vals = ["dist2Moon", "expMJD", "visitExpTime", "azimuth", "altitude"]
         
-        for key in self.schedule.currentObs:
+        for key in currentObs:
             # Some entries need the scheduled AND actuals recorded
                     
             if key in keys_with_actual_vals:
-                data.update({f'{key}_scheduled': self.schedule.currentObs[key]})
+                data.update({f'{key}_scheduled': currentObs[key]})
             else:
-                data.update({key: self.schedule.currentObs[key]})
+                data.update({key: currentObs[key]})
         
         # now update the keys with actual vals with their actual vals
         data.update({'dist2Moon'    : self.getDist2Moon(),
@@ -1069,6 +1110,7 @@ class RoboOperator(QtCore.QObject):
                     pass
             else:
                 pass
+        #print(f'header data = {data}')
         return data
         
     def getMJD(self):
@@ -1215,6 +1257,9 @@ class RoboOperator(QtCore.QObject):
             
             # turn off tracking
             self.do('mount_tracking_off')
+            
+            # make sure we load the pointing model explicitly
+            self.do(f'mount_model_load {self.config["pointing_model"]["pointing_model_file"]}')
             
             # turn on the motors
             self.do('mount_az_on')
@@ -1692,8 +1737,7 @@ class RoboOperator(QtCore.QObject):
         # get the current filter
         #TODO: make this flexible to handle winter or summer. eg, if cam == 'summer': ... elif cam == 'winter': ...
         
-        focus_target_type = self.config['focus_loop_param']['target_type']
-        focus_target = self.config['focus_loop_param']['target']
+        
         
         try:
             if self.cam == 'summer':
@@ -1726,10 +1770,11 @@ class RoboOperator(QtCore.QObject):
                 nom_focus = self.config['filters'][self.cam][filterID]['nominal_focus']
             
             if total_throw == 'default':
-                total_throw = self.config['focus_loop_param']['total_throw']
-            
+                #total_throw = self.config['focus_loop_param']['total_throw']
+                self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
             if nsteps == 'default':
-                nsteps = self.config['focus_loop_param']['nsteps']
+                #nsteps = self.config['focus_loop_param']['nsteps']
+                nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
                 
             # init a focus loop object on the current filter
             #    config, nom_focus, total_throw, nsteps, pixscale
@@ -1819,7 +1864,37 @@ class RoboOperator(QtCore.QObject):
                     self.log(f'handling the i=0 case')
                     #self.do(f'robo_set_qcomment "{qcomment}"')
                     #system = 'robo routine'
-                    self.do(f'robo_observe {focus_target_type} {focus_target} -foc --comment "{qcomment}"')
+                    
+                    # observe the focus location
+                    
+                    # be prepared to cycle through targets until one works
+                    for target in self.config['focus_loop_param']['targets']:
+                        focus_target_type = self.config['focus_loop_param']['targets'][target]['target_type']
+                        focus_target = self.config['focus_loop_param']['targets'][target]['target']
+                        
+                        
+                        
+                        try:
+                            self.do(f'robo_observe {focus_target_type} {focus_target} -foc --comment "{qcomment}"')
+                            
+                            self.announce(f'completed critical first observation, on to the rest...')
+                            # if we get here, then break out of the loop!
+                            break
+                        
+                        except TargetError as e:
+                            # if we're here, it means (probably) that there's some ephemeris near the target. go try another target
+                            print(e)
+                            self.announce(f'could not observe focus target (error: {e}): type = {focus_target_type}, target = ({focus_target}), trying next one...')
+                        
+                        except Exception as e:
+                            # if we're here there's some generic error. raise it.
+                            self.announce(f'could not observe focus target (error: {e}), exiting...')
+                            raise Exception(e)
+                            return
+                        
+                        
+                            
+                    
                 else:
                     system = 'ccd'
                     self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
@@ -1931,8 +2006,9 @@ class RoboOperator(QtCore.QObject):
                     self.announce(f'updating the focus position of filter {filterID} to {x0_fit}, timestamp = {obstime_timestamp_utc}')
 
                     self.focusTracker.updateFilterFocus(filterID, x0_fit, obstime_timestamp_utc) 
-                    
-                    self.focus_attempt_number = 0
+               
+                # we completed the focus! set the focus attempt number to zero
+                self.focus_attempt_number = 0
                     
         except FileNotFoundError as e:
             self.log(f"You are trying to modify a catalog file or an image with no stars , {e}")
@@ -2004,19 +2080,19 @@ class RoboOperator(QtCore.QObject):
                         focusType = 'Parabola'
                 """
                 #elif self.focus_attempt_number == 1:
-                if self.focus_attempt_number == 0:
-                    total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
-                    nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
-                    nom_focus = 'default'
-                    if focusType == 'default':
-                        focusType = 'Vcurve'
+                #if self.focus_attempt_number < self.config['focus_loop_param']['max_focus_attempts']:
+                total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
+                nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
+                nom_focus = 'default'
+                focusType = 'Vcurve'
+                """
                 else:
                     # this should send focus to last good position
                     last_focus, last_focus_timestamp = self.focusTracker.checkLastFocus(filterID)
                     system = 'focuser'
                     try:
                         #TODO: do rob's thing of splitting into multiple steps
-                        self.log(f'having a bad time focusing. sending to last good focus')
+                        self.announce(f'having a bad time focusing. sending to last good focus')
                         self.do(f'm2_focuser_goto {last_focus}')
                             
                         
@@ -2029,7 +2105,7 @@ class RoboOperator(QtCore.QObject):
                         err = roboError(context, self.lastcmd, system, msg)
                         self.hardware_error.emit(err)
                         return
-
+                """
                 self.do_focusLoop(nom_focus = nom_focus, 
                                   total_throw = total_throw, 
                                   nsteps = nsteps, 
@@ -2302,7 +2378,9 @@ class RoboOperator(QtCore.QObject):
                     #return #<- NPL 1/19/22 this return should never get executed, the log_observation_and_gotoNext call should handle exiting
                     
                 except Exception as e:
-                    msg = f'roboOperator: could not execute current observation due to {e.__class__.__name__}, {e}'
+                    
+                    tb = traceback.format_exc()
+                    msg = f'roboOperator: could not execute current observation due to {e.__class__.__name__}, {e}, traceback = {tb}'
                     self.log(msg)
                     err = roboError(context, self.lastcmd, system, msg)
                     self.hardware_error.emit(err)
@@ -2409,7 +2487,7 @@ class RoboOperator(QtCore.QObject):
                 image_directory, image_filename = self.ccd.getLastImagePath()
                 image_filepath = os.path.join(image_directory, image_filename)
             
-                header_data = self.get_data_to_log()
+                header_data = self.get_data_to_log(currentObs)
                 
                 if not self.test_mode:
                     # don't log if we're in test mode.
@@ -3002,7 +3080,8 @@ class RoboOperator(QtCore.QObject):
             
             
         except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            tb = traceback.format_exc()
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}, traceback: {tb}'
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)

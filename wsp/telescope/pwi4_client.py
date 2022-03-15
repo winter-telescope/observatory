@@ -1,3 +1,10 @@
+"""
+This Python module wraps the calls and status responses provided
+by the HTTP API exposed by PWI4. This code can be called directly
+from other Python scripts, or can be adapted to other languages
+as needed.
+"""
+
 try:
     # Python 3.x version
     from urllib.parse import urlencode
@@ -53,6 +60,15 @@ class PWI4:
     def mount_goto_alt_az(self, alt_degs, az_degs):
         return self.request_with_status("/mount/goto_alt_az", alt_degs=alt_degs, az_degs=az_degs)
 
+    def mount_goto_coord_pair(self, coord0, coord1, coord_type):
+        """
+        Set the mount target to a pair of coordinates in a specified coordinate system.
+        coord_type: can currently be "altaz" or "raw"
+        coord0: the azimuth coordinate for the "altaz" type, or the axis0 coordiate for the "raw" type
+        coord1: the altitude coordinate for the "altaz" type, or the axis1 coordinate for the "raw" type
+        """
+        return self.request_with_status("/mount/goto_coord_pair", c0=coord0, c1=coord1, type=coord_type)
+
     def mount_offset(self, **kwargs):
         """
         One or more of the following offsets can be specified as a keyword argument:
@@ -61,6 +77,14 @@ class PWI4:
         AXIS_stop_rate: Set any active offset rate to zero. Set this to any value to issue the command.
         AXIS_add_arcsec: Increase the current position offset by the specified amount
         AXIS_set_rate_arcsec_per_sec: Continually increase the offset at the specified rate
+
+        As of PWI 4.0.11 Beta 7, the following options are also supported:
+        AXIS_stop: Stop both the offset rate and any gradually-applied commands
+        AXIS_stop_gradual_offset: Stop only the gradually-applied offset, and maintain the current rate
+        AXIS_set_total_arcsec: Set the total accumulated offset at the time the command is received to the specified value. Any in-progress rates or gradual offsets will continue to be applied on top of this.
+        AXIS_add_gradual_offset_arcsec: Gradually add the specified value to the total accumulated offset. Must be paired with AXIS_gradual_offset_rate or AXIS_gradual_offset_seconds to determine the timeframe over which the gradual offset is applied.
+        AXIS_gradual_offset_rate: Paired with AXIS_add_gradual_offset_arcsec; Specifies the rate at which a gradual offset should be applied. For example, if an offset of 10 arcseconds is to be applied at a rate of 2 arcsec/sec, then it will take 5 seconds for the offset to be applied.
+        AXIS_gradual_offset_seconds: Paired with AXIS_add_gradual_offset_arcsec; Specifies the time it should take to apply the gradual offset. For example, if an offset of 10 arcseconds is to be applied over a period of 2 seconds, then the offset will be increasing at a rate of 5 arcsec/sec.
 
         Where AXIS can be one of:
 
@@ -82,6 +106,18 @@ class PWI4:
         """
 
         return self.request_with_status("/mount/offset", **kwargs)
+
+    def mount_spiral_offset_new(self, x_step_arcsec, y_step_arcsec):
+        # Added in PWI 4.0.11 Beta 8
+        return self.request_with_status("/mount/spiral_offset/new", x_step_arcsec=x_step_arcsec, y_step_arcsec=y_step_arcsec)
+
+    def mount_spiral_offset_next(self):
+        # Added in PWI 4.0.11 Beta 8
+        return self.request_with_status("/mount/spiral_offset/next")
+
+    def mount_spiral_offset_previous(self):
+        # Added in PWI 4.0.11 Beta 8
+        return self.request_with_status("/mount/spiral_offset/previous")
 
     def mount_park(self):
         return self.request_with_status("/mount/park")
@@ -300,12 +336,15 @@ class PWI4Status:
         self.mount = Section()
         self.mount.is_connected = self.get_bool("mount.is_connected")
         self.mount.geometry = self.get_int("mount.geometry")
+        self.mount.timestamp_utc = self.get_string("mount.timestamp_utc") # Added in 4.0.9 beta 7
         self.mount.julian_date = self.get_float("mount.julian_date")  # Added in 4.0.9 beta 2
-        self.mount.slew_time_constant = self.get_float("mount.slew_time_constant")  # Added in 4.0.9 beta 2
+        self.mount.slew_time_constant = self.get_float("mount.slew_time_constant")  # Added in 4.0.9 beta 6
         self.mount.ra_apparent_hours = self.get_float("mount.ra_apparent_hours")
         self.mount.dec_apparent_degs = self.get_float("mount.dec_apparent_degs")
         self.mount.ra_j2000_hours = self.get_float("mount.ra_j2000_hours")
         self.mount.dec_j2000_degs = self.get_float("mount.dec_j2000_degs")
+        self.mount.target_ra_apparent_hours = self.get_float("mount.target_ra_apparent_hours") # Added in 4.0.5 beta 1
+        self.mount.target_dec_apparent_degs = self.get_float("mount.target_dec_apparent_degs") # Added in 4.0.5 beta 1
         self.mount.azimuth_degs = self.get_float("mount.azimuth_degs")
         self.mount.altitude_degs = self.get_float("mount.altitude_degs")
         self.mount.is_slewing = self.get_bool("mount.is_slewing")
@@ -313,7 +352,9 @@ class PWI4Status:
         self.mount.field_angle_here_degs = self.get_float("mount.field_angle_here_degs")
         self.mount.field_angle_at_target_degs = self.get_float("mount.field_angle_at_target_degs")
         self.mount.field_angle_rate_at_target_degs_per_sec = self.get_float("mount.field_angle_rate_at_target_degs_per_sec")
-        
+        self.mount.path_angle_at_target_degs = self.get_float("mount.path_angle_at_target_degs")
+        self.mount.path_angle_rate_at_target_degs_per_sec = self.get_float("mount.path_angle_rate_at_target_degs_per_sec")
+
         self.mount.axis0 = Section()
         self.mount.axis0.is_enabled = self.get_bool("mount.axis0.is_enabled")
         self.mount.axis0.rms_error_arcsec = self.get_float("mount.axis0.rms_error_arcsec")
@@ -336,6 +377,42 @@ class PWI4Status:
         self.mount.model.num_points_enabled = self.get_int("mount.model.num_points_enabled")
         self.mount.model.rms_error_arcsec = self.get_float("mount.model.rms_error_arcsec")
 
+        # mount.offests.* was added in PWI 4.0.11 Beta 5
+        if "mount.offsets.ra_arcsec.total" not in self.raw:
+            self.mount.offsets = None  # Offset reporting not supported by running version of PWI4
+        else:
+            self.mount.offsets = Section()
+
+            self.mount.offsets.ra_arcsec = Section()
+            self.mount.offsets.ra_arcsec.total=self.get_float("mount.offsets.ra_arcsec.total")
+            self.mount.offsets.ra_arcsec.rate=self.get_float("mount.offsets.ra_arcsec.rate")
+            self.mount.offsets.ra_arcsec.gradual_offset_progress=self.get_float("mount.offsets.ra_arcsec.gradual_offset_progress")
+
+            self.mount.offsets.dec_arcsec = Section()
+            self.mount.offsets.dec_arcsec.total=self.get_float("mount.offsets.dec_arcsec.total")
+            self.mount.offsets.dec_arcsec.rate=self.get_float("mount.offsets.dec_arcsec.rate")
+            self.mount.offsets.dec_arcsec.gradual_offset_progress=self.get_float("mount.offsets.dec_arcsec.gradual_offset_progress")
+
+            self.mount.offsets.axis0_arcsec = Section()
+            self.mount.offsets.axis0_arcsec.total=self.get_float("mount.offsets.axis0_arcsec.total")
+            self.mount.offsets.axis0_arcsec.rate=self.get_float("mount.offsets.axis0_arcsec.rate")
+            self.mount.offsets.axis0_arcsec.gradual_offset_progress=self.get_float("mount.offsets.axis0_arcsec.gradual_offset_progress")
+
+            self.mount.offsets.axis1_arcsec = Section()
+            self.mount.offsets.axis1_arcsec.total=self.get_float("mount.offsets.axis1_arcsec.total")
+            self.mount.offsets.axis1_arcsec.rate=self.get_float("mount.offsets.axis1_arcsec.rate")
+            self.mount.offsets.axis1_arcsec.gradual_offset_progress=self.get_float("mount.offsets.axis1_arcsec.gradual_offset_progress")
+
+            self.mount.offsets.path_arcsec = Section()
+            self.mount.offsets.path_arcsec.total=self.get_float("mount.offsets.path_arcsec.total")
+            self.mount.offsets.path_arcsec.rate=self.get_float("mount.offsets.path_arcsec.rate")
+            self.mount.offsets.path_arcsec.gradual_offset_progress=self.get_float("mount.offsets.path_arcsec.gradual_offset_progress")
+            
+            self.mount.offsets.transverse_arcsec = Section()
+            self.mount.offsets.transverse_arcsec.total=self.get_float("mount.offsets.transverse_arcsec.total")
+            self.mount.offsets.transverse_arcsec.rate=self.get_float("mount.offsets.transverse_arcsec.rate")
+            self.mount.offsets.transverse_arcsec.gradual_offset_progress=self.get_float("mount.offsets.transverse_arcsec.gradual_offset_progress")
+
         self.focuser = Section()
         self.focuser.is_connected = self.get_bool("focuser.is_enabled")
         self.focuser.is_enabled = self.get_bool("focuser.is_enabled")
@@ -352,6 +429,13 @@ class PWI4Status:
 
         self.m3 = Section()
         self.m3.port = self.get_int("m3.port")
+
+        self.autofocus = Section()
+        self.autofocus.is_running = self.get_bool("autofocus.is_running")
+        self.autofocus.success = self.get_bool("autofocus.success")
+        self.autofocus.best_position = self.get_float("autofocus.best_position")
+        self.autofocus.tolerance = self.get_float("autofocus.tolerance")
+
 
     def get_bool(self, name, value_if_missing=None):
         if name not in self.raw:

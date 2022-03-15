@@ -69,7 +69,7 @@ class Focus_loop_v3:
         
         
         ####### DO THE V-CURVE FIT TO THE HFD #######
-        cond = (self.HFD_med > 2)
+        cond = (self.HFD_med > 1)
         self.images_vcurve = self.images[cond]
         self.pos_vcurve = self.pos[cond]
         self.HFD_med_vcurve = self.HFD_med[cond]
@@ -79,7 +79,9 @@ class Focus_loop_v3:
         xc0 = self.nom_focus
         delta0 = 286
         y00 = max(self.HFD_med_vcurve)#HFD_med[0]
-        
+        print()
+        print(f'y00 = {y00}')
+        print()
         popt, pcov = plot_curve.Fit_FocV(self.pos_vcurve, self.HFD_med_vcurve, self.HFD_stderr_med_vcurve, ml = ml0, xc = xc0, delta = delta0, y0 = y00)
         
         self.mlfit = popt[0]
@@ -98,12 +100,11 @@ class Focus_loop_v3:
         ####### NOW DO THE FOLLOW-UP PARABOLIC FIT TO THE FWHM #######
         
         cond = (self.pos > self.xafit) & (self.pos < (self.xbfit)) & (self.FWHM_med > 1) & (self.FWHM_med < 7)
-        
         self.pos_parabola = self.pos[cond]
         self.FWHM_med_parabola = self.FWHM_med[cond]
         self.FWHM_std_parabola = self.FWHM_std[cond]
         self.images_parabola = self.images[cond]
-        
+        print(self.pos_parabola)
         popt, pcov = plot_curve.fit_parabola(self.pos_parabola, self.FWHM_med_parabola, stds = None)
         
         #arabola(x,x0,A,B):
@@ -506,7 +507,7 @@ if __name__ == '__main__':
     
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
     pix_scale = 0.466
-    loop = Focus_loop_v3(config, nom_focus = 10000, total_throw = 300, nsteps = 5, pixscale = pix_scale)
+    loop = Focus_loop_v3(config, nom_focus = 9960, total_throw = 300, nsteps = 5, pixscale = pix_scale)
 
     
     #image_log_path = config['focus_loop_param']['image_log_path']
@@ -562,11 +563,17 @@ if __name__ == '__main__':
     """
     #starttime = '20220301_045946'
     #endtime = '20220301_050946'
-    starttime= '20220228_183604'
-    endtime = '20220228_184153'
-    night = '20220228'
+    #starttime= '20220228_183604'
+    #endtime = '20220228_184153'
+    #night = '20220228'
     
-
+    #starttime = '20220301_225614'
+    #endtime = '20220301_230252'
+    #night = '20220301'
+    
+    starttime = '20220308_190459'
+    endtime = '20220308_191149'
+    night = '20220308'
     
     datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S') 
     datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
