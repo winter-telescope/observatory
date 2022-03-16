@@ -508,13 +508,17 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     return header, image_data
 
 def getFromFITSHeader(filename, keyword):
-    image_file = filename
-    #plt.ion()
-    hdu_list = fits.open(image_file,ignore_missing_end = True)
-    hdu_list.info()
-    
-    header = hdu_list[0].header
-    value = header[keyword]
+    try:
+        image_file = filename
+        #plt.ion()
+        hdu_list = fits.open(image_file,ignore_missing_end = True)
+        hdu_list.info()
+        
+        header = hdu_list[0].header
+        value = header[keyword]
+    except Exception as e:
+        value = None
+        print(f'could not get keyword {keyword} from file {filename} due to {type(e)}: {e}')
     return value
 
 def getdatestr(date = 'today'):

@@ -83,9 +83,18 @@ class Dirfile(object):
         if (not units is None):
             if (units.lower() != 'none'):
                 self.format_file.write(f'{entry.field}/units STRING {entry.units}\n')
+            else:
+                self.format_file.write(f'{entry.field}/units STRING -\n')
+        else:
+            self.format_file.write(f'{entry.field}/units STRING  \n')
         if (not label is None):
             if (label.lower() != 'none'):
                 self.format_file.write(f'{entry.field}/quantity STRING {entry.label}\n')
+            else:
+                self.format_file.write(f'{entry.field}/quantity STRING -\n')
+        else:
+            self.format_file.write(f'{entry.field}/quantity STRING -\n')
+                
         self.format_file.flush()
     
     def add_linterp_entry(self, field, input_field, LUT_file, units = None, label = None):

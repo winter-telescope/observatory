@@ -948,9 +948,9 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state["mount.timestamp_utc"]
-    mount_mjd:
+    mount_jd:
         ftype: raw
-        label: 'MDJ'
+        label: 'JD'
         units: None
         dtype: float64
         rate: fast
@@ -1067,6 +1067,35 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state["mount.path_angle_rate_at_target_degs_per_sec"]
+    mount_offsets_ra_arcsec_total:
+        ftype: raw
+        label: 'RA'
+        units: 'arcsec'
+        dtype: float64
+        rate: hk
+        var: telescope.state["mount.ra_arcsec.total"]
+    mount_offsets_ra_arcsec_rate:
+        ftype: raw
+        label: 'RA'
+        units: 'arcsecps'
+        dtype: float64
+        rate: hk
+        var: telescope.state["mount.ra_arcsec.rate"]
+    mount_offsets_dec_arcsec_total:
+        ftype: raw
+        label: 'Dec'
+        units: 'arcsec'
+        dtype: float64
+        rate: hk
+        var: telescope.state["mount.dec_arcsec.total"]
+    mount_offsets_dec_arcsec_rate:
+        ftype: raw
+        label: 'RA'
+        units: 'arcsecps'
+        dtype: float64
+        rate: hk
+        var: telescope.state["mount.dec_arcsec.rate"]
+    
     # axis0 = AZ
     mount_az_is_enabled:
         ftype: raw
@@ -1325,6 +1354,35 @@ fields:
         dtype: float64
         rate: fast
         var: telescope.state["autofocus.tolerance"]
+    # telescope temperatures
+    telescope_temp_m1:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: fast
+        var: telescope.state["temperature.primary"]
+    telescope_temp_m2:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: fast
+        var: telescope.state["temperature.secondary"]
+    telescope_temp_m3:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: fast
+        var: telescope.state["temperature.m3"]
+    telescope_temp_ambient:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: fast
+        var: telescope.state["temperature.ambient"]
 #weather:
     #CDS (Clear Dark Skies)
     cds_cloud_index:
@@ -1923,7 +1981,20 @@ fields:
         dtype: int64
         rate: hk
         var: robostate["observatory_stowed"]  
-    
+    robo_programPriority:
+        ftype: raw
+        label: 'Value'
+        units: None
+        dtype: float64
+        rate: hk
+        var: robostate["programPriority"]
+    robo_targetPriority:
+        ftype: raw
+        label: 'Value'
+        units: None
+        dtype: float64
+        rate: hk
+        var: robostate["targetPriority"]
     ### LABJACK STUFF###
     V_LJ0_AIN0:
         ftype: raw
@@ -2247,15 +2318,19 @@ header_fields:
     obstype:
         var: robostate["obstype"]
     programPI:
-        var: robostate["progrdamPI"]
+        var: robostate["programPI"]
     programID:
         var: robostate["programID"]
+    programName:
+        var: robostate["programName"]
     qcomment:
         var: robostate["qcomment"]
     targtype:
         var: robostate["targtype"]
     pwi4_version:
         var: telescope.state["pwi4.version"]
+    mount_model_filename:
+        var: telescope.state["mount.model.filename"]
     
     
 

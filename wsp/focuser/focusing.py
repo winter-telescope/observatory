@@ -44,9 +44,10 @@ class Focus_loop_v3:
         x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
     
     """
-    def __init__(self, config, nom_focus, total_throw, nsteps, pixscale):
+    def __init__(self, config, nom_focus, total_throw, nsteps, pixscale, state = {}):
         
         self.config = config
+        self.state = state
         self.nom_focus = nom_focus
         self.total_throw = total_throw
         self.nsteps = nsteps
@@ -61,10 +62,10 @@ class Focus_loop_v3:
         outputs the best focus position and an estimate of the std error of that position
         """
         self.filter_range = filterpos_list
-        self.limglist = imglist
+        self.imglist = imglist
         
         # first analyze the images
-        self.rate_images(self.limglist)
+        self.rate_images(self.imglist)
         
         
         
@@ -132,8 +133,24 @@ class Focus_loop_v3:
         # get the difference between the two fits and use this as a measure for the error
         self.delta_xc = np.abs(self.xcfit_vcurve - self.xc_parfit)
         
+        
+        
         # update the fit results for the v-curve fit
-        self.fitresults.update({'raw_data':
+        self.fitresults.update({'telemetry':
+                                    {'camera' : 'SUMMER',
+                                     'filtername' : utils.getFromFITSHeader(self.imglist[0], 'FILTER'),
+                                     'filterID' : utils.getFromFITSHeader(self.imglist[0], 'FILTERID'),
+                                     'filterPos' : utils.getFromFITSHeader(self.imglist[0], 'FILPOS'),
+                                     'az' : utils.getFromFITSHeader(self.imglist[0], 'AZIMUTH'),
+                                     'alt' : utils.getFromFITSHeader(self.imglist[0], 'ALTITUDE'),
+                                     'ra' : utils.getFromFITSHeader(self.imglist[0], 'TELRA'),
+                                     'dec' : utils.getFromFITSHeader(self.imglist[0], 'TELDEC'),
+                                     'AIRMASS' : utils.getFromFITSHeader(self.imglist[0], 'AIRMASS')},
+                                'results':
+                                    {'focus': self.xcfit_vcurve,
+                                     'focus_err': self.delta_xc,
+                                     'time_utc_iso': utils.getFromFITSHeader(self.imglist[0], 'UTCISO')},
+                                'raw_data':
                                     {'positions' : filterpos_list,
                                      'images': imglist},
                                 'vcurve_fit':
@@ -168,7 +185,13 @@ class Focus_loop_v3:
                                          {'x' : list(self.pos_parabola),
                                           'y' : list(self.FWHM_med_parabola),
                                           'yerr': list(self.FWHM_std_parabola),
-                                          'images': list(self.images_parabola)}}
+                                          'images': list(self.images_parabola)}},
+                                'temperatures':
+                                    {'m1' : self.state.get('telescope_temp_m1', None),
+                                     'm2' : self.state.get('telescope_temp_m2', None),
+                                     'm3' : self.state.get('telescope_temp_m1', None),
+                                     'telescope_ambient' : self.state.get('telescope_temp_ambient', None),
+                                     'outside_pcs' : self.state.get('T_outside_pcs', None)},
                                         })
         
         # now try to fit a parabola to the data within the linear region based on the v-curve results
@@ -241,7 +264,8 @@ class Focus_loop_v3:
         #results_plot_last_link = os.path.join(results_parent_dir, self.config['focus_loop_param']['results_plot_last_link'])
         
         #TODO: replace this with a more sensible naming system...
-        starttime_string = self.images[0].split('/')[-1].split('.fits')[0].strip('_Camera0')
+        #starttime_string = self.images[0].split('/')[-1].split('.fits')[0].strip('_Camera0')
+        starttime_string = utils.getFromFITSHeader(self.imglist[0], 'UTC').split('.')[0]
         self.results_filepath = os.path.join(results_log_dir, f'focusResults_{starttime_string}.json')
         
         # create the data directory if it doesn't exist already
@@ -506,9 +530,7 @@ if __name__ == '__main__':
     # test area
     
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
-    pix_scale = 0.466
-    loop = Focus_loop_v3(config, nom_focus = 9960, total_throw = 300, nsteps = 5, pixscale = pix_scale)
-
+    
     
     #image_log_path = config['focus_loop_param']['image_log_path']
     """
@@ -571,9 +593,18 @@ if __name__ == '__main__':
     #endtime = '20220301_230252'
     #night = '20220301'
     
-    starttime = '20220308_190459'
-    endtime = '20220308_191149'
-    night = '20220308'
+    #starttime = '20220308_190459'
+    #endtime = '20220308_191149'
+    #night = '20220308'
+    
+    starttime = '20220315_214546'
+    endtime = '20220315_215255'
+    night = '20220315'
+    state = {"telescope_temp_m1": 9.516, 
+             "telescope_temp_m2": 8.995, 
+             "telescope_temp_m3": 9.516, 
+             "telescope_temp_ambient": 7.958, 
+             "T_outside_pcs": 10.1}
     
     datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S') 
     datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
@@ -588,7 +619,11 @@ if __name__ == '__main__':
         if (datetime_file <= datetime_end) & (datetime_file >= datetime_start):
             images.append(file)
             focuser_pos.append(utils.getFromFITSHeader(file, 'FOCPOS'))
-     
+    
+    
+    pix_scale = 0.466
+    loop = Focus_loop_v3(config, nom_focus = 9960, total_throw = 300, nsteps = 5, pixscale = pix_scale, state = state)
+
     
     
     system = 'focuser'
