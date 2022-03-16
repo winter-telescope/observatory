@@ -62,10 +62,10 @@ class Focus_loop_v3:
         outputs the best focus position and an estimate of the std error of that position
         """
         self.filter_range = filterpos_list
-        self.limglist = imglist
+        self.imglist = imglist
         
         # first analyze the images
-        self.rate_images(self.limglist)
+        self.rate_images(self.imglist)
         
         
         
@@ -134,7 +134,13 @@ class Focus_loop_v3:
         self.delta_xc = np.abs(self.xcfit_vcurve - self.xc_parfit)
         
         # update the fit results for the v-curve fit
-        self.fitresults.update({'raw_data':
+        self.fitresults.update({'properties':
+                                    {'camera' : 'SUMMER'},
+                                'results':
+                                    {'focus': self.xcfit_vcurve,
+                                     'focus_err': self.delta_xc,
+                                     'time_utc_iso': utils.getFromFITSHeader(self.imglist[0], 'UTCISO')},
+                                'raw_data':
                                     {'positions' : filterpos_list,
                                      'images': imglist},
                                 'vcurve_fit':
@@ -248,7 +254,8 @@ class Focus_loop_v3:
         #results_plot_last_link = os.path.join(results_parent_dir, self.config['focus_loop_param']['results_plot_last_link'])
         
         #TODO: replace this with a more sensible naming system...
-        starttime_string = self.images[0].split('/')[-1].split('.fits')[0].strip('_Camera0')
+        #starttime_string = self.images[0].split('/')[-1].split('.fits')[0].strip('_Camera0')
+        starttime_string = utils.getFromFITSHeader(self.imglist[0], 'UTC').split('.')[0]
         self.results_filepath = os.path.join(results_log_dir, f'focusResults_{starttime_string}.json')
         
         # create the data directory if it doesn't exist already
@@ -513,9 +520,7 @@ if __name__ == '__main__':
     # test area
     
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
-    pix_scale = 0.466
-    loop = Focus_loop_v3(config, nom_focus = 9960, total_throw = 300, nsteps = 5, pixscale = pix_scale)
-
+    
     
     #image_log_path = config['focus_loop_param']['image_log_path']
     """
@@ -578,9 +583,18 @@ if __name__ == '__main__':
     #endtime = '20220301_230252'
     #night = '20220301'
     
-    starttime = '20220308_190459'
-    endtime = '20220308_191149'
-    night = '20220308'
+    #starttime = '20220308_190459'
+    #endtime = '20220308_191149'
+    #night = '20220308'
+    
+    starttime = '20220315_214546'
+    endtime = '20220315_215255'
+    night = '20220315'
+    state = {"telescope_temp_m1": 9.516, 
+             "telescope_temp_m2": 8.995, 
+             "telescope_temp_m3": 9.516, 
+             "telescope_temp_ambient": 7.958, 
+             "T_outside_pcs": 10.1}
     
     datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S') 
     datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
@@ -595,7 +609,11 @@ if __name__ == '__main__':
         if (datetime_file <= datetime_end) & (datetime_file >= datetime_start):
             images.append(file)
             focuser_pos.append(utils.getFromFITSHeader(file, 'FOCPOS'))
-     
+    
+    
+    pix_scale = 0.466
+    loop = Focus_loop_v3(config, nom_focus = 9960, total_throw = 300, nsteps = 5, pixscale = pix_scale, state = state)
+
     
     
     system = 'focuser'
