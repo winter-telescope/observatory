@@ -535,8 +535,75 @@ def getdatestr(date = 'today'):
     except:
         print('Date format invalid, should be YYYYMMDD')
 
+def MJD_to_Datetime(MJD, timezone = 'America/Los_Angeles'):
+    
+    t_obj = astropy.time.Time(MJD, format = 'mjd')
+    t_datetime_obj = t_obj.datetime
+    t_datetime_obj_utc = pytz.utc.localize(t_datetime_obj)
+    t_datetime_obj_local = t_datetime_obj_utc.astimezone(pytz.timezone(timezone))    
+
+    return t_datetime_obj_local
 
 
+    
+def getImages(starttime, endtime, camera = 'SUMMER', fullpath = True):
+    """
+    Returns a list of image filenames that were taken between starttime and endtime
+    
+    times can be either a datetime object,
+    or a string in the following format: YYYYMMDD_HHMMSS,
+    or a time in MJD
+    """
+    timezone = pytz.timezone('America/Los_Angeles')
+    if type(starttime) is str:
+        datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S')
+        datetime_start = timezone.localize(datetime_start)
+    elif type(starttime) is datetime:
+        datetime_start = starttime
+        if datetime_start.tzinfo is None:
+            print(f'ASSUMING INPUT DATETIME IS TIMEZONE: {timezone}')
+            datetime_start = timezone.localize(datetime_start)
+            
+    elif type(starttime) is float:
+        datetime_start = MJD_to_Datetime(starttime)
+    else:
+        raise TypeError('starttime must be either a datetime object, string in YYYMMDD_HHMMSS, or MJD')
+    
+    if type(endtime) is str:
+        datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
+        datetime_end = timezone.localize(datetime_end)
+    elif type(endtime) is datetime:
+        datetime_end = endtime
+        if datetime_end.tzinfo is None:
+            print(f'ASSUMING INPUT DATETIME IS TIMEZONE: {timezone}')
+            datetime_end = timezone.localize(datetime_end)
+    elif type(endtime) is float:
+        datetime_end = MJD_to_Datetime(endtime)
+    else:
+        raise TypeError('endtime must be either a datetime object, string in YYYMMDD_HHMMSS, or MJD')
+        
+    
+    night = tonight_local(datetime_start.timestamp())
+    #print(f'night = {night}')
+    impath = os.path.join(os.getenv("HOME"),'data','images',night)
+    filelist = glob.glob(os.path.join(impath, '*.fits'))
+    imglist = []
+    for file in filelist:
+        if camera.lower() == 'summer':
+            timestr = file.split('SUMMER_')[1].split('_Camera0.fits')[0]
+            datetime_file = datetime.strptime(timestr, '%Y%m%d_%H%M%S')
+            datetime_file = timezone.localize(datetime_file)
+            if (datetime_file <= datetime_end) & (datetime_file >= datetime_start):
+                if fullpath:
+                    imglist.append(file)
+                else:
+                    imglist.append(os.path.basename(file))
+        else:
+            raise TypeError('getImages can only search for SUMMER images, other cameras not implemented')
+    
+    # sort the list (not sure why it doesn't automatically)
+    imglist = sorted(imglist)
+    return imglist
 
 ## Functions gratefully lifted from MINERVA and converted to python3 ##
 def readcsv(filename,skiprows=0):

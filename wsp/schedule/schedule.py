@@ -81,14 +81,14 @@ from utils import logging_setup
 class Schedule(object):
     # This is a class that handles the connection between WSP/roboOperator and the schedule file SQLite database
 
-    def __init__(self, base_directory, config, logger, scheduleFile_directory = 'default'):#, date = 'today'):
+    def __init__(self, base_directory, config, logger, scheduleFile_directory = 'default', verbose = False):#, date = 'today'):
         """
         sets up logging and opens connection to the database. Does
         not actually access any data yet.
         """
         # take in the config
         self.config = config
-            
+        self.verbose = verbose
         #set up logging
         self.logger = logger
 
@@ -220,13 +220,15 @@ class Schedule(object):
             
         if nextResult is None:
             self.currentObs = None
-            self.log('no valid entries at this time')
+            if self.verbose:
+                self.log('no valid entries at this time')
         else:
             
             nextResult_dict = dict(nextResult)
-            self.log(f'got next entry from schedule file: obsHistID = {nextResult_dict["obsHistID"]}')#', requestID = {nextResult_dict["requestID"]}')
+            if self.verbose:
+                self.log(f'got next entry from schedule file: obsHistID = {nextResult_dict["obsHistID"]}')#', requestID = {nextResult_dict["requestID"]}')
             
-            self.log('loading entry as currentObs')
+                self.log('loading entry as currentObs')
             nextResult_dict = dict(nextResult)
             self.currentObs = nextResult_dict
             self.last_obsHistID = self.currentObs['obsHistID']
