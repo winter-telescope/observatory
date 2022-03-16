@@ -41,8 +41,8 @@ class FocusModeler(object):
                                       'm3',
                                       'telescope_ambient',
                                       'outside_pcs']
-        self._setupResultsDict()
         
+        self._setupResultsDict()
         self.loadResults()
     
     def _setupResultsDict(self):

@@ -133,9 +133,19 @@ class Focus_loop_v3:
         # get the difference between the two fits and use this as a measure for the error
         self.delta_xc = np.abs(self.xcfit_vcurve - self.xc_parfit)
         
+        
+        
         # update the fit results for the v-curve fit
-        self.fitresults.update({'properties':
-                                    {'camera' : 'SUMMER'},
+        self.fitresults.update({'telemetry':
+                                    {'camera' : 'SUMMER',
+                                     'filtername' : utils.getFromFITSHeader(self.imglist[0], 'FILTER'),
+                                     'filterID' : utils.getFromFITSHeader(self.imglist[0], 'FILTERID'),
+                                     'filterPos' : utils.getFromFITSHeader(self.imglist[0], 'FILPOS'),
+                                     'az' : utils.getFromFITSHeader(self.imglist[0], 'AZIMUTH'),
+                                     'alt' : utils.getFromFITSHeader(self.imglist[0], 'ALTITUDE'),
+                                     'ra' : utils.getFromFITSHeader(self.imglist[0], 'TELRA'),
+                                     'dec' : utils.getFromFITSHeader(self.imglist[0], 'TELDEC'),
+                                     'AIRMASS' : utils.getFromFITSHeader(self.imglist[0], 'AIRMASS')},
                                 'results':
                                     {'focus': self.xcfit_vcurve,
                                      'focus_err': self.delta_xc,
