@@ -737,32 +737,41 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
-            ToO_currentObs = self.load_best_observing_target(obstime_mjd)
-            
-            if ToO_currentObs is None:
-                self.announce('no valid TOO observations, getting next observation from schedule database')
-                self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
-                currentObs = self.schedule.currentObs
-            else:
-                currentObs = ToO_currentObs
+            # if it is low enough (typically between astronomical dusk and dawn)
+            # then check for targets, otherwise just stand by
+            if self.state['sun_alt'] <= self.config['max_sun_alt_for_observing']:
+                ToO_currentObs = self.load_best_observing_target(obstime_mjd)
                 
-            #if self.schedule.currentObs is None:
-            if currentObs is None:
-                self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
-                # first stow the rotator
-                self.rotator_stop_and_reset()
-                
-                # if we're at the bottom of the schedule, then handle the end of the schedule
-                if self.schedule.end_of_schedule == True:
-                        self.announce('schedule complete! shutting down schedule connection')
-                        self.handle_end_of_schedule()
+                if ToO_currentObs is None:
+                    self.announce('no valid TOO observations, getting next observation from schedule database')
+                    self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
+                    currentObs = self.schedule.currentObs
                 else:
-                    # nothing is up right now, just loop back and check again
-                    self.checktimer.start()
-                return
+                    currentObs = ToO_currentObs
+            
+                #if self.schedule.currentObs is None:
+                if currentObs is None:
+                    self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
+                    # first stow the rotator
+                    self.rotator_stop_and_reset()
+                    
+                    # if we're at the bottom of the schedule, then handle the end of the schedule
+                    if self.schedule.end_of_schedule == True:
+                            self.announce('schedule complete! shutting down schedule connection')
+                            self.handle_end_of_schedule()
+                    else:
+                        # nothing is up right now, just loop back and check again
+                        self.checktimer.start()
+                    return
+                else:
+                    # if we got an observation, then let's go do it!!
+                    self.do_currentObs(currentObs)
+            
             else:
-                # if we got an observation, then let's go do it!!
-                self.do_currentObs(currentObs)
+                # if we are here then the sun is not low enough to observe, stand by
+                self.checktimer.start()
+                return
+            
         
     
     def load_best_observing_target(self, obstime_mjd):
