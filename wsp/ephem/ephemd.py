@@ -371,7 +371,7 @@ def sigint_handler( *args):
     """Handler for the SIGINT signal."""
     sys.stderr.write('\r')
     
-    main.ephem.daqloop.quit()
+    #main.ephem.daqloop.quit()
     
     QtCore.QCoreApplication.quit()
 
