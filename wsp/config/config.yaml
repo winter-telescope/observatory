@@ -113,6 +113,8 @@ log_link_name: 'winter.log'
 ########### ROBO MANAGER ###########
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL
+max_sun_alt_for_observing: -18
+
 robotic_manager_triggers:
     timeformat: '%H:%M:%S.%f'
     triggers:
@@ -493,7 +495,7 @@ focus_loop_param:
     target: '85 200'
     focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
-    focus_graceperiod_hours: 12
+    focus_graceperiod_hours: 3
     max_focus_attempts: 2
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
