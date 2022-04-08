@@ -316,7 +316,10 @@ class StatusMonitor(QtCore.QObject):
         msg = f':redsiren: *Alert!!*  Chiller has encountered {name} : {content}'       
         group = 'sudo'
         self.alertHandler.slack_log(msg, group = group)
-    
+        txtsubject = 'WINTER CHILLER :'
+        txtmsg = f'Chiller has encountered {name} : {content}'
+        self.alertHandler.text_group(group,subject = txtsubject, message = txtmsg)
+        
     def setup_connection(self):
         self.create_socket()
     
@@ -471,9 +474,13 @@ class StatusMonitor(QtCore.QObject):
                                     self.state['last_poll_time'].update({'PumpStatusFlag': timestamp})
                                     self.state['last_poll_time'].update({'AlarmStatusFlag'  : timestamp})
                                     self.state['last_poll_time'].update({'WarningStatusFlag' : timestamp})
-                                    if int(val[3]) == 1: #NPL 7-12-21 updated with the recast since val is a string
-                                    #if val[3] == 1:
+                                    #NPL 3-31-22 updated so ANY of warnings/alarms/pump issues trigger this announcement
+                                    if (any([self.state['AlarmStatusFlag'], self.state['WarningStatusFlag']])
+                                        or (self.state['PumpStatusFlag'] == 0)):
+                                    #if int(val[3]) == 1: #NPL 7-12-21 updated with the recast since val is a string
                                         print(f"Chiller alarm!: val[3] = {val[3]}, type(val[3]) = {type(val[3])}")
+                                        print(f'val = {val}')
+                                        print(f'state = {self.state}')
                                         command_string = '.0166rAlrmBit'
                                         check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
                                         if len(check_sum) == 1:
@@ -490,8 +497,9 @@ class StatusMonitor(QtCore.QObject):
                                         # use the alarm parser to figure out what's going on
                                         parsed_error_msg = self.chillerAlarmParser.parse_alarm_code(err_content)
                                         
-                                        self.broadcast_alert(err_name, err_content)
-                                        self.broadcast_alrt(err_name, parsed_error_msg)
+                                        if self.verbose:
+                                            self.broadcast_alert(err_name, err_content)
+                                        self.broadcast_alert(err_name, parsed_error_msg)
                                         
                                 else:
                                     val = reply[14:19]

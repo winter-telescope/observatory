@@ -1163,7 +1163,8 @@ class PyroGUI(QtCore.QObject):
 
     def startReadTimer(self, waittime):
         self.logger.info(f'starting readout timer, waittime = {waittime}')
-        self.readTimer.setInterval(waittime)
+        waittime_int = int(waittime)
+        self.readTimer.setInterval(waittime_int)
         self.readTimer.start()
         
     def readTimerComplete(self):

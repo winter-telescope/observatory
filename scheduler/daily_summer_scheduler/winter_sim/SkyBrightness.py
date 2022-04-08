@@ -4,17 +4,24 @@ import sklearn
 from sklearn import model_selection, ensemble, preprocessing, pipeline
 from sklearn import neighbors, svm, linear_model
 from sklearn_pandas import DataFrameMapper
-from sklearn.externals import joblib
+try: #NPL 4-1-22, deprecated in newer sklearn: https://github.com/pyinstaller/pyinstaller/issues/4067
+    from sklearn.externals import joblib
+except:
+    import joblib
 import xgboost as xgb
 import pandas as pd
 import numpy as np
-from .constants import FILTER_NAME_TO_ID, BASE_DIR
+try:
+    from .constants import FILTER_NAME_TO_ID, BASE_DIR
+except:
+    from constants import FILTER_NAME_TO_ID, BASE_DIR
 import sys
-sys.modules['sklearn.externals.joblib'] = joblib
+#sys.modules['sklearn.externals.joblib'] = joblib #NPL 4-1-22 what is this doing?
 
 class SkyBrightness(object):
 
     def __init__(self):
+        print(f'SkyBrightness:  BASE_DIR: {BASE_DIR}')
         self.clf_r = joblib.load(BASE_DIR + '../data/sky_model/sky_model_r.pkl')
         self.clf_g = joblib.load(BASE_DIR + '../data/sky_model/sky_model_g.pkl')
         self.clf_i = joblib.load(BASE_DIR + '../data/sky_model/sky_model_i.pkl')
