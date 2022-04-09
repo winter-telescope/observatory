@@ -8,7 +8,8 @@ Created on Wed May 12 13:11:16 2021
 
 import requests
 from datetime import datetime
-#import time
+import time
+import math
 
 #URL = 'http://192.168.1.54:5001/'
 
@@ -53,7 +54,7 @@ class Viscam:
             self.state.update({'pi_status' : 1})
             self.state.update({'pi_status_last_timestamp'  : datetime.utcnow().timestamp()})
             
-            pos = self.send_filter_wheel_command(8)
+            pos = self._send_filter_wheel_command(8)
             try:
                 pos = int(pos[22]) + 1 # get position in int
             except:
@@ -66,16 +67,14 @@ class Viscam:
             self.state.update({'shutter_state' : shut})
             self.state.update({'shutter_state_last_timestamp'  : datetime.utcnow().timestamp()})
             
-            
-                
     # send a command to the filter wheel
     # 1 - set filter wheel to position 1
     # 2-7 - set filter wheel to position 2-7
     # 8 - get current position
     # 9 - check number of available positions
     # 10 - get filter wheel firmware version
-    def send_filter_wheel_command(self, position):
-        string = self.url + "filter_wheel?n=" + str(position)
+    def _send_filter_wheel_command(self, position):
+        string = self.url + "filter_wheel?n=" + str(position)     
         try:
             res = requests.get(string, timeout=10)
             status = res.status_code
@@ -85,7 +84,63 @@ class Viscam:
         except:
             #print("Raspi is not responding")
             self.logger.info(f'Filter wheel is not responding')
-            return 0
+            return 0            
+                
+    def short_circ(self, target, origin):
+      MAX_VALUE = 7
+
+      signedDiff = 0.0;
+      if (origin > target):
+          raw_diff = origin - target
+      else:
+          raw_diff = target - origin
+      mod_diff = math.fmod(raw_diff, MAX_VALUE) #equates rollover values. E.g 0 == 360 degrees in circle
+
+      if(mod_diff > (MAX_VALUE/2) ):
+        #There is a shorter path in opposite direction
+        signedDiff = (MAX_VALUE - mod_diff)
+        if(target>origin):
+            signedDiff = signedDiff * -1
+      else:
+        signedDiff = mod_diff
+        if(origin>target):
+            signedDiff = signedDiff * -1
+
+      return signedDiff
+        
+    # send a command to the filter wheel
+    # 1 - set filter wheel to position 1
+    # 2-7 - set filter wheel to position 2-7
+    # 8 - get current position
+    # 9 - check number of available positions
+    # 10 - get filter wheel firmware version
+    def send_filter_wheel_command(self, position):
+        # if moving filter wheel
+        if position < 8:
+            # check where it is now
+            last_pos = self._send_filter_wheel_command(8)
+            try:
+                last_pos = int(last_pos[22]) + 1 # get position in int
+            except:
+                last_pos = -1 # invalid filter position
+                
+            if self.short_circ(position-1, last_pos-1) >= 0: # zero index 
+                # if the shortest path for the filter wheel is the positive 
+                # or zero, do normal command
+                return self._send_filter_wheel_command(position)
+    
+            else:
+                # else, force it to go long way
+                return self._send_filter_wheel_command(position)
+                # move one step in the right direction
+                # new_pos = (position + 1) % 7 # modulo 7 positions
+                # res = self._send_filter_wheel_command(new_pos)
+                # while new_pos != position:
+
+        else:   
+            # if not, query normally
+            return self._send_filter_wheel_command(position)
+                
     
     # send a command to the shutter
     # 0 - close the shutter
