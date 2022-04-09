@@ -2922,6 +2922,8 @@ class RoboOperator(QtCore.QObject):
                 print("Rotator wrapping < min, adjusting")
                 self.target_field_angle -= 360.0
                 self.target_mech_angle = predicted_rotator_mechangle + 360.0
+                print(f"Adjusted field angle --> {self.target_field_angle}")
+                print(f"New target mech angle = {self.target_mech_angle}")
                 
             if (predicted_rotator_mechangle > \
                 self.config['telescope']['rotator_max_degs']):
@@ -2929,7 +2931,8 @@ class RoboOperator(QtCore.QObject):
                 # Changed line below from + to -= as a test...RAS
                 self.target_field_angle -= 360.0
                 self.target_mech_angle = predicted_rotator_mechangle - 360.0
-                
+                print(f"Adjusted field angle --> {self.target_field_angle}")
+                print(f"New target mech angle = {self.target_mech_angle}")
             # Check!
 
             # self.state['rotator_mech_position']
