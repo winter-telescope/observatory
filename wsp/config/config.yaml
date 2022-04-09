@@ -487,15 +487,22 @@ focus_loop_param:
     targets:
         targ1:
             target_type: altaz
-            target: '5 15'
+            target: '79 10'
         targ2:
             target_type: altaz
-            target: '85 270'
-    target_type: altaz
-    target: '85 200'
+            target: '75 280'
+        targ3:
+            target_type: altaz
+            target: '75 290'
+        targ4:
+            target_type: altaz
+            target: '75 300'
+        targ5:
+            target_type: altaz
+            target: '40 304'
     focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
-    focus_graceperiod_hours: 3
+    focus_graceperiod_hours: 12
     max_focus_attempts: 2
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
@@ -550,8 +557,8 @@ filters:
         u:
             name: "SDSS u'"
             nominal_focus: 9960
-            active: False
-            focus_exptime: 10
+            active: True
+            focus_exptime: 30
         g:
             name: "SDSS g'"
             nominal_focus: 9960
@@ -560,12 +567,12 @@ filters:
         r:
             name: "SDSS r'"
             nominal_focus: 9960
-            active: False
+            active: True
             focus_exptime: 10
         i:
             name: "SDSS i'"
             nominal_focus: 9960
-            active: False
+            active: True
             focus_exptime: 10
     winter:
         J:
