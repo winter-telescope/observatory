@@ -487,7 +487,7 @@ focus_loop_param:
     targets:
         targ1:
             target_type: altaz
-            target: '55 287'
+            target: '5 15'
         targ2:
             target_type: altaz
             target: '85 270'
@@ -532,35 +532,39 @@ filt_limits:
 
 filters:
     summer:
-        r:
+        r_chroma:
             name: "SDSS r' (Chroma)"
             nominal_focus: 9960
-            active: True
+            active: False
             focus_exptime: 10
-        u:
+        u_chroma:
             name: "SDSS u' (Chroma)"
             nominal_focus: 9961
             active: False
             focus_exptime: 30
-            
-        other2:
-            name: "Unknown filter posn 2"
-            nominal_focus: 10150
+        empty:
+             name: "empty"
+             nominal_focus: 9961
+             active: False
+             focus_exptime: 30    
+        u:
+            name: "SDSS u'"
+            nominal_focus: 9960
             active: False
             focus_exptime: 10
-        other4:
-            name: "Unknown filter posn 4"
-            nominal_focus: 10150
+        g:
+            name: "SDSS g'"
+            nominal_focus: 9960
+            active: True
+            focus_exptime: 10
+        r:
+            name: "SDSS r'"
+            nominal_focus: 9960
             active: False
             focus_exptime: 10
-        other5:
-            name: "SDSS r' (Chroma, filter error)"
-            nominal_focus: 10150
-            active: False
-            focus_exptime: 10
-        other6:
-            name: "Unknown filter posn 6"
-            nominal_focus: 10150
+        i:
+            name: "SDSS i'"
+            nominal_focus: 9960
             active: False
             focus_exptime: 10
     winter:
@@ -585,11 +589,12 @@ filter_wheels:
     summer:
         positions:
             1: 'u'
-            2: 'other2'
-            3: 'r'
-            4: 'other4'
-            5: 'other5'
-            6: 'other6'
+            2: 'g'
+            3: 'empty'
+            4: 'r'
+            5: 'empty'
+            6: 'i'
+            7: 'empty'
     winter:
         positions:
             1: 'Y'

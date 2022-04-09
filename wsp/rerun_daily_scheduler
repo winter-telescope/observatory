@@ -1,4 +1,4 @@
-#!/home/winter/anaconda3/bin/python
+#!/home/winter/anaconda3/envs/wspV0/bin/python
 # -*- coding: utf-8 -*-
 """
 Created on Thu May  6 15:31:32 2021
@@ -70,7 +70,9 @@ print('PRINTOUT FROM SCHEDULER:')
 
 # run the daily scheduler!
 #os.system(cmd)
-args = ["/home/winter/anaconda3/bin/python", filepath, sky_config, night_config]
+#pythonpath = "/home/winter/anaconda3/bin/python"
+pythonpath = "/home/winter/anaconda3/envs/wspV0/bin/python"
+args = [pythonpath, filepath, sky_config, night_config]
 scheduler_process = subprocess.Popen(args, shell = False)
 
 

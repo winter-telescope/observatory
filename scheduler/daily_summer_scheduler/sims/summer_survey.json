@@ -9,7 +9,7 @@
 		 "program_pi": "WINTER",
 		 "program_observing_fraction": 1.0,
 		 "subprogram_fraction": 1.0,
-		 "field_selections":{"dec_range":[46,48]},
+		 "field_selections":{"dec_range":[60,62]},
 		 "filter_choice": "sequence",
 		 "filter_ids": [2],
 		 "internight_gap_days": 3,

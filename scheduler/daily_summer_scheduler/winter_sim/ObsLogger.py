@@ -5,6 +5,7 @@ from collections import defaultdict
 import uuid
 import numpy as np
 import pandas as pd
+import sqlalchemy as db
 from sqlalchemy import create_engine
 import astropy.coordinates as coord
 import pathlib
@@ -75,7 +76,10 @@ class ObsLogger(object):
                 pass
 
         # If the table doesn't exist, create it
-        if not self.engine.dialect.has_table(self.engine, 'Field'): 
+        insp = db.inspect(self.engine)
+        table_exists = insp.has_table('Field')
+        if not table_exists:
+        #if not self.engine.dialect.has_table(self.engine, 'Field'): 
 
             self.conn.execute("""
             CREATE TABLE Field(
@@ -117,7 +121,10 @@ class ObsLogger(object):
                 pass
 
         # If the table doesn't exist, create it
-        if not self.engine.dialect.has_table(self.engine, 'Summary'): 
+        insp = db.inspect(self.engine)
+        table_exists = insp.has_table('Summary')
+        if not table_exists:
+        #if not self.engine.dialect.has_table(self.engine, 'Summary'): 
             
             # create table
             self.conn.execute("""

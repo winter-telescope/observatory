@@ -101,8 +101,10 @@ class ObsWriter():
         self.generateDBCommands()
 
         for table in self.sqlCommands:
-
-            if not self.engine.dialect.has_table(self.engine, table):
+            insp = db.inspect(self.engine)
+            table_exists = insp.has_table(table)
+            #if not self.engine.dialect.has_table(self.engine, table):
+            if not table_exists:
                 try:
                     self.conn.execute(self.sqlCommands[table]["createCommand"])
                 except:

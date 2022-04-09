@@ -189,7 +189,7 @@ if __name__ == '__main__':
     posFit0 = np.polyval(param0, temps)
     resid0 = np.abs(pos - posFit0)
     sigma0 = np.std(resid0)
-    scale = .75
+    scale = 1.5
     flags = resid0 > scale*sigma0
     
     model0_x = np.linspace(min(temps), max(temps), 100)

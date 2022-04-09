@@ -249,6 +249,10 @@ class RoboOperator(QtCore.QObject):
         else:
             self.test_mode = False
         
+        # a flag to denote whether an observation (eg, roboOperator.do_observation) was completed successfully
+        self.observation_completed = False
+        
+        
         # a flag to denote whether the observatory (ie telescope and dome) are ready to observe, not including whether dome is open
         self.observatory_ready = False
         # a similar flag to denote whether the observatory is safely stowed
@@ -1878,6 +1882,7 @@ class RoboOperator(QtCore.QObject):
                     # observe the focus location
                     
                     # be prepared to cycle through targets until one works
+                    firstObsComplete = False
                     for target in self.config['focus_loop_param']['targets']:
                         focus_target_type = self.config['focus_loop_param']['targets'][target]['target_type']
                         focus_target = self.config['focus_loop_param']['targets'][target]['target']
@@ -1885,24 +1890,54 @@ class RoboOperator(QtCore.QObject):
                         
                         
                         try:
+                            print(f'Focus Loop Running in Thread: {threading.get_ident()}')
+                            #raise TargetError('what happens if i explicitly raise an error???')
                             self.do(f'robo_observe {focus_target_type} {focus_target} -foc --comment "{qcomment}"')
                             
+                            # check if the observation was completed successfully
+                            if self.observation_completed:
+                                self.announce(f'completed critical first observation, on to the rest...')
+                                # if we get here, then break out of the loop!
+                                firstObsComplete = True
+                                break
+                            
+                            else:
+                                # if the problem was a target issue, try we'll try a new target
+                                if self.target_ok == False:
+                                    # if we're here, it means (probably) that there's some ephemeris near the target. go try another target
+                                    self.announce(f'could not observe focus target, TargetError: type = {focus_target_type}, target = ({focus_target}), trying next one...')
+                                
+                                # if it was some other error, all bets are off. just bail.
+                                else:
+                                    #if we're here there's some generic error. raise it.
+                                    self.announce(f'could not observe focus target exiting...')
+                                    return
+                            #self.target_ok = True
+                            #self.observation_completed = False
+                            """    
+                            # this logic isn't working... exception is NOT being caught!
                             self.announce(f'completed critical first observation, on to the rest...')
                             # if we get here, then break out of the loop!
+                            firstObsComplete = True
                             break
                         
-                        except TargetError as e:
+                        except TimeoutError as e:
                             # if we're here, it means (probably) that there's some ephemeris near the target. go try another target
                             print(e)
                             self.announce(f'could not observe focus target (error: {e}): type = {focus_target_type}, target = ({focus_target}), trying next one...')
-                        
+                            """
                         except Exception as e:
                             # if we're here there's some generic error. raise it.
                             self.announce(f'could not observe focus target (error: {e}), exiting...')
                             raise Exception(e)
                             return
-                        
-                        
+                         
+                    if firstObsComplete:
+                        pass
+                    else:
+                        # if we get down to here then we ran out of targets. stop what's happening
+                        self.announce(f'could not observe ANY of the focus targets from the list. exiting...')
+                        return
                             
                     
                 else:
@@ -2256,9 +2291,10 @@ class RoboOperator(QtCore.QObject):
                 self.filter_scheduled = currentObs['filter']
                 # handle bad filter name 'g' for the moment
                 #TODO: fix this when the filter name in the scheduler is fixed
+                """
                 if self.filter_scheduled == 'g':
                     self.filter_scheduled = 'u'
-                
+                """
                 # calculate the current Alt and Az of the target 
                 if self.sunsim:
                     obstime_mjd = self.ephem.state.get('mjd',0)
@@ -2394,7 +2430,8 @@ class RoboOperator(QtCore.QObject):
                     self.log(msg)
                     err = roboError(context, self.lastcmd, system, msg)
                     self.hardware_error.emit(err)
-                
+                    #NPL 4-7-22 trying to get it to break out of the dither loop on error
+                    break
                 # if we got here the observation wasn't completed properly
                 #return
                 #self.gotoNext()
@@ -2583,6 +2620,7 @@ class RoboOperator(QtCore.QObject):
                 self.alertHandler.slack_log(msg, group = None)
                 self.target_ok = False
                 raise TargetError(msg)
+                
                 #return
         
         # do the exposure and wrap with appropriate error handling
@@ -2651,11 +2689,14 @@ class RoboOperator(QtCore.QObject):
                 - there are no ephemeris bodies (from the tracked list) within the field of view margins
                 
         """
+        # the observation has not been completed
+        self.observation_completed = False
+        
         # tag the context for any error messages
         context = 'do_observation'
         
         self.log(f'doing observation: targtype = {targtype}, target = {target}, tracking = {tracking}, field_angle = {field_angle}')
-        
+        print(f'do_observation running in thread: {threading.get_ident()}')
         #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
         self.check_ok_to_observe(logcheck = True)
         self.logger.info(f'self.running = {self.running}, self.ok_to_observe = {self.ok_to_observe}')
@@ -2922,11 +2963,14 @@ class RoboOperator(QtCore.QObject):
                 reason = f"(TOO HIGH, Target Alt {self.target_alt:0.1f} > Max Allowed Alt {self.config['telescope']['max_alt']:0.1f})"
             else:
                 reason = f"(unknown reason??)"
-            msg = f'>> target not within view! {reason} skipping...'
+            msg = f'>> do_observation: target not within view! {reason} skipping...'
+            print(msg)
             self.log(msg)
             self.alertHandler.slack_log(msg, group = None)
             self.target_ok = False
-            raise TargetError(msg)
+            #raise TypeError(msg)#TargetError(msg)
+            raise TimeoutError(msg)
+            print('I got below the exeption... this is bad :(')
             #return
         
         # now check if the target alt and az are too near the tracked ephemeris bodies
@@ -3104,6 +3148,9 @@ class RoboOperator(QtCore.QObject):
         
         # make a jpg of the last image and publish it to slack!
         postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
+        
+        # the observation has been completed successfully :D
+        self.observation_completed = True
 
     def remakePointingModel(self, append = False, firstpoint = 0):
         context = 'Pointing Model'

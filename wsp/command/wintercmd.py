@@ -75,7 +75,7 @@ from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
 from alerts import alert_handler
-
+from control.roboOperator import TargetError
 # GLOBAL VARS
 
 # load the config
@@ -128,7 +128,10 @@ def cmd(func):
         
         except TimeoutError as e:
             raise TimeoutError(e)
-        
+        except TargetError as e:
+            print(f'wintercmd: caught TargetError: (e)')
+            raise TargetError(e)
+            
         except Exception as e:
             '''
             Exceptions are already handled by the argument parser
