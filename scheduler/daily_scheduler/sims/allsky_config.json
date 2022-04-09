@@ -1,0 +1,9 @@
+{
+	"run_name": "1_night_test",
+	"queues": [
+		{"config_file": "allsky_reference_building.json",
+			"queue_name": "default"},
+        {"config_file": "summer_fallback.json",
+        "queue_name": "fallback"}
+	]
+}	
