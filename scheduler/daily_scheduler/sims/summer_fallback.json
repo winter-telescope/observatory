@@ -10,7 +10,7 @@
          "subprogram_fraction": 1.0,
 		 "field_selections":{"dec_range":[10,20]},
 		 "filter_choice": "sequence",
-		 "filter_ids": [2],
+		 "filter_ids": [6],
 		 "internight_gap_days": 1,
 		 "n_visits_per_night": 1,
 		 "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":10},
