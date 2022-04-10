@@ -58,6 +58,9 @@ class ObsLogger(object):
         # rename progID to propID for scheduler
         if 'progID' in self.history.columns:
             self.history.rename(columns = {'progID':'propID'}, inplace = True)
+         # rename progName to subprogram 
+        if 'progName' in self.history.columns:
+            self.history.rename(columns = {'progName':'subprogram'}, inplace = True)
         
         self.log_tonight = pd.read_sql('Summary', self.engine)
         
