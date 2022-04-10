@@ -17,7 +17,7 @@ from .optimize import request_set_optimize, slot_optimize, tsp_optimize, night_o
 from .cadence import enough_gap_since_last_obs
 from .constants import W_loc, P48_loc, PROGRAM_IDS, FILTER_IDS, TIME_BLOCK_SIZE
 from .constants import EXPOSURE_TIME, FILTER_CHANGE_TIME, MIRROR_CHANGE_TIME, slew_time
-from .constants import PROGRAM_BLOCK_SEQUENCE, LEN_BLOCK_SEQUENCE, MAX_AIRMASS
+from .constants import PROGRAM_BLOCK_SEQUENCE, LEN_BLOCK_SEQUENCE, MAX_AIRMASS, MIN_AIRMASS
 from .constants import BASE_DIR, WINTER_FILTERS, SUMMER_FILTERS, FILTER_NAME_TO_ID
 from .utils import approx_hours_of_darkness
 from .utils import skycoord_to_altaz, seeing_at_pointing
@@ -399,16 +399,21 @@ class QueueManager(object):
 
         # compute sky brightness
         # only have values for reasonable altitudes (set by R20_absorbed...)
-        wup = df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) 
+        wup = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
+            (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) ))
         
         # winter sky brightness
-        wup_tmp = (df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & df['filter_id'].isin(WINTER_FILTERS) 
+        wup_tmp = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
+                   (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) )) & \
+                    df['filter_id'].isin(WINTER_FILTERS) 
         df.loc[wup_tmp, 'sky_brightness'] = airglow_by_altitude(\
                                         altitude = df.loc[wup_tmp,'altitude'],
                                         filter_id = df.loc[wup_tmp,'filter_id'])
             
         # summer sky brightness
-        wup_tmp = (df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & df['filter_id'].isin(SUMMER_FILTERS) 
+        wup_tmp = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
+                   (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) )) & \
+                    df['filter_id'].isin(SUMMER_FILTERS) 
         df.loc[wup_tmp, 'sky_brightness'] = self.VisibleSky.predict(df[wup_tmp])
 
         # compute seeing at each pointing
@@ -1204,6 +1209,8 @@ class ListQueueManager(QueueManager):
             queue['exposure_time'] = EXPOSURE_TIME.to(u.second).value
         if 'max_airmass' not in queue.columns:
             queue['max_airmass'] = MAX_AIRMASS
+        if 'min_airmass' not in queue.columns:
+            queue['min_airmass'] = MIN_AIRMASS
         if 'n_repeats' not in queue.columns:
             queue['n_repeats'] = 1
 
@@ -1233,7 +1240,7 @@ class ListQueueManager(QueueManager):
             airmass = altitude_to_airmass(
                     skycoord_to_altaz(sc, 
                         current_state['current_time']).alt.to(u.deg).value)
-            if airmass >= self.queue.iloc[idx].max_airmass:
+            if (airmass >= self.queue.iloc[idx].max_airmass) & (airmass <= self.queue.iloc[idx].min_airmass) :
                 idx += 1
                 continue
             # Reed limits |HA| to < 5.95 hours (most relevant for circumpolar
