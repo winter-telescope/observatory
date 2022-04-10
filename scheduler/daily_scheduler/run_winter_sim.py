@@ -43,3 +43,6 @@ simulate(schedule_config_file, sim_config_file,
     sim_config_path = sim_config_path,
     output_path = args.output,
     time_limit = args.time_limit * u.second)
+
+
+print(" \n \n \n \nFINISHED RUNNING SCHEDULER")
