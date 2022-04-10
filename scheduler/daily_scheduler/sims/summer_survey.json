@@ -5,16 +5,18 @@
         "queue_manager": "gurobi",
 	"observing_programs": [
 		{"program_name": "SUMMER",
-		 "subprogram_name": "all_sky",
+		 "subprogram_name": "all_sky_u",
 		 "program_pi": "WINTER",
 		 "program_observing_fraction": 1.0,
 		 "subprogram_fraction": 1.0,
 		 "field_selections":{"dec_range":[46,48]},
 		 "filter_choice": "sequence",
-		 "filter_ids": [4,5,6,7],
+		 "filter_ids": [4],
+		 "exposure_time": 60, 
 		 "internight_gap_days": 3,
 		 "n_visits_per_night": 4,
 		 "nightly_priority": "oldest",
+		 "dither": "Y",
 		 "active_months": "all"}
 	]
 }
