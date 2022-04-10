@@ -28,8 +28,6 @@ import pandas as pd
 import traceback
 import glob
 import pytz
-import pandas as pd
-import sqlalchemy as db
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -276,7 +274,8 @@ class RoboOperator(QtCore.QObject):
         # hold a variable to track remaining dithers in kst
         self.remaining_dithers = 0 
         
-        
+        # dictionary to hold TOO schedules
+        self.ToOschedules = dict()
         
         # create exposure timer to wait for exposure to finish
         self.waiting_for_exposure = False
@@ -334,26 +333,26 @@ class RoboOperator(QtCore.QObject):
         self.calibration_complete = False
         
         ### SET UP THE SCHEDULE ###
-        # dictionary to hold TOO schedules
-        self.ToOschedules = dict()
-        
-        # set up the survey schedule. init it as self.schedule, but later self.schedule will switch if there's a TOO
-        #self.surveySchedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
-        
-        #self.lastSeen = -1
-        self.obsHistID = -1
+        self.lastSeen = -1
         ## in robotic mode, the schedule file is the nightly schedule
         if self.mode == 'r':
-            self.survey_schedulefile_name = 'nightly'
+            self.schedulefile_name = 'nightly'
         ## in manual mode, the schedule file is set to None
         else:
-            self.survey_schedulefile_name = None
+            self.schedulefile_name = None
             
         # set up the schedule
         ## after this point we should have something in self.schedule.currentObs
-        self.loadSchedule(self.survey_schedulefile_name, postPlot = True)
+        self.setup_schedule()
         
         
+        """
+        # start up the robotic observing!
+        #TODO: NPL 9-8-21 commenting out since this has been moved to roboManager
+        if self.mode == 'r':
+            # start the robo?
+            self.restart_robo()        # make a timer that will control the cadence of checking the conditions
+        """
         ### SET UP POINTING MODEL BUILDER ###
         self.pointingModelBuilder = pointingModelBuilder.PointingModelBuilder()
         
@@ -404,14 +403,11 @@ class RoboOperator(QtCore.QObject):
                   'target_az',
                   'target_ra_j2000_hours',
                   'target_dec_j2000_deg',
-                  #'lastSeen',
-                  'obsHistID',
-                  'fieldID',
+                  'lastSeen',
                   'operator',
                   'obstype',     
                   'programPI',
                   'programID',
-                  'programName',
                   'qcomment',
                   'targtype',
                   'observatory_stowed',
@@ -720,19 +716,45 @@ class RoboOperator(QtCore.QObject):
                     # now exit and rerun the check
                     self.checktimer.start()
                     return
-                
+                """ # do we have to do anything if we just want to leave the focus at the last position? that's already loaded in the focusTracker...
+                elif self.focus_attempt_number == self.config['focus_loop_param']['max_focus_attempts'] + 1:
+                    # this should send focus to last good position
+                    for filterID in filterIDs_to_focus:
+                    last_focus, last_focus_timestamp = self.focusTracker.checkLastFocus(filterID)
+                    system = 'focuser'
+                    try:
+                        #TODO: do rob's thing of splitting into multiple steps
+                        self.announce(f'having a bad time focusing. sending to last good focus')
+                        self.do(f'm2_focuser_goto {last_focus}')
+                            
+                        
+                        
+        
+                    except Exception as e:
+                        msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}'
+                        self.log(msg)
+                        self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                        err = roboError(context, self.lastcmd, system, msg)
+                        self.hardware_error.emit(err)
+                        return
+                """
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
             # if it is low enough (typically between astronomical dusk and dawn)
             # then check for targets, otherwise just stand by
             if self.state['sun_alt'] <= self.config['max_sun_alt_for_observing']:
-                self.load_best_observing_target(obstime_mjd)
+                ToO_currentObs = self.load_best_observing_target(obstime_mjd)
                 
-                
-                
-                if self.schedule.currentObs is None:
-                #if currentObs is None:
+                if ToO_currentObs is None:
+                    self.announce('no valid TOO observations, getting next observation from schedule database')
+                    self.schedule.gotoNextObs(obstime_mjd = obstime_mjd)
+                    currentObs = self.schedule.currentObs
+                else:
+                    currentObs = ToO_currentObs
+            
+                #if self.schedule.currentObs is None:
+                if currentObs is None:
                     self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
                     # first stow the rotator
                     self.rotator_stop_and_reset()
@@ -747,8 +769,7 @@ class RoboOperator(QtCore.QObject):
                     return
                 else:
                     # if we got an observation, then let's go do it!!
-                    #self.do_currentObs(currentObs)
-                    self.do_currentObs(self.schedule.currentObs)
+                    self.do_currentObs(currentObs)
             
             else:
                 # if we are here then the sun is not low enough to observe, stand by
@@ -759,54 +780,129 @@ class RoboOperator(QtCore.QObject):
     
     def load_best_observing_target(self, obstime_mjd):
         """
-        query all available schedules (survey + any schedules in the TOO folder),
-        then rank them and return the highest ranked instance. this is what we want to observe
+        Checks to see what the best target to observe is right now. 
+        
+        Decision tree:
+            1. check if there are any schedule files in the ToO High priority folder
+                if yes:
+                    load the most recent one.
+                else:
+                    pass
+            2. check if there are
+                if yes:
+                    load the most recent one.
+                else:
+                    pass
+            3. get the first valid entry from the current schedule
+                this is either a TOO, the baseline schedule (last loaded. eg through load_target_schedule or nightly), or None
+            4. run self.do_currentObs()
         """
+        #TODO: handle what to do if another schedule is added during TOO observation
+        #This isn't quite the right behavior in any case... we want to actually see if there are valid observations in the TOO schedules
+        # if there are none, than we need to handle switching back to the normal operations. maybe we want to keep the baseline as nightly_tonight ALWAYS,
+        # and then keep self.targeSchedule or something that can be handled. this would stil let us load the target schedule from the wintercmd 
+        # interface, and also let WSP switch back and forth between them easily by changing schedules in here.
+        
+        if obstime_mjd == 'now':
+            obstime_mjd = self.ephem.state.get('mjd',0)
+        
         # get all the files in the ToO High Priority folder
-        ToO_schedule_directory = os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_directory'])
-        ToOscheduleFiles = glob.glob(os.path.join(ToO_schedule_directory, '*.db'))
+        highPriority_schedule_directory = os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_HighPriority_directory'])
+        self.highPriority_schedules = glob.glob(os.path.join(highPriority_schedule_directory, '*.db'))
+        self.log(f'schedules in high priority folder: {self.highPriority_schedules}')
         
-        # bundle up all the schedule files in a single pandas dataframe
-        full_df = pd.DataFrame()
-        # add all the ToOs
-        for too_file in ToOscheduleFiles:
-            engine = db.create_engine('sqlite:///'+too_file)
-            conn = engine.connect()
-            df = pd.read_sql('SELECT * FROM summary;',conn)
-            df['origin_filename'] = too_file
-            full_df = pd.concat([full_df,df])
-            conn.close()
+        self.log('')
+        # check if the schedule is already in self.ToOschedules
+        for sched_filepath in self.highPriority_schedules:
+            sched_filename = sched_filepath.split('/')[-1]
+            sched_filedirectory = highPriority_schedule_directory
+            if sched_filename in self.ToOschedules:
+                pass
+            else:
+                self.log(f'need to add {sched_filename} to high priority schedules')
+                sched_obj = schedule.Schedule(base_directory = self.base_directory,
+                                              config = self.config,
+                                              logger = self.logger,
+                                              scheduleFile_directory = sched_filedirectory)
+                
+                # set up the ToO schedule
+                sched_obj.loadSchedule(schedulefile_name  = sched_filepath)
+                
+                self.ToOschedules.update({sched_filename : {'filepath' : sched_filepath,
+                                                            'priority' : 'high',
+                                                            'schedule' : sched_obj}})
         
-        # now sort by priority (highest to lowest)
-        full_df = full_df.sort_values(['Priority'],ascending=False)
+        # now query if there are valid observations in any of the TOO schedule
         
-        # now sort by validStop (earliest to latest)
-        full_df = full_df.sort_values(['validStop'],ascending=True)
+        # init a list of valid observations
+        validObs = []
+        validSchedules = []
+        validSchedule_filenames = []
         
-        # save the dataframe to csv for realtime reference
-        full_df.to_csv(os.path.join(os.getenv("HOME"), 'data', 'Valid_ToO_Observations_Ranked.csv'))
+        #self.announce('querying all schedules in High Priority ToO folder...')
         
-        if len(full_df) == 0:
-            # there are no valid observations
-            self.announce(f'there are no valid ToO observations, defaulting to survey')
+        for schedname in self.ToOschedules:
+            self.log('')
+            #self.announce(f'searching for valid observation in {schedname}...')
+            TOOschedule = self.ToOschedules[schedname]['schedule']
+            TOOschedule.gotoNextObs(obstime_mjd = obstime_mjd)
             
-            scheduleFile = self.survey_schedulefile_name
-            # point self.schedule to the survey
-            self.schedule.loadSchedule(scheduleFile)
-            currentObs = self.schedule.getTopRankedObs(obstime_mjd)
-            self.schedule.updateCurrentObs(currentObs, obstime_mjd)
-
+            if TOOschedule.currentObs is None:
+                pass
+                #self.announce(f'... no valid TOO observations at this time (MJD = {obstime_mjd}), defaulting to survey schedule')
+                #return None
+                
+            else:
+                # add the observation to the list of valid observations
+                #self.announce(f'... found valid observation with obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+                #self.announce(f'  {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+                validObs.append(TOOschedule.currentObs)
+                validSchedules.append(TOOschedule)
+                validSchedule_filenames.append(schedname)
+        #NPL 3-13-22 un-indented by 2 levels everything below
+        # check to make sure things loaded right
+        self.log('')
+        """
+        self.log('Current Observations Loaded Up:')
+        for schedname in self.ToOschedules:
+            TOOschedule = self.ToOschedules[schedname]['schedule']
+            self.log(f' > {schedname}:')
+            self.log(f' >>> {schedname}: currentObs obsHistID = {TOOschedule.currentObs["obsHistID"]}')
+        """
+        #  now sort all the valid observations by smallest validStop time. eg rank by which will be not valid soonest
+        self.log('')
+        self.log('list all the obsHistIDs in the list of current valid observations')
+        #for obs in validObs:
+        if len(validObs) == 0:
+            self.log(f'there are no valid TOO observations')
+            bestObservation = None
         else:
-            # the best target is the first one in this sorted pandas dataframe
-            currentObs = full_df.iloc[0]
-            scheduleFile = currentObs['origin_filename']
-            scheduleFile_without_path = scheduleFile.split('/')[-1]
-            self.announce(f'we should be observing from {scheduleFile_without_path}, obsHistID = {currentObs["obsHistID"]}')
-            # point self.schedule to the TOO
-            self.schedule.loadSchedule(scheduleFile)
-            self.schedule.updateCurrentObs(currentObs, obstime_mjd)
-
-        #return currentObs, scheduleFile
+            for i in range(len(validObs)):
+                obs = validObs[i]
+                schedname = validSchedule_filenames[i]
+                self.log(f' >>> {schedname}: currentObs obsHistID = {obs["obsHistID"]}')
+                print(f'> {schedname}: currentObs obsHistID = {obs["obsHistID"]}, validStop = {obs["validStop"]}')
+            # make a list of the validStop times
+            validStopTimes = np.array([obs["validStop"] for obs in validObs])
+            
+            # get the indices that would sort by smallest validStop to largest
+            # turn these into numpy arrays so we can use their handy argsort and indexing scheme
+            sorted_indices = np.argsort(validStopTimes)
+            #validSchedules_numpy = np.array(validSchedules)
+            validObs_numpy = np.array(validObs)
+            validSchedule_filenames_numpy = np.array(validSchedule_filenames)
+            
+            #self.log(f'sorted_indices = {sorted_indices}')
+            #self.log(f'validObs_numpy[sorted_indices] = {validObs_numpy[sorted_indices]}')
+            #self.log(f'validSchedule_filenames_numpy[sorted_indices] = {validSchedule_filenames_numpy[sorted_indices]}')
+            # the first of the sorted validObs is the one we should observe
+            
+            bestObservation = validObs_numpy[sorted_indices][0]
+            bestScheduleFilename = validSchedule_filenames_numpy[sorted_indices][0]
+            self.log('')
+            self.announce(f'we should be observing from {bestScheduleFilename}, obsHistID = {bestObservation["obsHistID"]}')
+            #self.announce()
+        return bestObservation
     
         
     def get_observatory_ready_status(self):
@@ -935,7 +1031,35 @@ class RoboOperator(QtCore.QObject):
    
         
     
+    def setup_schedule(self):
+        
+        if self.schedulefile_name is None:
+            # NPL 9-21-20: put this in for now so that the while loop in run wouldn't go if the schedule is None
+            self.schedule.currentObs = None
 
+        else:
+            #print(f'scheduleExecutor: loading schedule file [{self.schedulefile_name}]')
+            # code that sets up the connections to the databases
+            # NPL: 09-13-21: added start_fresh = True so changing schedules will start at the first entry
+            self.getSchedule(self.schedulefile_name, startFresh = True)
+
+            # RAS - note that this is where we should send the
+            # plot of tonight's observation footprint to Slack
+            res = subprocess.Popen(args=['python','plotTonightSchedule.py'])
+
+            self.writer.setUpDatabase()
+    
+        
+    
+    def getSchedule(self, schedulefile_name, startFresh = True):
+        """
+        #NPL 12-16-21 this is deprecated
+        if startFresh:
+            currentTime = 0
+        else:
+            currentTime = self.lastseen + 1
+        """
+        self.schedule.loadSchedule(schedulefile_name)
 
     def interrupt(self):
         self.schedule.currentObs = None
@@ -957,7 +1081,9 @@ class RoboOperator(QtCore.QObject):
             self.stop()
 
         self.schedulefile_name = schedulefile_name
-        self.loadSchedule(schedulefile_name)
+        
+        #NPL 4-29-21:
+        self.setup_schedule()
 
     def get_data_to_log(self,currentObs = 'default',):
         
@@ -1020,6 +1146,38 @@ class RoboOperator(QtCore.QObject):
         else:
             self.logger.log(level = level, msg = msg)
     
+    """
+    # NPL 12-16-21: staged for deletion. commenting out to see if anything gets mad
+    
+    def waitForCondition(self, condition, timeout = 60):
+        ## Wait until end condition is satisfied, or timeout ##
+        
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+            
+            stop_condition = (self.state['mount_is_slewing'])
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == True for entry in stop_condition_buffer):
+                break 
+    """
+    
     def doTry(self, cmd, context = '', system = ''):
         """
         This does the command by calling wintercmd.parse.
@@ -1049,6 +1207,16 @@ class RoboOperator(QtCore.QObject):
         """
         self.lastcmd = cmd
         self.wintercmd.parse(cmd)
+
+    def wait_for_dome_clearance(self):
+        """
+        This should just run a QTimer which waits until one of several 
+        things happens:
+            1. the dome is okay to open. then it will restart_robo()
+            2. the sun will come up and we'll miss our window. in this case,
+               initiate shutdown
+        """
+        pass
     
     def do_startup(self):
         """
@@ -1402,7 +1570,19 @@ class RoboOperator(QtCore.QObject):
         
         for i in range(nflats):
             self.log(f'setting up flat #{i + 1}')
-            
+            """
+            # TODO: Check this behavior
+            # NPL 09-07-21: commenting out all this sun checking, it is now handled elsewhere
+            # THIS IS GIVING THE WRONG ANSWER DURING SUNRISE
+            # check to make sure we haven't hit the stop condition
+            if end_condition_func():
+                self.log(f'sun alt is okay to continue')
+                pass
+            else:
+                self.log('sun position is not okay for flats anymore, stopping')
+                #break
+                pass
+            """
             try:
                 # estimate required exposure time
                 flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
@@ -2087,14 +2267,8 @@ class RoboOperator(QtCore.QObject):
             if self.running & self.ok_to_observe:
                 
                 # grab some fields from the currentObs
-                #self.lastSeen = currentObs['obsHistID']
-                self.obsHistID = currentObs['obsHistID']
-                self.fieldID = currentObs.get('fieldID', 999999999)
-                self.programID = currentObs.get('progID', '')
-                self.programPI = currentObs.get('PINAME','')
-                self.programName = currentObs.get('progName','')
-                
-                #self.requestID = currentObs['requestID']
+                self.lastSeen = currentObs['obsHistID']
+                self.requestID = currentObs['requestID']
                 #self.alt_scheduled = float(self.schedule.currentObs['altitude'])
                 #self.az_scheduled = float(self.schedule.currentObs['azimuth'])
                 
@@ -2139,10 +2313,8 @@ class RoboOperator(QtCore.QObject):
                 
                 # print out to the slack log a bunch of info (only once per target)
                 if dithnum == 0:
-                    #msg = f'Executing observation of obsHistID = {self.lastSeen}'
-                    msg = f'Executing observation of obsHistID = {self.obsHistID}'
-                    #self.qcomment = f'obsHistID = {self.lastSeen}, requestID = {self.requestID}'
-                    self.qcomment = f'obsHistID = {self.obsHistID}'#', requestID = {self.requestID}'
+                    msg = f'Executing observation of obsHistID = {self.lastSeen}'
+                    self.qcomment = f'obsHistID = {self.lastSeen}, requestID = {self.requestID}'
                     self.announce(msg)
                     self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
                     
@@ -2215,6 +2387,33 @@ class RoboOperator(QtCore.QObject):
                         else:
                             self.do(f'robo_do_exposure --science')
                     
+                    
+
+                    
+                    """
+                    # FOR REFERENCE: logic from do_calibration
+                    
+                    if i==0:
+                        self.log(f'handling the i=0 case')
+                        #self.do(f'robo_set_qcomment "{qcomment}"')
+                        system = 'robo routine'
+                        self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
+                    else:
+                        system = 'ccd'
+                        self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
+                    
+                    # now dither. if i is odd do ra, otherwise dec
+                    dither_arcmin = 5
+                    if i%2:
+                        axis = 'ra'
+                        ra_total_offset_arcmin += dither_arcmin
+                    else:
+                        axis = 'dec'
+                        dec_total_offset_arcmin += dither_arcmin
+                        
+                    self.do(f'mount_dither {axis} {dither_arcmin}')
+                    
+                    """
                     # it is now okay to trigger going to the next observation
                     # always log observation, but only gotoNext if we're on the last dither
                     if self.remaining_dithers == 0:
@@ -2257,7 +2456,7 @@ class RoboOperator(QtCore.QObject):
             
         # if we got here, then we are out of the loop, either because we did all the dithers, or there was a problem
         self.checkWhatToDo()
-    '''
+    
     def gotoNext(self): 
         # NPL 12-16-21: this is now deprecated.
         
@@ -2311,7 +2510,7 @@ class RoboOperator(QtCore.QObject):
                 self.schedule.closeConnection()
                 self.writer.closeConnection()
             """
-    '''           
+                
     def log_observation_and_gotoNext(self, currentObs = 'default', gotoNext = True):
         #self.logger.info(f'robo: image timer finished, logging observation with option gotoNext = {gotoNext}')
         
@@ -2339,8 +2538,7 @@ class RoboOperator(QtCore.QObject):
                 
                 if not self.test_mode:
                     # don't log if we're in test mode.
-                    #self.writer.log_observation(header_data, image_filepath)
-                    self.schedule.log_observation()
+                    self.writer.log_observation(header_data, image_filepath)
                 else:
                     self.log(f"in test mode, so won't actually log_observation")
             
@@ -2366,8 +2564,8 @@ class RoboOperator(QtCore.QObject):
         
         # Now shut down the connection to the databases
         self.logger.info(f'robo: closing connection to schedule and obslog databases')
-        #self.schedule.closeConnection()
-        #self.writer.closeConnection()
+        self.schedule.closeConnection()
+        self.writer.closeConnection()
     
     def log_timer_finished(self):
         self.logger.info('robo: exposure timer finished.')
@@ -2463,6 +2661,9 @@ class RoboOperator(QtCore.QObject):
         if postPlot:
             # make a jpg of the last image and publish it to slack!
             postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
+    
+    def point_and_slew(self, targtype, target = None, tracking = 'auto', field_angle = 'auto'):
+        pass
     
     
     def do_observation(self, targtype, target = None, tracking = 'auto', field_angle = 'auto', obstype = 'TEST', comment = ''):

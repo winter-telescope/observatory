@@ -57,8 +57,7 @@ scheduleFile_nightly_link_directory: 'data'
 scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 
 # ToO: Target of Opportunity Scheduling
-scheduleFile_ToO_HighPriority_directory: 'data/schedules/ToO/HighPriority'
-scheduleFile_ToO_LowPriority_directory: ' data/schedules/ToO/LowPriority'
+scheduleFile_ToO_directory: 'data/schedules/ToO'
 
 
 # observation log
@@ -1980,7 +1979,21 @@ fields:
         units: None
         dtype: float64
         rate: slow
-        var: robostate["lastSeen"]
+        var: robostate["obsHistID"]
+    robo_fieldID:
+        ftype: raw
+        label: 'ID'
+        units: None
+        dtype: float64
+        rate: slow
+        var: robostate["fieldID"]
+    robo_progID:
+        ftype: raw
+        label: 'ID'
+        units: None
+        dtype: float64
+        rate: slow
+        var: robostate["programID"]
     robo_observatory_ready:
         ftype: raw
         label: 'Status'
@@ -2333,8 +2346,6 @@ header_fields:
         var: robostate["obstype"]
     programPI:
         var: robostate["programPI"]
-    programID:
-        var: robostate["programID"]
     programName:
         var: robostate["programName"]
     qcomment:
