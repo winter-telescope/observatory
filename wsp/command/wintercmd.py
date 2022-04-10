@@ -47,6 +47,7 @@ import traceback
 import signal
 import logging
 import os
+from math import fmod
 from datetime import datetime
 import numpy as np
 import shlex
@@ -75,6 +76,7 @@ from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
 from alerts import alert_handler
+from viscam.web_request import short_circ
 from control.roboOperator import TargetError
 # GLOBAL VARS
 
@@ -3364,7 +3366,7 @@ class Wintercmd(QtCore.QObject):
         self.viscam.send_shutter_command(shutter_cmd)
 
     @cmd
-    def command_filter_wheel(self):
+    def command_filter_wheel_int(self):
         self.defineCmdParser('Command viscam filter wheel')
                   
         self.cmdparser.add_argument('fw_cmd',
@@ -3406,7 +3408,47 @@ class Wintercmd(QtCore.QObject):
                 self.logger.info(f'wintercmd: successfully completed viscam filter wheel move')
                 break 
         
+    @cmd
+    def command_filter_wheel(self):
+        self.defineCmdParser('Command viscam filter wheel')
+                  
+        self.cmdparser.add_argument('fw_cmd',
+              nargs = 1,
+              action = None,
+              help = '<fw_cmd_int>')
         
+        self.getargs()
+        fw_cmd = self.args.fw_cmd[0]
+        #self.viscam.send_filter_wheel_command(fw_cmd)
+        
+        position = int(fw_cmd)
+            
+        # if moving filter wheel
+        if position < 8:
+            # check where it is now
+            last_pos = self.state['Viscam_Filter_Wheel_Position']
+                
+            if short_circ(position-1, last_pos-1) >= 0: # zero index 
+                # if the shortest path for the filter wheel is the positive 
+                # or zero, do normal command
+                self.parse(f'command_filter_wheel_int {position}')
+        
+            else:            
+                # else, force it to go long way
+                # the longest, short distance is 3, so start by adding  +3
+                new_pos = int(fmod(last_pos + 3, 7)) # modulo 7 positions
+                if new_pos == 0:
+                    new_pos = 7 # modulo workaround
+                #print("intermediate new position: " , int(new_pos))
+                self.parse(f'command_filter_wheel_int {new_pos}')
+                # then go to final position
+                self.parse(f'command_filter_wheel_int {position}')
+        
+        else:   
+            # if not, query normally
+            self.parse(f'command_filter_wheel_int {position}')
+           
+               
         
     @cmd
     def ccd_set_exposure(self):
