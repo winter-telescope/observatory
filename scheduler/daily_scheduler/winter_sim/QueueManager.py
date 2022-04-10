@@ -566,7 +566,7 @@ class GurobiQueueManager(QueueManager):
             'target_metric_value':  
                     self.block_slot_metric.loc[request_id,self.queue_slot][filter_id],
             'target_total_requests_tonight': int(row['total_requests_tonight']),
-            'request_id': request_id }
+            'request_id': request_id}
 
 #            'target_sky_brightness': self.queue.ix[idx].sky_brightness,
 #            'target_limiting_mag': self.queue.ix[idx].limiting_mag,
