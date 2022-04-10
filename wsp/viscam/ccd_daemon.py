@@ -592,10 +592,15 @@ class CCD(QtCore.QObject):
         header.append(fits.Card('ROTFIELD',     state.get('rotator_field_angle', ''),       'Rotator field angle (deg)'))
         
         ###### QUEUE PARAMETERS ######
-        header.append(fits.Card('PROGRMPI',     state.get('programPI',''),                   'Queue program PI'))
-        header.append(fits.Card('PROGRMID',     state.get('programID',''),                   'Queue program ID'))
-        header.append(fits.Card('QCOMMENT',     state.get('qcomment',''),                    'Queue comment'))
-        header.append(fits.Card('FIELDID',      state.get('qcomment',''),                    'Field ID number'))
+        #header.append(fits.Card('PROGRMPI',     state.get('programPI',''),                   'Queue program PI'))
+        #header.append(fits.Card('PROGRMID',     state.get('programID',''),                   'Queue program ID'))
+        header.append(fits.Card('PROGID',       state.get('programPI',''),                      'Queue program PI'))
+        header.append(fits.Card('PROGNAME',     state.get('programName',''),                    'Queue program name'))
+        header.append(fits.Card('PROGPI',       state.get('robo_progID',''),                    'Queue program ID'))
+        header.append(fits.Card('QCOMMENT',     state.get('qcomment',''),                       'Queue comment'))
+        header.append(fits.Card('FIELDID',      state.get('robo_fieldID',''),                   'Field ID number'))
+        header.append(fits.Card('OBHISTID',     state.get('robo_obsHistID',''),                 'obsHistID: line in schedulefile'))
+        
         
         try:
             objra = astropy.coordinates.Angle(state.get('robo_target_ra_j2000', 0)*u.hour)
@@ -683,7 +688,7 @@ class CCD(QtCore.QObject):
         ###### WEATHER PARAMETERS ######
         #UT_WEATH
         try:
-            weather_datetime = datetime.fromtimestamp(state['dome_time_utc'])
+            weather_datetime = datetime.fromtimestamp(state['dome_timestamp'])
             ut_weath = weather_datetime.strftime('%Y-%m-%d %H%M%S.%f')
         except Exception as e:
             print(f'could not get weather time, {e}')
