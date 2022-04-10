@@ -17,7 +17,7 @@ from .Fields import Fields
 from .utils import *
 from .constants import VALIDITY_WINDOW_MJD, DITHER, BASE_DIR, FILTER_ID_TO_NAME, EXPOSURE_TIME, READOUT_TIME
 from .constants import WINTER_FILTERS
-
+from .configuration import SchedulerConfiguration, QueueConfiguration
 
 class ObsLogger(object):
 
@@ -44,7 +44,7 @@ class ObsLogger(object):
         self.engine = create_engine('sqlite:///'+os.path.join(file_path))
 
         self.conn = self.engine.connect()
-        self.create_fields_table(clobber=clobber)
+        #self.create_fields_table(clobber=clobber)
         self.create_pointing_log(clobber=clobber)
         
         # W
@@ -54,6 +54,10 @@ class ObsLogger(object):
         print("HISTORY FILE: {}".format(output_path))
         self.historyengine = create_engine('sqlite:///'+output_path+f'WINTER_ObsLog.db') #NPL did this change on 2-16-21
         self.history = pd.read_sql('Observation', self.historyengine)
+        
+        # rename progID to propID for scheduler
+        if 'progID' in self.history.columns:
+            self.history.rename(columns = {'progID':'propID'}, inplace = True)
         
         self.log_tonight = pd.read_sql('Summary', self.engine)
         
@@ -132,7 +136,8 @@ class ObsLogger(object):
             CREATE TABLE Summary(
             obsHistID         INTEGER PRIMARY KEY,
             requestID INTEGER,
-            propID INTEGER,
+            progID INTEGER,
+            progName         TEXT,
             fieldID      INTEGER,
             fieldRA      REAL,
             fieldDec      REAL,
@@ -166,10 +171,10 @@ class ObsLogger(object):
             fiveSigmaDepth     REAL,
             totalRequestsTonight INTEGER,
             metricValue        REAL,
-            subprogram         TEXT
+            PINAME             TEXT
             )""")
 
-    def log_pointing(self, state, request):
+    def log_pointing(self, state, request, queues):
 
         record = {}
         # don't use request_id here, but
@@ -177,7 +182,16 @@ class ObsLogger(object):
         #record['obsHistID'] = request['request_id']
         # give request id its own column
         record['requestID'] = request['request_id']
-        record['propID'] = request['target_program_id']
+        record['progID'] = request['target_program_id']
+        record['progName'] = request['target_subprogram_name'] 
+        
+        for qname, q in queues.items():
+            for program in q.observing_programs:
+                if program.subprogram_name == request['target_subprogram_name']:
+                    pi = program.program_pi
+                    record['PINAME'] = program.program_pi
+                    record['dither'] = program.dither
+        
         record['fieldID'] = request['target_field_id']
         record['fieldRA'] = np.radians(request['target_ra'])
         record['fieldDec'] = np.radians(request['target_dec'])
@@ -198,10 +212,10 @@ class ObsLogger(object):
         
         # check default dither  prefernce
         # TODO make this program specific
-        if request['target_filter_id'] in WINTER_FILTERS:
-            record['dither'] = DITHER[0]
-        else:
-            record['dither'] = DITHER[1]
+        # if request['target_filter_id'] in WINTER_FILTERS:
+        #     record['dither'] = DITHER[0]
+        # else:
+        #     record['dither'] = DITHER[1]
 
         record['night'] = np.floor((exposure_start - self.survey_start_time).jd
                                    ).astype(np.int)
@@ -285,7 +299,7 @@ class ObsLogger(object):
         record['totalRequestsTonight'] = \
             request['target_total_requests_tonight']
         record['metricValue'] = request['target_metric_value']
-        record['subprogram'] = request['target_subprogram_name'] 
+        
 
         record_row = pd.DataFrame(record,index=[uuid.uuid1().hex])
 
