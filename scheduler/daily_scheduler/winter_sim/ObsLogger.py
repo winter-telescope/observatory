@@ -201,7 +201,7 @@ class ObsLogger(object):
         if request['target_filter_id'] in WINTER_FILTERS:
             record['dither'] = DITHER[0]
         else:
-            request['target_filter_id'] = DITHER[1]
+            record['dither'] = DITHER[1]
 
         record['night'] = np.floor((exposure_start - self.survey_start_time).jd
                                    ).astype(np.int)
