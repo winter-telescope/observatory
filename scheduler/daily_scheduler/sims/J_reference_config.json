@@ -1,0 +1,9 @@
+{
+	"run_name": "example_J_winter_reference",
+	"queues": [
+		{"config_file": "J_reference_year.json",
+			"queue_name": "default"},
+        {"config_file": "J_reference_fallback.json",
+        "queue_name": "fallback"}
+	]
+}	

@@ -26,7 +26,7 @@ from utils import utils
 
 # get the path for the scheduler
 code_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-daily_scheduler_path = os.path.join(code_path, 'scheduler','daily_summer_scheduler')
+daily_scheduler_path = os.path.join(code_path, 'scheduler','daily_scheduler')
 
 # create the arguments
 filepath = os.path.join(daily_scheduler_path,'run_winter_sim.py')
