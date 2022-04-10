@@ -12,7 +12,7 @@
 		 "field_selections":{"dec_range":[46,48]},
 		 "filter_choice": "sequence",
 		 "filter_ids": [4],
-		 "exposure_time": 60, 
+		 "exposure_time": 150, 
 		 "internight_gap_days": 3,
 		 "n_visits_per_night": 4,
 		 "nightly_priority": "oldest",
