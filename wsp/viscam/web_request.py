@@ -9,7 +9,7 @@ Created on Wed May 12 13:11:16 2021
 import requests
 from datetime import datetime
 import time
-import math
+from math import fmod
 
 #URL = 'http://192.168.1.54:5001/'
 
@@ -94,7 +94,7 @@ class Viscam:
           raw_diff = origin - target
       else:
           raw_diff = target - origin
-      mod_diff = math.fmod(raw_diff, MAX_VALUE) #equates rollover values. E.g 0 == 360 degrees in circle
+      mod_diff = fmod(raw_diff, MAX_VALUE) #equates rollover values. E.g 0 == 360 degrees in circle
 
       if(mod_diff > (MAX_VALUE/2) ):
         #There is a shorter path in opposite direction
@@ -131,11 +131,17 @@ class Viscam:
     
             else:
                 # else, force it to go long way
-                return self._send_filter_wheel_command(position)
-                # move one step in the right direction
-                # new_pos = (position + 1) % 7 # modulo 7 positions
-                # res = self._send_filter_wheel_command(new_pos)
-                # while new_pos != position:
+                # the longest, short distance is 3, so start by adding  +3
+                new_pos = fmod(last_pos + 3, 7) # modulo 7 positions
+                print("new position: " , new_pos)
+                ret = self._send_filter_wheel_command(int(new_pos))
+                time.sleep(5) # wait for wheel to move 
+                # if new_pos is the desired position, return
+                if new_pos == position:
+                    return ret
+                # else go to final position
+                else:
+                    return self._send_filter_wheel_command(position)
 
         else:   
             # if not, query normally
