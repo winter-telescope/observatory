@@ -129,11 +129,11 @@ class housekeeping():
         
         # write the current state to a file
         
-        """
+        
         self.statedump_loop = data_handler.daq_loop(func = self.dump_state,
                                                     dt = 5000,
                                                     name = 'state_dump')
-        """
+        
         # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
         self.housekeeping_poll_functions.append(self.chiller.update_state)

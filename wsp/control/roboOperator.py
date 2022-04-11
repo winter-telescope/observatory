@@ -730,11 +730,11 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # if it is low enough (typically between astronomical dusk and dawn)
             # then check for targets, otherwise just stand by
-            print(f'checking what to observe NOW')
+            #print(f'checking what to observe NOW')
             if self.state['sun_alt'] <= self.config['max_sun_alt_for_observing']:
                 self.load_best_observing_target(obstime_mjd)
                 
-                print(f'currentObs = {self.schedule.currentObs}')
+                #print(f'currentObs = {self.schedule.currentObs}')
                 print(f'type(self.schedule.currentObs) = {type(self.schedule.currentObs)}')
                 print(f'self.schedule.currentObs == "default": {self.schedule.currentObs == "default"}')
                 if self.schedule.currentObs is None:
@@ -774,48 +774,54 @@ class RoboOperator(QtCore.QObject):
         ToO_schedule_directory = os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_directory'])
         ToOscheduleFiles = glob.glob(os.path.join(ToO_schedule_directory, '*.db'))
         
-        # bundle up all the schedule files in a single pandas dataframe
-        full_df = pd.DataFrame()
-        # add all the ToOs
-        for too_file in ToOscheduleFiles:
-            engine = db.create_engine('sqlite:///'+too_file)
-            conn = engine.connect()
-            df = pd.read_sql('SELECT * FROM summary;',conn)
-            df['origin_filename'] = too_file
-            full_df = pd.concat([full_df,df])
-            conn.close()
-        
-        # now sort by priority (highest to lowest)
-        full_df = full_df.sort_values(['Priority'],ascending=False)
-        
-        # now sort by validStop (earliest to latest)
-        full_df = full_df.sort_values(['validStop'],ascending=True)
-        
-        # save the dataframe to csv for realtime reference
-        rankedSummary = full_df([['obsHistID', 'Priority', 'validStop', 'origin_filename']])
-        rankedSummary.to_csv(os.path.join(os.getenv("HOME"), 'data', 'Valid_ToO_Observations_Ranked.csv'))
-        
-        if len(full_df) == 0:
-            # there are no valid observations
-            self.announce(f'there are no valid ToO observations, defaulting to survey')
+        if len(ToOscheduleFiles) > 0:
+            # bundle up all the schedule files in a single pandas dataframe
+            full_df = pd.DataFrame()
+            # add all the ToOs
+            for too_file in ToOscheduleFiles:
+                engine = db.create_engine('sqlite:///'+too_file)
+                conn = engine.connect()
+                df = pd.read_sql('SELECT * FROM summary;',conn)
+                df['origin_filename'] = too_file
+                full_df = pd.concat([full_df,df])
+                conn.close()
             
-            scheduleFile = self.survey_schedulefile_name
-            # point self.schedule to the survey
-            self.schedule.loadSchedule(scheduleFile)
-            currentObs = self.schedule.getTopRankedObs(obstime_mjd)
-            self.schedule.updateCurrentObs(currentObs, obstime_mjd)
+            # now sort by priority (highest to lowest)
+            full_df = full_df.sort_values(['Priority'],ascending=False)
+            
+            # now sort by validStop (earliest to latest)
+            full_df = full_df.sort_values(['validStop'],ascending=True)
+            
+            # save the dataframe to csv for realtime reference
+            rankedSummary = full_df[['obsHistID', 'Priority', 'validStop', 'origin_filename']]
+            rankedSummary.to_csv(os.path.join(os.getenv("HOME"), 'data', 'Valid_ToO_Observations_Ranked.csv'))
+            
+            if len(full_df) == 0:
+                # there are no valid schedule files. break out to the handling at the bottom
+                pass
+            
+            else:
+                # the best target is the first one in this sorted pandas dataframe
+                currentObs = dict(full_df.iloc[0])
+                scheduleFile = currentObs['origin_filename']
+                scheduleFile_without_path = scheduleFile.split('/')[-1]
+                self.announce(f'we should be observing from {scheduleFile_without_path}, obsHistID = {currentObs["obsHistID"]}')
+                # point self.schedule to the TOO
+                self.schedule.loadSchedule(scheduleFile)
+                self.schedule.updateCurrentObs(currentObs, obstime_mjd)
+                return
 
-        else:
-            # the best target is the first one in this sorted pandas dataframe
-            currentObs = dict(full_df.iloc[0])
-            scheduleFile = currentObs['origin_filename']
-            scheduleFile_without_path = scheduleFile.split('/')[-1]
-            self.announce(f'we should be observing from {scheduleFile_without_path}, obsHistID = {currentObs["obsHistID"]}')
-            # point self.schedule to the TOO
-            self.schedule.loadSchedule(scheduleFile)
-            self.schedule.updateCurrentObs(currentObs, obstime_mjd)
+        # if we're here, there are no TOO valid observations
+        self.announce(f'there are no valid ToO observations, defaulting to survey')
+        
+        scheduleFile = self.survey_schedulefile_name
+        # point self.schedule to the survey
+        self.schedule.loadSchedule(scheduleFile)
+        currentObs = self.schedule.getTopRankedObs(obstime_mjd)
+        self.schedule.updateCurrentObs(currentObs, obstime_mjd)
+        return
+        
 
-        #return currentObs, scheduleFile
     
         
     def get_observatory_ready_status(self):
@@ -2097,10 +2103,12 @@ class RoboOperator(QtCore.QObject):
             if self.running & self.ok_to_observe:
                 
                 # grab some fields from the currentObs
+                # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which 
+                # borks up the housekeeping and the dirfile and is a big fat mess
                 #self.lastSeen = currentObs['obsHistID']
                 self.obsHistID = int(currentObs['obsHistID'])
-                self.fieldID = currentObs.get('fieldID', 999999999)
-                self.programID = currentObs.get('progID', '')
+                self.fieldID = int(currentObs.get('fieldID', 999999999))
+                self.programID = int(currentObs.get('progID', -1))
                 self.programPI = currentObs.get('PINAME','')
                 self.programName = currentObs.get('progName','')
                 
