@@ -351,7 +351,7 @@ class RoboOperator(QtCore.QObject):
             
         # set up the schedule
         ## after this point we should have something in self.schedule.currentObs
-        self.loadSchedule(self.survey_schedulefile_name, postPlot = True)
+        self.schedule.loadSchedule(self.survey_schedulefile_name, postPlot = True)
         
         
         ### SET UP POINTING MODEL BUILDER ###
@@ -704,33 +704,39 @@ class RoboOperator(QtCore.QObject):
             # check if we need to focus the telescope
             #---------------------------------------------------------------------
             graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
-            filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, graceperiod_hours = graceperiod_hours)
+            if self.test_mode == True:
+                print(f"not checking focus bc we're in test mode")
+                pass
+            else:
+                filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, graceperiod_hours = graceperiod_hours)
             
-            # here is a good place to insert a good check on temperature change,
-            # or even better a check on FWHM of previous images
+                # here is a good place to insert a good check on temperature change,
+                # or even better a check on FWHM of previous images
             
-            if not filterIDs_to_focus is None:   
-                print(f'robo: focus attempt #{self.focus_attempt_number}')
-                if self.focus_attempt_number <= self.config['focus_loop_param']['max_focus_attempts']:
-                    self.announce(f'**Out of date focus results**: we need to focus the telescope in these filters: {filterIDs_to_focus}')
-                    # there are filters to focus! run a focus sequence
-                    self.do_focus_sequence(filterIDs = filterIDs_to_focus)
-                    self.announce(f'got past the do_focus_sequence call in checkWhatToDo?')
-                    self.focus_attempt_number += 1
-                    # now exit and rerun the check
-                    self.checktimer.start()
-                    return
-                
+                if not filterIDs_to_focus is None:   
+                    print(f'robo: focus attempt #{self.focus_attempt_number}')
+                    if self.focus_attempt_number <= self.config['focus_loop_param']['max_focus_attempts']:
+                        self.announce(f'**Out of date focus results**: we need to focus the telescope in these filters: {filterIDs_to_focus}')
+                        # there are filters to focus! run a focus sequence
+                        self.do_focus_sequence(filterIDs = filterIDs_to_focus)
+                        self.announce(f'got past the do_focus_sequence call in checkWhatToDo?')
+                        self.focus_attempt_number += 1
+                        # now exit and rerun the check
+                        self.checktimer.start()
+                        return
+                    
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
             # if it is low enough (typically between astronomical dusk and dawn)
             # then check for targets, otherwise just stand by
+            print(f'checking what to observe NOW')
             if self.state['sun_alt'] <= self.config['max_sun_alt_for_observing']:
                 self.load_best_observing_target(obstime_mjd)
                 
-                
-                
+                print(f'currentObs = {self.schedule.currentObs}')
+                print(f'type(self.schedule.currentObs) = {type(self.schedule.currentObs)}')
+                print(f'self.schedule.currentObs == "default": {self.schedule.currentObs == "default"}')
                 if self.schedule.currentObs is None:
                 #if currentObs is None:
                     self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
@@ -748,6 +754,8 @@ class RoboOperator(QtCore.QObject):
                 else:
                     # if we got an observation, then let's go do it!!
                     #self.do_currentObs(currentObs)
+                    # log the observation to note that we ATTEMPTED the observation
+                    self.schedule.log_observation()
                     self.do_currentObs(self.schedule.currentObs)
             
             else:
@@ -784,7 +792,8 @@ class RoboOperator(QtCore.QObject):
         full_df = full_df.sort_values(['validStop'],ascending=True)
         
         # save the dataframe to csv for realtime reference
-        full_df.to_csv(os.path.join(os.getenv("HOME"), 'data', 'Valid_ToO_Observations_Ranked.csv'))
+        rankedSummary = full_df([['obsHistID', 'Priority', 'validStop', 'origin_filename']])
+        rankedSummary.to_csv(os.path.join(os.getenv("HOME"), 'data', 'Valid_ToO_Observations_Ranked.csv'))
         
         if len(full_df) == 0:
             # there are no valid observations
@@ -798,7 +807,7 @@ class RoboOperator(QtCore.QObject):
 
         else:
             # the best target is the first one in this sorted pandas dataframe
-            currentObs = full_df.iloc[0]
+            currentObs = dict(full_df.iloc[0])
             scheduleFile = currentObs['origin_filename']
             scheduleFile_without_path = scheduleFile.split('/')[-1]
             self.announce(f'we should be observing from {scheduleFile_without_path}, obsHistID = {currentObs["obsHistID"]}')
@@ -957,7 +966,7 @@ class RoboOperator(QtCore.QObject):
             self.stop()
 
         self.schedulefile_name = schedulefile_name
-        self.loadSchedule(schedulefile_name)
+        self.schedule.loadSchedule(schedulefile_name)
 
     def get_data_to_log(self,currentObs = 'default',):
         
@@ -2022,6 +2031,7 @@ class RoboOperator(QtCore.QObject):
                         3. emit a restartRobo signal so it gets kicked back to the top of the tree
         
         """
+        
         if currentObs == 'default':
             currentObs = self.schedule.currentObs
         
@@ -2088,7 +2098,7 @@ class RoboOperator(QtCore.QObject):
                 
                 # grab some fields from the currentObs
                 #self.lastSeen = currentObs['obsHistID']
-                self.obsHistID = currentObs['obsHistID']
+                self.obsHistID = int(currentObs['obsHistID'])
                 self.fieldID = currentObs.get('fieldID', 999999999)
                 self.programID = currentObs.get('progID', '')
                 self.programPI = currentObs.get('PINAME','')
@@ -2206,7 +2216,10 @@ class RoboOperator(QtCore.QObject):
                         else:
                             #self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
                             self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science')
-                    
+                        
+                        
+                        
+                        
                     else:
                         system = 'ccd'
                         if self.test_mode:
@@ -2214,6 +2227,23 @@ class RoboOperator(QtCore.QObject):
                             self.do(f'robo_do_exposure --test')
                         else:
                             self.do(f'robo_do_exposure --science')
+                    
+                    # check if the observation was completed successfully
+                    if self.observation_completed:
+                        pass
+                    
+                    else:
+                        # if the problem was a target issue, try we'll try a new target
+                        if self.target_ok == False:
+                            # if we're here, it means (probably) that there's some ephemeris near the target. go try another target
+                            #msg = f'could not obserse target becase of target error (ephem nearby, etc). skipping this target...'
+                            #self.announce(msg)
+                            break
+                        # if it was some other error, all bets are off. just bail.
+                        else:
+                            #if we're here there's some generic error. raise it.
+                            self.announce(f'problem with this exposure, going to next...')
+                            
                     
                     # it is now okay to trigger going to the next observation
                     # always log observation, but only gotoNext if we're on the last dither
@@ -2380,7 +2410,7 @@ class RoboOperator(QtCore.QObject):
         #self.exptime = float(self.schedule.currentObs['visitExpTime'])#/len(self.dither_alt)
         
         #self.announce(f'in doExposure: self.running = {self.running}')
-        
+        self.observation_completed = False
         self.logger.info(f'robo: running ccd_do_exposure in thread {threading.get_ident()}')
         # if we got no comment, then do nothing
         if qcomment == 'altaz':
@@ -2463,7 +2493,9 @@ class RoboOperator(QtCore.QObject):
         if postPlot:
             # make a jpg of the last image and publish it to slack!
             postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
-    
+        
+        # if we got here, the observation was complete
+        self.observation_completed = True
     
     def do_observation(self, targtype, target = None, tracking = 'auto', field_angle = 'auto', obstype = 'TEST', comment = ''):
         """

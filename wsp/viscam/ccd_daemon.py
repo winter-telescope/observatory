@@ -624,6 +624,7 @@ class CCD(QtCore.QObject):
         try:
             filterID = self.config['filter_wheels']['summer']['positions'][filterpos]
             filtername = self.config['filters']['summer'][filterID]['name']
+            print(f"filterpos = {filterpos}, filterID = {filterID}, filtername = {filtername}")
         except Exception as e:
             filterID = '?'
             filtername = '?'
@@ -1159,7 +1160,7 @@ class PyroGUI(QtCore.QObject):
     
     def startExpTimer(self, waittime):
         self.logger.info(f'starting exposure timer, waittime = {waittime}')
-        self.expTimer.setInterval(waittime)
+        self.expTimer.setInterval(int(waittime))
         self.expTimer.start()
         
     def expTimerComplete(self):
@@ -1169,7 +1170,7 @@ class PyroGUI(QtCore.QObject):
     def startReadTimer(self, waittime):
         self.logger.info(f'starting readout timer, waittime = {waittime}')
         waittime_int = int(waittime)
-        self.readTimer.setInterval(waittime_int)
+        self.readTimer.setInterval(int(waittime_int))
         self.readTimer.start()
         
     def readTimerComplete(self):
