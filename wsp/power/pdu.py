@@ -54,10 +54,18 @@ class PDU(object):
         self.outletnames2nums = dict()
         self.outletnums2names = dict()
         self.state = dict()
-        self.getOutletNames()
         self.status = [-1, -1, -1, -1, -1, -1, -1, -1]
         
+        # read what the current outlet names are
+        self.getOutletNames()
+
+        # now set the outlet names to match the config file
+        self.initOutletNames()
+        
+        # get the current outlet status
         self.getStatus()
+        
+        # do you want to send the outlet status from the config file?
         if autostart:
             self.sendStatus(self.startup_config)
         
@@ -131,7 +139,20 @@ class PDU(object):
         
         return self.state
     
-    def getOutletNames(self):    
+    def getOutletNames(self):   
+        """
+        This does a query of the full status page then scrapes the various fields
+        It is adapted from the dlipower module by dwight hubbard
+        
+            dlipower.py : (adapted from dlipower.Outlet.statuslist)
+                https://github.com/dwighthubbard/python-dlipower/blob/master/dlipower/dlipower.py
+            linked from digital loggers website: https://www.digital-loggers.com/python.html
+        
+        It works reliably... but is *very* slow. So don't plan on doing it more often
+        than absolutely necessary
+        
+        """
+                
         res = self.send('index.htm')
         
         soup = BeautifulSoup(res.text, 'html.parser')
@@ -152,6 +173,7 @@ class PDU(object):
                 outlet_name = str(columns[1].string)
                 self.outletnums2names.update({outlet_number : outlet_name})
                 self.outletnames2nums.update({outlet_name : outlet_number})
+                
     def initOutletNames(self):
         
         outletnames_requested = self.config['pdus'][self.name]['outlets']
@@ -160,7 +182,7 @@ class PDU(object):
         self.getOutletNames()
         
         for num in outletnames_requested:
-            if self.outletnames[num] == outletnames_requested[num]:
+            if self.outletnums2names[num] == outletnames_requested[num]:
                 pass
             else:
                 self.renameOutlet(num, outletnames_requested[num])
@@ -168,7 +190,7 @@ class PDU(object):
         # now check if it worked
         self.getOutletNames()
         
-        if self.outletnames == outletnames_requested:
+        if self.outletnums2names == outletnames_requested:
             self.log('outlet names initialized successfully')
         else:
             self.log('could not initialize outlet names!!')
@@ -176,7 +198,7 @@ class PDU(object):
                 
     def renameOutlet(self, outlet, name):
 
-        res = pdu1.send(f'unitnames.cgi?outname{outlet}={name}')
+        res = self.send(f'unitnames.cgi?outname{outlet}={name}')
         
     def cycle(self,outlet):
         if self.brand.lower() == 'digital loggers':

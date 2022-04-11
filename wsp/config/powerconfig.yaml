@@ -11,7 +11,7 @@ pdus:
             3: 'Chiller'
             4: 'Guider'
             5: 'CCD'
-            6: 'odin'
-            7: 'thor'
+            6: 'computers'
+            7: 'dead'
             8: 'SUMMERacc'
         startup: 11111111

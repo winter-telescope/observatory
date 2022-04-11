@@ -81,7 +81,7 @@ class PowerManager(QtCore.QObject):
             # query the pdu status
             pdustate = self.pdu_dict[pduname].getState()
             self.state.update({pduname : pdustate})
-            print(pdustate['status'][7])
+            #print(pdustate['status'][7])
 
         
     @Pyro5.server.expose
