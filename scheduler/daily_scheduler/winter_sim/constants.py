@@ -37,13 +37,25 @@ W_Observer = astroplan.Observer(location=W_loc)
 
 #NPL 9-14-21: added the 'settle' parameter for each axis
 W_slew_pars = {
-    'ha': {'coord': 'ra', 
+    # 'ha': {'coord': 'ra', 
+    #        'accel': 7.00 * u.deg * u.second**(-2.),
+    #        'decel': 7.00 * u.deg * u.second**(-2.),
+    #        'vmax': 15.00 * u.deg / u.second,   
+    #        'settle': 1 * u.second
+    #        },
+    # 'dec': {'coord': 'dec', 
+    #         'accel': 7.00 * u.deg * u.second**(-2.),
+    #         'decel': 7.00 * u.deg * u.second**(-2.),
+    #         'vmax': 15.00 * u.deg / u.second,
+    #         'settle' : 1 * u.second
+    #         },
+    'alt': {'coord': 'alt', 
            'accel': 7.00 * u.deg * u.second**(-2.),
            'decel': 7.00 * u.deg * u.second**(-2.),
            'vmax': 15.00 * u.deg / u.second,   
            'settle': 1 * u.second
            },
-    'dec': {'coord': 'dec', 
+    'az': {'coord': 'az', 
             'accel': 7.00 * u.deg * u.second**(-2.),
             'decel': 7.00 * u.deg * u.second**(-2.),
             'vmax': 15.00 * u.deg / u.second,
