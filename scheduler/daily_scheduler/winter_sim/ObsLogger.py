@@ -174,7 +174,8 @@ class ObsLogger(object):
             fiveSigmaDepth     REAL,
             totalRequestsTonight INTEGER,
             metricValue        REAL,
-            PINAME             TEXT
+            programPI          TEXT,
+            observed           INTEGER
             )""")
 
     def log_pointing(self, state, request, queues):
@@ -184,6 +185,7 @@ class ObsLogger(object):
         # let sqlite create a unique non-null key
         #record['obsHistID'] = request['request_id']
         # give request id its own column
+        record['observed'] = 0 # initialize to 0
         record['requestID'] = request['request_id']
         record['progID'] = request['target_program_id']
         record['progName'] = request['target_subprogram_name'] 
@@ -192,7 +194,7 @@ class ObsLogger(object):
             for program in q.observing_programs:
                 if program.subprogram_name == request['target_subprogram_name']:
                     pi = program.program_pi
-                    record['PINAME'] = program.program_pi
+                    record['programPI'] = program.program_pi
                     record['dither'] = program.dither
         
         record['fieldID'] = request['target_field_id']
