@@ -779,7 +779,9 @@ class GurobiQueueManager(QueueManager):
         # reconstruct
         df = self.rp.pool.loc[idx].join(self.fields.fields, on='field_id').copy()
         az = self.fields.block_az[self.queue_slot]
+        alt = self.fields.block_alt[self.queue_slot]
         df = df.join(az, on='field_id')
+        df = df.join(alt, on='field_id')
         # W
         df.index.name = 'req_id'
         df.reset_index(inplace=True)
@@ -791,7 +793,7 @@ class GurobiQueueManager(QueueManager):
         # print("START", HA_to_RA(0, current_state['current_time']).to(u.degree).value)
         df_blockstart = pd.DataFrame({'ra':HA_to_RA(0,
             current_state['current_time']).to(u.degree).value,
-            'dec':-48.,'azimuth':180.},index=[0])
+            'dec':-48.,'azimuth':180., 'altitude':45.},index=[0])
         df_fakestart = pd.concat([df_blockstart,df],sort=True)
 
         # compute overhead time between all request pairs
@@ -801,7 +803,11 @@ class GurobiQueueManager(QueueManager):
         def coord_to_slewtime(coord, axis=None):
             c1, c2 = np.meshgrid(coord, coord)
             dangle = np.abs(c1 - c2)
-            angle = np.where(dangle < (360. - dangle), dangle, 360. - dangle)
+            print("dangle", dangle)
+            if axis == 'alt':
+                angle = dangle
+            else:    
+                angle = np.where(dangle < (360. - dangle), dangle, 360. - dangle)
             return slew_time(axis, angle * u.deg)
         
         # compute pairwise filter exchange times
@@ -826,14 +832,14 @@ class GurobiQueueManager(QueueManager):
 
         slews_by_axis['dome'] = coord_to_slewtime(
             df_fakestart['azimuth'], axis='dome')
-        slews_by_axis['dec'] = coord_to_slewtime(
-            df_fakestart['dec'], axis='dec')
-        slews_by_axis['ra'] = coord_to_slewtime( 
-            df_fakestart['ra'], axis='ha')
+        slews_by_axis['alt'] = coord_to_slewtime(
+            df_fakestart['altitude'], axis='alt')
+        slews_by_axis['az'] = coord_to_slewtime( 
+            df_fakestart['azimuth'], axis='az')
          # W
         filter_overhead = filter_exchange(df_fakestart['filter_id'])*u.s
 
-        maxradec = np.maximum(slews_by_axis['ra'], slews_by_axis['dec'])
+        maxradec = np.maximum(slews_by_axis['alt'], slews_by_axis['az'])
         maxslews = np.maximum(slews_by_axis['dome'], maxradec)
         # impose a penalty on zero-length slews (which by construction
         # in this mode are from different programs)
@@ -846,7 +852,6 @@ class GurobiQueueManager(QueueManager):
         # W
         slew_overhead = np.maximum(maxslews, READOUT_TIME)
         overhead_time = slew_overhead + filter_overhead
-        
         tsp_order, tsp_overhead_time = tsp_optimize(overhead_time.value,
                                                     time_limit = time_limit)
 
