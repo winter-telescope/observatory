@@ -155,17 +155,16 @@ class Fields(object):
 
         df_altaz = self.alt_az(current_state['current_time'], cuts=cuts)
         df = fields.join(df_altaz)
+        
+        print("CURRENT ", current_state, df, df_altaz )
 
         slews_by_axis = {'readout': READOUT_TIME}
-        for axis in ['dome', 'dec', 'ha']:
-            if axis == 'dome':
+        for axis in ['dome', 'az', 'alt']:
+            if (axis == 'dome') | (axis == 'az'):
                 current_coord = current_state['current_domeaz'].value
-            if axis == 'ha':
-                # convert to RA for ease of subtraction
-                current_coord = HA_to_RA(current_state['current_ha'],
-                                         current_state['current_time']).degree
-            if axis == 'dec':
-                current_coord = current_state['current_dec'].value
+            if axis == 'alt':
+                current_coord = current_state['current_alt'].value
+
             coord = W_slew_pars[axis]['coord']
             dangle = np.abs(df[coord] - current_coord)
             angle = np.where(dangle < (360. - dangle), dangle, 360. - dangle)
