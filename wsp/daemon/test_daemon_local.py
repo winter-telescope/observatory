@@ -65,7 +65,8 @@ class local_counter(object):
             #print(f'state = {self.state}')
 
         except Exception as e:
-            self.log(f'Could not update remote status: {e}')
+            #self.log(f'Could not update remote status: {e}')
+            pass
 
         
     def print_state(self):
@@ -76,6 +77,7 @@ class local_counter(object):
 # Try it out
 if __name__ == '__main__':
     # load the config
+    base_directory = wsp_path
     config_file = base_directory + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     logger = logging_setup.setup_logger(wsp_path, config)

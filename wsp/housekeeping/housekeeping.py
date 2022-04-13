@@ -45,7 +45,7 @@ from daemon import daemon_utils
 
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, mirror_cover=None, dome = None, weather = None, chiller = None, pdu1 = None, counter = None, ephem = None, viscam = None, ccd = None, robostate = None, sunsim = False, logger = None):
+    def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, mirror_cover=None, dome = None, weather = None, chiller = None, powerManager = None, counter = None, ephem = None, viscam = None, ccd = None, robostate = None, sunsim = False, logger = None):
         
         
         # store the config
@@ -61,7 +61,7 @@ class housekeeping():
         self.dome = dome
         self.weather = weather
         self.chiller = chiller
-        self.pdu1 = pdu1
+        self.powerManager = powerManager
         self.counter = counter
         self.ephem = ephem
         self.viscam = viscam
@@ -133,12 +133,14 @@ class housekeeping():
         self.statedump_loop = data_handler.daq_loop(func = self.dump_state,
                                                     dt = 5000,
                                                     name = 'state_dump')
+        
         # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
         self.housekeeping_poll_functions.append(self.chiller.update_state)
         self.housekeeping_poll_functions.append(self.viscam.update_state)
         self.housekeeping_poll_functions.append(self.ccd.update_state)
         self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
+        self.housekeeping_poll_functions.append(self.powerManager.update_state)
 
         self.hk_loop = data_handler.hk_loop(config = self.config, 
                                                state = self.state, 
@@ -150,6 +152,7 @@ class housekeeping():
                                                counter = self.counter,
                                                dome = self.dome,
                                                chiller = self.chiller,
+                                               powerManager = self.powerManager,
                                                ephem = self.ephem,
                                                viscam = self.viscam,
                                                ccd = self.ccd,

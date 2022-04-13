@@ -57,8 +57,7 @@ scheduleFile_nightly_link_directory: 'data'
 scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 
 # ToO: Target of Opportunity Scheduling
-scheduleFile_ToO_HighPriority_directory: 'data/schedules/ToO/HighPriority'
-scheduleFile_ToO_LowPriority_directory: ' data/schedules/ToO/LowPriority'
+scheduleFile_ToO_directory: 'data/schedules/ToO'
 
 
 # observation log
@@ -112,7 +111,7 @@ log_link_name: 'winter.log'
 
 ########### ROBO MANAGER ###########
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
-# eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL
+# eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 max_sun_alt_for_observing: -18
 
 robotic_manager_triggers:
@@ -680,56 +679,56 @@ fields:
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'pdu1.status[0]'
+        var: 'powerManager.state["pdu1"]["status"][0]'
     pdu1_2:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'pdu1.status[1]'
+        var: 'powerManager.state["pdu1"]["status"][1]'
     pdu1_3:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'pdu1.status[2]'
+        var: 'powerManager.state["pdu1"]["status"][2]'
     pdu1_4:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'pdu1.status[3]'
+        var: 'powerManager.state["pdu1"]["status"][3]'
     pdu1_5:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'pdu1.status[4]'
+        var: 'powerManager.state["pdu1"]["status"][4]'
     pdu1_6:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'pdu1.status[5]'
+        var: 'powerManager.state["pdu1"]["status"][5]'
     pdu1_7:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'pdu1.status[6]'
+        var: 'powerManager.state["pdu1"]["status"][6]'
     pdu1_8:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'pdu1.status[7]'
+        var: 'powerManager.state["pdu1"]["status"][7]'
 # site
     site_latitude_degs:
         ftype: raw
@@ -1980,7 +1979,21 @@ fields:
         units: None
         dtype: float64
         rate: slow
-        var: robostate["lastSeen"]
+        var: robostate["obsHistID"]
+    robo_fieldID:
+        ftype: raw
+        label: 'ID'
+        units: None
+        dtype: float64
+        rate: slow
+        var: robostate["fieldID"]
+    robo_progID:
+        ftype: raw
+        label: 'ID'
+        units: None
+        dtype: float64
+        rate: slow
+        var: robostate["programID"]
     robo_observatory_ready:
         ftype: raw
         label: 'Status'
@@ -2333,8 +2346,6 @@ header_fields:
         var: robostate["obstype"]
     programPI:
         var: robostate["programPI"]
-    programID:
-        var: robostate["programID"]
     programName:
         var: robostate["programName"]
     qcomment:
