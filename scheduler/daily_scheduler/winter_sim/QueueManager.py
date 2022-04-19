@@ -17,7 +17,7 @@ from .optimize import request_set_optimize, slot_optimize, tsp_optimize, night_o
 from .cadence import enough_gap_since_last_obs
 from .constants import W_loc, P48_loc, PROGRAM_IDS, FILTER_IDS, TIME_BLOCK_SIZE
 from .constants import EXPOSURE_TIME, FILTER_CHANGE_TIME, MIRROR_CHANGE_TIME, slew_time
-from .constants import PROGRAM_BLOCK_SEQUENCE, LEN_BLOCK_SEQUENCE, MAX_AIRMASS
+from .constants import PROGRAM_BLOCK_SEQUENCE, LEN_BLOCK_SEQUENCE, MAX_AIRMASS, MIN_AIRMASS
 from .constants import BASE_DIR, WINTER_FILTERS, SUMMER_FILTERS, FILTER_NAME_TO_ID
 from .utils import approx_hours_of_darkness
 from .utils import skycoord_to_altaz, seeing_at_pointing
@@ -399,16 +399,21 @@ class QueueManager(object):
 
         # compute sky brightness
         # only have values for reasonable altitudes (set by R20_absorbed...)
-        wup = df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) 
+        wup = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
+            (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) ))
         
         # winter sky brightness
-        wup_tmp = (df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & df['filter_id'].isin(WINTER_FILTERS) 
+        wup_tmp = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
+                   (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) )) & \
+                    df['filter_id'].isin(WINTER_FILTERS) 
         df.loc[wup_tmp, 'sky_brightness'] = airglow_by_altitude(\
                                         altitude = df.loc[wup_tmp,'altitude'],
                                         filter_id = df.loc[wup_tmp,'filter_id'])
             
         # summer sky brightness
-        wup_tmp = (df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & df['filter_id'].isin(SUMMER_FILTERS) 
+        wup_tmp = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
+                   (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) )) & \
+                    df['filter_id'].isin(SUMMER_FILTERS) 
         df.loc[wup_tmp, 'sky_brightness'] = self.VisibleSky.predict(df[wup_tmp])
 
         # compute seeing at each pointing
@@ -566,7 +571,7 @@ class GurobiQueueManager(QueueManager):
             'target_metric_value':  
                     self.block_slot_metric.loc[request_id,self.queue_slot][filter_id],
             'target_total_requests_tonight': int(row['total_requests_tonight']),
-            'request_id': request_id }
+            'request_id': request_id}
 
 #            'target_sky_brightness': self.queue.ix[idx].sky_brightness,
 #            'target_limiting_mag': self.queue.ix[idx].limiting_mag,
@@ -774,7 +779,9 @@ class GurobiQueueManager(QueueManager):
         # reconstruct
         df = self.rp.pool.loc[idx].join(self.fields.fields, on='field_id').copy()
         az = self.fields.block_az[self.queue_slot]
+        alt = self.fields.block_alt[self.queue_slot]
         df = df.join(az, on='field_id')
+        df = df.join(alt, on='field_id')
         # W
         df.index.name = 'req_id'
         df.reset_index(inplace=True)
@@ -786,7 +793,7 @@ class GurobiQueueManager(QueueManager):
         # print("START", HA_to_RA(0, current_state['current_time']).to(u.degree).value)
         df_blockstart = pd.DataFrame({'ra':HA_to_RA(0,
             current_state['current_time']).to(u.degree).value,
-            'dec':-48.,'azimuth':180.},index=[0])
+            'dec':-48.,'azimuth':180., 'altitude':45.},index=[0])
         df_fakestart = pd.concat([df_blockstart,df],sort=True)
 
         # compute overhead time between all request pairs
@@ -796,7 +803,11 @@ class GurobiQueueManager(QueueManager):
         def coord_to_slewtime(coord, axis=None):
             c1, c2 = np.meshgrid(coord, coord)
             dangle = np.abs(c1 - c2)
-            angle = np.where(dangle < (360. - dangle), dangle, 360. - dangle)
+            print("dangle", dangle)
+            if axis == 'alt':
+                angle = dangle
+            else:    
+                angle = np.where(dangle < (360. - dangle), dangle, 360. - dangle)
             return slew_time(axis, angle * u.deg)
         
         # compute pairwise filter exchange times
@@ -821,14 +832,14 @@ class GurobiQueueManager(QueueManager):
 
         slews_by_axis['dome'] = coord_to_slewtime(
             df_fakestart['azimuth'], axis='dome')
-        slews_by_axis['dec'] = coord_to_slewtime(
-            df_fakestart['dec'], axis='dec')
-        slews_by_axis['ra'] = coord_to_slewtime( 
-            df_fakestart['ra'], axis='ha')
+        slews_by_axis['alt'] = coord_to_slewtime(
+            df_fakestart['altitude'], axis='alt')
+        slews_by_axis['az'] = coord_to_slewtime( 
+            df_fakestart['azimuth'], axis='az')
          # W
         filter_overhead = filter_exchange(df_fakestart['filter_id'])*u.s
 
-        maxradec = np.maximum(slews_by_axis['ra'], slews_by_axis['dec'])
+        maxradec = np.maximum(slews_by_axis['alt'], slews_by_axis['az'])
         maxslews = np.maximum(slews_by_axis['dome'], maxradec)
         # impose a penalty on zero-length slews (which by construction
         # in this mode are from different programs)
@@ -841,7 +852,6 @@ class GurobiQueueManager(QueueManager):
         # W
         slew_overhead = np.maximum(maxslews, READOUT_TIME)
         overhead_time = slew_overhead + filter_overhead
-        
         tsp_order, tsp_overhead_time = tsp_optimize(overhead_time.value,
                                                     time_limit = time_limit)
 
@@ -1204,6 +1214,8 @@ class ListQueueManager(QueueManager):
             queue['exposure_time'] = EXPOSURE_TIME.to(u.second).value
         if 'max_airmass' not in queue.columns:
             queue['max_airmass'] = MAX_AIRMASS
+        if 'min_airmass' not in queue.columns:
+            queue['min_airmass'] = MIN_AIRMASS
         if 'n_repeats' not in queue.columns:
             queue['n_repeats'] = 1
 
@@ -1233,7 +1245,7 @@ class ListQueueManager(QueueManager):
             airmass = altitude_to_airmass(
                     skycoord_to_altaz(sc, 
                         current_state['current_time']).alt.to(u.deg).value)
-            if airmass >= self.queue.iloc[idx].max_airmass:
+            if (airmass >= self.queue.iloc[idx].max_airmass) & (airmass <= self.queue.iloc[idx].min_airmass) :
                 idx += 1
                 continue
             # Reed limits |HA| to < 5.95 hours (most relevant for circumpolar

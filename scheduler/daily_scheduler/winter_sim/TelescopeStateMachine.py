@@ -19,7 +19,8 @@ class TelescopeStateMachine(Machine):
                  current_filter_id=2, filters=FILTER_IDS,
                  current_zenith_seeing=2.0 * u.arcsec,
                  target_skycoord=None,
-                 historical_observability_year=2015):
+                 historical_observability_year=2015,
+                 current_alt=45. * u.deg):
 
         # Define some states.
         states = ['ready', 'cant_observe',
@@ -59,6 +60,7 @@ class TelescopeStateMachine(Machine):
         self.current_ha = current_ha
         self.current_dec = current_dec
         self.current_domeaz = current_domeaz
+        self.current_alt = current_alt
         self.current_filter_id = current_filter_id
         self.filters = filters
         self.current_zenith_seeing = current_zenith_seeing
@@ -77,6 +79,7 @@ class TelescopeStateMachine(Machine):
                 'current_ha': self.current_ha,
                 'current_dec': self.current_dec,
                 'current_domeaz': self.current_domeaz,
+                'current_alt': self.current_alt,
                 'current_filter_id': self.current_filter_id,
                 'current_zenith_seeing': self.current_zenith_seeing,
                 'filters': self.filters,
@@ -138,19 +141,21 @@ class TelescopeStateMachine(Machine):
         target_ha = RA_to_HA(self.target_skycoord.ra, self.current_time)
         target_domeaz = skycoord_to_altaz(self.target_skycoord,
                                           self.current_time).az
+        target_alt = skycoord_to_altaz(self.target_skycoord,
+                                          self.current_time).alt
         target_dec = target_skycoord.dec
 
         # calculate time required to slew
         # duplicates codes in fields.py--consider refactoring
         axis_slew_times = [READOUT_TIME]
-        for axis in ['ha', 'dec', 'domeaz']:
+        for axis in ['domeaz', 'alt']:
             dangle = np.abs(eval("target_{}".format(axis)) -
                             eval("self.current_{}".format(axis)))
 
             # Figure out the slew time:
             # First: figure out how many degrees the dome has to slew. Gets the distance of shortest way (CW vs CCW)
             # This is the old way:
-            #angle = np.where(dangle < (360. * u.deg - dangle), dangle, 360. * u.deg - dangle)
+            #angle = np.where(dangle < (360. * u.deg - dangle),,  dangle, 360. * u.deg - dangle)
             #NPL doing this as an if statement instead of np.where so that it returns a quantity instead of a np array
             if dangle < (360. * u.deg - dangle):
                 angle = dangle
@@ -171,9 +176,12 @@ class TelescopeStateMachine(Machine):
         target_ha = RA_to_HA(self.target_skycoord.ra, self.current_time)
         target_domeaz = skycoord_to_altaz(self.target_skycoord,
                                           self.current_time).az
+        target_alt = skycoord_to_altaz(self.target_skycoord,
+                                          self.current_time).alt
         self.current_ha = target_ha
         self.current_dec = self.target_skycoord.dec
         self.current_domeaz = target_domeaz
+        self.current_alt = target_alt
 
     def process_filter_change(self, target_filter_id,
                               filter_change_time=FILTER_CHANGE_TIME):

@@ -1,0 +1,17 @@
+#power configuration file
+# replaces the old configObject and .ini system
+
+pdus:
+    pdu1:
+        ip: 192.168.1.14
+        brand: 'Digital Loggers'
+        outlets:
+            1: 'Router'
+            2: 'Switch'
+            3: 'Chiller'
+            4: 'Guider'
+            5: 'CCD'
+            6: 'computers'
+            7: 'dead'
+            8: 'SUMMERacc'
+        startup: 11111111

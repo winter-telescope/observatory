@@ -7,9 +7,11 @@ from astropy.time import Time
 import astropy.coordinates as coords
 import astropy.units as u
 import astroplan
-
+import yaml
 BASE_DIR = os.path.dirname(os.path.abspath(inspect.getfile(
                 inspect.currentframe()))) + '/'
+
+config_file = BASE_DIR+'../../../wsp/config/config.yaml'
 
 
 # W
@@ -35,13 +37,25 @@ W_Observer = astroplan.Observer(location=W_loc)
 
 #NPL 9-14-21: added the 'settle' parameter for each axis
 W_slew_pars = {
-    'ha': {'coord': 'ra', 
+    # 'ha': {'coord': 'ra', 
+    #        'accel': 7.00 * u.deg * u.second**(-2.),
+    #        'decel': 7.00 * u.deg * u.second**(-2.),
+    #        'vmax': 15.00 * u.deg / u.second,   
+    #        'settle': 1 * u.second
+    #        },
+    # 'dec': {'coord': 'dec', 
+    #         'accel': 7.00 * u.deg * u.second**(-2.),
+    #         'decel': 7.00 * u.deg * u.second**(-2.),
+    #         'vmax': 15.00 * u.deg / u.second,
+    #         'settle' : 1 * u.second
+    #         },
+    'alt': {'coord': 'alt', 
            'accel': 7.00 * u.deg * u.second**(-2.),
            'decel': 7.00 * u.deg * u.second**(-2.),
            'vmax': 15.00 * u.deg / u.second,   
            'settle': 1 * u.second
            },
-    'dec': {'coord': 'dec', 
+    'az': {'coord': 'az', 
             'accel': 7.00 * u.deg * u.second**(-2.),
             'decel': 7.00 * u.deg * u.second**(-2.),
             'vmax': 15.00 * u.deg / u.second,
@@ -122,8 +136,6 @@ FILTER_CHANGE_TIME = 10. * u.second # [10. * u.second, 5. * u.second ]# W [WINTE
 MIRROR_CHANGE_TIME = 300 * u.second # big penalty for switching between winter and summer 
 SETTLE_TIME = 1. * u.second
 
-MAX_AIRMASS = 3.0 # for W (2.5 for ZTF)
-
 TIME_BLOCK_SIZE = 30. * u.min
 
 PROGRAM_NAME_TO_ID = {'engineering': 0, 
@@ -167,3 +179,15 @@ def slew_time(axis, angle):
     #slew_time[wnonzero] += SETTLE_TIME
     slew_time[wnonzero] += settle
     return slew_time 
+
+from .utils import altitude_to_airmass
+def loadconfig(config_file):
+    """
+    just a wrapper to make the syntax easier to get the config
+    """
+    config = yaml.load(open(config_file), Loader = yaml.FullLoader)
+    return config
+conf = loadconfig(config_file)
+
+MAX_AIRMASS = altitude_to_airmass(conf['telescope']['min_alt'])
+MIN_AIRMASS = altitude_to_airmass(conf['telescope']['max_alt'])

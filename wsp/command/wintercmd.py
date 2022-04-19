@@ -173,7 +173,7 @@ class Wintercmd(QtCore.QObject):
     newCmdRequest = QtCore.pyqtSignal(object)
     
     
-    def __init__(self, base_directory, config, state, alertHandler, mirror_cover, daemonlist, telescope, dome, chiller, pdu1, logger, viscam, ccd):
+    def __init__(self, base_directory, config, state, alertHandler, mirror_cover, daemonlist, telescope, dome, chiller, powerManager, logger, viscam, ccd):
         # init the parent class
         #super().__init__()
         super(Wintercmd, self).__init__()
@@ -189,7 +189,7 @@ class Wintercmd(QtCore.QObject):
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
-        self.pdu1 = pdu1
+        self.powerManager = powerManager
     
         self.base_directory = base_directory
         self.config = config
@@ -200,6 +200,9 @@ class Wintercmd(QtCore.QObject):
         self.defineParser()
         # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
         self.telescope.signals.wrapWarning.connect(self.raiseWrapError)
+        
+        # connect the warning from the chiller to shut off the TEC to a handling function
+        self.chiller.TECshutoffCmd.connect(self.handle_chiller_alarm)
         
         # wait QTimer to try to keep responsive instead of 
         
@@ -337,6 +340,14 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 break    
     
+    
+    def handle_chiller_alarm(self):
+        msg = '### WINTERCMD: GOT ALERT TO SHUT OFF TEC! ###'
+        self.alertHandler.slack_log(msg)
+        print(msg)
+        self.logger.warning(msg)
+        self.parse('ccd_tec_stop')
+        
     
     @cmd
     def commit(self):
@@ -2597,6 +2608,7 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('execute routine from specified text file. default path is wsp/routines')
         self.cmdparser.add_argument('channel',
                                     nargs = 2,
+                                    type = int,
                                     action = None,
                                     help = "<pdu_num> <chan_num>")
         self.getargs()
@@ -2605,8 +2617,12 @@ class Wintercmd(QtCore.QObject):
         
         # send the on command
         if pdu_num == 1:
-            self.pdu1.on(chan_num)
-   
+            #self.powerManager.pdu_on('pdu1', chan_num)
+            sigcmd = signalCmd('pdu_on', pduname = 'pdu1', outlet = chan_num)
+            self.powerManager.newCommand.emit(sigcmd)
+        else:
+            self.logger.info(f'right now PDU numbers are hardcoded, and only 1 is active')
+            
     @cmd
     def pdu_off(self):
         """
@@ -2621,15 +2637,20 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('execute routine from specified text file. default path is wsp/routines')
         self.cmdparser.add_argument('channel',
                                     nargs = 2,
+                                    type = int,
                                     action = None,
                                     help = "<pdu_num> <chan_num>")
         self.getargs()
         pdu_num = self.args.channel[0]
         chan_num = self.args.channel[1]
         
-        # send the on command
+        # send the off command
         if pdu_num == 1:
-            self.pdu1.on(chan_num)
+            #self.powerManager.pdu_off('pdu1', chan_num)
+            sigcmd = signalCmd('pdu_off', pduname = 'pdu1', outlet = chan_num)
+            self.powerManager.newCommand.emit(sigcmd)
+        else:
+            self.logger.info(f'right now PDU numbers are hardcoded, and only 1 is active')
              
     
     @cmd

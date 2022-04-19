@@ -16,7 +16,8 @@ class ObservingProgram(object):
                  exposure_time = EXPOSURE_TIME,
                  nobs_range=None,
                  filter_choice='rotate', 
-                 active_months='all'):
+                 active_months='all',
+                 dither='N'):
 
         self.program_id = program_id
         self.subprogram_name = subprogram_name
@@ -25,6 +26,7 @@ class ObservingProgram(object):
         self.subprogram_fraction = subprogram_fraction
         self.field_ids = field_ids
         self.filter_ids = filter_ids
+        self.dither = dither
 
         self.internight_gap = internight_gap
         self.intranight_gap = intranight_gap

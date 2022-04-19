@@ -600,12 +600,22 @@ if __name__ == '__main__':
     starttime = '20220315_214546'
     endtime = '20220315_215255'
     night = '20220315'
+    
+    starttime = '20220415_201656'
+    endtime = '20220415_202756'
+    night = '20220415'
+    
+    
+    #starttime = '20220415_212336'
+    #endtime = '20220415_213056'
+    #night = '20220415'
+    """
     state = {"telescope_temp_m1": 9.516, 
              "telescope_temp_m2": 8.995, 
              "telescope_temp_m3": 9.516, 
              "telescope_temp_ambient": 7.958, 
              "T_outside_pcs": 10.1}
-    
+    """
     datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S') 
     datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
     impath = os.path.join(os.getenv("HOME"),'data','images',night)
@@ -622,7 +632,7 @@ if __name__ == '__main__':
     
     
     pix_scale = 0.466
-    loop = Focus_loop_v3(config, nom_focus = 9960, total_throw = 300, nsteps = 5, pixscale = pix_scale, state = state)
+    loop = Focus_loop_v3(config, nom_focus = 9800, total_throw = 300, nsteps = 5, pixscale = pix_scale)
 
     
     

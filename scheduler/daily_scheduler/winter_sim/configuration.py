@@ -136,7 +136,8 @@ class QueueConfiguration(Configuration):
                                   exposure_time = prog['exposure_time'],
                                   nobs_range = prog['nobs_range'],
                                   filter_choice=prog['filter_choice'],
-                                  active_months=prog['active_months'])
+                                  active_months=prog['active_months'],
+                                  dither=prog['dither'])
             OPs.append(OP)
 
         return OPs

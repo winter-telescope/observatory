@@ -13,6 +13,7 @@
 		 "filter_ids": [6],
 		 "internight_gap_days": 1,
 		 "n_visits_per_night": 1,
+		 "dither": "N",
 		 "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":10},
 		 "active_months": "all"}
 	]

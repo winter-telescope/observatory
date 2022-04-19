@@ -59,6 +59,7 @@ from ephem import ephem
 from alerts import alert_handler
 from viscam import web_request
 from viscam import ccd
+from power import powerManager
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -97,7 +98,8 @@ class control(QtCore.QObject):
                            'ephemd.py', 
                            'dirfiled.py',
                            'roboManagerd.py',
-                           'sun_simulator.py']
+                           'sun_simulator.py',
+                           'powerd.py']
         daemon_utils.cleanup(daemons_to_kill)
         
         
@@ -137,6 +139,10 @@ class control(QtCore.QObject):
             # housekeeping data logging daemon (hkd = housekeeping daemon)
             self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
             self.daemonlist.add_daemon(self.hkd)
+            
+            # power (PDU/NPS) daemon
+            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
+            self.daemonlist.add_daemon(self.powerd)
         
         if '--sunsim' in opts:              
             self.sunsim = True
@@ -193,13 +199,17 @@ class control(QtCore.QObject):
         ### CREATE A VARIABLE TO HOLD THE ROBO OPERATOR STATE THAT BOTH ROBO AND HOUSEKEEPING CAN ACCESS
         self.robostate = dict()
         
+        
         # init the network power supply
+        """
         try:
             self.pdu1 = power.PDU('pdu1.ini',base_directory = self.base_directory)
 
         except Exception as e:
             self.logger.warning(f"control: could not init NPS at pdu1, {type(e)}: {e}")
-
+        """
+        self.powerManager = powerManager.local_PowerManager(self.base_directory)
+        
         # init the test object (goes with the test_daemon)
         self.counter =  test_daemon_local.local_counter(wsp_path)
 
@@ -273,7 +283,7 @@ class control(QtCore.QObject):
                                                 dome = self.dome,
                                                 weather = self.weather,
                                                 chiller = self.chiller,
-                                                pdu1 = self.pdu1,
+                                                powerManager = self.powerManager,
                                                 counter = self.counter,
                                                 ephem = self.ephem,
                                                 viscam = self.viscam, 
@@ -300,7 +310,7 @@ class control(QtCore.QObject):
                                              telescope = self.telescope, 
                                              dome = self.dome, 
                                              chiller = self.chiller, 
-                                             pdu1 = self.pdu1, 
+                                             powerManager = self.powerManager, 
                                              logger = self.logger, 
                                              viscam = self.viscam, 
                                              ccd = self.ccd, 

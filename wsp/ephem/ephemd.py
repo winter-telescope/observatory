@@ -76,6 +76,10 @@ class EphemMon(object):
         self.init_remote_object()
         if self.sunsim:
             self.init_sunsim_remote_object()
+            print('###########################################################')
+            print('     EPHEMERIS DAEMON: RUNNING IN SUN SIMULATION MODE       ' )
+            print('###########################################################')
+
         
         # Start QTimer which updates state
         self.timer = QtCore.QTimer()
@@ -187,12 +191,14 @@ class EphemMon(object):
             # update the distance to the ephemeris
             self.updateCurrentEphemDist(obstime = self.time_utc, time_format = 'datetime')
             
+            
             # update the flag for ephemeris in view
             self.state.update({'ephem_in_view' : self.ephemInViewCurrent()})
             
             # get sun altitude
             self.prev_sunalt = self.sunalt
-            self.sunalt = self.get_sun_alt(obstime = self.time_utc, time_format = 'datetime')
+            #self.sunalt = self.get_sun_alt(obstime = self.time_utc, time_format = 'datetime')
+            self.sunalt = self.get_sun_alt(obstime = mjd, time_format = 'mjd')
             if self.sunalt > self.prev_sunalt:
                 self.sun_rising = True
             else:

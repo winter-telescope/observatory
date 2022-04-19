@@ -16,7 +16,7 @@ from .QueueManager import calc_pool_stats, calc_queue_stats
 from .configuration import SchedulerConfiguration
 from .constants import BASE_DIR, P48_loc, W_loc, W_Observer
 from .utils import block_index
-#import sys
+import sys
 
 # check aggressively for setting with copy
 import pandas as pd
@@ -83,6 +83,17 @@ def simulate(scheduler_config_file, sim_config_file,
             os.path.join(scheduler_config_path, scheduler_config_file)
     scheduler = Scheduler(scheduler_config_file_fullpath,
             sim_config_file_fullpath, output_path = output_path)
+    # print("SCHEDULER ", scheduler.scheduler_config.build_queue_configs)
+    # print("SCHEDULER ", scheduler.queues)
+    # print("SCHEDULER ", scheduler.queues.items())
+    # #'all_sky_u' subprogram_name
+    # for qname, q in scheduler.queues.items():
+    #     for program in q.observing_programs:
+    #         print('prog', program.subprogram_name)
+    #         if program.subprogram_name == 'all_sky_u':
+    #             pi = program.program_pi
+    #             print(pi)
+    # sys.exit()
     run_name = scheduler.scheduler_config.config['run_name']
 
     if profile:
@@ -221,7 +232,7 @@ def simulate(scheduler_config_file, sim_config_file,
                 # exposure completed successfully.  now
                 # a) store exposure information in pointing history sqlite db
                 current_state = tel.current_state_dict()
-                scheduler.obs_log.log_pointing(current_state, next_obs)
+                scheduler.obs_log.log_pointing(current_state, next_obs, scheduler.queues)
                 # b) remove completed request_id from the pool and the queue
                 logger.info(next_obs)
                 # assert(next_obs['request_id'] in scheduler.queues[next_obs['queue_name']].queue.index)

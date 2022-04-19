@@ -15,6 +15,11 @@ import matplotlib.pyplot as plt
 import glob
 import yaml
 import json
+from datetime import datetime
+import astropy.timeseries
+import astropy.time
+import astropy.units as u
+import astropy.stats
 
 # add the wsp directory to the PATH
 wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
@@ -36,6 +41,8 @@ class FocusModeler(object):
                              'position_err' : np.array([]),
                              'temperatures' : {},
                              'time_strings' : np.array([]),
+                             'astropyTimes' : np.array([]),
+                             'times'        : np.array([]),
                              'flag' : np.array([]),
                              })
         self._temperatures_keywords = ['m1',
@@ -70,34 +77,46 @@ class FocusModeler(object):
         for file in self._resultFiles:
             try:
                 resultDict = json.load(open(file))
-                if not filterID is None:
-                    if resultDict['telemetry']['filterID'] == filterID:
-                        #print(f"filter = {resultDict['telemetry']['filterID']}")
+                
+                # don't load results that have None as a temperature
+                if None in list(resultDict['temperatures'].values()):
+                    pass
+                else:
+                    
+                    if not filterID is None:
+                        if resultDict['telemetry']['filterID'] == filterID:
+                            #print(f"filter = {resultDict['telemetry']['filterID']}")
+                            # try to load the results from the file into the dictionary
+                            self.results['position'] = np.append(self.results['position'], resultDict['results']['focus'])
+                            self.results['position_err'] = np.append(self.results['position_err'], resultDict['results']['focus_err'])
+                            self.results['time_strings'] = np.append(self.results['time_strings'], resultDict['results']['time_utc_iso'])
+                            self.results['times'] = np.append(self.results['times'], datetime.strptime(resultDict['results']['time_utc_iso'],'%Y-%m-%d %H:%M:%S.%f'))
+                            self.results['astropyTimes'] = np.append(self.results['astropyTimes'], astropy.time.Time(datetime.strptime(resultDict['results']['time_utc_iso'],'%Y-%m-%d %H:%M:%S.%f'), format = 'datetime'))
+                            self.results['flag'] = np.append(self.results['flag'], False)
+                            for key in self._temperatures_keywords:
+                                temp = resultDict['temperatures'][key]
+                                self.results['temperatures'][key] = np.append(self.results['temperatures'][key], temp)
+                                
+                        else:
+                            pass
+                    else:
                         # try to load the results from the file into the dictionary
                         self.results['position'] = np.append(self.results['position'], resultDict['results']['focus'])
                         self.results['position_err'] = np.append(self.results['position_err'], resultDict['results']['focus_err'])
                         self.results['time_strings'] = np.append(self.results['time_strings'], resultDict['results']['time_utc_iso'])
+                        self.results['times'] = np.append(self.results['times'], datetime.strptime(resultDict['results']['time_utc_iso'],'%Y-%m-%d %H:%M:%S.%f'))
+                        self.results['astropyTimes'] = np.append(self.results['astropyTimes'], astropy.time.Time(datetime.strptime(resultDict['results']['time_utc_iso'],'%Y-%m-%d %H:%M:%S.%f'), format = 'datetime'))
                         self.results['flag'] = np.append(self.results['flag'], False)
                         for key in self._temperatures_keywords:
                             temp = resultDict['temperatures'][key]
                             self.results['temperatures'][key] = np.append(self.results['temperatures'][key], temp)
                             
-                    else:
-                        pass
-                else:
-                    # try to load the results from the file into the dictionary
-                    self.results['position'] = np.append(self.results['position'], resultDict['results']['focus'])
-                    self.results['position_err'] = np.append(self.results['position_err'], resultDict['results']['focus_err'])
-                    self.results['time_strings'] = np.append(self.results['time_strings'], resultDict['results']['time_utc_iso'])
-                    self.results['flag'] = np.append(self.results['flag'], False)
-                    for key in self._temperatures_keywords:
-                        temp = resultDict['temperatures'][key]
-                        self.results['temperatures'][key] = np.append(self.results['temperatures'][key], temp)
-                        
             except Exception as e:
                 print(f'could not load results data from {file}: {type(e)}: {e}')
-    
-    
+        
+        
+            
+            
     def identifyOutliers(self):
         
         for i in range(self.n_temp_sensors):
@@ -175,46 +194,97 @@ class FocusModeler(object):
 if __name__ == '__main__':
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
     
-    focusModeler = FocusModeler(config)
-    focusModeler.loadResults(filterID = 'r')
-    #focusModeler.plotResults_individual()
-    #focusModeler.plotResults()
+    results = dict()
+    filterTimeseries = dict()
+    alltimes = np.array([])
+    filters = ['u', 'g', 'r', 'i']
+    for filterID in filters:
+        focusModeler = FocusModeler(config)
+        results.update({filterID : focusModeler})
+        focusModeler.loadResults(filterID = filterID)
+        alltimes = np.append(alltimes, focusModeler.results['times'])
+        #focusModeler.plotResults_individual()
+        #focusModeler.plotResults()
+        #
+        fig, axes = plt.subplots(2, 1, figsize = (5,8))
+        
+        ax = axes[0]
+        temps = focusModeler.results['temperatures']['telescope_ambient']
+        pos = focusModeler.results['position']
+        param0 = np.polyfit(temps, pos, 1)
+        posFit0 = np.polyval(param0, temps)
+        resid0 = pos - posFit0
+        sigma0 = np.std(resid0)
+        scale = 1.5
+        flags = resid0 > scale*sigma0
+        
+        model0_x = np.linspace(min(temps), max(temps), 100)
+        model0_y = np.polyval(param0, model0_x)
+        
+        param1 = np.polyfit(temps[flags == False], pos[flags == False], 1)
+        model_x = np.linspace(min(temps), max(temps), 100)
+        model_y = np.polyval(param1, model_x)
+        
+        ax.plot(temps, pos, 'o', label = 'All Data')
+        ax.plot(temps[flags == True], pos[flags == True], 'o', label = 'Flagged Outliers')
+        ax.plot(model0_x, model0_y, 'g--', label = f'Initial Fit for Outlier ID')
+        ax.plot(model_x, model_y, 'r-', label = f'Fit: Focus = {param1[0]:.3f}'+'$xT_{AMBIENT}$' + f' + {param1[1]:.3f}')
+        ax.legend(fontsize = 8)
+        ax.set_ylabel('Focus Position [micron]')
+        ax.set_xlabel('Ambient Temperature [C]')
+        ax.set_title(f'Focus Model for {filterID}-band')
+        
+        ax = axes[1]
+        ax.plot(temps, resid0, 'o')
+        ax.plot(model0_x, model0_y*0.0, 'g--')
+        ax.plot(model0_x, model0_x*0.0 + scale*sigma0, 'r--', label = f'+/- {scale}$\sigma$')
+        ax.plot(model0_x, model0_x*0.0 - scale*sigma0, 'r--')
+        ax.set_ylabel('Focus Initial Fit Residual [micron]')
+        ax.set_xlabel('Ambient Temperature [C]')
+        ax.set_title('Outlier Identification')
+        ax.legend(fontsize = 8)
+        plt.tight_layout()
+        
+        # bin with date
+        times = focusModeler.results['astropyTimes']
+        ts = astropy.timeseries.TimeSeries(time = times[flags == False])
+        ts['pos']  = pos[flags == False]
+        ts['temp'] = temps[flags == False]
+        filterTimeseries.update({filterID : ts})
+        
+    earliest_time = min(alltimes)
+    latest_time = max(alltimes)
+    dt = latest_time - earliest_time
+    starttime = datetime(year = earliest_time.year, month = earliest_time.month, day = earliest_time.day, hour = 3, minute = 0, second = 0, microsecond = 0)
+    starttime_astropy = astropy.time.Time(starttime, format = 'datetime')
+    
+    binsize_hours = 6
+    nbins = int((dt.days+1)*24/binsize_hours)+1
+    
+    filterTimeseriesBinned = astropy.timeseries.TimeSeries(time_delta = binsize_hours*u.hour, time_start = starttime_astropy, n_samples = nbins)
+
+    for filterID in filters:
+        ts = filterTimeseries[filterID]
+        ts_binned = astropy.timeseries.aggregate_downsample(ts, time_bin_size = binsize_hours*u.hour, time_bin_start = starttime_astropy, n_bins = nbins)
+        
+        filterTimeseriesBinned[f'pos_{filterID}'] = ts_binned['pos']
+        filterTimeseriesBinned[f'temp_{filterID}'] = ts_binned['temp']
+
+        
+    # now get the offsets
+    filterTimeseriesBinned['g-u'] = filterTimeseriesBinned['pos_g'] - filterTimeseriesBinned['pos_u']
+    filterTimeseriesBinned['g-r'] = filterTimeseriesBinned['pos_g'] - filterTimeseriesBinned['pos_r']
+    filterTimeseriesBinned['g-i'] = filterTimeseriesBinned['pos_g'] - filterTimeseriesBinned['pos_i']
     #%%
-    fig, axes = plt.subplots(2, 1, figsize = (5,8))
-    
-    ax = axes[0]
-    temps = focusModeler.results['temperatures']['telescope_ambient']
-    pos = focusModeler.results['position']
-    param0 = np.polyfit(temps, pos, 1)
-    posFit0 = np.polyval(param0, temps)
-    resid0 = np.abs(pos - posFit0)
-    sigma0 = np.std(resid0)
-    scale = 1.5
-    flags = resid0 > scale*sigma0
-    
-    model0_x = np.linspace(min(temps), max(temps), 100)
-    model0_y = np.polyval(param0, model0_x)
-    
-    param1 = np.polyfit(temps[flags == False], pos[flags == False], 1)
-    model_x = np.linspace(min(temps), max(temps), 100)
-    model_y = np.polyval(param1, model_x)
-    
-    ax.plot(temps, pos, 'o', label = 'All Data')
-    ax.plot(temps[flags == True], pos[flags == True], 'o', label = 'Flagged Outliers')
-    ax.plot(model0_x, model0_y, 'g--', label = f'Initial Fit for Outlier ID')
-    ax.plot(model_x, model_y, 'r-', label = f'Fit: Focus = {param1[0]:.3f}'+'$xT_{AMBIENT}$' + f' + {param1[1]:.3f}')
-    ax.legend()
-    ax.set_ylabel('Focus Position [micron]')
-    ax.set_xlabel('Ambient Temperature [C]')
-    ax.set_title('Focus Model')
-    
-    ax = axes[1]
-    ax.plot(temps, resid0, 'o')
-    ax.plot(model0_x, model0_y*0.0, 'g--')
-    ax.plot(model0_x, model0_x*0.0 + scale*sigma0, 'r--', label = f'+/- {scale}$\sigma$')
-    ax.plot(model0_x, model0_x*0.0 - scale*sigma0, 'r--')
-    ax.set_ylabel('Focus Initial Fit Residual [micron]')
-    ax.set_xlabel('Ambient Temperature [C]')
-    ax.set_title('Outlier Identification')
-    ax.legend()
-    plt.tight_layout()
+    plt.figure()
+    for filterID in ['u','r','i']:
+        mean, median, stddev = astropy.stats.sigma_clipped_stats(filterTimeseriesBinned[f'g-{filterID}'], sigma = scale)
+        p = plt.plot(filterTimeseriesBinned['temp_g'], filterTimeseriesBinned[f'g-{filterID}'],'o', label = f"{filterID}: {binsize_hours}-hr binned data")
+        color = p[0].get_color()
+        line_x = np.linspace(filterTimeseriesBinned['temp_g'].min(0), filterTimeseriesBinned['temp_g'].max(0), 100)
+        plt.plot(line_x, 0.0*line_x+median,'--', color = color, label = f"{filterID}: $\sigma$-clipped ({scale}*$\sigma$) median = {median:.1f} $\mu$m")
+
+    plt.ylabel('Offset [microns]')
+    plt.xlabel('Ambient Temperature [C]')
+    plt.title('Relative Filter Offsets from g')
+    plt.legend(fontsize = 7)
