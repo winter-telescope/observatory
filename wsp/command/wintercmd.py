@@ -201,6 +201,9 @@ class Wintercmd(QtCore.QObject):
         # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
         self.telescope.signals.wrapWarning.connect(self.raiseWrapError)
         
+        # connect the warning from the chiller to shut off the TEC to a handling function
+        self.chiller.TECshutoffCmd.connect(self.handle_chiller_alarm)
+        
         # wait QTimer to try to keep responsive instead of 
         
     def raiseWrapError(self):
@@ -337,6 +340,14 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 break    
     
+    
+    def handle_chiller_alarm(self):
+        msg = '### WINTERCMD: GOT ALERT TO SHUT OFF TEC! ###'
+        self.alertHandler.slack_log(msg)
+        print(msg)
+        self.logger.warning(msg)
+        self.parse('ccd_tec_stop')
+        
     
     @cmd
     def commit(self):

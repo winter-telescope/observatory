@@ -65,6 +65,7 @@ import astropy.units as u
 import pytz
 import shutil
 import matplotlib.pyplot as plt
+import traceback as tb
 import sqlalchemy as db
 # import ObsWriter
 import logging
@@ -188,8 +189,8 @@ class Schedule(object):
     
     
     
-    def getRankedObs(self, obstime_mjd = 'now', printList = False):
-        
+    def getRankedObs(self, obstime_mjd = 'now', printList = True):
+        #print(f'in getRanked Obs, obstime_mjd = {obstime_mjd}')
         try:
             # first connect to the database
             self.connectToDB()
@@ -197,9 +198,10 @@ class Schedule(object):
             # get all the rows that can be observed
             stmt = f'SELECT * from summary'
             stmt += f' WHERE validStart <= {obstime_mjd} and validStop >= {obstime_mjd} and observed = 0'
-            stmt += f' ORDER by Priority DESC, validStop ASC'
+            #stmt += f' ORDER by Priority DESC, validStop ASC'
+            stmt += f' ORDER by validStop ASC'
             tmpresult = self.conn.execute(stmt)
-            
+            #print(f'in getRankedObs, tmpresult = {tmpresult}')
             # this is a list of sqlalchemy.engine.row.LegacyRow
             dataRankedSQL = tmpresult.fetchall()
             
@@ -207,7 +209,7 @@ class Schedule(object):
             dataRanked = []
             for row in dataRankedSQL:
                 dataRanked.append(dict(row))
-            
+            #print(f'in getRankedObs, dataRanked = {dataRanked}')
             # now turn dataRanked into a list of dictionaries
             
             
@@ -219,13 +221,13 @@ class Schedule(object):
             self.closeConnection()
             dataRanked = None
             print(f"ERROR [schedule.py]: database query failed for next object: {e}")
-        
+            print(tb.format_exc())
         if printList:
             # list the observations in their ranked order:
-            self.log('Selected Observations Ranked by Priority, then validStop:')
+            self.log('Valid Observations Ranked by validStop:')
             for i in range(len(dataRanked)):
                 row = dataRanked[i]
-                self.log(f'  {i}: obsHistID = {row["obsHistID"]}, Priority = {row["Priority"]}, validStop = {row["validStop"]}, observed = {row["observed"]}')
+                self.log(f'  {i}: obsHistID = {row["obsHistID"]}, validStop = {row["validStop"]}, observed = {row["observed"]}')
         return dataRanked
     
     def updateCurrentObs(self, currentObs, obstime_mjd = 'now'):
@@ -257,11 +259,15 @@ class Schedule(object):
         
         
         dataRanked = self.getRankedObs(obstime_mjd)
-        self.remaining_valid_observations = len(dataRanked)
-        if self.remaining_valid_observations == 0:
-                 self.end_of_schedule = True
+        if dataRanked is None:
+            self.remaining_valid_observations = 0
+            self.end_of_schedule = True
         else:
-            self.end_of_schedule = False
+            self.remaining_valid_observations = len(dataRanked)
+            if self.remaining_valid_observations == 0:
+                     self.end_of_schedule = True
+            else:
+                self.end_of_schedule = False
         
     
     def getTopRankedObs(self, obstime_mjd = 'now'):
@@ -275,15 +281,21 @@ class Schedule(object):
         
         
         dataRanked = self.getRankedObs(obstime_mjd)
-        self.remaining_valid_observations = len(dataRanked)
-   
-        if self.remaining_valid_observations == 0:
+        print(dataRanked)
+        if dataRanked is None:
+            self.remaining_valid_observations = 0
             self.end_of_schedule = True
             topRankedObs = None
         else:
-            self.end_of_schedule = False
-            topRankedObs = dict(dataRanked[0])
-            
+            self.remaining_valid_observations = len(dataRanked)
+       
+            if self.remaining_valid_observations == 0:
+                self.end_of_schedule = True
+                topRankedObs = None
+            else:
+                self.end_of_schedule = False
+                topRankedObs = dict(dataRanked[0])
+                
         return topRankedObs
     
     def log_observation(self, obsHistID = 'current'):
@@ -345,7 +357,7 @@ class Schedule(object):
         """
         
         nextResult = self.getTopRankedObs(obstime_mjd)
-    
+        
             
         if nextResult is None:
             self.currentObs = None
@@ -386,19 +398,22 @@ if __name__ == '__main__':
     logger = None
     schedule = Schedule(base_directory, config, logger, verbose = True)
     
-    schedulefile_dir = os.path.join(os.getenv("HOME"), 'data','schedules','ToO')
-
-    schedulefile_name = 'timed_requests_04_09_2022_04_1649502448_.db'
+    #schedulefile_dir = os.path.join(os.getenv("HOME"), 'data','schedules','ToO')
+    #schedulefile_name = 'timed_requests_04_09_2022_04_1649502448_.db'
+    schedulefile_path = os.readlink(os.path.join(os.getenv("HOME"), 'data','nightly_schedule.lnk'))
+    schedulefile_dir = os.path.dirname(schedulefile_path)
+    schedulefile_name = schedulefile_path.split('/')[-1]
     
-    obstime_mjd = (59677.9861111111	+ 59678.5416666667)/2
+    obstime_mjd = 59683.229421296295
     
-    schedule.loadSchedule(os.path.join(schedulefile_dir, schedulefile_name))
+    #schedule.loadSchedule(os.path.join(schedulefile_dir, schedulefile_name))
+    schedule.loadSchedule('nightly')
     
     # reset the schedule to fully unobserved
     schedule._reset_observation_log()
     
     # list the ranked observations
-    order = schedule.getRankedObs(obstime_mjd = obstime_mjd, printList = True)
+    #order = schedule.getRankedObs(obstime_mjd = obstime_mjd, printList = True)
     schedule.log('')
     
     # now fake observe by stepping through the observations in the ranked order and logging them

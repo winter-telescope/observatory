@@ -735,8 +735,9 @@ class RoboOperator(QtCore.QObject):
                 self.load_best_observing_target(obstime_mjd)
                 
                 #print(f'currentObs = {self.schedule.currentObs}')
-                print(f'type(self.schedule.currentObs) = {type(self.schedule.currentObs)}')
-                print(f'self.schedule.currentObs == "default": {self.schedule.currentObs == "default"}')
+                print(f'self.schedule.schedulefile = {self.schedule.schedulefile}, self.schedule.scheduleType = {self.schedule.scheduleType}')
+                #print(f'type(self.schedule.currentObs) = {type(self.schedule.currentObs)}')
+                #print(f'self.schedule.currentObs == "default": {self.schedule.currentObs == "default"}')
                 if self.schedule.currentObs is None:
                 #if currentObs is None:
                     self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
@@ -816,8 +817,10 @@ class RoboOperator(QtCore.QObject):
         
         scheduleFile = self.survey_schedulefile_name
         # point self.schedule to the survey
+        self.announce(f'loading survey schedule: {scheduleFile}')
         self.schedule.loadSchedule(scheduleFile)
         currentObs = self.schedule.getTopRankedObs(obstime_mjd)
+        self.announce(f'currentObs = {currentObs}')
         self.schedule.updateCurrentObs(currentObs, obstime_mjd)
         return
         
@@ -966,11 +969,11 @@ class RoboOperator(QtCore.QObject):
         as well as when the thread is first initialized.
         """
 
-        print(f'scheduleExecutor: setting up new schedule from file >> {schedulefile_name}')
+        print(f'scheduleExecutor: setting up new survey schedule from file >> {schedulefile_name}')
 
         if self.running:
             self.stop()
-
+        self.survey_schedulefile_name = schedulefile_name
         self.schedulefile_name = schedulefile_name
         self.schedule.loadSchedule(schedulefile_name)
 
@@ -1963,7 +1966,8 @@ class RoboOperator(QtCore.QObject):
                 #if self.focus_attempt_number < self.config['focus_loop_param']['max_focus_attempts']:
                 total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
                 nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
-                nom_focus = 'default'
+                #nom_focus = 'default'
+                nom_focus = 'last'
                 focusType = 'Vcurve'
                 """
                 else:
@@ -2109,7 +2113,7 @@ class RoboOperator(QtCore.QObject):
                 self.obsHistID = int(currentObs['obsHistID'])
                 self.fieldID = int(currentObs.get('fieldID', 999999999))
                 self.programID = int(currentObs.get('progID', -1))
-                self.programPI = currentObs.get('PINAME','')
+                self.programPI = currentObs.get('programPI','')
                 self.programName = currentObs.get('progName','')
                 
                 #self.requestID = currentObs['requestID']
@@ -2257,9 +2261,10 @@ class RoboOperator(QtCore.QObject):
                     # always log observation, but only gotoNext if we're on the last dither
                     if self.remaining_dithers == 0:
                         gotoNext = True
+                        self.log_observation_and_gotoNext(gotoNext = gotoNext, logObservation = True)
                     else:
                         gotoNext = False
-                    self.log_observation_and_gotoNext(currentObs = currentObs, gotoNext = gotoNext)
+                        self.log_observation_and_gotoNext(gotoNext = gotoNext, logObservation = False)
                     #return #<- NPL 1/19/22 this return should never get executed, the log_observation_and_gotoNext call should handle exiting
                     
                 except Exception as e:
@@ -2350,12 +2355,12 @@ class RoboOperator(QtCore.QObject):
                 self.writer.closeConnection()
             """
     '''           
-    def log_observation_and_gotoNext(self, currentObs = 'default', gotoNext = True):
+    def log_observation_and_gotoNext(self, gotoNext = True, logObservation = True):
         #self.logger.info(f'robo: image timer finished, logging observation with option gotoNext = {gotoNext}')
-        
+        """
         if currentObs == 'default':
             currentObs = self.schedule.currentObs
-        
+        """
         #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
         self.check_ok_to_observe(logcheck = True)
         if not self.ok_to_observe:
@@ -2367,9 +2372,12 @@ class RoboOperator(QtCore.QObject):
             
         else:    
     
-            if currentObs is not None and self.running:
-                self.logger.info('robo: logging observation')
-                                                
+            if self.schedule.currentObs is not None and self.running:
+                if logObservation:
+                    self.schedule.log_observation()
+                    self.logger.info('robo: logging observation')
+                
+                """
                 image_directory, image_filename = self.ccd.getLastImagePath()
                 image_filepath = os.path.join(image_directory, image_filename)
             
@@ -2378,10 +2386,12 @@ class RoboOperator(QtCore.QObject):
                 if not self.test_mode:
                     # don't log if we're in test mode.
                     #self.writer.log_observation(header_data, image_filepath)
-                    self.schedule.log_observation()
+                    if logObservation:
+                        self.schedule.log_observation()
+                
                 else:
                     self.log(f"in test mode, so won't actually log_observation")
-            
+                """
             else:  
                 if currentObs is None:
                     self.logger.info('robo: in log and goto next, but there is no observation to log.')
@@ -2403,7 +2413,7 @@ class RoboOperator(QtCore.QObject):
         self.rotator_stop_and_reset()
         
         # Now shut down the connection to the databases
-        self.logger.info(f'robo: closing connection to schedule and obslog databases')
+        #self.logger.info(f'robo: closing connection to schedule and obslog databases')
         #self.schedule.closeConnection()
         #self.writer.closeConnection()
     

@@ -692,7 +692,7 @@ class CCD(QtCore.QObject):
             weather_datetime = datetime.fromtimestamp(state['dome_timestamp'])
             ut_weath = weather_datetime.strftime('%Y-%m-%d %H%M%S.%f')
         except Exception as e:
-            print(f'could not get weather time, {e}')
+            print(f'could not get dome time, {e}')
             ut_weath = ''
         header.append(fits.Card('UT_WEATH',     ut_weath, 'UT of weather data'))
         #TEMPTURE

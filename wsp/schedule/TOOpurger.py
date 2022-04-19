@@ -57,26 +57,24 @@ def log( msg='', level = logging.INFO):
             logger.log(level = level, msg = msg)
 
 # get all the files in the ToO High Priority folder
-highPriority_schedule_directory = os.path.join(os.getenv("HOME"), config['scheduleFile_ToO_HighPriority_directory'])
-highPriority_schedules = glob.glob(os.path.join(highPriority_schedule_directory, '*.db'))
-log(f'schedules in high priority folder: {highPriority_schedules}')
+scheduleFile_ToO_directory = os.path.join(os.getenv("HOME"), config['scheduleFile_ToO_directory'])
+ToO_scheduleFilepaths = glob.glob(os.path.join(scheduleFile_ToO_directory, '*.db'))
+log(f'schedules in high priority folder: {scheduleFile_ToO_directory}')
 log()
 ToOschedules = {}
 # check if the schedule is already in self.ToOschedules
-for sched_filepath in highPriority_schedules:
+for sched_filepath in ToO_scheduleFilepaths:
     sched_filename = sched_filepath.split('/')[-1]
-    sched_filedirectory = highPriority_schedule_directory
     #log(f'need to add {sched_filename} to high priority schedules')
     sched_obj = schedule.Schedule(base_directory = base_directory,
                                   config = config,
                                   logger = logger,
-                                  scheduleFile_directory = sched_filedirectory)
+                                  scheduleFile_directory = scheduleFile_ToO_directory)
     
     # set up the ToO schedule
     sched_obj.loadSchedule(schedulefile_name  = sched_filepath)
     
     ToOschedules.update({sched_filename : {'filepath' : sched_filepath,
-                                                'priority' : 'high',
                                                 'schedule' : sched_obj}})
 
 # now query if there are valid observations in any of the TOO schedule
@@ -98,8 +96,8 @@ for schedname in ToOschedules:
     # if the file has no remaining valid observations, move it to the completed folder
     if remaining_valid_observations == 0:
         log(f'>> MOVING TO COMPLETED FOLDER')
-        destination = os.path.join(highPriority_schedule_directory, 'archived', schedname)
-        source = os.path.join(highPriority_schedule_directory, schedname)
+        destination = os.path.join(scheduleFile_ToO_directory, 'archived', schedname)
+        source = os.path.join(scheduleFile_ToO_directory, schedname)
         shutil.move(source, destination)
         archived +=1
     log()

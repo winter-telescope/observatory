@@ -272,7 +272,7 @@ class StatusMonitor(QtCore.QObject):
         
         # set up alerts
         self.alertHandler = alertHandler
-        self.alert_error.connect(self.broadcast_alert)
+        #self.alert_error.connect(self.broadcast_alert)
         
         # set up something to parse the chiller alarms
         self.chillerAlarmParser = chillerAlarmParser
@@ -314,7 +314,7 @@ class StatusMonitor(QtCore.QObject):
         # create a notification
         print(f'Broadcasting error: Chiller has encountered {name} : {content}' )
         msg = f':redsiren: *Alert!!*  Chiller has encountered {name} : {content}'       
-        group = 'sudo'
+        group = 'chiller'
         self.alertHandler.slack_log(msg, group = group)
         txtsubject = 'WINTER CHILLER :'
         txtmsg = f'Chiller has encountered {name} : {content}'
@@ -341,7 +341,8 @@ class StatusMonitor(QtCore.QObject):
             
         
     def connect_socket(self):
-        if self.verbose:
+        if True:
+        #if self.verbose:
             self.log(f'(Thread {threading.get_ident()}) StatusMonitor: Attempting to connect socket')
         # record the time of this connection attempt
         #self.reset_last_recconnect_timestamp()
@@ -394,23 +395,29 @@ class StatusMonitor(QtCore.QObject):
                 except:
                     pass
         
-    def update_all_last_poll_dt(self):
-        """
+    """def update_all_last_poll_dt(self):
+        '''
         Loops through all the state variables, and updates the dt since they
         were last updated. The state last_poll_time is updated only in self.pollStatus,
         but this can be used to more regularly update how long its been since each
         field was updated with fresh information from the chiller
-        """
-        for reg in self.config['commands']:
+        '''
+#        for reg in self.config['commands']: # holdovver from big chiller
+        for reg in self.state['last_poll_time']:
+
             try:
                 # Update all the dt times
                 # calculate the time since the last successfull pol
                 timestamp = datetime.utcnow().timestamp()
                 time_since_last_poll = timestamp - self.state['last_poll_time'][reg]
                 self.state['last_poll_dt'].update({reg : time_since_last_poll})
+                # keep track of the maximum dt since a field was updated
+                max_dt_since_last_update = np.max(self.state['last_poll_dt'].values())
+                self.state.update({'max_dt_since_last_update', max_dt_since_last_update})
+                
             except Exception as e:
                 print(f'Could not update dt for {reg}, error: {e}')
-                pass
+                pass"""
         
     def pollStatus(self):
         """
@@ -419,7 +426,7 @@ class StatusMonitor(QtCore.QObject):
         """
         # record the time that this loop runs
         self.timestamp = datetime.utcnow().timestamp()
-        
+                
         # report back some useful stuff
         self.state.update({'poll_timestamp' : self.timestamp})
         self.state.update({'reconnect_remaining_time' : self.reconnector.reconnect_remaining_time})
@@ -427,8 +434,9 @@ class StatusMonitor(QtCore.QObject):
         self.state.update({'is_connected' : self.connected})
         
         # if the connection is live, ask for the chiller status
-        if self.sock.is_open:
-            self.connected = True
+        #if self.sock.is_open:
+        if self.connected:
+            #self.connected = True
             #self.time_since_last_connection = 0.0
             self.reconnector.time_since_last_connection = 0.0
             #print(f'Connected! Querying Status.')
@@ -470,17 +478,21 @@ class StatusMonitor(QtCore.QObject):
                                     self.state.update({'PumpStatusFlag' : int(val[1])})
                                     self.state.update({'AlarmStatusFlag' : int(val[2])})
                                     self.state.update({'WarningStatusFlag' : int(val[3])})
+                                    self.state['last_poll_time'].update({'readWatchDog' : timestamp})
                                     self.state['last_poll_time'].update({'ControlStatusMode' : timestamp})
                                     self.state['last_poll_time'].update({'PumpStatusFlag': timestamp})
                                     self.state['last_poll_time'].update({'AlarmStatusFlag'  : timestamp})
                                     self.state['last_poll_time'].update({'WarningStatusFlag' : timestamp})
+                                    # mark the alerts as empty
+                                    self.state.update({'active_alarms' : []})
+                                    self.state.update({'active_warnings' : []})
                                     #NPL 3-31-22 updated so ANY of warnings/alarms/pump issues trigger this announcement
                                     if (any([self.state['AlarmStatusFlag'], self.state['WarningStatusFlag']])
                                         or (self.state['PumpStatusFlag'] == 0)):
                                     #if int(val[3]) == 1: #NPL 7-12-21 updated with the recast since val is a string
-                                        print(f"Chiller alarm!: val[3] = {val[3]}, type(val[3]) = {type(val[3])}")
-                                        print(f'val = {val}')
-                                        print(f'state = {self.state}')
+                                        #print(f"Chiller alarm!: val[3] = {val[3]}, type(val[3]) = {type(val[3])}")
+                                        #print(f'val = {val}')
+                                        #print(f'state = {self.state}')
                                         command_string = '.0166rAlrmBit'
                                         check_sum = hex(sum(command_string.encode('ascii')) % 256)[2:]
                                         if len(check_sum) == 1:
@@ -497,9 +509,16 @@ class StatusMonitor(QtCore.QObject):
                                         # use the alarm parser to figure out what's going on
                                         parsed_error_msg = self.chillerAlarmParser.parse_alarm_code(err_content)
                                         
+                                        self.state.update({'active_alarms' : self.chillerAlarmParser.active_alarms})
+                                        self.state.update({'active_warnings' : self.chillerAlarmParser.active_warnings})
+                                        
+                                        """ # we'll handle this in WSP not in the daemon 
                                         if self.verbose:
                                             self.broadcast_alert(err_name, err_content)
                                         self.broadcast_alert(err_name, parsed_error_msg)
+                                        """
+                                        
+                                        
                                         
                                 else:
                                     val = reply[14:19]
@@ -538,14 +557,13 @@ class StatusMonitor(QtCore.QObject):
                                     self.log(f'chiller: could not get {com}: {reply}')
                                 pass
                             
-                            # update the dt since last update for ALL fields
-                            #self.update_all_last_poll_dt()
+                            
                             
                             
                         
                         except Exception as e:
-                            print(f'Poll chiller status error: {e}')
-                            pass
+                            self.log(f'Poll chiller status error: {e}')
+                            self.connected = False
                         
                         
                         time.sleep(self.serial_query_dt)
@@ -571,10 +589,11 @@ class StatusMonitor(QtCore.QObject):
             
             #if self.reconnect_remaining_time <= 0.0:
             if self.reconnector.reconnect_remaining_time <= 0.0:
-                if self.verbose:
-                    self.log('StatusMonitor: Do a reconnect')
+                #if self.verbose:
+                self.log('StatusMonitor: Do a reconnect')
                 # we have waited the full reconnection timeout
-                self.doReconnect.emit()
+                #self.doReconnect.emit()
+                self.setup_connection()
                 self.connect_socket()
                 
             else:
@@ -837,17 +856,25 @@ class Chiller(QtCore.QObject):
         but this can be used to more regularly update how long its been since each
         field was updated with fresh information from the chiller
         """
-        for reg in self.config['commands']:
-            try:
-                # Update all the dt times
-                # calculate the time since the last successfull pol
-                timestamp = datetime.utcnow().timestamp()
-                time_since_last_poll = timestamp - self.state['last_poll_time'][reg]
-                self.state['last_poll_dt'].update({reg : time_since_last_poll})
-            except Exception as e:
-                if self.verbose:
-                    print(f'Could not update dt for {reg}, error: {e}')
-                pass
+        for reg in self.config['commands']: # holdovver from big chiller
+            # keep track of the maximum dt since the housekeeping was updated
+            if 'r' in self.config['commands'][reg]['mode']:
+                try:
+                    # Update all the dt times
+                    # calculate the time since the last successfull pol
+                    timestamp = datetime.utcnow().timestamp()
+                    time_since_last_poll = timestamp - self.state['last_poll_time'][reg]
+                    self.state['last_poll_dt'].update({reg : time_since_last_poll})
+                    
+                    max_dt_since_last_update = max(list(self.state['last_poll_dt'].values()))
+                    self.state.update({'max_dt_since_last_update': max_dt_since_last_update})
+                    #print(self.state)
+                except Exception as e:
+                    #print(f'Could not update dt for {reg}, error: {e}')
+                    self.state['last_poll_dt'].update({reg : -888})
+                    self.state.update({'max_dt_since_last_update': -888})
+
+                    pass
             
     def updateCommandReply(self, reply):
         '''

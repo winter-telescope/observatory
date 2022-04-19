@@ -501,7 +501,7 @@ focus_loop_param:
             target: '40 304'
     focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
-    focus_graceperiod_hours: 12
+    focus_graceperiod_hours: 6
     max_focus_attempts: 2
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
@@ -2337,6 +2337,20 @@ fields:
         dtype: float64
         rate: slow
         var: chiller.state['readSetT'] 
+    small_chiller_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: chiller.state['last_poll_time']['ControlStatusMode']
+    small_chiller_dt_since_update:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: chiller.state['max_dt_since_last_update']
 
 #### FITS HEADER STUFF. THESE ARE STRINGS! WILL NOT BE LOGGED TO THE DIRFILE
 header_fields:
