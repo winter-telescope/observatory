@@ -1411,69 +1411,96 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
         # if we got here we're good to start
-        # take 5 flats!
-        nflats = 5
+        # take  flats!
+        nflats = 3
         
         ra_total_offset_arcmin = 0
         dec_total_offset_arcmin = 0
         
-        
-        for i in range(nflats):
-            self.log(f'setting up flat #{i + 1}')
-            
+        #cycle through all the active filters:for filterID in 
+        filterIDs = self.focusTracker.getActiveFilters()
+                
+        for filterID in filterIDs:
+            self.announce(f'executing focus loop for filter: {filterID}')
             try:
-                # estimate required exposure time
-                flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
+                self.announce(f'doing flats for filter: {filterID}')
+
+                # step through each filter to focus, and run a focus loop
+                # 1. change filter to filterID
+                system = 'filter wheel'
+                if self.cam == 'summer':
+                    # get filter number
+                    for position in self.config['filter_wheels'][self.cam]['positions']:
+                        if self.config['filter_wheels'][self.cam]['positions'][position] == filterID:
+                            filter_num = position
+                        else:
+                            pass
+                        
+                    self.do(f'command_filter_wheel {filter_num}')
+        
+                for i in range(nflats):
+                    try:
+                        self.log(f'setting up flat #{i + 1}')
                 
-                
-                
-                minexptime = 2.5 + i
-                maxexptime = 60
-                if type(flat_exptime) is complex:
-                    self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')
-                    flat_exptime = minexptime
+                        # estimate required exposure time
+                        flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
+                        
+                        
+                        
+                        minexptime = 2.5 + i
+                        maxexptime = 60
+                        if type(flat_exptime) is complex:
+                            self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')
+                            flat_exptime = minexptime
+                            
+                        elif (flat_exptime < minexptime):
+                            self.log(f'calculated exptime too short ({flat_exptime} < {minexptime}), setting to {minexptime} s')
+                            flat_exptime = minexptime
+                        elif (flat_exptime > maxexptime):
+                            self.log(f'calculated exptime too long ({flat_exptime} > {maxexptime}), setting to {maxexptime} s')
+                            flat_exptime = maxexptime
+                        else:
+                            self.log(f'setting exptime to estimated {flat_exptime} s')
+                        
+                        system = 'ccd'
+                        self.do(f'ccd_set_exposure {flat_exptime:0.3f}')
+                        time.sleep(2)
+                        
+                        qcomment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
+                        #qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
+                        # now trigger the actual observation. this also starts the mount tracking
+                        self.announce(f'Executing {qcomment}')
+                        if i==0:
+                            self.log(f'handling the i=0 case')
+                            #self.do(f'robo_set_qcomment "{qcomment}"')
+                            system = 'robo routine'
+                            self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
+                        else:
+                            system = 'ccd'
+                            self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
+                        
+                        # now dither. if i is odd do ra, otherwise dec
+                        dither_arcmin = 5
+                        if i%2:
+                            axis = 'ra'
+                            ra_total_offset_arcmin += dither_arcmin
+                        else:
+                            axis = 'dec'
+                            dec_total_offset_arcmin += dither_arcmin
+                            
+                        #self.do(f'mount_offset {axis} add_arcsec {dither_arcsec}')
+                        self.do(f'mount_dither {axis} {dither_arcmin}')
                     
-                elif (flat_exptime < minexptime):
-                    self.log(f'calculated exptime too short ({flat_exptime} < {minexptime}), setting to {minexptime} s')
-                    flat_exptime = minexptime
-                elif (flat_exptime > maxexptime):
-                    self.log(f'calculated exptime too long ({flat_exptime} > {maxexptime}), setting to {maxexptime} s')
-                    flat_exptime = maxexptime
-                else:
-                    self.log(f'setting exptime to estimated {flat_exptime} s')
-                
-                system = 'ccd'
-                self.do(f'ccd_set_exposure {flat_exptime:0.3f}')
-                time.sleep(2)
-                
-                qcomment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
-                #qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
-                # now trigger the actual observation. this also starts the mount tracking
-                self.announce(f'Executing {qcomment}')
-                if i==0:
-                    self.log(f'handling the i=0 case')
-                    #self.do(f'robo_set_qcomment "{qcomment}"')
-                    system = 'robo routine'
-                    self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
-                else:
-                    system = 'ccd'
-                    self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
-                
-                # now dither. if i is odd do ra, otherwise dec
-                dither_arcmin = 5
-                if i%2:
-                    axis = 'ra'
-                    ra_total_offset_arcmin += dither_arcmin
-                else:
-                    axis = 'dec'
-                    dec_total_offset_arcmin += dither_arcmin
-                    
-                #self.do(f'mount_offset {axis} add_arcsec {dither_arcsec}')
-                self.do(f'mount_dither {axis} {dither_arcmin}')
-                
+                    except Exception as e:
+                        msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                        self.log(msg)
+                        self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                        err = roboError(context, self.lastcmd, system, msg)
+                        self.hardware_error.emit(err)
+                        #return
                 
             except Exception as e:
-                msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                msg = f'roboOperator: could not complete flats for {filterID} due to error with {system}: due to {e.__class__.__name__}, {e}'
                 self.log(msg)
                 self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                 err = roboError(context, self.lastcmd, system, msg)
@@ -1490,54 +1517,123 @@ class RoboOperator(QtCore.QObject):
             system = 'telescope'
             self.do('mount_tracking_off')
         except Exception as e:
-                msg = f'roboOperator: could not stop tracking after flat fields due to error with {system}: due to {e.__class__.__name__}, {e}'
+            msg = f'roboOperator: could not stop tracking after flat fields due to error with {system}: due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            #return
+        
+        
+        ### Take darks ###
+        # send the rotator home
+        
+        for filterID in filterIDs:
+            self.announce(f'executing focus loop for filter: {filterID}')
+            try:
+                self.announce(f'doing darks for filter: {filterID}')
+
+                # step through each filter to focus, and run a focus loop
+                # 1. change filter to filterID
+                system = 'filter wheel'
+                if self.cam == 'summer':
+                    # get filter number
+                    for position in self.config['filter_wheels'][self.cam]['positions']:
+                        if self.config['filter_wheels'][self.cam]['positions'][position] == filterID:
+                            filter_num = position
+                        else:
+                            pass
+                        
+                    self.do(f'command_filter_wheel {filter_num}')
+        
+        
+                system = 'rotator'
+                try:
+                    self.do('rotator_stop')
+                    self.do('rotator_home')
+                
+                except Exception as e:
+                    msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err)
+                    return
+                    
+                system = 'ccd'
+                try:
+                    self.do(f'ccd_set_exposure 30.0')
+                    ndarks = 5
+                    for i in range(ndarks):
+                        self.announce(f'Executing Auto Darks {i+1}/5')
+                        qcomment = f"Auto Darks {i+1}/{ndarks}"
+            
+                        self.do(f'robo_do_exposure -d --comment "{qcomment}"')
+                except Exception as e:
+                    msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err)
+                    return
+            except Exception as e:
+                msg = f'roboOperator: could not complete darks for {filterID} due to error with {system}: due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                #return
+            
+        ### Take bias ###
+        for filterID in filterIDs:
+            self.announce(f'executing focus loop for filter: {filterID}')
+            try:
+                self.announce(f'doing darks for filter: {filterID}')
+
+                # step through each filter to focus, and run a focus loop
+                # 1. change filter to filterID
+                system = 'filter wheel'
+                if self.cam == 'summer':
+                    # get filter number
+                    for position in self.config['filter_wheels'][self.cam]['positions']:
+                        if self.config['filter_wheels'][self.cam]['positions'][position] == filterID:
+                            filter_num = position
+                        else:
+                            pass
+                        
+                    self.do(f'command_filter_wheel {filter_num}')
+                try:
+                    self.do(f'ccd_set_exposure 0.0')
+                    nbias = 5
+                    for i in range(nbias):
+                        self.announce(f'Executing Auto Bias {i+1}/5')
+                        qcomment = f"Auto Bias {i+1}/{nbias}"
+                        self.do(f'robo_do_exposure -b --comment "{qcomment}"')
+                        
+                except Exception as e:
+                    msg = f'roboOperator: could not set up bias routine due to error with {system} due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err)
+                    return
+            except Exception as e:
+                msg = f'roboOperator: could not complete bias image collection for {filterID} due to error with {system}: due to {e.__class__.__name__}, {e}'
                 self.log(msg)
                 self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
                 #return
         
+        self.log(f'finished with calibration. no more to do.')    
+        self.announce('auto calibration completed successfully!')
         
-        ### Take darks ###
-        # send the rotator home
-        system = 'rotator'
-        try:
-            self.do('rotator_stop')
-            self.do('rotator_home')
         
-        except Exception as e:
-            msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
-            
-        system = 'ccd'
+        self.calibration_complete = True
+        
+        # set the exposure time back to something sensible to avoid errors
         try:
             self.do(f'ccd_set_exposure 30.0')
-            ndarks = 5
-            for i in range(ndarks):
-                self.announce(f'Executing Auto Darks {i+1}/5')
-                qcomment = f"Auto Darks {i+1}/{ndarks}"
-    
-                self.do(f'robo_do_exposure -d --comment "{qcomment}"')
-        except Exception as e:
-            msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
-            
-        ### Take bias ###
-        try:
-            self.do(f'ccd_set_exposure 0.0')
-            nbias = 5
-            for i in range(nbias):
-                self.announce(f'Executing Auto Bias {i+1}/5')
-                qcomment = f"Auto Bias {i+1}/{nbias}"
-                self.do(f'robo_do_exposure -b --comment "{qcomment}"')
                 
         except Exception as e:
             msg = f'roboOperator: could not set up bias routine due to error with {system} due to {e.__class__.__name__}, {e}'
@@ -1546,16 +1642,6 @@ class RoboOperator(QtCore.QObject):
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             return
-        
-        self.log(f'finished with calibration. no more to do.')    
-        self.announce('auto calibration completed successfully!')
-        
-        
-        ### Take darks ###
-        # Nothing here yet
-        
-        
-        self.calibration_complete = True
     
     
     def do_focusLoop(self, nom_focus = 'last', total_throw = 'default', nsteps = 'default', updateFocusTracker = True, focusType = 'Vcurve'):

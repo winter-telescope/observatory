@@ -276,7 +276,11 @@ if __name__ == '__main__':
     
     
     focusTracker = FocusTracker(config)
-    
+    active_filters = focusTracker.getActiveFilters()
+    print('Active Filters:')
+    for filterID in active_filters:
+        print(f'> {filterID}')
+    '''
     print('setting up focus log')
     focusTracker.setupFocusLog()
     
@@ -314,6 +318,7 @@ if __name__ == '__main__':
     print()
     focusTracker.printFocusLog()
     """
+    '''
     
     
     
