@@ -2605,7 +2605,7 @@ class Wintercmd(QtCore.QObject):
 
         """
         
-        self.defineCmdParser('execute routine from specified text file. default path is wsp/routines')
+        self.defineCmdParser('turn on specified outlet on specified pdu')
         self.cmdparser.add_argument('channel',
                                     nargs = 2,
                                     type = int,
@@ -2634,7 +2634,7 @@ class Wintercmd(QtCore.QObject):
 
         """
         
-        self.defineCmdParser('execute routine from specified text file. default path is wsp/routines')
+        self.defineCmdParser('turn off specified outlet on specified pdu')
         self.cmdparser.add_argument('channel',
                                     nargs = 2,
                                     type = int,
@@ -2652,6 +2652,34 @@ class Wintercmd(QtCore.QObject):
         else:
             self.logger.info(f'right now PDU numbers are hardcoded, and only 1 is active')
              
+    @cmd
+    def pdu_cycle(self):
+        """
+        created: NPL 6-7-21
+        
+        this turns on a channel on the specified PDU
+        
+        call: pdu_on 1 8, turns on ch 8 on pdu 1
+
+        """
+        
+        self.defineCmdParser('cycle specified outlet on specified pdu')
+        self.cmdparser.add_argument('channel',
+                                    nargs = 2,
+                                    type = int,
+                                    action = None,
+                                    help = "<pdu_num> <chan_num>")
+        self.getargs()
+        pdu_num = self.args.channel[0]
+        chan_num = self.args.channel[1]
+        
+        # send the off command
+        if pdu_num == 1:
+            #self.powerManager.pdu_off('pdu1', chan_num)
+            sigcmd = signalCmd('pdu_cycle', pduname = 'pdu1', outlet = chan_num)
+            self.powerManager.newCommand.emit(sigcmd)
+        else:
+            self.logger.info(f'right now PDU numbers are hardcoded, and only 1 is active')
     
     @cmd
     def do_routine(self):
@@ -2784,7 +2812,47 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def robo_do_calibration(self):
         self.defineCmdParser('do the current observation')
-        sigcmd = signalCmd('do_calibration')
+
+        self.cmdparser.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        self.cmdparser.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        self.cmdparser.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+
+        self.getargs()
+        
+        if self.args.dark:
+            do_darks = True
+        else:
+            do_darks = False
+        if self.args.flat:
+            do_flats = True
+        else:
+            do_flats = False
+        if self.args.bias:
+            do_bias = True
+        else:
+            do_bias = False
+        
+        
+        self.logger.info(f'wintercmd: running roboOperator do_calibration with do_flats = {do_flats}, do_darks = {do_darks}, do_bias = {do_bias}')
+        
+        sigcmd = signalCmd('do_calibration',
+                           do_flats = do_flats,
+                           do_darks = do_darks, 
+                           do_bias = do_bias)
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+    @cmd
+    def robo_do_bias(self):
+        self.defineCmdParser('do the bias exposure series')
+        sigcmd = signalCmd('do_bias')
+        
+        self.roboThread.newCommand.emit(sigcmd)
+        
+    @cmd
+    def robo_do_darks(self):
+        self.defineCmdParser('do the dark exposure series')
+        sigcmd = signalCmd('do_darks')
         
         self.roboThread.newCommand.emit(sigcmd)
     
@@ -3468,7 +3536,34 @@ class Wintercmd(QtCore.QObject):
         else:   
             # if not, query normally
             self.parse(f'command_filter_wheel_int {position}')
-           
+       
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 30
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested filter number = {position}, but it is {self.state["Viscam_Filter_Wheel_Position"]}')
+            
+            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == position) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: ccd_exptime set successfully. Current Exptime = {self.state["ccd_exptime"]}')
+                break 
                
         
     @cmd
@@ -3486,7 +3581,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 15
+        timeout = 30
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]

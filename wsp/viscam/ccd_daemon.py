@@ -709,7 +709,12 @@ class CCD(QtCore.QObject):
         header.append(fits.Card('HUMIDITY',     state.get('rh_outside_pcs', ''),            'Relative humidity (%)'))
         #PRESSURE
         header.append(fits.Card('PRESSURE',     state.get('pressure_pcs', ''),              'Atmospheric pressure, millibars'))
-        #CLOUDS
+        #TELESCOPE TEMPS
+        header.append(fits.Card('TEMPM1',     state.get('telescope_temp_m1', ''),              'telescope temp M1, C'))
+        header.append(fits.Card('TEMPM2',     state.get('telescope_temp_m2', ''),              'telescope temp M2, C'))
+        header.append(fits.Card('TEMPM3',     state.get('telescope_temp_m3', ''),              'telescope temp M3, C'))
+        header.append(fits.Card('TEMPAMB',    state.get('telescope_temp_ambient', ''),         'telescope temp ambient, C'))
+
         
         ###### INSTRUMENT MONITOR PARAMETERS ######
         

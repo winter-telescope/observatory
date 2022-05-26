@@ -96,12 +96,9 @@ class local_PowerManager(QtCore.QObject):
         except:
             pass
     
-    
-    
-    def Home(self):
-        #print(f'dome: trying to HOME dome')
+    def pdu_cycle(self, pduname, outlet):
         try:
-            self.remote_object.Home()
+            self.remote_object.pdu_cycle(pduname, outlet)
         except:
             pass
     

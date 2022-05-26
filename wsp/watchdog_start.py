@@ -88,8 +88,8 @@ while True:
         # check if there are any bad timestamps
         # make a carve out for the ccd since it doesn't update during exposures
         deadtime_overrides = dict({'ccd_last_update_timestamp' : 600.0, 
-                                   'Viscam_Filter_Wheel_timestamp' : 300.0,
-                                   'Viscam_Shutter_State_timestamp' : 300.0})
+                                   'Viscam_Filter_Wheel_timestamp' : 600.0,
+                                   'Viscam_Shutter_State_timestamp' : 600.0})
         watchdogStateMonitor.get_bad_timestamps(dt_max = 60.0, overrides = deadtime_overrides)
         
         # if there are any timestamps in the state dict greater than dt_max then prepare to restart

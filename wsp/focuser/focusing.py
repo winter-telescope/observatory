@@ -70,7 +70,7 @@ class Focus_loop_v3:
         
         
         ####### DO THE V-CURVE FIT TO THE HFD #######
-        cond = (self.HFD_med > 1)
+        cond = (self.HFD_med > 1) & (self.HFD_med < 6)
         self.images_vcurve = self.images[cond]
         self.pos_vcurve = self.pos[cond]
         self.HFD_med_vcurve = self.HFD_med[cond]
@@ -100,7 +100,7 @@ class Focus_loop_v3:
         
         ####### NOW DO THE FOLLOW-UP PARABOLIC FIT TO THE FWHM #######
         
-        cond = (self.pos > self.xafit) & (self.pos < (self.xbfit)) & (self.FWHM_med > 1) & (self.FWHM_med < 7)
+        cond = (self.pos > self.xafit) & (self.pos < (self.xbfit)) & (self.FWHM_med > 1.5) & (self.FWHM_med < 7) #& (self.HFD_med < 6)
         self.pos_parabola = self.pos[cond]
         self.FWHM_med_parabola = self.FWHM_med[cond]
         self.FWHM_std_parabola = self.FWHM_std[cond]
@@ -601,21 +601,20 @@ if __name__ == '__main__':
     endtime = '20220315_215255'
     night = '20220315'
     
-    starttime = '20220415_201656'
-    endtime = '20220415_202756'
-    night = '20220415'
+    starttime = '20220420_023517'
+    endtime = '20220420_024605'
+    night = '20220419'
     
+    starttime = '20220510_020943'
+    endtime = '20220510_021634'
+    night = '20220509'
     
     #starttime = '20220415_212336'
     #endtime = '20220415_213056'
     #night = '20220415'
-    """
-    state = {"telescope_temp_m1": 9.516, 
-             "telescope_temp_m2": 8.995, 
-             "telescope_temp_m3": 9.516, 
-             "telescope_temp_ambient": 7.958, 
-             "T_outside_pcs": 10.1}
-    """
+    
+    
+    
     datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S') 
     datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
     impath = os.path.join(os.getenv("HOME"),'data','images',night)
@@ -630,9 +629,13 @@ if __name__ == '__main__':
             images.append(file)
             focuser_pos.append(utils.getFromFITSHeader(file, 'FOCPOS'))
     
-    
+    state = {"telescope_temp_m1": utils.getFromFITSHeader(images[0], 'TEMPM1'), 
+             "telescope_temp_m2": utils.getFromFITSHeader(images[0], 'TEMPM2'), 
+             "telescope_temp_m3": utils.getFromFITSHeader(images[0], 'TEMPM3'), 
+             "telescope_temp_ambient": utils.getFromFITSHeader(images[0], 'TEMPAMB'), 
+             "T_outside_pcs": utils.getFromFITSHeader(images[0], 'TEMPTURE')}
     pix_scale = 0.466
-    loop = Focus_loop_v3(config, nom_focus = 9800, total_throw = 300, nsteps = 5, pixscale = pix_scale)
+    loop = Focus_loop_v3(config, nom_focus = 9800, total_throw = 300, nsteps = 5, pixscale = pix_scale, state = state)
 
     
     

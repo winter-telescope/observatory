@@ -112,7 +112,9 @@ if __name__ == '__main__':
     ax.errorbar(pos, HFD_med, yerr = HFD_stderr_med, fmt = 'ko', capsize = 5, capthick = 2, label = 'data')
     ax.set_title(title)
     ax.plot(pos_fit, HFD_fit, '-', label = f'V-Curve Fit')
-    ax.set_xlim(9500, 10500)
+    xmin = 9200
+    xmax = 10500
+    ax.set_xlim(xmin, xmax)
     ax.set_ylabel('HFD [arcsec]')
     ax.set_xlabel('Focuser Position [micron]')
     yline = np.linspace(-10, 10, 100)
@@ -129,7 +131,7 @@ if __name__ == '__main__':
     ax = axes[1]
     ax.errorbar(pos_par, FWHM, yerr = FWHM_err, fmt = 'ko', capsize = 5, capthick = 2, label = 'data')
     ax.plot(pos_par_fit, FWHM_fit, '-', label = f'Parabolic Fit')
-    ax.set_xlim(9500, 10500)
+    ax.set_xlim(xmin, xmax)
     ax.set_ylabel('FWHM [arcsec]')
     yline = np.linspace(0, 8, 100)
     #xc_label = f'xc = [{xc_par:.0f} +/- {xc_par_err:.0f}] ({100*xc_par_err/xc_par:.0f}%)'

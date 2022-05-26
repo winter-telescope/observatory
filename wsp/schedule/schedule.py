@@ -281,7 +281,7 @@ class Schedule(object):
         
         
         dataRanked = self.getRankedObs(obstime_mjd)
-        print(dataRanked)
+        #print(dataRanked)
         if dataRanked is None:
             self.remaining_valid_observations = 0
             self.end_of_schedule = True
