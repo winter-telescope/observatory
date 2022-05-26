@@ -3,6 +3,7 @@
 
 pdus:
     pdu1:
+        pdu_number: 1
         ip: 192.168.1.14
         brand: 'Digital Loggers'
         outlets:

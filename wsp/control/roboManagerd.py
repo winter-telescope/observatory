@@ -1423,6 +1423,8 @@ if __name__ == "__main__":
     
     # set up the main app. note that verbose is set above
     time.sleep(30)
+    
+    #verbose = True
     main = PyroGUI(config = config, logger = logger, verbose = verbose, sunsim = sunsim)
 
     # handle the sigint with above code

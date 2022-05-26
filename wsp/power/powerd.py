@@ -93,6 +93,12 @@ class PowerManager(QtCore.QObject):
     def pdu_on(self, pduname, outlet):
         self.pdu_dict[pduname].on(outlet)
         self.update()
+        
+    @Pyro5.server.expose
+    def pdu_cycle(self, pduname, outlet):
+        self.pdu_dict[pduname].cycle(outlet)
+        self.update()
+                
     @Pyro5.server.expose
     def getState(self):
         #print(self.state)

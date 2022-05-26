@@ -20,15 +20,36 @@ import astropy.timeseries
 import astropy.time
 import astropy.units as u
 import astropy.stats
+from scipy.optimize import curve_fit
+
 
 # add the wsp directory to the PATH
 wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
 # switch to this when ported to wsp
 #wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
+plt.style.use('tableau-colorblind10')
 
 sys.path.insert(1, wsp_path)
 print(f'FocusModeler: wsp_path = {wsp_path}')
+
+
+def polyval(x, *param):
+    
+    return np.polyval(param, x)
+
+def polyfit_errs(x, y, errs, deg, returnCov = False):
+
+    p0 = np.polyfit(x,y,deg)
+    if errs is None:
+        absolute_sigma = False
+    else:
+        absolute_sigma = True
+    popt,pcov = curve_fit(polyval, xdata=x, ydata=y, p0=p0, sigma=errs, absolute_sigma = absolute_sigma)
+    
+    if returnCov:
+        return popt, pcov
+    else:
+        return popt
 
 class FocusModeler(object):
     # this is an object that holds the focus results
@@ -124,8 +145,9 @@ class FocusModeler(object):
             temp_name = self._temperatures_keywords[i]
             temps = np.array(self.results['temperatures'][temp_name])
             pos = np.array(self.results['position'])
-
-            param0 = np.polyfit(temps, pos, 1)
+            errs = np.array(self.results['position_err'])
+            #param0 = np.polyfit(temps, pos, 1)
+            param0 = polyfit_errs(temps, pos, errs, 1)
             tempsFit0 = np.polyval(param0, pos)
             resid0 = np.abs(temps - tempsFit0)
             sigma0 = np.std(resid0)
@@ -206,12 +228,17 @@ if __name__ == '__main__':
         #focusModeler.plotResults_individual()
         #focusModeler.plotResults()
         #
+        """
         fig, axes = plt.subplots(2, 1, figsize = (5,8))
-        
         ax = axes[0]
+        """
+        fig, ax = plt.subplots(1, 1, figsize = (5,4))
+        
         temps = focusModeler.results['temperatures']['telescope_ambient']
         pos = focusModeler.results['position']
-        param0 = np.polyfit(temps, pos, 1)
+        errs = focusModeler.results['position_err']
+        #param0 = np.polyfit(temps, pos, 1)
+        param0 = polyfit_errs(temps, pos, errs, 1)
         posFit0 = np.polyval(param0, temps)
         resid0 = pos - posFit0
         sigma0 = np.std(resid0)
@@ -221,19 +248,29 @@ if __name__ == '__main__':
         model0_x = np.linspace(min(temps), max(temps), 100)
         model0_y = np.polyval(param0, model0_x)
         
-        param1 = np.polyfit(temps[flags == False], pos[flags == False], 1)
+        #param1 = np.polyfit(temps[flags == False], pos[flags == False], 1)
+        param1, cov1 = polyfit_errs(temps[flags == False], pos[flags == False], errs[flags == False], 1, returnCov = True)
+        mfit = param1[0]
+        bfit = param1[1]
+        stderr1 = np.sqrt(np.diag(cov1))
+        mfit_stderr = stderr1[0]
+        bfit_stderr = stderr1[1]    
         model_x = np.linspace(min(temps), max(temps), 100)
         model_y = np.polyval(param1, model_x)
         
-        ax.plot(temps, pos, 'o', label = 'All Data')
+        #ax.plot(temps, pos, 'o', label = 'All Data')
+        ax.errorbar(temps[flags == False], pos[flags == False],  yerr = errs[flags == False], 
+                    fmt = 'o', capsize = 5, label = 'Unflagged Data')
         ax.plot(temps[flags == True], pos[flags == True], 'o', label = 'Flagged Outliers')
         ax.plot(model0_x, model0_y, 'g--', label = f'Initial Fit for Outlier ID')
-        ax.plot(model_x, model_y, 'r-', label = f'Fit: Focus = {param1[0]:.3f}'+'$xT_{AMBIENT}$' + f' + {param1[1]:.3f}')
+        #ax.plot(model_x, model_y, 'r-', label = f'Fit: Focus = {param1[0]:.3f}'+'$xT_{AMBIENT}$' + f' + {param1[1]:.3f}')
+        ax.plot(model_x, model_y, 'r-', label = f'Fit: Focus = [{mfit:.3f} +/- {mfit_stderr:.3f}]'+'$xT_{AMBIENT}$' + f' + [{bfit:.1f} +/- {bfit_stderr:.1f}]')
         ax.legend(fontsize = 8)
         ax.set_ylabel('Focus Position [micron]')
         ax.set_xlabel('Ambient Temperature [C]')
         ax.set_title(f'Focus Model for {filterID}-band')
         
+        """
         ax = axes[1]
         ax.plot(temps, resid0, 'o')
         ax.plot(model0_x, model0_y*0.0, 'g--')
@@ -244,12 +281,14 @@ if __name__ == '__main__':
         ax.set_title('Outlier Identification')
         ax.legend(fontsize = 8)
         plt.tight_layout()
+        """
         
         # bin with date
         times = focusModeler.results['astropyTimes']
         ts = astropy.timeseries.TimeSeries(time = times[flags == False])
         ts['pos']  = pos[flags == False]
         ts['temp'] = temps[flags == False]
+        ts['pos_err'] = errs[flags == False ]
         filterTimeseries.update({filterID : ts})
         
     earliest_time = min(alltimes)
@@ -269,22 +308,120 @@ if __name__ == '__main__':
         
         filterTimeseriesBinned[f'pos_{filterID}'] = ts_binned['pos']
         filterTimeseriesBinned[f'temp_{filterID}'] = ts_binned['temp']
-
+        filterTimeseriesBinned[f'pos_err_{filterID}'] = ts_binned['pos_err']
         
     # now get the offsets
     filterTimeseriesBinned['g-u'] = filterTimeseriesBinned['pos_g'] - filterTimeseriesBinned['pos_u']
     filterTimeseriesBinned['g-r'] = filterTimeseriesBinned['pos_g'] - filterTimeseriesBinned['pos_r']
     filterTimeseriesBinned['g-i'] = filterTimeseriesBinned['pos_g'] - filterTimeseriesBinned['pos_i']
     #%%
-    plt.figure()
+    nsigma = 3.0
+    fig, ax = plt.subplots(1,1)
     for filterID in ['u','r','i']:
-        mean, median, stddev = astropy.stats.sigma_clipped_stats(filterTimeseriesBinned[f'g-{filterID}'], sigma = scale)
-        p = plt.plot(filterTimeseriesBinned['temp_g'], filterTimeseriesBinned[f'g-{filterID}'],'o', label = f"{filterID}: {binsize_hours}-hr binned data")
-        color = p[0].get_color()
-        line_x = np.linspace(filterTimeseriesBinned['temp_g'].min(0), filterTimeseriesBinned['temp_g'].max(0), 100)
-        plt.plot(line_x, 0.0*line_x+median,'--', color = color, label = f"{filterID}: $\sigma$-clipped ({scale}*$\sigma$) median = {median:.1f} $\mu$m")
+        
+        x = filterTimeseriesBinned['temp_g']
+        y = filterTimeseriesBinned[f'g-{filterID}']
+        mean, median, stddev = astropy.stats.sigma_clipped_stats(y, sigma = nsigma)
+        
+        
+        yerr = np.sqrt(filterTimeseriesBinned['pos_err_g']**2 + filterTimeseriesBinned[f'pos_err_{filterID}']**2)
+        #p = plt.plot(filterTimeseriesBinned['temp_g'], filterTimeseriesBinned[f'g-{filterID}'],'o', label = f"{filterID}: {binsize_hours}-hr binned data")
+        
+        cond = (x.mask == False) & (y.mask == False) & (yerr.mask == False)
+        popt = polyfit_errs(x = x[cond].value.data, y = y[cond].value.data,
+                                  errs = yerr[cond].value.data, deg = 0, returnCov = False)
+        
+        offset_fit = popt[0]
+        
+        plot = ax.errorbar(x, y, yerr = yerr,
+                         fmt = 'o', label = f"{filterID}: {binsize_hours}-hr binned data",
+                         capsize = 5)
 
-    plt.ylabel('Offset [microns]')
-    plt.xlabel('Ambient Temperature [C]')
-    plt.title('Relative Filter Offsets from g')
-    plt.legend(fontsize = 7)
+        color = plot[0].get_color()
+        line_x = np.linspace(x.min(0), x.max(0), 100)
+        
+        ax.plot(line_x, 0.0*line_x+median,'--', color = color, label = f"{filterID}: $\sigma$-clipped ({nsigma}*$\sigma$) median = {median:.1f} $\mu$m")
+        ax.plot(line_x, 0.0*line_x+offset_fit,'-', color = color, label = f"{filterID}: fit with errorbars = {offset_fit:.1f} $\mu$m")
+
+    ax.set_ylabel('Offset [microns]')
+    ax.set_xlabel('Ambient Temperature [C]')
+    ax.set_title('Relative Filter Offsets from g')
+    #ax.set_ylim(-100,100)
+    ax.legend(fontsize = 5)
+    
+    # just throw all the data together
+    results = dict()
+    filterTimeseries = dict()
+    alltimes = np.array([])
+    filters = ['u', 'g', 'r', 'i']
+    #fig, axes = plt.subplots(2, 1, figsize = (5,8))
+    fig, ax = plt.subplots(1, 1, figsize = (5,4))
+
+    temps = np.array([])
+    pos = np.array([])
+    errs = np.array([])
+    for filterID in filters:
+        focusModeler = FocusModeler(config)
+        results.update({filterID : focusModeler})
+        focusModeler.loadResults(filterID = filterID)
+        alltimes = np.append(alltimes, focusModeler.results['times'])
+        #focusModeler.plotResults_individual()
+        #focusModeler.plotResults()
+        #
+        
+        
+        temps = np.append(temps, focusModeler.results['temperatures']['telescope_ambient'])
+        pos = np.append(pos, focusModeler.results['position'])
+        errs = np.append(errs, focusModeler.results['position_err'])
+                
+    #ax = axes[0]
+    param0 = polyfit_errs(temps, pos, errs, 1)
+    posFit0 = np.polyval(param0, temps)
+    resid0 = pos - posFit0
+    sigma0 = np.std(resid0)
+    scale = 1.5
+    flags = resid0 > scale*sigma0
+    
+    model0_x = np.linspace(min(temps), max(temps), 100)
+    model0_y = np.polyval(param0, model0_x)
+    
+    #param1 = np.polyfit(temps[flags == False], pos[flags == False], 1)
+    param1, cov1 = polyfit_errs(temps[flags == False], pos[flags == False], errs[flags == False], 1, returnCov = True)
+    mfit = param1[0]
+    bfit = param1[1]
+    stderr1 = np.sqrt(np.diag(cov1))
+    mfit_stderr = stderr1[0]
+    bfit_stderr = stderr1[1]    
+    model_x = np.linspace(min(temps), max(temps), 100)
+    model_y = np.polyval(param1, model_x)
+    
+    #ax.plot(temps, pos, 'o', label = 'All Data')
+    ax.errorbar(temps[flags == False], pos[flags == False],  yerr = errs[flags == False], 
+                fmt = 'o', capsize = 5, label = 'Unflagged Data')
+    ax.plot(model0_x, model0_y, 'g--', label = f'Initial Fit for Outlier ID')
+    ax.plot(model_x, model_y, 'r-', label = f'Fit: Focus = [{mfit:.3f} +/- {mfit_stderr:.3f}]'+'$xT_{AMBIENT}$' + f' + [{bfit:.1f} +/- {bfit_stderr:.1f}]')
+    ax.set_ylabel('Focus Position [micron]')
+    ax.set_xlabel('Ambient Temperature [C]')
+    ax.set_title(f'Focus Model for All Filters Combined')
+    
+    # now plot again so that we label the points a different color for reference
+    for filterID in filters:
+             
+        ax.plot(results[filterID].results['temperatures']['telescope_ambient'], results[filterID].results['position'], 'o', label = filterID, zorder = 5)
+    ax.plot(temps[flags == True], pos[flags == True], 'ms', markersize = 7, label = 'Flagged Outliers', zorder = 10)
+
+    ax.legend(fontsize = 5)
+
+    
+    """
+    ax = axes[1]
+    ax.plot(temps, resid0, 'o')
+    ax.plot(model0_x, model0_y*0.0, 'g--')
+    ax.plot(model0_x, model0_x*0.0 + scale*sigma0, 'r--', label = f'+/- {scale}$\sigma$')
+    ax.plot(model0_x, model0_x*0.0 - scale*sigma0, 'r--')
+    ax.set_ylabel('Focus Initial Fit Residual [micron]')
+    ax.set_xlabel('Ambient Temperature [C]')
+    ax.set_title('Outlier Identification')
+    ax.legend(fontsize = 8)
+    plt.tight_layout()
+    """

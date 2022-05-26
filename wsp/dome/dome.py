@@ -283,7 +283,7 @@ class local_dome(QtCore.QObject):
     def GoTo(self, az):
         #TODO: i might need to turn off dome tracking here
         #print(f'dome: trying to move dome to AZ = {az}')
-        self.log(f'doing dome_goto command. updating az_goal to {az}')
+        #self.log(f'doing dome_goto command. updating az_goal to {az}')
         # update the azimuth goal
         self.az_goal = az
         

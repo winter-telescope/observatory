@@ -13,13 +13,25 @@ from scipy.optimize import curve_fit
 
 def parabola(x,x0,A,B):
         return A + B*(x-x0)**2
-    
+
 def fit_parabola(focus_vals, fwhms, stds):
     print(focus_vals)
     print(fwhms)
     print(stds)
-    p0 = [np.mean(focus_vals),np.min(fwhms),np.std(fwhms)]
-    popt,pcov = curve_fit(parabola,xdata=focus_vals,ydata=fwhms,p0=p0, sigma=stds)
+    x0_0 = np.mean(focus_vals)
+    A_0 = np.min(fwhms)
+    B_0 = 1.0e-05
+    print(f'x0_0 = {x0_0}, A_0 = {A_0}, B_0 = {B_0}')
+    print(focus_vals)
+    #p0 = [np.mean(focus_vals),np.min(fwhms),np.std(fwhms)]
+    if stds is None:
+        absolute_sigma = False
+    else:
+        absolute_sigma = True
+    p0 = [x0_0, A_0, B_0]
+    popt,pcov = curve_fit(parabola,xdata=focus_vals,ydata=fwhms,p0=p0, absolute_sigma = absolute_sigma, sigma=stds,#)#,
+                          bounds = ([x0_0-500, 0, 0], [x0_0+500, 5, 1e-4]), method = 'dogbox')
+                          #bounds = ([x0_0-500, 0, -np.inf], [x0_0+500, np.inf, 0]))
     print(popt)
     return popt, pcov
 
@@ -55,8 +67,14 @@ def Fit_FocV(x, y, yerr, ml, xc, delta, y0):
     
     #p0 = [ml, mr, cl, cr, y0]
     p0 = [ml, xc, delta, y0]
-    popt, pcov = curve_fit(FocV, x, y, p0, sigma = yerr)
-    
+    #popt, pcov = curve_fit(FocV, x, y, p0, bounds = ([-np.inf, xc-1000, -np.inf, 3.0], [0.0, xc+1000, np.inf, 5.0]), sigma = yerr)
+    if yerr is None:
+        absolute_sigma = False
+    else:
+        absolute_sigma = True
+    popt, pcov = curve_fit(FocV, x, y, p0, sigma = yerr, absolute_sigma = absolute_sigma, 
+                           bounds = ([-np.inf, xc-500, -np.inf, 3.0], [0.0, xc+500, np.inf, 6.0]), method = 'dogbox')
+
     return popt, pcov
 
 if __name__ == '__main__':

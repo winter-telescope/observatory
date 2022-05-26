@@ -48,6 +48,11 @@ viscam_url: 'http://192.168.1.228:5001/'
 
 viscam_platescale_as: 0.466
 
+viscam_accessories_reboot_param:
+    reboot_log_path: 'data/summer_accessories_reboot_log.json'
+    reboot_graceperiod_hours: 6
+    
+
 ########## SCHEDULING ##########
 # location of the schedule files (home + this directory)
 scheduleFile_directory: 'data/schedules'
@@ -153,11 +158,20 @@ robotic_manager_triggers:
             conds:
                 cond1:
                     type: 'sun'
-                    val: 0.0
+                    val: 1.0
                     cond: '<'
             sundir: 0
             repeat_on_restart: False
             cmd: 'load_nightly_schedule'
+        evening_darks_bias:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 0.0
+                    cond: '<'
+            sundir: 0
+            repeat_on_restart: False
+            cmd: 'robo_do_calibration -d -b'
         open_dome:
             conds:
                 cond1:
@@ -179,7 +193,7 @@ robotic_manager_triggers:
                     cond: '>'
             repeat_on_restart: False
             sundir: -1
-            cmd: 'robo_do_calibration'
+            cmd: 'robo_do_calibration -f'
         # don't do the test image if you're not doing the focusing
         #test_image:
         #    conds:
@@ -206,7 +220,7 @@ robotic_manager_triggers:
                    val: -12.0
                    cond: '<'
             repeat_on_restart: True
-            sundir: -1
+            sundir: 0
             cmd: 'robo_run'
         stop_obs:
             conds:
@@ -231,7 +245,7 @@ robotic_manager_triggers:
             nextmorning: True   
             repeat_on_restart: False          
             sundir: 1
-            cmd: 'robo_do_calibration'
+            cmd: 'robo_do_calibration -f -d -b'
         shutdown:
             conds:
                 cond1:
@@ -556,17 +570,17 @@ filters:
         u:
             name: "SDSS u'"
             nominal_focus: 9960
-            active: True
+            active: False
             focus_exptime: 30
         g:
             name: "SDSS g'"
             nominal_focus: 9960
-            active: True
+            active: False
             focus_exptime: 10
         r:
             name: "SDSS r'"
             nominal_focus: 9960
-            active: True
+            active: False
             focus_exptime: 10
         i:
             name: "SDSS i'"
