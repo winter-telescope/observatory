@@ -10,6 +10,7 @@ Created on Wed May 12 11:14:15 2021
 from flask import Flask
 from flask import request
 from flask.json import jsonify
+import FLI as fli
 import serial # pip install pyserial
 import time
 app = Flask(__name__)
@@ -18,21 +19,10 @@ app = Flask(__name__)
 shutter_state = {}
 shutter_state['foo'] = 3
 
-class FilterWheel():
-    # initialize
-    def __init__(self):
-        self.ser = serial.Serial('/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0', baudrate=9600)
-        #self.ser = serial.Serial('/dev/tty.usbserial-0001', baudrate=9600)
-        time.sleep(25)
-    
-    def filterwheel_command(self, command):
-        self.ser.write(command)
-        time.sleep(1)
-        reply = self.ser.read(self.ser.inWaiting())
-        return reply 
+
 
 try:
-    FW = FilterWheel()
+    FW = fli.USBFilterWheel.find_devices()[0]
 except:
     print('Exception: no filter wheel plugged in on start up')
 
@@ -54,27 +44,26 @@ def get_filter_command():
         n = request.args.get("n")
         n = int(n)
         
-        if (n == 1 or n == 2 or n == 3 or n == 4 or n == 5 or n == 6 or n == 7):
+        if (n == -1 or n == 0 or n == 1 or n == 2 or n == 3 or n == 4 or n == 5 or n == 6):
             # command
-            command = str(n-1) # make string
-            command = command.encode() # make bytes
-            ret = FW.filterwheel_command(command)
+            try:
+                FW.set_filter_pos(n)
+                # if we get here it was successfully completed
+                pos = FW.get_filter_pos()
+                ret = pos
+            except:
+                ret = -9
             reply_string = "Set filter wheel position to " + str(n)
         elif (n == 8):
             # command 
-            command = b'NOW'
-            ret = FW.filterwheel_command(command)
-            reply_string = "Current position is " + str(ret)
-        elif (n == 9):
-            # command 
-            command = b'MXP'
-            ret = FW.filterwheel_command(command)
-            reply_string = "Number of available positions:  " + str(ret)
-        elif (n == 10):
-            # command 
-            command = b'MXP'
-            ret = FW.filterwheel_command(command)
-            reply_string = "Filter wheel firmware version:  " +  str(ret.decode('ascii')) + "\n Firmware should be version 2. If not, see https://www.qhyccd.com/index.php?m=content&c=index&a=show&catid=68&id=181"
+            try:
+                # if we get here it was successfully completed
+                pos = FW.get_filter_pos()
+                reply_string = "Current position is " + str(pos)
+
+            except:
+                ret = -9
+                reply_string = "Could not  " + str(ret)
         else:
             reply_string = "Not a valid command"
         

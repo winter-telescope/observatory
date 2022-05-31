@@ -13,28 +13,6 @@ from math import fmod
 
 #URL = 'http://192.168.1.54:5001/'
 
-def short_circ(target, origin):
-    MAX_VALUE = 7
-    
-    signedDiff = 0.0;
-    if (origin > target):
-        raw_diff = origin - target
-    else:
-        raw_diff = target - origin
-    mod_diff = fmod(raw_diff, MAX_VALUE) #equates rollover values. E.g 0 == 360 degrees in circle
-    
-    if(mod_diff > (MAX_VALUE/2) ):
-      #There is a shorter path in opposite direction
-      signedDiff = (MAX_VALUE - mod_diff)
-      if(target>origin):
-          signedDiff = signedDiff * -1
-    else:
-      signedDiff = mod_diff
-      if(origin>target):
-          signedDiff = signedDiff * -1
-    
-    return signedDiff
-
 class Viscam: 
     # initialize
     def __init__(self, URL, logger):
@@ -100,7 +78,7 @@ class Viscam:
         try:
             res = requests.get(string, timeout=10)
             status = res.status_code
-            #print("Status", status, "Response: ", res.text)
+            print("Status", status, "Response: ", res.text)
             #self.logger.info(f'Filter wheel status {status}, {res.text}')
             return res.text
         except:
