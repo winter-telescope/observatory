@@ -51,22 +51,25 @@ def get_filter_command():
                 # if we get here it was successfully completed
                 pos = FW.get_filter_pos()
                 ret = pos
-            except:
-                ret = -9
-            reply_string = "Set filter wheel position to " + str(n)
+            except Exception as e:
+                print(f'error setting fw pos: {e}')
+                pos = -9
+            #reply_string = "Set filter wheel position to " + str(n)
+            reply_string = str(pos)
         elif (n == 8):
             # command 
             try:
                 # if we get here it was successfully completed
                 pos = FW.get_filter_pos()
-                reply_string = "Current position is " + str(pos)
-
+                #reply_string = "Current position is " + str(pos)
+                reply_string = str(pos)
             except:
-                ret = -9
-                reply_string = "Could not  " + str(ret)
+                pos = -9
+                #reply_string = "Could not  " + str(ret)
+                reply_string = str(pos)
         else:
-            reply_string = "Not a valid command"
-        
+            #reply_string = "Not a valid command"
+            reply_string = str(-10)
         return reply_string
     except:
         reply_string = "Port could not be opened, try restarting the pi"
