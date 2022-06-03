@@ -19,16 +19,17 @@ app = Flask(__name__)
 # https://stackoverflow.com/questions/19277280/preserving-global-state-in-a-flask-application
 #shutter_state = {}
 #shutter_state['foo'] = 3
-
+app.logger.info('starrting up the app')
 STATE={}
-
-
+"""
+FW = None
+SHUTTER_SER = None
 
 # init the shutter
 STATE.update({'shutter_open' : -1})             # init to unknown
 STATE.update({'shutter_status' : 0})            # init to not connected
 STATE.update({'shutter_response_code' : 0})     # init to okay
-"""
+
 # init the hardware
 try:
     FW = fli.USBFilterWheel.find_devices()[0]
@@ -40,6 +41,7 @@ try:
 except:
     print('could not connect to shutter')
 """
+"""
 @app.route('/reconnect_fw')
 def reconnect_fw():
     try:
@@ -49,6 +51,7 @@ def reconnect_fw():
         pos = FW.get_position()
         fw_status = 1
         fw_response_code = 0
+        app.logger.info("successfully connected to filter wheel!")
     except:
         fw_status = 0
         pos = -9
@@ -86,19 +89,18 @@ def reconnect_shutter():
 def check_raspi():
     reply_string = "Raspi is responding"
     return reply_string
-
+"""
 # send a command to the filter wheel
 @app.route('/filter_wheel', endpoint='func2', methods=['GET'])
 def get_filter_command():
-    """
+    '''
     # Response code:
         0  : command succeeds
         -1 : command is unknown
         -2 : parameter is bad
         -3 : command cannot be executed at the current time
         -4 : could not communicate with device
-    """
-        
+    '''      
     try:
         # try to connect to FW
         FW = fli.USBFilterWheel.find_devices()[0]
@@ -112,18 +114,18 @@ def get_filter_command():
             try:
                 FW.set_filter_pos(n)
                 # if we get here it was successfully completed
-                pos = FW.get_filter_pos()
+                fw_pos = FW.get_filter_pos()
                 
                 fw_status = 1
                 fw_response_code = 0
                 
             except Exception as e:
                 print(f'error setting fw pos: {e}')
-                pos = -9
+                fw_pos = -9
                 fw_status = 0
                 fw_response_code = -3
                 
-            STATE.update({'fw_pos' : pos})
+            STATE.update({'fw_pos' : fw_pos})
             STATE.update({'fw_status' : fw_status})
             STATE.update({'fw_response_code' : fw_response_code})
                 
@@ -135,7 +137,7 @@ def get_filter_command():
             # command 
             try:
                 # if we get here it was successfully completed
-                pos = FW.get_filter_pos()
+                fw_pos = FW.get_filter_pos()
                 #reply_string = "Current position is " + str(pos)
                 #reply_string = str(pos)
                 fw_response_code = 0
@@ -144,7 +146,7 @@ def get_filter_command():
                 fw_response_code = -3
                 #reply_string = "Could not  " + str(ret)
                 #reply_string = str(pos)
-            STATE.update({'fw_pos' : pos})
+            STATE.update({'fw_pos' : fw_pos})
             STATE.update({'fw_status' : fw_status})
             STATE.update({'fw_response_code' : fw_response_code})
             
@@ -160,6 +162,14 @@ def get_filter_command():
         return reply_string
     except:
         fw_response_code = -4
+        fw_status = 0
+        fw_pos = -9
+        
+        # update the state        
+        STATE.update({'fw_pos' : fw_pos})
+        STATE.update({'fw_status' : fw_status})
+        STATE.update({'fw_response_code' : fw_response_code})
+        
         #reply_string = "Port could not be opened, try restarting the pi"
         reply_string = json.dumps(STATE)
         return reply_string, 403
@@ -173,7 +183,7 @@ def get_shutter_command():
     # https://www.uniblitz.com/wp-content/uploads/2020/10/VED24-User-Manual-1.41_Rev_B12.pdf
     shutter_cmd_recv_timestamp = datetime.utcnow().timestamp()
     try:
-        #ser = serial.Serial('/dev/serial/by-id/usb-FTDI_MM232R_USB__-__Serial_A146VRZG-if00-port0', baudrate=9600, bytesize=8, parity='N')
+        SHUTTER_SER = serial.Serial('/dev/serial/by-id/usb-FTDI_MM232R_USB__-__Serial_A146VRZG-if00-port0', baudrate=9600, bytesize=8, parity='N')
     
         n = request.args.get("open")
         n = int(n)
@@ -219,6 +229,7 @@ def get_shutter_command():
     except:
         # Port could not be opened
         #reply_string = "Port could not be opened"
+        shutter_open = -1
         shutter_status = 0
         shutter_response_code = -4
         STATE.update({'shutter_open' : shutter_open})
@@ -238,7 +249,7 @@ def get_shutter_state():
     return jsonify(shutter_state['foo'])
 """
 if __name__ == '__main__':
-    reconnect_fw()
-    time.sleep(5)
-    reconnect_shutter()
+    #reconnect_fw()
+    #time.sleep(5)
+    #reconnect_shutter()
     app.run(host='0.0.0.0', port=5001, debug=True)

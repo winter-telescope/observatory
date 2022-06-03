@@ -25,6 +25,7 @@ import threading
 import time
 import logging
 import json
+import yaml
 from datetime import datetime
 
 # add the wsp directory to the PATH
@@ -32,16 +33,32 @@ wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 print(f'wsp_path = {wsp_path}')
 
+from daemon import daemon_utils
+#from utils import logging_setup
 
+class signalCmd(object):
+    '''
+    this is an object which can pass commands and args via a signal/slot to
+    other threads, ideally for daemons
+    '''
+    def __init__(self, cmd, *args, **kwargs):
+        self.cmd = cmd
+        self.argdict = dict()
+        self.args = args
+        self.kwargs = kwargs
 
 class CommandHandler(QtCore.QObject):
     
     newReply = QtCore.pyqtSignal(str)
     #newCommand = QtCore.pyqtSignal(object)
     newRequest = QtCore.pyqtSignal(object)
+    newStatus = QtCore.pyqtSignal(object)
     
     def __init__(self, config, logger = None, verbose = False):
         super(CommandHandler, self).__init__()
+        
+        self.config = config
+        self.url = self.config['viscam_url']
         
     def doCommand(self, cmd_obj):
             """
@@ -51,7 +68,7 @@ class CommandHandler(QtCore.QObject):
             using this as a reference: (source: https://stackoverflow.com/questions/6321940/how-to-launch-getattr-function-in-python-with-additional-parameters)     
             
             """
-            #print(f'dome: caught doCommand signal: {cmd_obj.cmd}')
+            print(f'viscamd cmd handler: caught doCommand signal: {cmd_obj.cmd}')
             cmd = cmd_obj.cmd
             args = cmd_obj.args
             kwargs = cmd_obj.kwargs
@@ -67,21 +84,24 @@ class CommandHandler(QtCore.QObject):
     # 8 - get current position
     
     def send_filter_wheel_command(self, position):
+        print(f'going to try to execute the filter wheel move')
         string = self.url + "filter_wheel?n=" + str(position)   
         print(string)
         try:
             res = requests.get(string, timeout=10)
-            pos = int(res.text)
-            status = res.status_code
-            #print("Status", status, "Response: ", res.text)
-            #self.logger.info(f'Filter wheel status {status}, {res.text}')
-            self.fw_pos = pos
-            self.update_state()
-            return pos
+            print("Status", res.status_code, "Response: ", res.text)
+
+            remote_state = json.loads(res.text)
+            
+            if res.status_code != 200:
+                raise Exception
+
+            #self.parse_state(remote_state)
+            self.newStatus.emit(remote_state)
+            return 1
         except:
-            #print("Raspi is not responding")
             self.log(f'Filter wheel is not responding')
-            return -11            
+            return 0             
                  
                 
    
@@ -107,6 +127,8 @@ class CommandHandler(QtCore.QObject):
     # do not trust this variable
     # 0 - shutter is closed
     # 1 - shutter is open
+    # 3 - unknown shutter state
+    """
     def check_shutter_state(self):
         string = self.url  + "shutter_state"
         try:
@@ -128,11 +150,13 @@ class CommandHandler(QtCore.QObject):
         except:
             #print("Raspi is not responding")
             return -1
+    """
     
         
 
 class CommandThread(QtCore.QThread):
     newReply = QtCore.pyqtSignal(int)
+    newStatus = QtCore.pyqtSignal(object)
     newRequest = QtCore.pyqtSignal(object)
     
     def __init__(self, config, logger = None,  verbose = False):
@@ -152,11 +176,14 @@ class CommandThread(QtCore.QThread):
     def run(self):    
         def SignalNewReply(reply):
             self.newReply.emit(reply)
+        def SignalNewStatus(status):
+            self.newStatus.emit(status)
         
         self.commandHandler = CommandHandler(config = self.config, logger = self.logger, verbose = self.verbose)
         # if the newReply signal is caught, execute the sendCommand function
         self.newRequest.connect(self.commandHandler.doCommand)
         self.commandHandler.newReply.connect(SignalNewReply)
+        self.commandHandler.newStatus.connect(SignalNewStatus)
         
         self.exec_()
 
@@ -168,12 +195,12 @@ class Viscam(QtCore.QObject):
     commandRequest = QtCore.pyqtSignal(object)
 
     
-    def __init__(self,  config, URL, name = 'viscam', dt = 100, logger = None, verbose = False):
+    def __init__(self,  config, logger = None, verbose = False):
         
         super(Viscam, self).__init__()   
         
         self.config = config
-        self.url = URL
+        self.url = self.config['viscam_url']
         self.state = dict()
         self.logger = logger
         self.verbose = verbose
@@ -181,31 +208,19 @@ class Viscam(QtCore.QObject):
         self.commandThread = CommandThread(config = self.config, logger = self.logger, verbose = self.verbose)
         # connect the signals and slots
         
-        self.statusThread.start()
         self.commandThread.start()
         
-        # if the status thread is request a reconnection, trigger the reconnection in the command thread too
-        self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
-        
-        self.statusThread.newStatus.connect(self.updateStatus)
+        self.commandThread.newStatus.connect(self.parse_state)
         self.commandRequest.connect(self.commandThread.HandleRequest)
-        self.commandThread.newReply.connect(self.updateCommandReply)
-        self.log(f'chiller: running in thread {threading.get_ident()}')
-        
+        #self.commandThread.newReply.connect(self.updateCommandReply)
+        self.log(f'viscamd: running in thread {threading.get_ident()}')
+        """
+        self.dt = dt
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
         self.timer.timeout.connect(self.update)
         self.timer.start()
-
-    
-    def setup_pdu_dict(self):
-        
-        # make a dictionary of all the pdus
-        for pduname in pdu_config['pdus']:
-            pduObj = pdu.PDU(pduname, self.pdu_config, self.auth_config, autostart = True, logger = logger)
-            
-            self.pdu_dict.update({pduname : pduObj})
-            
+        """
         
     def update(self):
 
@@ -223,6 +238,17 @@ class Viscam(QtCore.QObject):
         else:
             self.logger.info(msg)
     
+    def parse_state(self, remote_state):
+        """
+        run this whenever we get a new state reply from the server
+        adds all key:value pairs (or rather updates) their values to the self.state
+        dictionary
+        """
+        for key in remote_state.keys():
+            try:
+                self.state.update({key : remote_state[key]})
+            except:
+                pass
             
     def update_state(self):
         # poll the state, if we're not connected try to reconnect
@@ -247,26 +273,119 @@ class Viscam(QtCore.QObject):
             self.state.update({'shutter_state' : shut})
             self.state.update({'shutter_state_last_timestamp'  : datetime.utcnow().timestamp()})
         """
+        pass
         
+    @Pyro5.server.expose
+    def command_filter_wheel(self, pos):
+        print(f'got ssignal  to move filter wheel to pos = {pos}')
+        sigcmd = signalCmd('send_filter_wheel_command', pos)
+        self.commandRequest.emit(sigcmd)
+    
     @Pyro5.server.expose
     def getState(self):
         #print(self.state)
         return self.state 
- 
+    
+class PyroGUI(QtCore.QObject):   
+
+                  
+    def __init__(self, config, logger, verbose, parent=None ):            
+        super(PyroGUI, self).__init__(parent)   
+        print(f'main: running in thread {threading.get_ident()}')
+        
+        self.config = config
+        self.logger = logger
+        self.verbose = verbose
+
+        self.viscam = Viscam(config = self.config, logger = self.logger, verbose = self.verbose)
+                
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.viscam, name = 'viscam')
+        self.pyro_thread.start()
+        
+        """
+        self.timer = QtCore.QTimer()
+        self.timer.setInterval(500)
+        self.timer.timeout.connect(self.check_pyro_queue)
+        self.timer.start()
+        """
+
+
+            
+        
+def sigint_handler( *args):
+    """Handler for the SIGINT signal."""
+    sys.stderr.write('\r')
+    
+    #main.powerManager.daqloop.quit()
+    
+    QtCore.QCoreApplication.quit()
+
+if __name__ == "__main__":
     
     
-if __name__ == '__main__':
-    url = 'http://127.0.0.1:5001/'
-    viscam = Viscam(url, None)
+    app = QtCore.QCoreApplication(sys.argv)
     
-    print()
-    print(f'FW Pos = {viscam.state.get("filter_wheel_position", -999)}')
-    print()
-    for i in range(5):
-        pos = np.random.randint(0,6)
-        print(f'FW: Sending to Pos = {pos}')
-        viscam.send_filter_wheel_command(pos)
-        time.sleep(1)
-        print(f'FW Pos = {viscam.state["filter_wheel_position"]}')
-        print()
+    args = sys.argv[1:]
     
+    
+    modes = dict()
+    modes.update({'-v' : "Running in VERBOSE mode"})
+    
+    # set the defaults
+    verbose = False
+    doLogging = True
+    #print(f'args = {args}')
+    
+    if len(args)<1:
+        pass
+    
+    else:
+        for arg in args:
+            
+            if arg in modes.keys():
+                
+                # remove the dash when passing the option
+                opt = arg.replace('-','')
+                if opt == 'v':
+                    print(f'viscamd: {modes[arg]}')
+                    verbose = True
+                elif opt == 'p':
+                    print(f'viscamd: {modes[arg]}')
+                    doLogging = False
+
+
+            else:
+                print(f'viscamd: Invalid mode {arg}')
+    
+    
+    
+    # set the wsp path as the base directory
+    base_directory = wsp_path
+
+    # load the config
+    config_file = base_directory + '/config/config.yaml'
+    config = yaml.load(open(config_file), Loader = yaml.FullLoader)
+    config.update({'viscam_url' : 'http://127.0.0.1:5001/'})
+    # set up the logger
+    if doLogging:
+        #logger = logging_setup.setup_logger(base_directory, config)    
+        logger = None
+    else:
+        logger = None
+    
+    
+   
+    
+    
+    main = PyroGUI(config, logger, verbose)
+
+
+    
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    # Run the interpreter every so often to catch SIGINT
+    timer = QtCore.QTimer()
+    timer.start(500) 
+    timer.timeout.connect(lambda: None) 
+
+    sys.exit(app.exec_())
