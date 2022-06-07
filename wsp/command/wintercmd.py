@@ -961,9 +961,114 @@ class Wintercmd(QtCore.QObject):
         cmd = f'mount_goto_ra_dec_j2000 {j2000_ra_hours} {j2000_dec_deg}'
         self.parse(cmd)
     
-    def mount_dither_arcsec(self):
-        """Usage: mount_dither <axis> <arcmin> """
+    
+    def mount_dither_arcsec_radec(self):
+        """Usage: mount_dither_arcsec_radec <ra_dist_arcsec> <dec_dist_arcsec>"""
+        
+        self.defineCmdParser('dither the mount by some arcseconds in ra and dec')
+        self.cmdparser.add_argument('dist', nargs = 2, type = float, action = None,
+                                    help = '<ra_dist_arcsec> <dec_dist_arcsec>')
+        self.getargs()
+        ra_dist_arcsec = self.args.dist[0]
+        dec_dist_arcsec = self.args.dist[1]
+        
+        # Get the start coordinates
+        ra0_j2000_hours = self.state['mount_ra_j2000_hours']
+        dec0_j2000_deg = self.state['mount_dec_j2000_deg']
+        start = astropy.coordinates.SkyCoord(ra = ra0_j2000_hours*u.hour, dec = dec0_j2000_deg*u.deg)
+        
+        # figure out where to go
+        offset_ra = ra_dist_arcsec *u.arcsecond
+        offset_dec = dec_dist_arcsec * u.arcsecond
+        end = start.spherical_offsets_by(offset_ra, offset_dec)
+        ra_j2000_hours_goal = end.ra.hour
+        dec_j2000_deg_goal = end.dec.deg
+        
+        # calculate the literal difference required by PWI4 mount_offset
+        ra_delta_arcsec = end.ra.arcsecond - start.ra.arcsecond
+        dec_delta_arcsec = end.dec.arcsecond - start.dec.arcsecond
+        
+        # what is the total angular 3d distance to travel?
+        sep = start.separation(end)
+        
+        if True:
+            self.logger.info(f'executing dither: RA Dist = {ra_dist_arcsec:.6f}, Dec Dist = {dec_dist_arcsec:.6f}')
+            self.logger.info(f'executing dither: RA Dist = {ra_dist_arcsec:.6f}, Dec Dist = {dec_dist_arcsec:.6f}')
+            self.logger.info(f'literal differences to pass to PWI4 mount_offset')
+            self.logger.info(f'tra delta  = {ra_delta_arcsec:>10.6f} arcsec')
+            self.logger.info(f'dec delta = {dec_delta_arcsec:>10.6f} arcsec')
+    
+            self.logger.info(f'RA/Dec Coords: Start --> Finish')
+            self.logger.info(f'ra : {start.ra.hour:>10.6f} --> {end.ra.hour:>10.6f} (hour)')
+            self.logger.info(f'dec: {start.dec.deg:>10.6f} --> {end.dec.deg:>10.6f} (deg)')
+            self.logger.info(f'separation = {sep.arcsecond:0.6f} arcsec')
+        
+        if ra_dist_arcsec != 0.0:
+            self.parse(f'mount_offset add_arcsec ra {ra_dist_arcsec}')
+        
+        time.sleep(0.5)
+        if dec_dist_arcsec != 0.0:
+            self.parse(f'mount_offset add_arcsec dec {dec_dist_arcsec}')
+        
+        # now check to make sure it got to the right place
+        threshold_arcsec = 1.0
+        # wait for the dist to target to be low and the ra/dec near what they're meant to be
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 60.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            
+            #print(f"alt dist to target = {abs(self.state['mount_alt_dist_to_target'])}")
+            #print(f"az dist to target  = {abs(self.state['mount_az_dist_to_target'])}")
+            dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < threshold_arcsec) & (abs(self.state['mount_alt_dist_to_target']) < threshold_arcsec) )
+           
+            ra_dist_hours = abs(self.state['mount_ra_j2000_hours'] - ra_j2000_hours_goal)
+            ra_dist_arcsec = ra_dist_hours * (360/24.0) * 3600.0
+            #print(f'ra dist to target = {ra_dist_arcsec:.2f} arcsec')
+            ra_in_range = (ra_dist_arcsec < threshold_arcsec)
+            
+            dec_dist_deg = abs(self.state['mount_dec_j2000_deg'] - dec_j2000_deg_goal)
+            dec_dist_arcsec = dec_dist_deg * 3600.0
+            #print(f'dec dist to target = {dec_dist_arcsec:.2f} arcsec')
+            dec_in_range = (dec_dist_arcsec < threshold_arcsec)
+            
+            stop_condition = (dist_to_target_low and ra_in_range and dec_in_range)
+            
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+            if dt > timeout:
+                msg = f'wintercmd: mount dither timed out after {timeout} seconds before completing: ra_dist_arcsec = {ra_dist_arcsec}, dec_dist_arcsec = {dec_dist_arcsec}, '
+                msg += f"dist to target arcsec (alt, az) = ({self.state['mount_az_dist_to_target']}, {self.state['mount_alt_dist_to_target']}"
+                self.logger.info(msg)
+                self.alertHandler.slack_log(msg)
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+        self.logger.info(f'Mount Offset complete')
+        
+            
+    
+    def mount_offset_arcsec(self):
+        """Usage: mount_offset <axis> <arcmin> """
         # this is a handy wrapper around the more complicated mount_offset function below
+        
+        
         
         self.defineCmdParser('dither the mount in the specified axis by the specified arcminutes')
         self.cmdparser.add_argument('axis',
@@ -1068,7 +1173,7 @@ class Wintercmd(QtCore.QObject):
                 self.logger.info(msg)
                 self.alertHandler.slack_log(msg)
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
-        self.logger.info(f'Mount Dither complete')
+        self.logger.info(f'Mount Offset complete')
     
     @cmd
     def mount_dither(self):

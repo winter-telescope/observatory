@@ -31,6 +31,8 @@ import pytz
 import pandas as pd
 import sqlalchemy as db
 
+import wintertoo
+
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
