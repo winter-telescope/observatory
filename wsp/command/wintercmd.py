@@ -1654,7 +1654,8 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument('-t', '--throw',
                                     nargs = 1,
                                     type = float,
-                                    action = -1,
+                                    action = None,
+                                    default = -1,
                                     help = "<total_throw>")
         
         self.cmdparser.add_argument('-n', '--nsteps',
