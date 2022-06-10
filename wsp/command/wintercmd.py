@@ -1670,6 +1670,8 @@ class Wintercmd(QtCore.QObject):
         throw = self.args.throw[0]
         nsteps = self.args.throw[0]
         
+        print(f'center = {center}, type(center) = {type(center)}')
+        """
         if center is None:
             print(f'center is None')
         
@@ -1678,7 +1680,7 @@ class Wintercmd(QtCore.QObject):
         
         if nsteps is None:
             print(f'nsteps is None')
-            
+        """
         
         print(f'running focus loop with center = {center}, throw = {throw}, nsteps = {nsteps}')
         
