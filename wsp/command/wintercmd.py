@@ -1674,23 +1674,23 @@ class Wintercmd(QtCore.QObject):
         nsteps = self.args.throw[0]
         
         print(f'center = {center}, type(center) = {type(center)}')
-        """
-        if center is None:
-            print(f'center is None')
+        
+        if center is 'here':
+            center = self.state['focuser_position']
         
         if throw is None:
-            print(f'throw is none')
+            throw = 'default'
         
         if nsteps is None:
-            print(f'nsteps is None')
-        """
+            nsteps = 'default'
+        
         
         print(f'running focus loop with center = {center}, throw = {throw}, nsteps = {nsteps}')
         
         
-        #sigcmd = signalCmd('do_focusLoop')
+        sigcmd = signalCmd('do_focusLoop', nom_focus = center, total_throw = throw, nsteps = nsteps)
 
-        #self.roboThread.newCommand.emit(sigcmd)
+        self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
     def doFocusSeq(self):
