@@ -2740,13 +2740,13 @@ class RoboOperator(QtCore.QObject):
         
         #TODO Uncomment this, for now it's commented out so that we can test with the dome closed
         # NPL 7-28-21
-        
+        """
         if self.ok_to_observe:
             pass
         else:
             
             return
-        
+        """
         ### Validate the observation ###
         # just make it lowercase to avoid any case issues
         targtype = targtype.lower()
