@@ -57,7 +57,8 @@ from chiller import small_chiller
 from control import roboOperator
 from ephem import ephem
 from alerts import alert_handler
-from viscam import web_request
+#from viscam import web_request
+from viscam import viscam
 from viscam import ccd
 from power import powerManager
 
@@ -90,6 +91,7 @@ class control(QtCore.QObject):
         # Cleanup (kill any!) existing instances of the daemons running
         daemons_to_kill = ['pyro5-ns', 
                            'ccd_daemon.py' ,
+                           'viscamd.py',
                            'domed.py', 
                            'chillerd.py', 
                            'small_chillerd.py', 
@@ -131,6 +133,10 @@ class control(QtCore.QObject):
             else:
                 self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.chillerd)
+            
+            # SUMMER accesories (eg viscam)
+            self.viscamd = daemon_utils.PyDaemon(name = 'viscam', filepath = f"{wsp_path}/viscam/viscamd.py")
+            self.daemonlist.add_daemon(self.viscamd)
             
             # ccd daemon
             self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
@@ -239,7 +245,8 @@ class control(QtCore.QObject):
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
         # init the viscam shutter, filter wheel, and raspberry pi
-        self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
+        #self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
+        self.viscam = viscam.local_viscam(base_directory = self.base_directory)
         
         # init the viscam ccd
         self.ccd = ccd.local_ccd(base_directory = self.base_directory, config = self.config, logger = self.logger)

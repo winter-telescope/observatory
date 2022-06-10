@@ -78,7 +78,7 @@ def reconnect_shutter():
         shutter_open = -1
         shutter_status = 0
         shutter_response_code = -4
-    STATE.update({'shutter_open' : shutter_open})
+    STATE.update({'shutter_state' : shutter_open})
     STATE.update({'shutter_status' : shutter_status})
     STATE.update({'shutter_resonse_code' : shutter_response_code})
     STATE.update({'shutter_error ' : shutter_error })
@@ -220,7 +220,7 @@ def get_shutter_command():
             shutter_response_code = -1
         
         shutter_status = 1
-        STATE.update({'shutter_open' : shutter_open})
+        STATE.update({'shutter_state' : shutter_open})
         STATE.update({'shutter_status' : shutter_status})
         STATE.update({'shutter_response_code' : shutter_response_code})
         reply_string = json.dumps(STATE)
@@ -232,7 +232,7 @@ def get_shutter_command():
         shutter_open = -1
         shutter_status = 0
         shutter_response_code = -4
-        STATE.update({'shutter_open' : shutter_open})
+        STATE.update({'shutter_state' : shutter_open})
         STATE.update({'shutter_status' : shutter_status})
         STATE.update({'shutter_response_code' : shutter_response_code})
         reply_string = json.dumps(STATE)

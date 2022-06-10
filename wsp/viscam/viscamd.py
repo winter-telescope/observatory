@@ -34,7 +34,7 @@ sys.path.insert(1, wsp_path)
 print(f'wsp_path = {wsp_path}')
 
 from daemon import daemon_utils
-#from utils import logging_setup
+from utils import logging_setup
 
 class signalCmd(object):
     '''
@@ -109,13 +109,20 @@ class CommandHandler(QtCore.QObject):
     # 0 - close the shutter
     # 1 - open the shutter    
     def send_shutter_command(self, state):
+        print(f'going to try to set the shutter state to {state}')
         string = self.url + "shutter?open=" + str(state)
+        print(string)
         try:
             res = requests.get(string, timeout=10)
-            status = res.status_code
-            #print("Status", status, "Response: ", res.text)
-            self.log(f'Shutter status {status}, {res.text}')
-            return status
+            print("Status", res.status_code, "Response: ", res.text)
+            
+            remote_state = json.loads(res.text)
+            
+            if res.status_code != 200:
+                raise Exception
+            
+            self.newStatus.emit(remote_state)
+            return 1
         except:
             #print("Raspi is not responding")
             self.log(f'Shutter is not responding')
@@ -274,6 +281,12 @@ class Viscam(QtCore.QObject):
             self.state.update({'shutter_state_last_timestamp'  : datetime.utcnow().timestamp()})
         """
         pass
+    
+    @Pyro5.server.expose
+    def send_shutter_command(self, state):
+        print(f'got command to set shutter state to {state}')
+        sigcmd = signalCmd('send_shutter_command', state)
+        self.commandRequest.emit(sigcmd)
         
     @Pyro5.server.expose
     def command_filter_wheel(self, pos):
@@ -368,8 +381,8 @@ if __name__ == "__main__":
     #config.update({'viscam_url' : 'http://127.0.0.1:5001/'})
     # set up the logger
     if doLogging:
-        #logger = logging_setup.setup_logger(base_directory, config)    
-        logger = None
+        logger = logging_setup.setup_logger(base_directory, config)    
+        #logger = None
     else:
         logger = None
     
