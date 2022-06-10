@@ -1642,9 +1642,43 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def doFocusLoop(self):
         self.defineCmdParser('do a focus loop with current filter')
-        sigcmd = signalCmd('do_focusLoop')
         
-        self.roboThread.newCommand.emit(sigcmd)
+        # ADD AN OPTIONAL PATH COMMAND. 
+
+        self.cmdparser.add_argument('-c', '--center',
+                                    nargs = 1,
+                                    action = None,
+                                    default = 'here',
+                                    help = "<center_of_sweep>")
+        
+        self.cmdparser.add_argument('-t', '--throw',
+                                    nargs = 1,
+                                    type = float,
+                                    action = None,
+                                    default = 'default',
+                                    help = "<total_throw>")
+        
+        self.cmdparser.add_argument('-n', '--nsteps',
+                                    nargs = 1,
+                                    type = int,
+                                    action = None,
+                                    default = 'default',
+                                    help = "<number_of_steps>")
+        #def do_focusLoop(self, nom_focus = 'last', total_throw = 'default', nsteps = 'default',
+        self.getargs()
+        
+        print(self.args)
+        
+        center = self.args.center[0]
+        throw = self.args.throw[0]
+        nsteps = self.args.throw[0]
+        
+        print(f'running focus loop with center = {center}, throw = {throw}, nsteps = {nsteps}')
+        
+        
+        #sigcmd = signalCmd('do_focusLoop')
+
+        #self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
     def doFocusSeq(self):
