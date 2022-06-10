@@ -1668,14 +1668,16 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         
         print(self.args)
-        
-        center = self.args.center[0]
+        if type(self.args.center) is str:
+            center = self.args.center
+        else:
+            center = self.args.center[0]
         throw = self.args.throw[0]
         nsteps = self.args.throw[0]
         
         print(f'center = {center}, type(center) = {type(center)}')
         
-        if center is 'here':
+        if center == 'here':
             center = self.state['focuser_position']
         
         if throw is None:
