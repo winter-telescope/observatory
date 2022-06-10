@@ -365,7 +365,7 @@ if __name__ == "__main__":
     # load the config
     config_file = base_directory + '/config/config.yaml'
     config = yaml.load(open(config_file), Loader = yaml.FullLoader)
-    config.update({'viscam_url' : 'http://127.0.0.1:5001/'})
+    #config.update({'viscam_url' : 'http://127.0.0.1:5001/'})
     # set up the logger
     if doLogging:
         #logger = logging_setup.setup_logger(base_directory, config)    

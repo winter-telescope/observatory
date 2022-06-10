@@ -13,6 +13,7 @@ import Pyro5.core
 import Pyro5.server
 import Pyro5.errors
 from PyQt5 import QtCore
+import json
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -80,5 +81,10 @@ class local_viscam(object):
                 getattr(self, cmd)(*args, **kwargs)
             except:
                 pass
+        def printState(self, update = True):
+            
+            if update:
+                self.update_state()
+            print(json.dumps(viscam.state, indent = 3))
 if __name__ == '__main__':
     viscam = local_viscam(wsp_path)
