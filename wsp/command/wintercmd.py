@@ -1648,17 +1648,19 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument('-c', '--center',
                                     nargs = 1,
                                     action = None,
+                                    default = 'here',
                                     help = "<center_of_sweep>")
         
         self.cmdparser.add_argument('-t', '--throw',
                                     nargs = 1,
                                     type = float,
-                                    action = None,
+                                    action = -1,
                                     help = "<total_throw>")
         
         self.cmdparser.add_argument('-n', '--nsteps',
                                     nargs = 1,
                                     type = int,
+                                    default = -1,
                                     action = None,
                                     help = "<number_of_steps>")
         #def do_focusLoop(self, nom_focus = 'last', total_throw = 'default', nsteps = 'default',
