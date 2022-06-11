@@ -1744,7 +1744,7 @@ class RoboOperator(QtCore.QObject):
 
         self.announce('darks sequence completed successfully!')
     
-    def do_focusLoop(self, nom_focus = 'last', total_throw = 'default', nsteps = 'default', updateFocusTracker = True, focusType = 'Vcurve'):
+    def do_focusLoop(self, nom_focus = 'default', total_throw = 'default', nsteps = 'default', updateFocusTracker = True, focusType = 'Vcurve'):
         """
         Runs a focus loop in the CURRENT filter.
         Adaptation of Cruz Soto's doFocusLoop in wintercmd
@@ -1809,7 +1809,7 @@ class RoboOperator(QtCore.QObject):
             
             if total_throw == 'default':
                 #total_throw = self.config['focus_loop_param']['total_throw']
-                self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
+                total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
             if nsteps == 'default':
                 #nsteps = self.config['focus_loop_param']['nsteps']
                 nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
