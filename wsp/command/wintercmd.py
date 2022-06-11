@@ -1671,7 +1671,7 @@ class Wintercmd(QtCore.QObject):
         if type(self.args.center) is str:
             center = self.args.center
         else:
-            center = self.args.center[0]
+            center = float(self.args.center[0])
         throw = self.args.throw[0]
         nsteps = self.args.nsteps[0]
         
