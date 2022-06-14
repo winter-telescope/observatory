@@ -3784,15 +3784,17 @@ class Wintercmd(QtCore.QObject):
         while True:
             QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
+            
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
-                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+                raise TimeoutError(f'ccd_do_exposure command timed out after {timeout} seconds before completing')
             
             stop_condition = ( (self.state['ccd_doing_exposure'] == False) & (self.state['ccd_image_saved_flag']))
             #self.logger.info(f'count = {self.state["count"]}')
             #self.logger.info(f'wintercmd: ccd_doing_exposure = {self.state["ccd_doing_exposure"]}, ccd_image_saved_flag = {self.state["ccd_image_saved_flag"]}')
+            #self.logger.info(f'wintercmd: stop_condition_buffer = {stop_condition_buffer}')
             #self.logger.info('')
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -3802,6 +3804,7 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
                 break 
+           
     
     @cmd
     def ccd_do_bias(self):
