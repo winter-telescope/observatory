@@ -76,7 +76,7 @@ from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
 from alerts import alert_handler
-from viscam.web_request import short_circ
+#from viscam.web_request import short_circ
 from control.roboOperator import TargetError
 # GLOBAL VARS
 
@@ -3605,7 +3605,9 @@ class Wintercmd(QtCore.QObject):
 
         self.getargs()
         shutter_cmd = self.args.shutter_cmd[0]
-        self.viscam.send_shutter_command(shutter_cmd)
+        sigcmd = signalCmd('send_shutter_command', shutter_cmd)
+        self.viscam.newCommand.emit(sigcmd)
+        #self.viscam.send_shutter_command(shutter_cmd)
 
     @cmd
     def command_filter_wheel(self):
@@ -3624,7 +3626,7 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('command_filter_wheel',
                            pos = fw_pos)
         
-        self.roboThread.newCommand.emit(sigcmd)
+        self.viscam.newCommand.emit(sigcmd)
         
         #fw_num = int(fw_cmd)
         

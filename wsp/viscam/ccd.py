@@ -20,6 +20,7 @@ import sys
 import Pyro5.core
 import Pyro5.server
 import Pyro5.errors
+import traceback as tb
 from datetime import datetime
 from PyQt5 import QtCore
 import time
@@ -158,7 +159,7 @@ class local_ccd(QtCore.QObject):
                 self.image_directory = 'UNKNOWN'
                 self.image_filename = 'UNKNOWN'
                 
-                self.logger.error(f'ccd: could not get last image filename due to {e}')
+                self.logger.error(f'ccd: could not get last image filename due to {e}')#', {tb.format_exc()}')
     
     def getLastImagePath(self):
         
