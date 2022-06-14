@@ -3622,7 +3622,6 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         fw_pos = self.args.fw_pos[0]
         
-        self.viscam.send_filter_wheel_command(fw_pos)
         sigcmd = signalCmd('command_filter_wheel',
                            pos = fw_pos)
         

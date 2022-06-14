@@ -43,8 +43,14 @@ from utils import utils
 from daemon import daemon_utils
 from utils import logging_setup
 from alerts import alert_handler
-from viscam import web_request
-from viscam import viscam
+try:
+    from viscam import web_request
+except:
+    import web_request
+try:
+    import viscam
+except:
+    from viscam import viscam
 
 
 # add the huaso directory to the PATH
@@ -134,9 +140,8 @@ class CCD(QtCore.QObject):
         self.imagestate = dict()
         
         # init the viscam (ie the shutter)
-        #self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
-        self.viscam = viscam.local_viscam(base_directory = self.base_directory)
-
+        self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
+        #self.viscam = viscam.local_viscam(base_directory = wsp_path)
         
         # flag to control whether or not we should open the shutter during the image
         self.useshutter = True
