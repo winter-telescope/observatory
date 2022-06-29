@@ -1671,9 +1671,15 @@ class Wintercmd(QtCore.QObject):
         if type(self.args.center) is str:
             center = self.args.center
         else:
-            center = self.args.center[0]
-        throw = self.args.throw[0]
-        nsteps = self.args.nsteps[0]
+            center = float(self.args.center[0])
+        if type(self.args.throw) is int:
+            throw = self.args.throw
+        else:
+            throw = self.args.throw[0]
+        if type(self.args.nsteps) is int:
+            nsteps = self.args.nsteps
+        else:
+            nsteps = self.args.nsteps[0]
         
         print(f'center = {center}, type(center) = {type(center)}')
         
