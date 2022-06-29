@@ -9,31 +9,12 @@ Created on Wed May 12 13:11:16 2021
 import requests
 from datetime import datetime
 import time
-from math import fmod
+#from math import fmod
+import numpy as np
+import traceback as tb
+import json
 
 #URL = 'http://192.168.1.54:5001/'
-
-def short_circ(target, origin):
-    MAX_VALUE = 7
-    
-    signedDiff = 0.0;
-    if (origin > target):
-        raw_diff = origin - target
-    else:
-        raw_diff = target - origin
-    mod_diff = fmod(raw_diff, MAX_VALUE) #equates rollover values. E.g 0 == 360 degrees in circle
-    
-    if(mod_diff > (MAX_VALUE/2) ):
-      #There is a shorter path in opposite direction
-      signedDiff = (MAX_VALUE - mod_diff)
-      if(target>origin):
-          signedDiff = signedDiff * -1
-    else:
-      signedDiff = mod_diff
-      if(origin>target):
-          signedDiff = signedDiff * -1
-    
-    return signedDiff
 
 class Viscam: 
     # initialize
@@ -41,6 +22,26 @@ class Viscam:
         self.url = URL
         self.state = dict()
         self.logger = logger
+        
+        # home the filter wheel
+        self.fw_pos = self.send_filter_wheel_command(-1)
+        time.sleep(10)
+               
+    def log(self, msg):
+        if self.logger is None:
+            print(f'Viscam Client: {msg}')
+        else:
+            self.logger.info(msg)
+    
+    def reconnect_fw(self):
+        string = self.url + "reconnect_fw"
+        res = requests.get(string, timeout = 10)
+        print(res)
+        
+    def reconnect_shutter(self):
+        string = self.url + "reconnect_shutter"
+        res = requests.get(string, timeout = 10)
+        print(res)
     
     # check raspi/web server responsiveness
     def send_raspi_check(self):
@@ -58,9 +59,10 @@ class Viscam:
                 return 0
         except:
             #print("Raspi is not responding")
-            self.logger.info(f'Raspi is not responding')
+            self.log(f'Raspi is not responding')
             return 0
             
+    """
     def update_state(self):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
@@ -75,81 +77,56 @@ class Viscam:
             self.state.update({'pi_status' : 1})
             self.state.update({'pi_status_last_timestamp'  : datetime.utcnow().timestamp()})
             
-            pos = self.send_filter_wheel_command(8)
-            try:
-                pos = int(pos[22]) + 1 # get position in int
-            except:
-                pos = -1 # invalid filter position
-
-            self.state.update({'filter_wheel_position' : pos})
+            
+            self.state.update({'filter_wheel_position' : self.fw_pos})
             self.state.update({'filter_wheel_position_last_timestamp'  : datetime.utcnow().timestamp()})
+            
             
             shut = self.check_shutter_state()
             self.state.update({'shutter_state' : shut})
             self.state.update({'shutter_state_last_timestamp'  : datetime.utcnow().timestamp()})
             
- 
+    """
+    def parse_state(self, remote_state):
+        """
+        run this whenever we get a new state reply from the server
+        adds all key:value pairs (or rather updates) their values to the self.state
+        dictionary
+        """
+        for key in remote_state.keys():
+            try:
+                self.state.update({key : remote_state[key]})
+            except:
+                pass
     # send a command to the filter wheel
-    # 1 - set filter wheel to position 1
-    # 2-7 - set filter wheel to position 2-7
+    # -1: home the filter wheel (sends to pos 0)
+    # 1-6 - set filter wheel to position 1-6
     # 8 - get current position
-    # 9 - check number of available positions
-    # 10 - get filter wheel firmware version
+    
     def send_filter_wheel_command(self, position):
-        string = self.url + "filter_wheel?n=" + str(position)     
+        string = self.url + "filter_wheel?n=" + str(position)   
+        #print(string)
         try:
             res = requests.get(string, timeout=10)
-            status = res.status_code
-            #print("Status", status, "Response: ", res.text)
-            #self.logger.info(f'Filter wheel status {status}, {res.text}')
-            return res.text
-        except:
-            #print("Raspi is not responding")
-            self.logger.info(f'Filter wheel is not responding')
-            return 0            
-                 
-                
-        
-    # # send a command to the filter wheel
-    # # 1 - set filter wheel to position 1
-    # # 2-7 - set filter wheel to position 2-7
-    # # 8 - get current position
-    # # 9 - check number of available positions
-    # # 10 - get filter wheel firmware version
-    # def send_filter_wheel_command(self, position):
-        
-    #     # if moving filter wheel
-    #     if position < 8:
-    #         # check where it is now
-    #         last_pos = self._send_filter_wheel_command(8)
-    #         try:
-    #             last_pos = int(last_pos[22]) + 1 # get position in int
-    #             print("Position is currently ", last_pos)
-    #         except:
-    #             last_pos = -1 # invalid filter position
-                
-    #         if self.short_circ(position-1, last_pos-1) >= 0: # zero index 
-    #             # if the shortest path for the filter wheel is the positive 
-    #             # or zero, do normal command
-    #             return self._send_filter_wheel_command(int(position))
-    
-    #         else:            
-    #             # else, force it to go long way
-    #             # the longest, short distance is 3, so start by adding  +3
-    #             new_pos = fmod(last_pos + 3, 7) # modulo 7 positions
-    #             print("intermediate new position: " , int(new_pos))
-    #             ret = self._send_filter_wheel_command(int(new_pos))
-    #             time.sleep(5) # wait for wheel to move 
-    #             # if new_pos is the desired position, return
-    #             if new_pos == position:
-    #                 return ret
-    #             # else go to final position
-    #             else:
-    #                 return self._send_filter_wheel_command(int(position))
+            print("Status", res.status_code, "Response: ", res.text)
 
-    #     else:   
-    #         # if not, query normally
-    #         return self._send_filter_wheel_command(int(position))
+            remote_state = json.loads(res.text)
+            
+            if res.status_code != 200:
+                raise Exception
+
+            #self.logger.info(f'Filter wheel status {status}, {res.text}')
+            #self.fw_pos = pos
+            self.parse_state(remote_state)
+            #return res.status_code
+            return True
+        except:
+            #print(tb.format_exc())
+            #print("Raspi is not responding")
+            self.log(f'Filter wheel is not responding')
+            #return res.status_code   
+            return False    
+                
    
     # send a command to the shutter
     # 0 - close the shutter
@@ -160,11 +137,11 @@ class Viscam:
             res = requests.get(string, timeout=10)
             status = res.status_code
             #print("Status", status, "Response: ", res.text)
-            self.logger.info(f'Shutter status {status}, {res.text}')
+            self.log(f'Shutter status {status}, {res.text}')
             return status
         except:
             #print("Raspi is not responding")
-            self.logger.info(f'Shutter is not responding')
+            self.log(f'Shutter is not responding')
             return 0
     
     # check what state the shutter is in
@@ -247,4 +224,20 @@ class Viscam:
 #     print("Didn't work")
     
     
-
+if __name__ == '__main__':
+    #url = 'http://127.0.0.1:5001/'
+    url = 'http://192.168.1.228:5002/'
+    viscam = Viscam(url, None)
+    
+    print()
+    print(f'FW Pos = {viscam.state.get("fw_pos", -999)}')
+    print()
+    for i in range(5):
+        pos = np.random.randint(0,6)
+        print(f'FW: Sending to Pos = {pos}')
+        viscam.send_filter_wheel_command(pos)
+        time.sleep(1)
+        print(f'FW Pos = {viscam.state.get("fw_pos", -999)}')
+        print()
+    
+    

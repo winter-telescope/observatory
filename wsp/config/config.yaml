@@ -2244,13 +2244,13 @@ fields:
         dtype: int64
         rate: slow
         var: 'viscam.state["pi_status"]'
-    Pi_timestamp:
-        ftype: raw
-        label: 'time'
-        units: ctime
-        dtype: float64
-        rate: slow
-        var: 'viscam.state["pi_status_last_timestamp"]'
+#    Pi_timestamp:
+#        ftype: raw
+#        label: 'time'
+#        units: ctime
+#        dtype: float64
+#        rate: slow
+#        var: 'viscam.state["pi_status_last_timestamp"]'
     Viscam_Shutter_State:
         ftype: raw
         label: 'status'
@@ -2258,27 +2258,27 @@ fields:
         dtype: int64
         rate: slow
         var: 'viscam.state["shutter_state"]'
-    Viscam_Shutter_State_timestamp:
-        ftype: raw
-        label: 'time'
-        units: ctime
-        dtype: float64
-        rate: slow
-        var: 'viscam.state["shutter_state_last_timestamp"]'
+#    Viscam_Shutter_State_timestamp:
+#        ftype: raw
+#        label: 'time'
+#        units: ctime
+#        dtype: float64
+#        rate: slow
+#        var: 'viscam.state["shutter_state_last_timestamp"]'
     Viscam_Filter_Wheel_Position:
         ftype: raw
         label: 'status'
         units: None
         dtype: int64
         rate: slow
-        var: 'viscam.state["filter_wheel_position"]'
-    Viscam_Filter_Wheel_timestamp:
-        ftype: raw
-        label: 'time'
-        units: ctime
-        dtype: float64
-        rate: slow
-        var: 'viscam.state["filter_wheel_position_last_timestamp"]'
+        var: 'viscam.state["fw_pos"]'
+#    Viscam_Filter_Wheel_timestamp:
+#        ftype: raw
+#        label: 'time'
+#        units: ctime
+#        dtype: float64
+#        rate: slow
+#        var: 'viscam.state["filter_wheel_position_last_timestamp"]'
 
     # CHILLER STUFF
     chiller_setpoint:

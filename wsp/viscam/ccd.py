@@ -20,6 +20,7 @@ import sys
 import Pyro5.core
 import Pyro5.server
 import Pyro5.errors
+import traceback as tb
 from datetime import datetime
 from PyQt5 import QtCore
 import time
@@ -64,7 +65,7 @@ class local_ccd(QtCore.QObject):
         
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)
-        
+                
         # Startup
         # setup connection to pyro ccd
         self.init_remote_object()
@@ -158,7 +159,7 @@ class local_ccd(QtCore.QObject):
                 self.image_directory = 'UNKNOWN'
                 self.image_filename = 'UNKNOWN'
                 
-                self.logger.error(f'ccd: could not get last image filename due to {e}')
+                self.logger.error(f'ccd: could not get last image filename due to {e}')#', {tb.format_exc()}')
     
     def getLastImagePath(self):
         
@@ -185,13 +186,16 @@ class local_ccd(QtCore.QObject):
         self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
         
         self.imageSavedFlag = self.state.get('imageSavedFlag', False)
+        """
         if self.imageSavedFlag:
+            self.logger.info(f'local_ccd: image saved flag is True!')
             self.imageSaved.emit()
             self.resetImageSavedFlag()
-    
+        """
     def resetImageSavedFlag(self):
-        self.remote_object.resetImageSavedFlag()
-            
+        self.logger.info(f'local ccd: resetting image saved flag')
+        #self.remote_object.resetImageSavedFlag()
+        self.remote_object.requestResetImageSavedFlag()
     def print_state(self):
         self.update_state()
         print(f'state = {json.dumps(ccd.state, indent = 2)}')

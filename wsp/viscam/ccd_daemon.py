@@ -43,7 +43,14 @@ from utils import utils
 from daemon import daemon_utils
 from utils import logging_setup
 from alerts import alert_handler
-from viscam import web_request
+try:
+    from viscam import web_request
+except:
+    import web_request
+try:
+    import viscam
+except:
+    from viscam import viscam
 
 
 # add the huaso directory to the PATH
@@ -85,6 +92,7 @@ class CCD(QtCore.QObject):
     
     startExposureTimer = QtCore.pyqtSignal(object)
     startReadTimer = QtCore.pyqtSignal(object)
+    startResetTimer = QtCore.pyqtSignal(object)
     
     preventPollingSignal = QtCore.pyqtSignal()
     allowPollingSignal = QtCore.pyqtSignal()
@@ -134,6 +142,7 @@ class CCD(QtCore.QObject):
         
         # init the viscam (ie the shutter)
         self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
+        #self.viscam = viscam.local_viscam(base_directory = wsp_path)
         
         # flag to control whether or not we should open the shutter during the image
         self.useshutter = True
@@ -360,15 +369,31 @@ class CCD(QtCore.QObject):
         
         
     @Pyro5.server.expose
-    def resetImageSavedFlag(self):
+    #def resetImageSavedFlag(self):
+    def requestResetImageSavedFlag(self):
+        self.logger.info(f'waiting 2 seconds to reset image saved flag')
+        self.startResetTimer.emit(2000)
+        """
         # pause for a few seconds to leave the image high
-        time.sleep(1)
+        dt = 0.1
+        telapsed = 0
+        while telapsed < 2:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(dt)
+            telapsed+=dt
+        """
+        
+    
+    def resetImageSavedFlag(self):
+        self.logger.info(f'resetting image saved flag')
         self.imageSavedFlag = False
         self.state.update({'imageSavedFlag' : self.imageSavedFlag})
     
     def raiseImageSavedFlag(self):
         self.imageSavedFlag = True
         self.state.update({'imageSavedFlag' : self.imageSavedFlag})
+        self.logger.info(f'waiting 2 seconds to reset image saved flag')
+        self.startResetTimer.emit(2000)
     
     def cc_waitTilDone(self, timeout, dt = 0.1, verbose = False):
         t = 0
@@ -1099,6 +1124,7 @@ class PyroGUI(QtCore.QObject):
 
     Tell_CCD_To_Read_Image = QtCore.pyqtSignal()              
     Tell_CCD_To_Download_Image = QtCore.pyqtSignal()
+    Tell_CCD_To_Reset_Image_Saved_Flag = QtCore.pyqtSignal()
     
     def __init__(self, config, logger = None, verbose = False, parent=None):            
         super(PyroGUI, self).__init__(parent)   
@@ -1135,6 +1161,13 @@ class PyroGUI(QtCore.QObject):
         #self.expTimer.timeout.connect(self.readImg)
         self.expTimer.timeout.connect(self.expTimerComplete)
         
+        # image saved flag reset timer
+        # exposure timer
+        self.resetTimer = QtCore.QTimer()
+        self.resetTimer.setSingleShot(True)
+        #self.expTimer.timeout.connect(self.readImg)
+        self.resetTimer.timeout.connect(self.resetTimerComplete)
+        
         # readout timer
         self.readTimer = QtCore.QTimer()
         self.readTimer.setSingleShot(True)
@@ -1154,6 +1187,8 @@ class PyroGUI(QtCore.QObject):
         self.ccd.startReadTimer.connect(self.startReadTimer)
         self.Tell_CCD_To_Download_Image.connect(self.ccd.fetchImg)
         
+        self.ccd.startResetTimer.connect(self.startResetTimer)
+        self.Tell_CCD_To_Reset_Image_Saved_Flag.connect(self.ccd.resetImageSavedFlag)
         
         self.logger.info(f'trying to do all the stupid pyro stuff now...? ')
 
@@ -1178,10 +1213,19 @@ class PyroGUI(QtCore.QObject):
         self.readTimer.setInterval(int(waittime_int))
         self.readTimer.start()
         
+    def startResetTimer(self, waittime):
+        self.logger.info(f'starting image saved flag wait timer, waittime = {waittime}')
+        waittime_int = int(waittime)
+        self.resetTimer.setInterval(int(waittime_int))
+        self.resetTimer.start()
+        
     def readTimerComplete(self):
         self.logger.info(f'readout timer complete! telling ccd to download image')
         self.Tell_CCD_To_Download_Image.emit()
-        
+    
+    def resetTimerComplete(self):
+        self.logger.info(f'image saved flag reset timer complete! telling ccd to reset the image saved flag')
+        self.Tell_CCD_To_Reset_Image_Saved_Flag.emit()
 def sigint_handler( *args):
     """Handler for the SIGINT signal."""
     sys.stderr.write('\r')

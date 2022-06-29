@@ -76,7 +76,7 @@ from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
 from alerts import alert_handler
-from viscam.web_request import short_circ
+#from viscam.web_request import short_circ
 from control.roboOperator import TargetError
 # GLOBAL VARS
 
@@ -3611,22 +3611,29 @@ class Wintercmd(QtCore.QObject):
 
         self.getargs()
         shutter_cmd = self.args.shutter_cmd[0]
-        self.viscam.send_shutter_command(shutter_cmd)
+        sigcmd = signalCmd('send_shutter_command', shutter_cmd)
+        self.viscam.newCommand.emit(sigcmd)
+        #self.viscam.send_shutter_command(shutter_cmd)
 
     @cmd
-    def command_filter_wheel_int(self):
+    def command_filter_wheel(self):
         self.defineCmdParser('Command viscam filter wheel')
                   
-        self.cmdparser.add_argument('fw_cmd',
+        self.cmdparser.add_argument('fw_pos',
               nargs = 1,
+              type = int,
               action = None,
-              help = '<fw_cmd_int>')
+              help = '<fw_pos_int>')
 
         self.getargs()
-        fw_cmd = self.args.fw_cmd[0]
-        self.viscam.send_filter_wheel_command(fw_cmd)
+        fw_pos = self.args.fw_pos[0]
         
-        fw_num = int(fw_cmd)
+        sigcmd = signalCmd('command_filter_wheel',
+                           pos = fw_pos)
+        
+        self.viscam.newCommand.emit(sigcmd)
+        
+        #fw_num = int(fw_cmd)
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -3646,7 +3653,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'unable to move viscam filter wheel: command timed out after {timeout} seconds before completing.')
             
-            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == fw_num) )
+            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == fw_pos) )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -3655,76 +3662,7 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f'wintercmd: successfully completed viscam filter wheel move')
                 break 
-        
-    @cmd
-    def command_filter_wheel(self):
-        self.defineCmdParser('Command viscam filter wheel')
-                  
-        self.cmdparser.add_argument('fw_cmd',
-              nargs = 1,
-              action = None,
-              help = '<fw_cmd_int>')
-        
-        self.getargs()
-        fw_cmd = self.args.fw_cmd[0]
-        #self.viscam.send_filter_wheel_command(fw_cmd)
-        
-        position = int(fw_cmd)
-            
-        # if moving filter wheel
-        if position < 8:
-            # check where it is now
-            last_pos = self.state['Viscam_Filter_Wheel_Position']
-                
-            if short_circ(position-1, last_pos-1) >= 0: # zero index 
-                # if the shortest path for the filter wheel is the positive 
-                # or zero, do normal command
-                self.parse(f'command_filter_wheel_int {position}')
-        
-            else:            
-                # else, force it to go long way
-                # the longest, short distance is 3, so start by adding  +3
-                new_pos = int(fmod(last_pos + 3, 7)) # modulo 7 positions
-                if new_pos == 0:
-                    new_pos = 7 # modulo workaround
-                #print("intermediate new position: " , int(new_pos))
-                self.parse(f'command_filter_wheel_int {new_pos}')
-                # then go to final position
-                self.parse(f'command_filter_wheel_int {position}')
-        
-        else:   
-            # if not, query normally
-            self.parse(f'command_filter_wheel_int {position}')
-       
-        ## Wait until end condition is satisfied, or timeout ##
-        condition = True
-        timeout = 30
-        # create a buffer list to hold several samples over which the stop condition must be true
-        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
-
-        # get the current timestamp
-        start_timestamp = datetime.utcnow().timestamp()
-        while True:
-            QtCore.QCoreApplication.processEvents()
-            time.sleep(self.config['cmd_status_dt'])
-            timestamp = datetime.utcnow().timestamp()
-            dt = (timestamp - start_timestamp)
-            #print(f'wintercmd: wait time so far = {dt}')
-            if dt > timeout:
-                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested filter number = {position}, but it is {self.state["Viscam_Filter_Wheel_Position"]}')
-            
-            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == position) )
-            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-            # now replace the last element
-            stop_condition_buffer[-1] = stop_condition
-            
-            if all(entry == condition for entry in stop_condition_buffer):
-                self.logger.info(f'wintercmd: ccd_exptime set successfully. Current Exptime = {self.state["ccd_exptime"]}')
-                break 
-               
-        
+    
     @cmd
     def ccd_set_exposure(self):
         self.defineCmdParser('Set exposure time in seconds')
@@ -3852,15 +3790,17 @@ class Wintercmd(QtCore.QObject):
         while True:
             QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
+            
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
-                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+                raise TimeoutError(f'ccd_do_exposure command timed out after {timeout} seconds before completing')
             
             stop_condition = ( (self.state['ccd_doing_exposure'] == False) & (self.state['ccd_image_saved_flag']))
             #self.logger.info(f'count = {self.state["count"]}')
             #self.logger.info(f'wintercmd: ccd_doing_exposure = {self.state["ccd_doing_exposure"]}, ccd_image_saved_flag = {self.state["ccd_image_saved_flag"]}')
+            #self.logger.info(f'wintercmd: stop_condition_buffer = {stop_condition_buffer}')
             #self.logger.info('')
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -3870,6 +3810,7 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
                 break 
+           
     
     @cmd
     def ccd_do_bias(self):
