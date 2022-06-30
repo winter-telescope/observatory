@@ -52,7 +52,10 @@ class Focus_loop_v3:
         self.total_throw = total_throw
         self.nsteps = nsteps
         self.pixscale = pixscale
-        self.filter_range_nom = np.linspace(nom_focus - total_throw/2, nom_focus + total_throw/2, nsteps)
+        if nom_focus is None:
+            self.filter_range_nom = None
+        else:
+            self.filter_range_nom = np.linspace(nom_focus - total_throw/2, nom_focus + total_throw/2, nsteps)
         self.filter_range = self.filter_range_nom
         self.fitresults = dict()
     
@@ -77,19 +80,29 @@ class Focus_loop_v3:
         self.HFD_stderr_med_vcurve = self.HFD_stderr_med[cond]
         
         ml0 = -0.01
-        xc0 = self.nom_focus
+        if self.nom_focus is None:
+            xc0 = self.pos_vcurve[np.argmin(self.HFD_med_vcurve)]
+        else:
+            xc0 = self.nom_focus
         delta0 = 286
         y00 = max(self.HFD_med_vcurve)#HFD_med[0]
         print()
         print(f'y00 = {y00}')
         print()
         popt, pcov = plot_curve.Fit_FocV(self.pos_vcurve, self.HFD_med_vcurve, self.HFD_stderr_med_vcurve, ml = ml0, xc = xc0, delta = delta0, y0 = y00)
+
         
         self.mlfit = popt[0]
         self.xcfit_vcurve = popt[1]
         self.deltafit = popt[2]
         self.y0fit = popt[3]
         
+        print('V-Curve Fit Results:')
+        print(f'    ml = {self.mlfit}')
+        print(f'    xc = {self.xcfit_vcurve}')
+        print(f'    delta = {self.deltafit}')
+        print(f'    y0 = {self.y0fit}')
+        print()
         perr = np.sqrt(np.diag(pcov))
         self.xcfit_vcurve_err = perr[1]
         
@@ -100,7 +113,7 @@ class Focus_loop_v3:
         
         ####### NOW DO THE FOLLOW-UP PARABOLIC FIT TO THE FWHM #######
         
-        cond = (self.pos > self.xafit) & (self.pos < (self.xbfit)) & (self.FWHM_med > 1.5) & (self.FWHM_med < 7) #& (self.HFD_med < 6)
+        cond = (self.pos > self.xafit) & (self.pos < (self.xbfit)) & (self.FWHM_med > 0) & (self.FWHM_med < 7) #& (self.HFD_med < 6) # changed from FWHM>1.5
         self.pos_parabola = self.pos[cond]
         self.FWHM_med_parabola = self.FWHM_med[cond]
         self.FWHM_std_parabola = self.FWHM_std[cond]
@@ -613,7 +626,13 @@ if __name__ == '__main__':
     #endtime = '20220415_213056'
     #night = '20220415'
     
+    starttime = '20220630_032244'
+    endtime = '20220630_032848'
+    night = '20220629'
     
+    starttime = '20220630_031235'
+    endtime = '20220630_032020'
+    night = '20220629'
     
     datetime_start = datetime.strptime(starttime, '%Y%m%d_%H%M%S') 
     datetime_end = datetime.strptime(endtime, '%Y%m%d_%H%M%S')
@@ -635,7 +654,7 @@ if __name__ == '__main__':
              "telescope_temp_ambient": utils.getFromFITSHeader(images[0], 'TEMPAMB'), 
              "T_outside_pcs": utils.getFromFITSHeader(images[0], 'TEMPTURE')}
     pix_scale = 0.466
-    loop = Focus_loop_v3(config, nom_focus = 9800, total_throw = 300, nsteps = 5, pixscale = pix_scale, state = state)
+    loop = Focus_loop_v3(config, nom_focus = None, total_throw = 300, nsteps = 5, pixscale = pix_scale, state = state)
 
     
     
@@ -667,3 +686,12 @@ if __name__ == '__main__':
     
     
     
+    fig, axes = plt.subplots(2,1, figsize = (8,8))
+    
+    axes[0].plot(loop.pos, loop.HFD_med, 'o')
+    axes[0].set_ylabel('HFD (arcsec)')
+    axes[0].set_xlabel('Position (microns)')
+    
+    axes[1].plot(loop.pos, loop.FWHM_med, 'o')
+    axes[1].set_ylabel('FWHM (arcsec)')
+    axes[1].set_xlabel('Position (microns)')
