@@ -3,7 +3,7 @@
 	"queue_description": "summer_reference_fallback",
 	"queue_manager": "greedy",
 	"observing_programs": [
-		{"program_name": "Palomar",
+		{"program_name": "Engineering",
 		 "subprogram_name": "reference_building_summer",
 		 "program_pi": "Lourie",
          "program_observing_fraction": 1.0,
@@ -13,7 +13,7 @@
 		 "filter_ids": [7],
 		 "internight_gap_days": 1,
 		 "n_visits_per_night": 1,
-		 "dither": "N",
+		 "dither": 1,
 		 "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":10},
 		 "active_months": "all"}
 	]

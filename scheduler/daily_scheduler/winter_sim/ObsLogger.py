@@ -61,6 +61,12 @@ class ObsLogger(object):
          # rename progName to subprogram 
         if 'progName' in self.history.columns:
             self.history.rename(columns = {'progName':'subprogram'}, inplace = True)
+         # rename ra and dec keywords from history as needed
+        if 'raDeg' in self.history.columns:
+            self.history.rename(columns = {'raDeg':'fieldRA'}, inplace = True)
+        if 'decDeg' in self.history.columns:
+            self.history.rename(columns = {'decDeg':'fieldDec'}, inplace = True)
+            
         
         self.log_tonight = pd.read_sql('Summary', self.engine)
         
@@ -137,19 +143,19 @@ class ObsLogger(object):
             # create table
             self.conn.execute("""
             CREATE TABLE Summary(
-            obsHistID         INTEGER PRIMARY KEY,
-            requestID INTEGER,
-            progID INTEGER,
-            progName         TEXT,
-            fieldID      INTEGER,
-            fieldRA      REAL,
-            fieldDec      REAL,
+            obsHistID          INTEGER PRIMARY KEY,
+            requestID          INTEGER,
+            progID             INTEGER,
+            progName           TEXT,
+            fieldID            INTEGER,
+            raDeg              REAL,
+            decDeg             REAL,
             filter             TEXT,
             expDate            INTEGER,
             expMJD             REAL,
             validStart         REAL,
             validStop          REAL, 
-            dither             TEXT,
+            ditherNumber       INTEGER,
             night              INTEGER,
             visitTime          REAL,
             visitExpTime       REAL,
@@ -174,7 +180,7 @@ class ObsLogger(object):
             fiveSigmaDepth     REAL,
             totalRequestsTonight INTEGER,
             metricValue        REAL,
-            programPI          TEXT,
+            progPI             TEXT,
             observed           INTEGER
             )""")
 
@@ -194,12 +200,14 @@ class ObsLogger(object):
             for program in q.observing_programs:
                 if program.subprogram_name == request['target_subprogram_name']:
                     pi = program.program_pi
-                    record['programPI'] = program.program_pi
-                    record['dither'] = program.dither
+                    record['progPI'] = program.program_pi
+                    record['ditherNumber'] = program.dither
         
         record['fieldID'] = request['target_field_id']
-        record['fieldRA'] = np.radians(request['target_ra'])
-        record['fieldDec'] = np.radians(request['target_dec'])
+        record['raDeg'] = request['target_ra']
+        record['decDeg'] = request['target_dec']
+#        record['fieldRA'] = np.radians(request['target_ra'])
+#        record['fieldDec'] = np.radians(request['target_dec'])
 #        record['altitude'] = np.radians(request['target_alt'])
 #        record['azimuth'] = np.radians(request['target_az'])
 
@@ -230,8 +238,8 @@ class ObsLogger(object):
             'target_exposure_time'].to(u.second).value
 
         # compute some values we will need
-        sc = coord.SkyCoord(record['fieldRA'] * u.radian,
-                            record['fieldDec'] * u.radian)
+        sc = coord.SkyCoord(np.radians(record['raDeg']) * u.radian,
+                            np.radians(record['decDeg']) * u.radian)
         altaz = skycoord_to_altaz(sc, exposure_start)
 
         if 'current_zenith_seeing' in state:
@@ -292,8 +300,8 @@ class ObsLogger(object):
         record['sunAz'] = sun_altaz.az.to(u.radian).value
         
         if self.prev_obs is not None:
-            sc_prev = coord.SkyCoord(self.prev_obs['fieldRA'] * u.radian,
-                                     self.prev_obs['fieldDec'] * u.radian)
+            sc_prev = coord.SkyCoord(np.radians(self.prev_obs['raDeg']) * u.radian,
+                                     np.radians(self.prev_obs['decDeg']) * u.radian)
             record['slewDist'] = sc.separation(sc_prev).to(u.radian).value
             record['slewTime'] = (record['expDate'] -
                                   (self.prev_obs['expDate'] +

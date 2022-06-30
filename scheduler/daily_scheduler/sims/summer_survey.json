@@ -4,7 +4,7 @@
         "queue_description": "SUMMER Overhead Survey",
         "queue_manager": "gurobi",
 	"observing_programs": [
-		{"program_name": "SUMMER",
+		{"program_name": "Survey",
 		 "subprogram_name": "all_sky",
 		 "program_pi": "WINTER",
 		 "program_observing_fraction": 1.0,
@@ -16,7 +16,7 @@
 		 "internight_gap_days": 3,
 		 "n_visits_per_night": 4,
 		 "nightly_priority": "oldest",
-		 "dither": "Y",
+		 "dither": 5,
 		 "active_months": "all"}
 	]
 }
