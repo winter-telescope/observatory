@@ -76,7 +76,7 @@ from utils import utils
 from daemon import daemon_utils
 from focuser import summerFocusLoop
 from alerts import alert_handler
-from viscam.web_request import short_circ
+#from viscam.web_request import short_circ
 from control.roboOperator import TargetError
 # GLOBAL VARS
 
@@ -961,9 +961,114 @@ class Wintercmd(QtCore.QObject):
         cmd = f'mount_goto_ra_dec_j2000 {j2000_ra_hours} {j2000_dec_deg}'
         self.parse(cmd)
     
-    def mount_dither_arcsec(self):
-        """Usage: mount_dither <axis> <arcmin> """
+    
+    def mount_dither_arcsec_radec(self):
+        """Usage: mount_dither_arcsec_radec <ra_dist_arcsec> <dec_dist_arcsec>"""
+        
+        self.defineCmdParser('dither the mount by some arcseconds in ra and dec')
+        self.cmdparser.add_argument('dist', nargs = 2, type = float, action = None,
+                                    help = '<ra_dist_arcsec> <dec_dist_arcsec>')
+        self.getargs()
+        ra_dist_arcsec = self.args.dist[0]
+        dec_dist_arcsec = self.args.dist[1]
+        
+        # Get the start coordinates
+        ra0_j2000_hours = self.state['mount_ra_j2000_hours']
+        dec0_j2000_deg = self.state['mount_dec_j2000_deg']
+        start = astropy.coordinates.SkyCoord(ra = ra0_j2000_hours*u.hour, dec = dec0_j2000_deg*u.deg)
+        
+        # figure out where to go
+        offset_ra = ra_dist_arcsec *u.arcsecond
+        offset_dec = dec_dist_arcsec * u.arcsecond
+        end = start.spherical_offsets_by(offset_ra, offset_dec)
+        ra_j2000_hours_goal = end.ra.hour
+        dec_j2000_deg_goal = end.dec.deg
+        
+        # calculate the literal difference required by PWI4 mount_offset
+        ra_delta_arcsec = end.ra.arcsecond - start.ra.arcsecond
+        dec_delta_arcsec = end.dec.arcsecond - start.dec.arcsecond
+        
+        # what is the total angular 3d distance to travel?
+        sep = start.separation(end)
+        
+        if True:
+            self.logger.info(f'executing dither: RA Dist = {ra_dist_arcsec:.6f}, Dec Dist = {dec_dist_arcsec:.6f}')
+            self.logger.info(f'executing dither: RA Dist = {ra_dist_arcsec:.6f}, Dec Dist = {dec_dist_arcsec:.6f}')
+            self.logger.info(f'literal differences to pass to PWI4 mount_offset')
+            self.logger.info(f'tra delta  = {ra_delta_arcsec:>10.6f} arcsec')
+            self.logger.info(f'dec delta = {dec_delta_arcsec:>10.6f} arcsec')
+    
+            self.logger.info(f'RA/Dec Coords: Start --> Finish')
+            self.logger.info(f'ra : {start.ra.hour:>10.6f} --> {end.ra.hour:>10.6f} (hour)')
+            self.logger.info(f'dec: {start.dec.deg:>10.6f} --> {end.dec.deg:>10.6f} (deg)')
+            self.logger.info(f'separation = {sep.arcsecond:0.6f} arcsec')
+        
+        if ra_dist_arcsec != 0.0:
+            self.parse(f'mount_offset add_arcsec ra {ra_dist_arcsec}')
+        
+        time.sleep(0.5)
+        if dec_dist_arcsec != 0.0:
+            self.parse(f'mount_offset add_arcsec dec {dec_dist_arcsec}')
+        
+        # now check to make sure it got to the right place
+        threshold_arcsec = 1.0
+        # wait for the dist to target to be low and the ra/dec near what they're meant to be
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 60.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            #print('entering loop')
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            
+            #print(f"alt dist to target = {abs(self.state['mount_alt_dist_to_target'])}")
+            #print(f"az dist to target  = {abs(self.state['mount_az_dist_to_target'])}")
+            dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < threshold_arcsec) & (abs(self.state['mount_alt_dist_to_target']) < threshold_arcsec) )
+           
+            ra_dist_hours = abs(self.state['mount_ra_j2000_hours'] - ra_j2000_hours_goal)
+            ra_dist_arcsec = ra_dist_hours * (360/24.0) * 3600.0
+            #print(f'ra dist to target = {ra_dist_arcsec:.2f} arcsec')
+            ra_in_range = (ra_dist_arcsec < threshold_arcsec)
+            
+            dec_dist_deg = abs(self.state['mount_dec_j2000_deg'] - dec_j2000_deg_goal)
+            dec_dist_arcsec = dec_dist_deg * 3600.0
+            #print(f'dec dist to target = {dec_dist_arcsec:.2f} arcsec')
+            dec_in_range = (dec_dist_arcsec < threshold_arcsec)
+            
+            stop_condition = (dist_to_target_low and ra_in_range and dec_in_range)
+            
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                break    
+            if dt > timeout:
+                msg = f'wintercmd: mount dither timed out after {timeout} seconds before completing: ra_dist_arcsec = {ra_dist_arcsec}, dec_dist_arcsec = {dec_dist_arcsec}, '
+                msg += f"dist to target arcsec (alt, az) = ({self.state['mount_az_dist_to_target']}, {self.state['mount_alt_dist_to_target']}"
+                self.logger.info(msg)
+                self.alertHandler.slack_log(msg)
+                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+        self.logger.info(f'Mount Offset complete')
+        
+            
+    
+    def mount_offset_arcsec(self):
+        """Usage: mount_offset <axis> <arcmin> """
         # this is a handy wrapper around the more complicated mount_offset function below
+        
+        
         
         self.defineCmdParser('dither the mount in the specified axis by the specified arcminutes')
         self.cmdparser.add_argument('axis',
@@ -1068,7 +1173,7 @@ class Wintercmd(QtCore.QObject):
                 self.logger.info(msg)
                 self.alertHandler.slack_log(msg)
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
-        self.logger.info(f'Mount Dither complete')
+        self.logger.info(f'Mount Offset complete')
     
     @cmd
     def mount_dither(self):
@@ -1537,8 +1642,62 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def doFocusLoop(self):
         self.defineCmdParser('do a focus loop with current filter')
-        sigcmd = signalCmd('do_focusLoop')
         
+        # ADD AN OPTIONAL PATH COMMAND. 
+
+        self.cmdparser.add_argument('-c', '--center',
+                                    nargs = 1,
+                                    action = None,
+                                    default = 'here',
+                                    help = "<center_of_sweep>")
+        
+        self.cmdparser.add_argument('-t', '--throw',
+                                    nargs = 1,
+                                    type = float,
+                                    action = None,
+                                    default = -1,
+                                    help = "<total_throw>")
+        
+        self.cmdparser.add_argument('-n', '--nsteps',
+                                    nargs = 1,
+                                    type = int,
+                                    default = -1,
+                                    action = None,
+                                    help = "<number_of_steps>")
+        #def do_focusLoop(self, nom_focus = 'last', total_throw = 'default', nsteps = 'default',
+        self.getargs()
+        
+        print(self.args)
+        if type(self.args.center) is str:
+            center = self.args.center
+        else:
+            center = float(self.args.center[0])
+        if type(self.args.throw) is int:
+            throw = self.args.throw
+        else:
+            throw = self.args.throw[0]
+        if type(self.args.nsteps) is int:
+            nsteps = self.args.nsteps
+        else:
+            nsteps = self.args.nsteps[0]
+        
+        print(f'center = {center}, type(center) = {type(center)}')
+        
+        if center == 'here':
+            center = self.state['focuser_position']
+        
+        if throw == -1:
+            throw = 'default'
+        
+        if nsteps == -1:
+            nsteps = 'default'
+        
+        
+        print(f'running focus loop with center = {center}, throw = {throw}, nsteps = {nsteps}')
+        
+        
+        sigcmd = signalCmd('do_focusLoop', nom_focus = center, total_throw = throw, nsteps = nsteps)
+
         self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
@@ -3452,22 +3611,29 @@ class Wintercmd(QtCore.QObject):
 
         self.getargs()
         shutter_cmd = self.args.shutter_cmd[0]
-        self.viscam.send_shutter_command(shutter_cmd)
+        sigcmd = signalCmd('send_shutter_command', shutter_cmd)
+        self.viscam.newCommand.emit(sigcmd)
+        #self.viscam.send_shutter_command(shutter_cmd)
 
     @cmd
-    def command_filter_wheel_int(self):
+    def command_filter_wheel(self):
         self.defineCmdParser('Command viscam filter wheel')
                   
-        self.cmdparser.add_argument('fw_cmd',
+        self.cmdparser.add_argument('fw_pos',
               nargs = 1,
+              type = int,
               action = None,
-              help = '<fw_cmd_int>')
+              help = '<fw_pos_int>')
 
         self.getargs()
-        fw_cmd = self.args.fw_cmd[0]
-        self.viscam.send_filter_wheel_command(fw_cmd)
+        fw_pos = self.args.fw_pos[0]
         
-        fw_num = int(fw_cmd)
+        sigcmd = signalCmd('command_filter_wheel',
+                           pos = fw_pos)
+        
+        self.viscam.newCommand.emit(sigcmd)
+        
+        #fw_num = int(fw_cmd)
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -3487,7 +3653,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 raise TimeoutError(f'unable to move viscam filter wheel: command timed out after {timeout} seconds before completing.')
             
-            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == fw_num) )
+            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == fw_pos) )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -3496,76 +3662,7 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f'wintercmd: successfully completed viscam filter wheel move')
                 break 
-        
-    @cmd
-    def command_filter_wheel(self):
-        self.defineCmdParser('Command viscam filter wheel')
-                  
-        self.cmdparser.add_argument('fw_cmd',
-              nargs = 1,
-              action = None,
-              help = '<fw_cmd_int>')
-        
-        self.getargs()
-        fw_cmd = self.args.fw_cmd[0]
-        #self.viscam.send_filter_wheel_command(fw_cmd)
-        
-        position = int(fw_cmd)
-            
-        # if moving filter wheel
-        if position < 8:
-            # check where it is now
-            last_pos = self.state['Viscam_Filter_Wheel_Position']
-                
-            if short_circ(position-1, last_pos-1) >= 0: # zero index 
-                # if the shortest path for the filter wheel is the positive 
-                # or zero, do normal command
-                self.parse(f'command_filter_wheel_int {position}')
-        
-            else:            
-                # else, force it to go long way
-                # the longest, short distance is 3, so start by adding  +3
-                new_pos = int(fmod(last_pos + 3, 7)) # modulo 7 positions
-                if new_pos == 0:
-                    new_pos = 7 # modulo workaround
-                #print("intermediate new position: " , int(new_pos))
-                self.parse(f'command_filter_wheel_int {new_pos}')
-                # then go to final position
-                self.parse(f'command_filter_wheel_int {position}')
-        
-        else:   
-            # if not, query normally
-            self.parse(f'command_filter_wheel_int {position}')
-       
-        ## Wait until end condition is satisfied, or timeout ##
-        condition = True
-        timeout = 30
-        # create a buffer list to hold several samples over which the stop condition must be true
-        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
-
-        # get the current timestamp
-        start_timestamp = datetime.utcnow().timestamp()
-        while True:
-            QtCore.QCoreApplication.processEvents()
-            time.sleep(self.config['cmd_status_dt'])
-            timestamp = datetime.utcnow().timestamp()
-            dt = (timestamp - start_timestamp)
-            #print(f'wintercmd: wait time so far = {dt}')
-            if dt > timeout:
-                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested filter number = {position}, but it is {self.state["Viscam_Filter_Wheel_Position"]}')
-            
-            stop_condition = ( (self.state['Viscam_Filter_Wheel_Position'] == position) )
-            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-            # now replace the last element
-            stop_condition_buffer[-1] = stop_condition
-            
-            if all(entry == condition for entry in stop_condition_buffer):
-                self.logger.info(f'wintercmd: ccd_exptime set successfully. Current Exptime = {self.state["ccd_exptime"]}')
-                break 
-               
-        
+    
     @cmd
     def ccd_set_exposure(self):
         self.defineCmdParser('Set exposure time in seconds')
@@ -3693,15 +3790,17 @@ class Wintercmd(QtCore.QObject):
         while True:
             QtCore.QCoreApplication.processEvents()
             time.sleep(self.config['cmd_status_dt'])
+            
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
-                raise TimeoutError(f'command timed out after {timeout} seconds before completing')
+                raise TimeoutError(f'ccd_do_exposure command timed out after {timeout} seconds before completing')
             
             stop_condition = ( (self.state['ccd_doing_exposure'] == False) & (self.state['ccd_image_saved_flag']))
             #self.logger.info(f'count = {self.state["count"]}')
             #self.logger.info(f'wintercmd: ccd_doing_exposure = {self.state["ccd_doing_exposure"]}, ccd_image_saved_flag = {self.state["ccd_image_saved_flag"]}')
+            #self.logger.info(f'wintercmd: stop_condition_buffer = {stop_condition_buffer}')
             #self.logger.info('')
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -3711,6 +3810,7 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
                 break 
+           
     
     @cmd
     def ccd_do_bias(self):

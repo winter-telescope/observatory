@@ -15,14 +15,14 @@ this is a module for setting up the winter logging
 # system packages
 import sys
 import os
-import numpy as np
+#import numpy as np
 import time
-from datetime import datetime
-from PyQt5 import uic, QtCore, QtGui, QtWidgets
+#from datetime import datetime
+#from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import pathlib
-from labjack import ljm
+#from labjack import ljm
 import logging
-import pathlib
+#import pathlib
 """
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
