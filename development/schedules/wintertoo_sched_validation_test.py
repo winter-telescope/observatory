@@ -15,6 +15,8 @@ import sqlalchemy as db
 schedulepaths = [os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_schedule.lnk')),
                  os.path.join(os.getenv("HOME"), 'data','schedules','ToO','timed_requests_06_08_2022_12_1654715434_.db')]
 
+schedulepaths = [os.path.join(os.getenv("HOME"), 'data', 'schedules', 'nightly_20220629.db')]
+
 for schedulepath in schedulepaths:
     engine = db.create_engine('sqlite:///'+schedulepath)
     

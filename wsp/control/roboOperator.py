@@ -31,7 +31,7 @@ import pytz
 import pandas as pd
 import sqlalchemy as db
 
-import wintertoo
+import wintertoo.validate
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -317,6 +317,8 @@ class RoboOperator(QtCore.QObject):
         self.programID = 0
         self.qcomment = ''
         self.targtype = ''
+        self.targname = ''
+        
         
         
         ### CONNECT SIGNALS AND SLOTS ###
@@ -431,14 +433,19 @@ class RoboOperator(QtCore.QObject):
                   'target_dec_j2000_deg',
                   #'lastSeen',
                   'obsHistID',
-                  'fieldID',
+                  'priority',
                   'operator',
                   'obstype',     
                   'programPI',
                   'programID',
-                  'programName',
+                  'progName',
                   'qcomment',
                   'targtype',
+                  'targName',
+                  'maxAirmass',
+                  'ditherNumber',
+                  'ditherStepSize',
+                  'fieldID',
                   'observatory_stowed',
                   'observatory_ready',
                   ]
@@ -838,8 +845,18 @@ class RoboOperator(QtCore.QObject):
                 conn = engine.connect()
                 df = pd.read_sql('SELECT * FROM summary;',conn)
                 df['origin_filename'] = too_file
-                full_df = pd.concat([full_df,df])
+                
                 conn.close()
+                
+                # now validate the scheudle. if valid, add to list of schedules.
+                try:
+                    wintertoo.validate.validate_schedule_df(df)
+                    full_df = pd.concat([full_df,df])
+                
+                except Exception as e:
+                    too_filename = os.path.basename(os.path.normpath(too_file))
+                    self.log(f'skipping TOO schedule {too_filename}, schema not valid: {e}')
+                    
             
             # now sort by priority (highest to lowest)
             full_df = full_df.sort_values(['Priority'],ascending=False)
@@ -2297,38 +2314,33 @@ class RoboOperator(QtCore.QObject):
                 # borks up the housekeeping and the dirfile and is a big fat mess
                 #self.lastSeen = currentObs['obsHistID']
                 self.obsHistID = int(currentObs['obsHistID'])
-                self.fieldID = int(currentObs.get('fieldID', 999999999))
+                self.ra_deg_scheduled = float(currentObs['raDeg'])
+                self.dec_deg_scheduled = float(currentObs['decDeg'])
+                self.filter_scheduled = str(currentObs['filter'])
+                self.visitExpTime = float(currentObs['visitExptime'])
+                self.targetPriority = float(currentObs['priority'])
+                self.programPI = currentObs.get('progPI','')
                 self.programID = int(currentObs.get('progID', -1))
-                self.programPI = currentObs.get('programPI','')
                 self.programName = currentObs.get('progName','')
+
+                self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
                 
-                #self.requestID = currentObs['requestID']
-                #self.alt_scheduled = float(self.schedule.currentObs['altitude'])
-                #self.az_scheduled = float(self.schedule.currentObs['azimuth'])
                 
+                """ 
                 self.ra_radians_scheduled = float(currentObs['fieldRA'])
                 self.dec_radians_scheduled = float(currentObs['fieldDec'])
                 
                 self.alt_deg_scheduled = float(currentObs['altitude'])
                 self.az_deg_scheduled = float(currentObs['azimuth'])            
-                
+                """
                 # convert ra and dec from radians to astropy objects
-                self.j2000_ra_scheduled = astropy.coordinates.Angle(self.ra_radians_scheduled * u.rad)
-                self.j2000_dec_scheduled = astropy.coordinates.Angle(self.dec_radians_scheduled * u.rad)
+                self.j2000_ra_scheduled = astropy.coordinates.Angle(self.ra_deg_scheduled * u.deg)
+                self.j2000_dec_scheduled = astropy.coordinates.Angle(self.dec_deg_scheduled * u.deg)
                 
                 # get the target RA (hours) and DEC (degs) in units we can pass to the telescope
                 self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
                 self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
                 
-                
-                # get the filter
-                self.filter_scheduled = currentObs['filter']
-                # handle bad filter name 'g' for the moment
-                #TODO: fix this when the filter name in the scheduler is fixed
-                """
-                if self.filter_scheduled == 'g':
-                    self.filter_scheduled = 'u'
-                """
                 # calculate the current Alt and Az of the target 
                 if self.sunsim:
                     obstime_mjd = self.ephem.state.get('mjd',0)
