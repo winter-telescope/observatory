@@ -481,7 +481,7 @@ if __name__ == '__main__':
     
     #schedule.loadSchedule(os.path.join(schedulefile_dir, schedulefile_name))
     #schedule.loadSchedule('nightly')
-    schedule.loadSchedule('nightly_20220630.db')
+    schedule.loadSchedule('nightly')
     #schedule.loadSchedule(None)
     
     # reset the schedule to fully unobserved

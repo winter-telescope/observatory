@@ -73,7 +73,18 @@ obslog_database_name: 'WINTER_ObsLog' #.db is implied
 # dither table
 # base directory is wsp path
 dither_file: 'config/dither_list.conf'
-
+dither_defaults:
+# for each camera specifiy:
+# ditherNumber (number of dithers to do)
+# ditherStepSize (box width for random dither to be selected from)
+    camera:
+        summer:
+            ditherNumber: 5
+            ditherStepSize: 7
+        winter:
+            ditherNumber: 5
+            ditherStepSize: 7
+    
 
 
 

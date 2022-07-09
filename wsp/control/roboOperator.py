@@ -374,7 +374,7 @@ class RoboOperator(QtCore.QObject):
         
         # set up poll status thread
         self.updateThread = data_handler.daq_loop(func = self.update_state, 
-                                                       dt = 1000,
+                                                       dt = 500,
                                                        name = 'robo_status_update'
                                                        )
         
@@ -841,23 +841,95 @@ class RoboOperator(QtCore.QObject):
             full_df = pd.DataFrame()
             # add all the ToOs
             for too_file in ToOscheduleFiles:
-                engine = db.create_engine('sqlite:///'+too_file)
-                conn = engine.connect()
-                df = pd.read_sql('SELECT * FROM summary;',conn)
-                df['origin_filename'] = too_file
-                
-                conn.close()
-                
-                # now validate the scheudle. if valid, add to list of schedules.
                 try:
+                    ### try to read in the SQL file
+                    engine = db.create_engine('sqlite:///'+too_file)
+                    conn = engine.connect()
+                    df = pd.read_sql('SELECT * FROM summary;',conn)
+                    df['origin_filename'] = too_file
+                    conn.close()
+                
+                    ### if we were able to load and query the SQL db, check to make sure the schema are correct
                     wintertoo.validate.validate_schedule_df(df)
+                    
+                    ### if the schema were correct, make cuts based on observability
+                    # Note: if we don't do this we can end up in a situation where do_Observation will reject an 
+                    #       observation, but this will keep submitting it and we'll get stuck in a useless loop
+                    # select only targets within their valid start and stop times
+                    df = df.loc[(obstime_mjd >= df['validStart']) & (obstime_mjd<= df['validStop'])]
+                    
+                    # if the maxAirmass is not specified, add it in
+                    if 'maxAirmass' not in df:
+                        default_max_airmass = 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)
+                        df['maxAirmass'] = default_max_airmass
+                        
+                    # calculate the current airmass of all targets
+                   
+                    obstime_astropy = astropy.time.Time(obstime_mjd, format = 'mjd')
+                    
+                    
+                    frame = astropy.coordinates.AltAz(
+                                                        obstime = obstime_astropy,
+                                                        location = self.ephem.site)
+                    
+                    j2000_coords = astropy.coordinates.SkyCoord(ra = df['raDeg']*u.deg, dec = df['decDeg']*u.deg, frame = 'icrs')
+                    local_coords = j2000_coords.transform_to(frame)
+                    local_alt_deg = local_coords.alt.deg
+                    local_az_deg = local_coords.az.deg
+                    airmass = 1/np.cos((90 - local_alt_deg)*np.pi/180.0)
+                    df['currentAirmass'] = airmass
+                    df['currentAltDeg'] = local_alt_deg
+                    df['currentAzDeg'] = local_az_deg
+                    
+                    # make a cut based on airmass
+                    df = df.loc[(df['currentAirmass'] < df['maxAirmass']) & (df['currentAirmass'] > 0)]                    
+                    
+                    # do a cut on max altitude also to make sure we don't point too high
+                    df = df.loc[df['currentAltDeg'] < self.config['telescope']['max_alt']]
+                    
+                    # calculate whether each target will be too close to ephemeris at the current obstime
+                    bodies_inview = np.array([])
+                    bodies = list(self.config['ephem']['min_target_separation'].keys())
+                    for i in range(len(bodies)):
+                        
+                        body = bodies[i]
+                        mindist = self.config['ephem']['min_target_separation'][body]
+                        
+                        body_loc = astropy.coordinates.get_body(body, time = obstime_astropy, location = self.ephem.site)
+                        body_coords = body_loc.transform_to(frame)
+                        body_alt = body_coords.alt
+                        body_az = body_coords.az
+                        
+                        dist = np.array(((df['currentAzDeg'] - body_az.deg)**2 + (df['currentAltDeg'] - body_alt.deg)**2)**0.5)
+                        
+                        # make a list of whether the body is in view for each target
+                        body_inview = dist<mindist
+                        
+                        # now make a big array of all bodies and all targets
+                        if i == 0:
+                            bodies_inview = body_inview
+                        else:
+                            bodies_inview = np.vstack((bodies_inview, body_inview))
+                        
+                        # now collapse the array of bodies and targests so it's just a list of targets and w
+                        # wheather there are ANY bodies in view
+                        ephem_inview = np.any(bodies_inview, axis = 0)
+                    
+                    # add the ephem in view to the dataframe
+                    df['ephem_inview'] = ephem_inview
+                    
+                    # make a cut on only targets without ephemeris in the way
+                    df = df.loc[df['ephem_inview'] is False]
+                    
+                    # now add the schedule to the master TOO list
                     full_df = pd.concat([full_df,df])
                 
                 except Exception as e:
                     too_filename = os.path.basename(os.path.normpath(too_file))
                     self.log(f'skipping TOO schedule {too_filename}, schema not valid: {e}')
                     
-            
+                        
+            # now do the sorting
             # now sort by priority (highest to lowest)
             full_df = full_df.sort_values(['Priority'],ascending=False)
             
@@ -2263,43 +2335,35 @@ class RoboOperator(QtCore.QObject):
             return
         
         
-        # first get the dither parameters. put this first so we can set up the for loop through the dithers below
-        # set up the dithers
-        dither_scheduled = currentObs['dither']
-        #print(f'dither_scheduled = {dither_scheduled}')
-        if dither_scheduled.lower() == 'n':
-            self.do_dithers = False
+        # first grab some fields from the currentObs
+        # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which 
+        # borks up the housekeeping and the dirfile and is a big fat mess
+        self.obsHistID = int(currentObs['obsHistID'])
+        self.ra_deg_scheduled = float(currentObs['raDeg'])
+        self.dec_deg_scheduled = float(currentObs['decDeg'])
+        self.filter_scheduled = str(currentObs['filter'])
+        self.visitExpTime = float(currentObs['visitExptime'])
+        self.targetPriority = float(currentObs['priority'])
+        self.programPI = str(currentObs.get('progPI',''))
+        self.programID = int(currentObs.get('progID', -1))
+        self.programName = str(currentObs.get('progName',''))
+        self.validStart = float(currentObs.get('validStart'))
+        self.validStop = float(currentObs.get('validStop'))
+        # self.observed is managed elsewhere
+        # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
+        self.maxAirmass = float(currentObs.get('maxAirmass', 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)))
+        self.num_dithers = int(currentObs.get('ditherNumber', self.config['dither_defaults'][self.cam]['ditherNumber']))
+        self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults'][self.cam]['ditherStepSize']))
+        self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
+        self.targetName = str(currentObs.get('targName', ''))
+        self.qcomment = str(currentObs.get('origin_filename', ''))
+        # if num_dithers = 0, you'll get no images... so change it to 1
+        if self.num_dithers == 0:
             self.num_dithers = 1
-            
-        elif dither_scheduled.lower() == 'y':
-            self.do_dithers = True
-            # set the dithers to the default
-            ditherfile_path = self.default_ditherfile_path
-            dither_ra_arcsec = self.default_dither_ra_arcsec
-            dither_dec_arcsec = self.default_dither_dec_arcsec
-            
-            # insert a zero dither at the beginning of the list:
-            dither_ra_arcsec = np.insert(dither_ra_arcsec, 0, 0.0)
-            dither_dec_arcsec = np.insert(dither_dec_arcsec, 0, 0.0)
-            
-            self.num_dithers = len(dither_ra_arcsec)
-        else:
-            ditherfile_path = os.path.join(os.getenv("HOME"), dither_scheduled)
-            if os.path.exists(ditherfile_path):
-                self.do_dithers = True
-                dither_ra_arcsec, dither_dec_arcsec = np.loadtxt(ditherfile_path, unpack = True)
-                
-                # insert a zero dither at the beginning of the list:
-                dither_ra_arcsec = np.insert(dither_ra_arcsec, 0, 0.0)
-                dither_dec_arcsec = np.insert(dither_dec_arcsec, 0, 0.0)
-                
-                self.num_dithers = len(dither_ra_arcsec)
-            else:
-                self.do_dithers = False
-                self.num_dithers = 1
         
-        
-        
+        # calculate individual exposure time
+        self.exptime = self.visitExpTime/self.num_dithers
+
         # put the dither for loop here:
         for dithnum in range(self.num_dithers):
             
@@ -2309,21 +2373,7 @@ class RoboOperator(QtCore.QObject):
             # for each dither, execute the observation
             if self.running & self.ok_to_observe:
                 
-                # grab some fields from the currentObs
-                # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which 
-                # borks up the housekeeping and the dirfile and is a big fat mess
-                #self.lastSeen = currentObs['obsHistID']
-                self.obsHistID = int(currentObs['obsHistID'])
-                self.ra_deg_scheduled = float(currentObs['raDeg'])
-                self.dec_deg_scheduled = float(currentObs['decDeg'])
-                self.filter_scheduled = str(currentObs['filter'])
-                self.visitExpTime = float(currentObs['visitExptime'])
-                self.targetPriority = float(currentObs['priority'])
-                self.programPI = currentObs.get('progPI','')
-                self.programID = int(currentObs.get('progID', -1))
-                self.programName = currentObs.get('progName','')
-
-                self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
+                # all the stuff where we got observation attributes was here but moving out
                 
                 
                 """ 
@@ -2359,10 +2409,7 @@ class RoboOperator(QtCore.QObject):
                 
                 # print out to the slack log a bunch of info (only once per target)
                 if dithnum == 0:
-                    #msg = f'Executing observation of obsHistID = {self.lastSeen}'
                     msg = f'Executing observation of obsHistID = {self.obsHistID}'
-                    #self.qcomment = f'obsHistID = {self.lastSeen}, requestID = {self.requestID}'
-                    self.qcomment = f'obsHistID = {self.obsHistID}'#', requestID = {self.requestID}'
                     self.announce(msg)
                     self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
                     
@@ -2370,7 +2417,6 @@ class RoboOperator(QtCore.QObject):
                     
                     self.announce(f'>> Target Current (ALT, AZ) = ({self.local_alt_deg} deg, {self.local_az_deg} deg)')
                 
-                if self.do_dithers:
                     self.announce(f'>> Executing Dither Number [{dithnum +1}/{self.num_dithers}]')
                 
                 # Do the observation
@@ -2379,15 +2425,15 @@ class RoboOperator(QtCore.QObject):
                 system = 'observation'
                 try:
                     
-                    # now dither the RA and DEC axes (don't do for dithnum = 0, that's the nominal pointing)
-                    if dithnum > 0:
+                    if self.ditherStepSize > 0.0:
                         
-                        self.do(f'mount_dither_arcsec ra {dither_ra_arcsec[dithnum]}')
-                        self.do(f'mount_dither_arcsec dec {dither_dec_arcsec[dithnum]}')
+                        ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-self.ditherStepSize, self.ditherStepSize, 2)
+
+                        self.do(f'mount_dither_arcsec ra {ra_dist_arcsec}')
+                        self.do(f'mount_dither_arcsec dec {dec_dist_arcsec}')
                     
                     # 3: trigger image acquisition
-                    #NPL 1-19-22 re-adding chopping up exposure time by number of dithers
-                    self.exptime = float(currentObs['visitExpTime'])/self.num_dithers
+                    
                     self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
                     
                     # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
@@ -2413,18 +2459,12 @@ class RoboOperator(QtCore.QObject):
                             self.log(f'current filter = {self.state["Viscam_Filter_Wheel_Position"]}, changing to {filter_num}')
                             self.do(f'command_filter_wheel {filter_num}')
                     
-                    time.sleep(0.5)
-                    
-                    # do the observation. what we do depends on if we're in test mode
-                    #self.announce(f'dither [{dithnum+1}/{self.num_dithers}]')
 
                     if dithnum == 0:
                         if self.test_mode:
                             self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
-                            #self.do(f'robo_observe_altaz {self.alt_deg_scheduled} {self.az_deg_scheduled}')
-                            self.do(f'robo_observe altaz {self.alt_deg_scheduled} {self.az_deg_scheduled} --test')
+                            self.do(f'robo_observe altaz {self.local_alt_deg} {self.local_az_deg} --test')
                         else:
-                            #self.do(f'robo_observe_radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
                             self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science')
                         
                         
@@ -2498,61 +2538,7 @@ class RoboOperator(QtCore.QObject):
             
         # if we got here, then we are out of the loop, either because we did all the dithers, or there was a problem
         self.checkWhatToDo()
-    '''
-    def gotoNext(self): 
-        # NPL 12-16-21: this is now deprecated.
-        
-        
-        #TODO: NPL 4-30-21 not totally sure about this tree. needs testing
-        self.check_ok_to_observe(logcheck = True)
-        if not self.ok_to_observe:
-            # if it's not okay to observe, then restart the robo loop to wait for conditions to change
-            if self.running:
-                # if the robo operator is running then restart, if not just pass
-                self.restart_robo()
-            else:
-                pass
-            return
-            
-        if self.schedule.currentObs is not None and self.running:
-            """self.logger.info('robo: logging observation')
-            
-            
-            if self.state["ok_to_observe"]:
-                    image_filename = str(self.lastSeen)+'.FITS'
-                    image_filepath = os.path.join(self.writer.base_directory, self.config['image_directory'], image_filename) 
-                    # self.telescope_mount.virtualcamera_take_image_and_save(imagename)
-                    header_data = self.get_data_to_log()
-                    # self.state.update(currentData)
-                    # data_to_write = {**self.state}
-                    #data_to_write = {**self.state, **header_data} ## can add other dictionaries here
-                    #self.writer.log_observation(data_to_write, imagename)
-                    self.writer.log_observation(header_data, image_filepath)"""
-            
-            # get the next observation
-            self.announce('getting next observation from schedule database')
-            self.schedule.gotoNextObs()
-            
-            # do the next observation and continue the cycle
-            self.do_currentObs()
-            
-        else:  
-            if self.schedule.currentObs is None:
-                self.logger.info('robo: in log and goto next, but either there is no observation to log.')
-            elif self.running == False:
-                self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
-                self.rotator_stop_and_reset()
-            
-            
-            """
-            # don't want to do this if we just paused the schedule. need to figure that out, mauybe move it to a new shutdown method?
-            if not self.schedulefile_name is None:
-                self.logger.info('robo: no more observations to execute. shutting down connection to schedule and logging databases')
-                ## TODO: Code to close connections to the databases.
-                self.schedule.closeConnection()
-                self.writer.closeConnection()
-            """
-    '''           
+    
     def log_observation_and_gotoNext(self, gotoNext = True, logObservation = True):
         #self.logger.info(f'robo: image timer finished, logging observation with option gotoNext = {gotoNext}')
         """
@@ -2577,23 +2563,8 @@ class RoboOperator(QtCore.QObject):
                     self.schedule.log_observation()
                     self.logger.info('robo: logging observation')
                 
-                """
-                image_directory, image_filename = self.ccd.getLastImagePath()
-                image_filepath = os.path.join(image_directory, image_filename)
-            
-                header_data = self.get_data_to_log(currentObs)
-                
-                if not self.test_mode:
-                    # don't log if we're in test mode.
-                    #self.writer.log_observation(header_data, image_filepath)
-                    if logObservation:
-                        self.schedule.log_observation()
-                
-                else:
-                    self.log(f"in test mode, so won't actually log_observation")
-                """
             else:  
-                if currentObs is None:
+                if self.schedule.currentObs is None:
                     self.logger.info('robo: in log and goto next, but there is no observation to log.')
                 elif self.running == False:
                     self.logger.info("robo: in log and goto next, but I caught a stop signal so I won't do anything")
