@@ -758,6 +758,9 @@ class RoboOperator(QtCore.QObject):
                         self.checktimer.start()
                         return
             
+            # here we should check if the temperature has changed by some amount and nudge the focus if need be
+            
+            
             #---------------------------------------------------------------------
             # check if we should reboot the SUMMER accessories
             #---------------------------------------------------------------------
@@ -1896,6 +1899,10 @@ class RoboOperator(QtCore.QObject):
             elif nom_focus == 'default':
                 nom_focus = self.config['filters'][self.cam][filterID]['nominal_focus']
             
+            elif nom_focus == 'model':
+                # put the model here
+                pass
+            
             if total_throw == 'default':
                 #total_throw = self.config['focus_loop_param']['total_throw']
                 total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
@@ -2193,7 +2200,7 @@ class RoboOperator(QtCore.QObject):
         return x0_fit
     
     
-    def do_focus_sequence(self, filterIDs = 'active', focusType = 'default'):
+    def do_focus_sequence(self, filterIDs = 'reference', focusType = 'default'):
         """
         run a focus loop for each of the filters specified
         
@@ -2205,8 +2212,14 @@ class RoboOperator(QtCore.QObject):
         
         
         if filterIDs == 'active':
+            # focus in all the active filters, eg all the filters installed
             filterIDs = self.focusTracker.getActiveFilters()
-        
+            
+        elif filterIDs == 'reference':
+            # focus in the reference filters specified in focus_loop_param
+            filterIDs = self.config['focus_loop_param']['filters'][self.cam]
+            
+            
         self.announce(f'running focus loops for filters: {filterIDs}')
         
         for filterID in filterIDs:
@@ -2239,10 +2252,11 @@ class RoboOperator(QtCore.QObject):
                 """
                 #elif self.focus_attempt_number == 1:
                 #if self.focus_attempt_number < self.config['focus_loop_param']['max_focus_attempts']:
-                total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
-                nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
+                total_throw = self.config['focus_loop_param']['sweep_param']['narrow']['total_throw']
+                nsteps = self.config['focus_loop_param']['sweep_param']['narrow']['nsteps']
                 #nom_focus = 'default'
-                nom_focus = 'last'
+                #nom_focus = 'last'
+                nom_focus = 'model'
                 focusType = 'Vcurve'
                 """
                 else:

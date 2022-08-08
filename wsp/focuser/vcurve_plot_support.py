@@ -64,7 +64,7 @@ if __name__ == '__main__':
     #pos_fit = results['vcurve_fit']['fit_data']['x']
     #HFD_fit = results['vcurve_fit']['fit_data']['y']
     
-   
+    xc_initial_guess = results['vcurve_fit']['param']['xc_initial_guess']
     xc      = results['vcurve_fit']['param']['xc']
     xc_err  = results['vcurve_fit']['param']['xc_err']
     ml      = results['vcurve_fit']['param']['ml']
@@ -73,9 +73,13 @@ if __name__ == '__main__':
     y0      = results['vcurve_fit']['param']['y0']
     delta      = results['vcurve_fit']['param']['delta']
     
+    if xc_initial_guess is not None:
+        xc_diff_from_model = abs(xc_initial_guess - xc)
+    
     pos_fit = np.linspace(9500, 10500, 1000)
     HFD_fit = plot_curve.FocV(pos_fit, ml, xc, delta, y0, return_x = False)
     
+    """
     # load up the parabolic fit data
     xc_par  = results['parabolic_fit']['param']['xc']
     xc_par_err = results['parabolic_fit']['param']['xc_err']
@@ -89,44 +93,51 @@ if __name__ == '__main__':
     
     pos_par_fit = np.linspace(min(pos_par), max(pos_par), 1000)
     FWHM_fit = plot_curve.parabola(pos_par_fit, xc_par, A, B)
-    
+    """
     results_plot_filename = results_filepath.split('/')[-1].strip('.json')
     results_plot_filepath = os.path.join(results_log_dir, results_plot_filename+'.png')
     starttime_string = results_plot_filename.strip('focusResults_')
     
-    df = np.abs(xc - xc_par)
-    title = f'Focus = [{xc:.0f} +/- {df:.0f}] micron ({100*df/xc:.0f}%)'
-    title += f'\nBest FWHM (est): {FWHM_at_xc:.2f} arcsec'
-
+    #df = np.abs(xc - xc_par)
+    title = f'{results["telemetry"]["filterID"]}-band: '
+    title+= f'Focus Best Fit = {xc:.0f}'
+    #title+='Focus = [{xc:.0f} +/- {xc_err:.0f}] micron ({100*xc_err/xc:.0f}%)'
+    if xc_initial_guess is not None:
+        title+= f'\nThermal Model = {xc_initial_guess:.0f}, $\Delta$ = {xc_diff_from_model:.0f}'
+    
+    #title += f'\nBest FWHM (est): {FWHM_at_xc:.2f} arcsec'
+    
     try:
         title = title + f'\n{starttime_string}'
     except:
         pass
     
     
-    fig, axes = plt.subplots(2,1, figsize = (8,8))
-    
-    ax = axes[0]
-    #ax = axes
+    #fig, axes = plt.subplots(2,1, figsize = (8,8))
+    #ax = axes[0]
+    fig, axes = plt.subplots(1,1, figsize = (8,4))
+    ax = axes
     ### Upper plot: V-curve fit to HFD ###
     ax.errorbar(pos, HFD_med, yerr = HFD_stderr_med, fmt = 'ko', capsize = 5, capthick = 2, label = 'data')
     ax.set_title(title)
     ax.plot(pos_fit, HFD_fit, '-', label = f'V-Curve Fit')
-    xmin = 9200
-    xmax = 10500
-    ax.set_xlim(xmin, xmax)
+    #xmin = 9200
+    #xmax = 10500
+    #ax.set_xlim(xmin, xmax)
     ax.set_ylabel('HFD [arcsec]')
     ax.set_xlabel('Focuser Position [micron]')
     yline = np.linspace(-10, 10, 100)
     #xc_label = f'xc = [{xc:.0f} +/- {xc_err:.0f}] ({100*xc_err/xc:.0f}%)'
     xc_label = f'xc = {xc:.0f}'
     ax.plot(xc+0*yline, yline, 'r--', label = xc_label)
+    if xc_initial_guess is not None:
+        ax.plot(xc_initial_guess+0*yline, yline, 'g--', label = f'xc thermal model = {xc_initial_guess:.0f}')
 
     
     ax.legend(fontsize = 8)
 
     ax.set_ylim(0,6)
-    
+    """
     ### Lower plot: parabolic fit to FWHM ###
     ax = axes[1]
     ax.errorbar(pos_par, FWHM, yerr = FWHM_err, fmt = 'ko', capsize = 5, capthick = 2, label = 'data')
@@ -138,7 +149,7 @@ if __name__ == '__main__':
     xc_label = f'xc = {xc_par:.0f}'
     ax.plot(xc+0*yline, yline, 'r--', label = xc_label)
     ax.legend(fontsize = 8)
-    
+    """
     
     
     
