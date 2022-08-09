@@ -1041,7 +1041,9 @@ class RoboOperator(QtCore.QObject):
         
         delta_rot_angle = np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs'])
         min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
-        conds.append( min_delta_rot_angle < 10.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
+        conds.append( min_delta_rot_angle < 15.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
+        # NPL 8-9-22 these days it is sagging to ~38 for whatever reason
+        
         
         # make sure the motors are off
         conds.append(self.state['mount_alt_is_enabled'] == False)
