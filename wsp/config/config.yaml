@@ -602,7 +602,7 @@ filters:
         i:
             name: "SDSS i'"
             nominal_focus: 9960
-            active: False
+            active: True
             focus_exptime: 10
     winter:
         J:

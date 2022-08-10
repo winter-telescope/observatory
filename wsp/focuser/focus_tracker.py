@@ -228,17 +228,19 @@ class FocusTracker(object):
         
         
         
-    def updateFilterFocus(self, filterID, focus_pos, timestamp):
+    def updateFilterFocus(self, filterID, focus_pos, timestamp = 'now'):
         """
         update the filter focus log with new results (eg after running a focus loop)
         need to include the filterID, the focus position in microns, and the timestamp (UTC)
         of the observation
         """
+        if timestamp == 'now':
+            timestamp = datetime.now(tz = pytz.UTC).timestamp()
         # if the filterID is in active filters, then grab the info from there
         if filterID in self.active_filters:
             name = self.active_filters[filterID].get('name', None)
             cam = self.active_filters[filterID].get('cam', None)
-            nominal_focus = self.active_filters[filterID].get('nominal_focus', None)
+            #nominal_focus = self.active_filters[filterID].get('nominal_focus', None)
         else:
             filter_entry = dict()
             # if the filterID is not in active filters, then we have to go rooting through config for it's properties
@@ -249,7 +251,7 @@ class FocusTracker(object):
             
             name = filter_entry.get('name', None)
             cam = filter_entry.get('cam', None)
-            nominal_focus = filter_entry.get('nominal_focus', None)
+            #nominal_focus = filter_entry.get('nominal_focus', None)
         
         # try to update the actual time from the timestamp
         try:
@@ -263,7 +265,7 @@ class FocusTracker(object):
         # now update the filter entry in the focus_log
         self.focus_log.update({filterID: {  'name' :                name,
                                             'cam' :                 cam,
-                                            'nominal_focus' :       nominal_focus,
+                                            #'nominal_focus' :       nominal_focus,
                                             'last_focus' :          focus_pos,
                                             'last_focus_timestamp_utc': timestamp,
                                             'last_focus_time_local':      local_datetime_str
@@ -272,7 +274,23 @@ class FocusTracker(object):
        
         # now update the focus log file
         self.updateFocusLogFile()
-       
+        
+    def loadFocusModel(self, model_dict = 'default'):
+        """
+        Load a dictionary of a focus model. 
+        """
+        if model_dict == 'default':
+            focus_model_info_filepath = os.path.join(os.getenv("HOME"), config['focus_loop_param']['results_log_parent_dir'],
+                                                     config['focus_loop_param']['focus_model_params'])
+            
+    
+    def updateModeledFocus(self, temp, timestamp = 'now'):
+        """
+        Update the model-derived focus for all filters based on the input temperature
+        """
+        if timestamp == 'now':
+            timestamp = datetime.now(tz = pytz.UTC).timestamp()
+            
     def printFocusLog(self):
         print('Focus Log: ', json.dumps(focusTracker.focus_log, indent = 2))
         
@@ -309,7 +327,7 @@ if __name__ == '__main__':
     print(f'updating the focus position of filter {filterID} to {focus_pos}, timestamp = {timestamp}')
 
     focusTracker.updateFilterFocus(filterID, focus_pos, timestamp)    
-    
+    '''
     print()
     filterID = 'u'
     focus_pos = random.randint(9000, 11000)
@@ -321,17 +339,8 @@ if __name__ == '__main__':
     
     print()
     focusTracker.printFocusLog()
-    """
-    print()
-    print(f'updating a random filter name')
-    
-    filterID = f'filter{random.randint(0,50)}'
-    focusTracker.updateFilterFocus(filterID, focus_pos, timestamp)    
-    
-    print()
-    focusTracker.printFocusLog()
-    """
-    '''
+ 
+ 
     
     
     
