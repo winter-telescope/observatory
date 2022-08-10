@@ -612,7 +612,7 @@ class RoboOperator(QtCore.QObject):
                 
                 else:
                     # dome is closed.
-                    self.alertHandler.slack_log(f'the dome shutter is not reporting open, it says: dome.Shutter_Status = {"self.dome.Shutter_Status"}')
+                    self.alertHandler.slack_log(f'the dome shutter is not reporting open, it says: dome.Shutter_Status = {self.dome.Shutter_Status}')
                     self.ok_to_observe = False
                     return
                     
