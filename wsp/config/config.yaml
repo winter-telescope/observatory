@@ -575,12 +575,12 @@ filters:
         g:
             name: "SDSS g'"
             nominal_focus: 9960
-            active: False
+            active: True
             focus_exptime: 10
         r:
             name: "SDSS r'"
             nominal_focus: 9960
-            active: True
+            active: False
             focus_exptime: 10
         i:
             name: "SDSS i'"
