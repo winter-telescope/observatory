@@ -619,7 +619,7 @@ class RoboOperator(QtCore.QObject):
                 
                 else:
                     # dome is closed.
-                    self.alertHandler.slack_log(f'the dome shutter is not reporting open, it says: dome.Shutter_Status = {"self.dome.Shutter_Status"}')
+                    self.alertHandler.slack_log(f'the dome shutter is not reporting open, it says: dome.Shutter_Status = {self.dome.Shutter_Status}')
                     self.ok_to_observe = False
                     return
                     
@@ -1597,7 +1597,10 @@ class RoboOperator(QtCore.QObject):
                             self.log(f'setting up flat #{i + 1}')
                     
                             # estimate required exposure time
-                            flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
+                            if filterID == 'g':
+                                flat_exptime = 40000/(1.14e8 * (-1*self.state["sun_alt"] ** -6.2))
+                            else:
+                                flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
                             
                             
                             
