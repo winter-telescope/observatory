@@ -2138,7 +2138,7 @@ class RoboOperator(QtCore.QObject):
                 obstime_timestamp_utc = datetime.now(tz = pytz.UTC).timestamp()
             
             # now analyze the data (rate the images and load the observed filterpositions)
-            x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
+            x0_fit = loop.analyzeData(focuser_pos, images)
             
             loop.plot_focus_curve(timestamp_utc = obstime_timestamp_utc)
             
@@ -2146,10 +2146,10 @@ class RoboOperator(QtCore.QObject):
             #print(f'x0_fit = {x0_fit}, type(x0_fit) = {type(x0_fit)}')
             #print(f'x0_err = {x0_err}, type(x0_err) = {type(x0_err)}')
             
-            self.announce(f'Fit Results: x0 = [{x0_fit:.0f} +/- {x0_err:.0f}] microns ({(x0_err/x0_fit*100):.0f}%)')
+            #self.announce(f'Fit Results: x0 = [{x0_fit:.0f} +/- {x0_err:.0f}] microns ({(x0_err/x0_fit*100):.0f}%)')
             
             # validate that the fit was good enough
-            if x0_err > self.config['focus_loop_param']['focus_error_max']:
+            if False: #x0_err > self.config['focus_loop_param']['focus_error_max']:
                 self.announce(f'FIT IS TOO BAD. Returning to nominal focus')
                 self.do(f'm2_focuser_goto {nom_focus}')
                 self.focus_attempt_number +=1 
@@ -3213,7 +3213,13 @@ class RoboOperator(QtCore.QObject):
         # how many points are there to do?
         npoints = len(self.pointingModelBuilder.altaz_points)
         
-        for i in np.arange(firstpoint-1, npoints, 1):
+        # make a list of all the points to step through
+        indices = np.arange(firstpoint-1, npoints, 1)
+        
+        # randomly shuffle the indices so that we slowly fill out a full model in random order
+        np.random.shuffle(indices)
+        
+        for i in indices:
             altaz_point = self.pointingModelBuilder.altaz_points[i]
             target_alt = altaz_point[0]
             target_az  = altaz_point[1]

@@ -178,13 +178,15 @@ def plotFITSdata(CCDData, printinfo = False, xmin = None, xmax = None, ymin = No
 #%%
 #data_directory = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'tonight_images.lnk'))
 # evening skyflats
-data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20210817')
+data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20220810')
+#data_directory = os.path.join('/data', 'images','20210817')
 
 #image_path = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
-image_path = '/home/winter/data/images/20210817/SUMMER_20210816_235912_Camera0.fits'
+#image_path = '/home/winter/data/images/20210817/SUMMER_20210816_235912_Camera0.fits'
 
 imlist = glob.glob(os.path.join(data_directory, '*.fits'))
 
+extra_image = '/home/winter/data/images/20220810/SUMMER_20220810_201621_Camera0.fits'
 
 #%%
 images = []
@@ -201,7 +203,7 @@ for image_path in imlist:
         biases.append(ccd)
         
     
-
+flats.append(astropy.nddata.CCDData.read(extra_image, unit = 'adu'))
 #%%
         
 def powerLaw(x, a, n):
@@ -213,31 +215,42 @@ medcnts = []
 exptimes = []
 
 bias_medcnts = []
+
         
 for flat in flats:
     #plotFITSdata(flat, printinfo = False, xmax = 2048, ymax = 2048, hist = False)
     #plt.figure()
     #plt.imshow(flat.data)
+    filt = flat.header["FILTERID"]
+    if filt == 'g':
+        sunalt.append(flat.header["SUNALT"])
+        medcnts.append(np.median(flat.data))
+        exptimes.append(flat.header["EXPTIME"])
     
-    sunalt.append(flat.header["SUNALT"])
-    medcnts.append(np.median(flat.data))
-    exptimes.append(flat.header["EXPTIME"])
-    pass
 
 for bias in biases:
     bias_medcnts.append(np.median(bias.data))
 
 meanbias = np.mean(bias_medcnts)
 
+"""
 i_outlier = 7
 del sunalt[i_outlier]
 del medcnts[i_outlier]
 del exptimes[i_outlier]
+"""
 
 sunalt = np.array(sunalt)
 medcnts = np.array(medcnts) 
 #medcnts -= meanbias
 exptimes = np.array(exptimes)
+
+max_sunalt = -5
+
+medcnts = medcnts[sunalt<max_sunalt]
+exptimes = exptimes[sunalt<max_sunalt]
+sunalt = sunalt[sunalt<max_sunalt]
+
 """
 sunalt = sunalt[exptimes>6]
 medcnts = medcnts[exptimes>6]
@@ -265,7 +278,7 @@ plt.plot(xfit, powerlaw_yfit, 'r-', label = label)
 plt.xlabel('Sun Altitude (deg)')
 plt.ylabel('Count Rate (counts/s)')
 plt.legend()
-#%%
+
 target_counts = 40000
 maxtime = 60
 times = target_counts/countrate

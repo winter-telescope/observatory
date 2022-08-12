@@ -653,7 +653,7 @@ pointing_model:
         min_az: 5
         max_az: 355
     # current default pointing model to use
-    pointing_model_file: 'pointing_model_20220311.pxp'
+    pointing_model_file: 'pointing_model_20220810.pxp'
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
     default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'

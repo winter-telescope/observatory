@@ -62,6 +62,7 @@ import requests
 from astropy.coordinates import SkyCoord
 import warnings
 import subprocess
+import pathlib
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1607,7 +1608,7 @@ class Wintercmd(QtCore.QObject):
     def mount_model_save(self):
         """
         Created: NPL 2-4-21
-        #TODO: untested
+        Saves to ~/Documents/PlaneWave Instrumenmts/PWI4/Mount
         """
         self.defineCmdParser('save the current pointing model to the specified file')
         self.cmdparser.add_argument('filename',
@@ -1617,6 +1618,11 @@ class Wintercmd(QtCore.QObject):
         
         self.getargs()
         filename = self.args.filename[0]
+        # make sure the extension is .pxp
+        filePath = pathlib.Path(filename)
+        extension = filePath.suffix
+        if extension != '.pxp':
+            filename = filePath.with_suffix('.pxp')
         self.telescope.mount_model_save(filename)
 
     @cmd
