@@ -208,7 +208,7 @@ class FocusTracker(object):
             
         graceperiod_seconds = graceperiod_hours*3600
         # step through the active filters and decide what needs to be re-run
-        for filterID in self.active_filters:
+        for filterID in self.focus_filters:
             last_focus_timestamp_utc = self.focus_log[filterID]['last_focus_timestamp_utc']
             
             if last_focus_timestamp_utc is None:
@@ -341,7 +341,7 @@ if __name__ == '__main__':
     focusTracker.printFocusLog()
  
  
-    
+    focusTracker.getFiltersToFocus(obs_timestamp = timestamp, graceperiod_hours = 6)
     
     
     

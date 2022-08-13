@@ -20,8 +20,8 @@ ra0_j2000_hours = ra.hour
 dec0_j2000_deg = dec.deg
 """
 
-ra0_j2000_hours = 5.32#14.623094
-dec0_j2000_deg = 46#-2.1017299
+ra0_j2000_hours = 13.26334
+dec0_j2000_deg = 42.033334
 
 #axis = 'dec'
 #arcsec = 10
@@ -177,7 +177,7 @@ print(f' \tra : {a.ra.hour:>10.6f} --> {b.ra.hour:>10.6f} (hour)')
 print(f' \tdec: {a.dec.deg:>10.6f} --> {b.dec.deg:>10.6f} (deg)')
 print(f' \tseparation = {sep.arcsecond:0.6f} arcsec')
 
-
+print()
 #%% get distances for a random dither
 dither_step_size = 7.5
 ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-dither_step_size, dither_step_size, 2)

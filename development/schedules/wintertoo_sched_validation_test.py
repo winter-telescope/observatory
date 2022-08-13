@@ -26,7 +26,7 @@ from utils import utils
 from ephem import ephem_utils
 
 schedulepaths = [os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_schedule.lnk')),
-                 os.path.join(os.getenv("HOME"), 'data','schedules','ToO','timed_requests_06_08_2022_12_1654715434_.db')]
+                 os.path.join(os.getenv("HOME"), 'data','schedules','ToO','timed_requests_08_12_2022_14_1660339301_.db')]
 
 schedulepaths = [os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_schedule.lnk'))]
 
@@ -79,6 +79,7 @@ for schedulepath in schedulepaths:
         
     frame = astropy.coordinates.AltAz(obstime = obstime_utc, location = site)
     j2000_coords = astropy.coordinates.SkyCoord(ra = df['raDeg']*u.deg, dec = df['decDeg']*u.deg, frame = 'icrs')
+
     local_coords = j2000_coords.transform_to(frame)
     local_alt_deg = local_coords.alt.deg
     local_az_deg = local_coords.az.deg

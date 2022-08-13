@@ -989,6 +989,8 @@ class Wintercmd(QtCore.QObject):
         ra_delta_arcsec = end.ra.arcsecond - start.ra.arcsecond
         dec_delta_arcsec = end.dec.arcsecond - start.dec.arcsecond
         
+        ra_delta_arcsec_from_current = ra_delta_arcsec - self.state["mount_offsets_ra_arcsec_total"]
+        dec_delta_arcsec_from_current = dec_delta_arcsec - self.state["mount_offsets_dec_arcsec_total"]
         # what is the total angular 3d distance to travel?
         sep = start.separation(end)
         
@@ -996,8 +998,8 @@ class Wintercmd(QtCore.QObject):
             self.logger.info(f'executing dither: RA Dist = {ra_dist_arcsec:.6f}, Dec Dist = {dec_dist_arcsec:.6f}')
             self.logger.info(f'executing dither: RA Dist = {ra_dist_arcsec:.6f}, Dec Dist = {dec_dist_arcsec:.6f}')
             self.logger.info(f'literal differences to pass to PWI4 mount_offset')
-            self.logger.info(f'tra delta  = {ra_delta_arcsec:>10.6f} arcsec')
-            self.logger.info(f'dec delta = {dec_delta_arcsec:>10.6f} arcsec')
+            self.logger.info(f'ra delta   = {ra_delta_arcsec:>10.6f} arcsec ({ra_delta_arcsec/60.0:>6.3f} arcmin)')
+            self.logger.info(f'dec delta = {dec_delta_arcsec:>10.6f} arcsec ({dec_delta_arcsec/60.0:>6.3f} arcmin)')
     
             self.logger.info(f'RA/Dec Coords: Start --> Finish')
             self.logger.info(f'ra : {start.ra.hour:>10.6f} --> {end.ra.hour:>10.6f} (hour)')
@@ -1005,11 +1007,11 @@ class Wintercmd(QtCore.QObject):
             self.logger.info(f'separation = {sep.arcsecond:0.6f} arcsec')
         
         if ra_dist_arcsec != 0.0:
-            self.parse(f'mount_offset add_arcsec ra {ra_dist_arcsec}')
+            self.parse(f'mount_offset ra add_arcsec {ra_delta_arcsec_from_current}')
         
         time.sleep(0.5)
         if dec_dist_arcsec != 0.0:
-            self.parse(f'mount_offset add_arcsec dec {dec_dist_arcsec}')
+            self.parse(f'mount_offset dec add_arcsec {dec_delta_arcsec_from_current}')
         
         # now check to make sure it got to the right place
         threshold_arcsec = 1.0
@@ -1034,14 +1036,17 @@ class Wintercmd(QtCore.QObject):
             
             #print(f"alt dist to target = {abs(self.state['mount_alt_dist_to_target'])}")
             #print(f"az dist to target  = {abs(self.state['mount_az_dist_to_target'])}")
-            dist_to_target_low = ( (not self.state['mount_is_slewing']) & (abs(self.state['mount_az_dist_to_target']) < threshold_arcsec) & (abs(self.state['mount_alt_dist_to_target']) < threshold_arcsec) )
+            dist_to_target_low = ((not self.state['mount_is_slewing'])
+                                      and (abs(self.state['mount_az_dist_to_target']) < threshold_arcsec)
+                                      and (abs(self.state['mount_alt_dist_to_target']) < threshold_arcsec)
+                                  )
            
-            ra_dist_hours = abs(self.state['mount_ra_j2000_hours'] - ra_j2000_hours_goal)
+            ra_dist_hours = abs(self.state['mount_ra_j2000_hours'] - end.ra.hour)
             ra_dist_arcsec = ra_dist_hours * (360/24.0) * 3600.0
             #print(f'ra dist to target = {ra_dist_arcsec:.2f} arcsec')
             ra_in_range = (ra_dist_arcsec < threshold_arcsec)
             
-            dec_dist_deg = abs(self.state['mount_dec_j2000_deg'] - dec_j2000_deg_goal)
+            dec_dist_deg = abs(self.state['mount_dec_j2000_deg'] - end.dec.deg)
             dec_dist_arcsec = dec_dist_deg * 3600.0
             #print(f'dec dist to target = {dec_dist_arcsec:.2f} arcsec')
             dec_in_range = (dec_dist_arcsec < threshold_arcsec)
@@ -1063,8 +1068,24 @@ class Wintercmd(QtCore.QObject):
                 raise TimeoutError(f'command timed out after {timeout} seconds before completing')
         self.logger.info(f'Mount Offset complete')
         
-            
-    
+    def mount_random_dither_arcsec(self):
+        """Usage: mount_random_dither <boxwidth>"""        
+        self.defineCmdParser("execute a random dither from within a ra-dec box of half-witdh <boxwidth> arcseconds")
+        
+        self.cmdparser.add_argument('boxwidth',
+                                    type = float,
+                                    action = None,
+                                    help = "box halfwidth in arcseconds",
+                                    )
+        self.getargs()
+        
+        boxwidth = self.args.boxwidth
+
+        ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-boxwidth, boxwidth, 2)
+        
+        self.parse(f'mount_dither_arcsec_radec {ra_dist_arcsec} {dec_dist_arcsec}')
+        
+        
     def mount_offset_arcsec(self):
         """Usage: mount_offset <axis> <arcmin> """
         # this is a handy wrapper around the more complicated mount_offset function below

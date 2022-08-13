@@ -597,7 +597,7 @@ filters:
         r:
             name: "SDSS r'"
             nominal_focus: 9960
-            active: False
+            active: True
             focus_exptime: 10
         i:
             name: "SDSS i'"
@@ -653,7 +653,7 @@ pointing_model:
         min_az: 5
         max_az: 355
     # current default pointing model to use
-    pointing_model_file: 'pointing_model_20220810.pxp'
+    pointing_model_file: 'pointing_model_20220811.pxp'
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
     default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'
@@ -1117,28 +1117,28 @@ fields:
         units: 'arcsec'
         dtype: float64
         rate: hk
-        var: telescope.state["mount.ra_arcsec.total"]
+        var: telescope.state["mount.offsets.ra_arcsec.total"]
     mount_offsets_ra_arcsec_rate:
         ftype: raw
         label: 'RA'
         units: 'arcsecps'
         dtype: float64
         rate: hk
-        var: telescope.state["mount.ra_arcsec.rate"]
+        var: telescope.state["mount.offsets.ra_arcsec.rate"]
     mount_offsets_dec_arcsec_total:
         ftype: raw
         label: 'Dec'
         units: 'arcsec'
         dtype: float64
         rate: hk
-        var: telescope.state["mount.dec_arcsec.total"]
+        var: telescope.state["mount.offsets.dec_arcsec.total"]
     mount_offsets_dec_arcsec_rate:
         ftype: raw
         label: 'RA'
         units: 'arcsecps'
         dtype: float64
         rate: hk
-        var: telescope.state["mount.dec_arcsec.rate"]
+        var: telescope.state["mount.offsets.dec_arcsec.rate"]
     
     # axis0 = AZ
     mount_az_is_enabled:

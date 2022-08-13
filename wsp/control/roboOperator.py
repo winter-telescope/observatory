@@ -742,7 +742,7 @@ class RoboOperator(QtCore.QObject):
                 pass
             else:
                 filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, graceperiod_hours = graceperiod_hours)
-            
+                
                 # here is a good place to insert a good check on temperature change,
                 # or even better a check on FWHM of previous images
             
@@ -764,6 +764,7 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # check if we should reboot the SUMMER accessories
             #---------------------------------------------------------------------
+            """
             #TODO: 4-19-22 clean this up and make it less hard coded and sucky
             dt_hr_since_last_reboot = self.SUMMERrebootTracker.getHoursSinceLastReboot()
             if dt_hr_since_last_reboot > self.config['viscam_accessories_reboot_param']['reboot_graceperiod_hours']:
@@ -788,7 +789,7 @@ class RoboOperator(QtCore.QObject):
                 # now wait for a bit and check the status again
                 self.waitAndCheck(2*60)
                 return
-                
+            """    
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
@@ -846,6 +847,7 @@ class RoboOperator(QtCore.QObject):
             for too_file in ToOscheduleFiles:
                 try:
                     ### try to read in the SQL file
+                    self.log(f'validating too_file = {too_file}')
                     engine = db.create_engine('sqlite:///'+too_file)
                     conn = engine.connect()
                     df = pd.read_sql('SELECT * FROM summary;',conn)
@@ -874,8 +876,14 @@ class RoboOperator(QtCore.QObject):
                     frame = astropy.coordinates.AltAz(
                                                         obstime = obstime_astropy,
                                                         location = self.ephem.site)
-                    
+                    self.log('made the frame ?')
+                    print('RA')
+                    print(df['raDeg'])
+                    print('DEC')
+                    print(df['decDeg'])
                     j2000_coords = astropy.coordinates.SkyCoord(ra = df['raDeg']*u.deg, dec = df['decDeg']*u.deg, frame = 'icrs')
+                    self.log('made the j2000 coords?')
+
                     local_coords = j2000_coords.transform_to(frame)
                     local_alt_deg = local_coords.alt.deg
                     local_az_deg = local_coords.az.deg
@@ -930,24 +938,27 @@ class RoboOperator(QtCore.QObject):
                 except Exception as e:
                     too_filename = os.path.basename(os.path.normpath(too_file))
                     self.log(f'skipping TOO schedule {too_filename}, schema not valid: {e}')
-                    
+                    self.log(traceback.format_exc())
                         
-            # now do the sorting
-            # now sort by priority (highest to lowest)
-            full_df = full_df.sort_values(['Priority'],ascending=False)
             
-            # now sort by validStop (earliest to latest)
-            full_df = full_df.sort_values(['validStop'],ascending=True)
-            
-            # save the dataframe to csv for realtime reference
-            rankedSummary = full_df[['obsHistID', 'Priority', 'validStop', 'origin_filename']]
-            rankedSummary.to_csv(os.path.join(os.getenv("HOME"), 'data', 'Valid_ToO_Observations_Ranked.csv'))
             
             if len(full_df) == 0:
                 # there are no valid schedule files. break out to the handling at the bottom
                 pass
             
             else:
+                
+                # now do the sorting
+                # now sort by priority (highest to lowest)
+                full_df = full_df.sort_values(['priority'],ascending=False)
+                
+                # now sort by validStop (earliest to latest)
+                full_df = full_df.sort_values(['validStop'],ascending=True)
+                
+                # save the dataframe to csv for realtime reference
+                rankedSummary = full_df[['obsHistID', 'priority', 'validStop', 'origin_filename']]
+                rankedSummary.to_csv(os.path.join(os.getenv("HOME"), 'data', 'Valid_ToO_Observations_Ranked.csv'))
+                
                 # the best target is the first one in this sorted pandas dataframe
                 currentObs = dict(full_df.iloc[0])
                 scheduleFile = currentObs['origin_filename']
@@ -1598,11 +1609,14 @@ class RoboOperator(QtCore.QObject):
                     
                             # estimate required exposure time
                             if filterID == 'g':
-                                flat_exptime = 40000/(1.14e8 * (-1*self.state["sun_alt"] ** -6.2))
+                                #flat_exptime = 40000/(1.14e8 * (-1*self.state["sun_alt"] ** -6.2))
+                                a = 75.08
+                                n = -1.31
                             else:
-                                flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
-                            
-                            
+                                #flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
+                                a = 73.40
+                                n = -1.23
+                            flat_exptime = 40000/(np.exp(a*(-1*self.state["sun_alt"] ** n)))
                             
                             minexptime = 2.5 + i
                             maxexptime = 60
@@ -2361,7 +2375,7 @@ class RoboOperator(QtCore.QObject):
         self.ra_deg_scheduled = float(currentObs['raDeg'])
         self.dec_deg_scheduled = float(currentObs['decDeg'])
         self.filter_scheduled = str(currentObs['filter'])
-        self.visitExpTime = float(currentObs['visitExptime'])
+        self.visitExpTime = float(currentObs['visitExpTime'])
         self.targetPriority = float(currentObs['priority'])
         self.programPI = str(currentObs.get('progPI',''))
         self.programID = int(currentObs.get('progID', -1))
@@ -2371,8 +2385,8 @@ class RoboOperator(QtCore.QObject):
         # self.observed is managed elsewhere
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
         self.maxAirmass = float(currentObs.get('maxAirmass', 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)))
-        self.num_dithers = int(currentObs.get('ditherNumber', self.config['dither_defaults'][self.cam]['ditherNumber']))
-        self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults'][self.cam]['ditherStepSize']))
+        self.num_dithers = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.cam]['ditherNumber']))
+        self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.cam]['ditherStepSize']))
         self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
         self.targetName = str(currentObs.get('targName', ''))
         self.qcomment = str(currentObs.get('origin_filename', ''))
@@ -2446,10 +2460,7 @@ class RoboOperator(QtCore.QObject):
                     
                     if self.ditherStepSize > 0.0:
                         
-                        ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-self.ditherStepSize, self.ditherStepSize, 2)
-
-                        self.do(f'mount_dither_arcsec ra {ra_dist_arcsec}')
-                        self.do(f'mount_dither_arcsec dec {dec_dist_arcsec}')
+                        self.do(f'mount_random_dither_arcsec {self.ditherStepSize}')
                     
                     # 3: trigger image acquisition
                     
@@ -2462,6 +2473,10 @@ class RoboOperator(QtCore.QObject):
                     else:
                         self.log(f'current exptime = {self.state["ccd_exptime"]}, changing to {self.exptime}')
                         self.do(f'ccd_set_exposure {self.exptime}')
+                    
+                    #TODO: we are currently not changing the focus based on the filter! whoopsy. add that here NPL 8-12-22
+                    # change the m2 position if we have switched filters
+                    
                     
                     # changing the filter can take a little time so only do it if the filter is DIFFERENT than the current
                     system = 'filter wheel'

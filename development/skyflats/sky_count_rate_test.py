@@ -174,19 +174,39 @@ def plotFITSdata(CCDData, printinfo = False, xmin = None, xmax = None, ymin = No
     return header, image_data
 
 
-
+def powerLaw(x, a, n):
+    y = a*x**n
+    return y
 #%%
 #data_directory = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'tonight_images.lnk'))
 # evening skyflats
-data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20220810')
-#data_directory = os.path.join('/data', 'images','20210817')
+#
 
 #image_path = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
 #image_path = '/home/winter/data/images/20210817/SUMMER_20210816_235912_Camera0.fits'
+imlist = []
+# g-band images
+gband_flats_data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20220810')
+gband_images = glob.glob(os.path.join(gband_flats_data_directory, '*.fits'))
 
-imlist = glob.glob(os.path.join(data_directory, '*.fits'))
 
-extra_image = '/home/winter/data/images/20220810/SUMMER_20220810_201621_Camera0.fits'
+gband_extra_images = ['/home/winter/data/images/20220810/SUMMER_20220810_201621_Camera0.fits',
+                '/home/winter/data/images/20220811/SUMMER_20220811_200113_Camera0.fits',
+                '/home/winter/data/images/20220811/SUMMER_20220811_200037_Camera0.fits',
+                '/home/winter/data/images/20220811/SUMMER_20220812_053812_Camera0.fits']
+imlist = imlist + gband_images
+imlist = imlist + gband_extra_images
+
+
+# r-band images
+rband_flats_data_directory = os.path.join('/data', 'images','20210817')
+rband_images = glob.glob(os.path.join(rband_flats_data_directory, '*.fits'))
+rband_extra_images = ['/home/winter/data/images/20220726/SUMMER_20220726_201910_Camera0.fits',
+                      '/home/winter/data/images/20220728/SUMMER_20220729_053343_Camera0.fits',
+                      '/home/winter/data/images/20220728/SUMMER_20220729_053429_Camera0.fits',
+                      ]
+imlist = imlist + rband_images
+#imlist = imlist + rband_extra_images
 
 #%%
 images = []
@@ -196,96 +216,124 @@ biases = []
 for image_path in imlist:
     ccd = astropy.nddata.CCDData.read(image_path, unit = 'adu')
     #images.append(ccd)
-    if ccd.header["OBSTYPE"] == "FLAT":
+    if (ccd.header["OBSTYPE"] == "FLAT") or (image_path in gband_extra_images):
         flats.append(ccd)
     
-    elif ccd.header["OBSTYPE"] == "BIAS":
-        biases.append(ccd)
-        
     
-flats.append(astropy.nddata.CCDData.read(extra_image, unit = 'adu'))
+    
 #%%
-        
-def powerLaw(x, a, n):
-    y = a*(-x)**n
-    return y
-        
-sunalt = []
-medcnts = []
-exptimes = []
 
-bias_medcnts = []
+fig, axes = plt.subplots(1,2, figsize = (12,6))
+fig.suptitle(f'Sky Flat Model', fontsize = 16)
 
-        
-for flat in flats:
-    #plotFITSdata(flat, printinfo = False, xmax = 2048, ymax = 2048, hist = False)
-    #plt.figure()
-    #plt.imshow(flat.data)
-    filt = flat.header["FILTERID"]
-    if filt == 'g':
-        sunalt.append(flat.header["SUNALT"])
-        medcnts.append(np.median(flat.data))
-        exptimes.append(flat.header["EXPTIME"])
+for filterID in ['r', 'g']:
     
+    sunalt = []
+    medcnts = []
+    exptimes = []
+    
+    bias_medcnts = []
+    
+            
+    for flat in flats:
+        #plotFITSdata(flat, printinfo = False, xmax = 2048, ymax = 2048, hist = False)
+        #plt.figure()
+        #plt.imshow(flat.data)
+        filt = flat.header["FILTERID"]
+        if filt == filterID:
+            sunalt.append(flat.header["SUNALT"])
+            medcnts.append(np.median(flat.data))
+            exptimes.append(flat.header["EXPTIME"])
+        
+    
+    for bias in biases:
+        bias_medcnts.append(np.median(bias.data))
+    
+    meanbias = np.mean(bias_medcnts)
+    
+    
+    
+    
+    sunalt = np.array(sunalt)
+    medcnts = np.array(medcnts) 
+    exptimes = np.array(exptimes)
+    
+    max_sunalt = -5
+    
+    medcnts = medcnts[sunalt<max_sunalt]
+    exptimes = exptimes[sunalt<max_sunalt]
+    sunalt = sunalt[sunalt<max_sunalt]
+    
+    if filterID == 'r':
+        sunalt = sunalt[exptimes>6]
+        medcnts = medcnts[exptimes>6]
+        exptimes = exptimes[exptimes>6]
+        
+        exptimes = exptimes[sunalt>-10]
+        medcnts = medcnts[sunalt>-10]
+        sunalt = sunalt[sunalt>-10]
+    
+        
+        sunalt = np.append(sunalt[1:3], sunalt[5:])
+        exptimes = np.append(exptimes[1:3], exptimes[5:])
+        medcnts = np.append(medcnts[1:3], medcnts[5:])
+        
+    
+    countrate = medcnts/exptimes
+    """
+    plt.figure()
+    plt.plot(medcnts, 'o')
+    plt.title('counts')
+    plt.figure()
+    plt.plot(sunalt, 'o')
+    plt.title('sunalt')
+    """
+    
+    
+    p1 = axes[0].plot(sunalt, countrate, 's')
+    color = p1[0].get_color()
+    #fit = np.polyfit(sunalt, countrate, 6)
+    #xfit = np.linspace(np.min(sunalt), np.max(sunalt), 100)
+    xfit = np.linspace(np.min(sunalt), -5, 100)
+    #yfit = np.polyval(fit, xfit)
+    #plt.plot(xfit, yfit, 'm-')
+    target_counts = 40000
+    maxtime = 60
+    times = target_counts/countrate
+    
+    if filterID in ['g', 'r']:
+        # fit an powerlaw to  -1*alt vs ln(countrate)
+        x = -1*sunalt
+        y = np.log(countrate)
+        params = scipy.optimize.curve_fit(powerLaw,x, y)[0]
+        a = params[0]
+        n = params[1]
+        model_yfit = np.exp(a*(-1*xfit)**n)
+        countrate_label = f'{filterID}-band: count rate = exp[{a:.2f}*(-sun_alt)^{n:.2f}]'
+        exptime_label = f'{filterID}-band: exptime = {target_counts} / exp[{a:.2f}*(-sun_alt)^{n:.2f}]'
+    elif filterID == 'other':
+        x = -1*sunalt
+        y = countrate
+        params = scipy.optimize.curve_fit(powerLaw, x, y)[0]
+        a = params[0]
+        n = params[1]
+        model_yfit = a*(-1*xfit)**n
+        countrate_label = f'{filterID}-band: count rate = {a:.2f}*(-sun_alt)^{n:.2f}'
+        exptime_label = f'{filterID}-band: exptime = {target_counts} / {a:.2f}*(-sun_alt)^{n:.2f}'
+    
+    axes[0].semilogy(xfit, model_yfit, '-', color = color, label = countrate_label)
 
-for bias in biases:
-    bias_medcnts.append(np.median(bias.data))
-
-meanbias = np.mean(bias_medcnts)
-
-"""
-i_outlier = 7
-del sunalt[i_outlier]
-del medcnts[i_outlier]
-del exptimes[i_outlier]
-"""
-
-sunalt = np.array(sunalt)
-medcnts = np.array(medcnts) 
-#medcnts -= meanbias
-exptimes = np.array(exptimes)
-
-max_sunalt = -5
-
-medcnts = medcnts[sunalt<max_sunalt]
-exptimes = exptimes[sunalt<max_sunalt]
-sunalt = sunalt[sunalt<max_sunalt]
-
-"""
-sunalt = sunalt[exptimes>6]
-medcnts = medcnts[exptimes>6]
-exptimes = exptimes[exptimes>6]
-
-"""
-countrate = medcnts/exptimes
-
-#sunalt = np.abs(sunalt)
-
-plt.figure()
-plt.plot(sunalt, countrate, 'ks')
-
-fit = np.polyfit(sunalt, countrate, 6)
-#xfit = np.linspace(np.min(sunalt), np.max(sunalt), 100)
-xfit = np.linspace(np.min(sunalt), -5, 100)
-yfit = np.polyval(fit, xfit)
-#plt.plot(xfit, yfit, 'm-')
-
-params = scipy.optimize.curve_fit(powerLaw,sunalt, countrate)[0]
-#%
-powerlaw_yfit = powerLaw(xfit, *params)
-label = f'rate = {params[0]:0.2e}*(-x)^{params[1]:0.2f}'
-plt.plot(xfit, powerlaw_yfit, 'r-', label = label)
-plt.xlabel('Sun Altitude (deg)')
-plt.ylabel('Count Rate (counts/s)')
-plt.legend()
-
-target_counts = 40000
-maxtime = 60
-times = target_counts/countrate
-times_fit = target_counts/powerlaw_yfit
-plt.figure()
-plt.plot(sunalt[times<maxtime], times[times<maxtime], 'ks')
-plt.plot(xfit[times_fit<maxtime], times_fit[times_fit<maxtime], 'r-')
-plt.xlabel('Sun Altitude (degs)')
-plt.ylabel(f'Req Time for {target_counts} Counts (sec)')
-
+    axes[0]
+    axes[0].set_xlabel('Sun Altitude (deg)')
+    axes[0].set_ylabel('Count Rate (counts/s)')
+    axes[0].legend(fontsize = 10)
+    
+    times_fit = target_counts/model_yfit
+    
+    p2 = axes[1].plot(sunalt[times<maxtime], times[times<maxtime], 's')
+    color = p2[0].get_color()
+    axes[1].plot(xfit[times_fit<maxtime], times_fit[times_fit<maxtime], '-', color = color, label = exptime_label)
+    axes[1].set_xlabel('Sun Altitude (degs)')
+    axes[1].set_ylabel(f'Req Time for {target_counts} Counts (sec)')
+    axes[1].legend(fontsize = 10)
+    plt.tight_layout()
