@@ -877,10 +877,10 @@ class RoboOperator(QtCore.QObject):
                                                         obstime = obstime_astropy,
                                                         location = self.ephem.site)
                     self.log('made the frame ?')
-                    print('RA')
-                    print(df['raDeg'])
-                    print('DEC')
-                    print(df['decDeg'])
+                    #print('RA')
+                    #print(df['raDeg'])
+                    #print('DEC')
+                    #print(df['decDeg'])
                     j2000_coords = astropy.coordinates.SkyCoord(ra = df['raDeg']*u.deg, dec = df['decDeg']*u.deg, frame = 'icrs')
                     self.log('made the j2000 coords?')
 
@@ -1007,7 +1007,8 @@ class RoboOperator(QtCore.QObject):
         conds.append(self.state['rotator_wrap_check_enabled'] == True)
         conds.append(self.state['focuser_is_connected'] == True)
         conds.append(self.state['focuser_is_enabled'] == True)
-        conds.append(self.state['Mirror_Cover_State'] == 0)
+        if not self.test_mode:
+            conds.append(self.state['Mirror_Cover_State'] == 0)
         
         #TODO: add something about the focus here
         
@@ -1318,7 +1319,8 @@ class RoboOperator(QtCore.QObject):
             self.do('mirror_cover_connect')
             
             # open the mirror cover
-            self.do('mirror_cover_open')
+            if not self.test_mode:
+                self.do('mirror_cover_open')
         
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -1920,7 +1922,7 @@ class RoboOperator(QtCore.QObject):
             
             elif nom_focus == 'model':
                 # put the model here
-                pass
+                nom_focus = 9.654*self.state["telescope_temp_ambient"] + 9784.4
             
             if total_throw == 'default':
                 #total_throw = self.config['focus_loop_param']['total_throw']
@@ -2367,7 +2369,7 @@ class RoboOperator(QtCore.QObject):
             self.checkWhatToDo()
             return
         
-        
+        #print(f'currentObs = {currentObs}')
         # first grab some fields from the currentObs
         # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which 
         # borks up the housekeeping and the dirfile and is a big fat mess
@@ -2399,10 +2401,9 @@ class RoboOperator(QtCore.QObject):
 
         # put the dither for loop here:
         for dithnum in range(self.num_dithers):
-            
             # how many dithers remain AFTER this one?
             self.remaining_dithers = self.num_dithers - dithnum
-            #self.log(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}, self.remaining_dithers = {self.remaining_dithers}')
+            self.log(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}, self.remaining_dithers = {self.remaining_dithers}')
             # for each dither, execute the observation
             if self.running & self.ok_to_observe:
                 
@@ -2423,7 +2424,7 @@ class RoboOperator(QtCore.QObject):
                 # get the target RA (hours) and DEC (degs) in units we can pass to the telescope
                 self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
                 self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
-                
+                                
                 # calculate the current Alt and Az of the target 
                 if self.sunsim:
                     obstime_mjd = self.ephem.state.get('mjd',0)
@@ -2444,13 +2445,13 @@ class RoboOperator(QtCore.QObject):
                 if dithnum == 0:
                     msg = f'Executing observation of obsHistID = {self.obsHistID}'
                     self.announce(msg)
-                    self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
+                    #self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
                     
                     self.announce(f'>> Target (RA, DEC) = ({self.j2000_ra_scheduled.hour} h, {self.j2000_dec_scheduled.deg} deg)')
                     
                     self.announce(f'>> Target Current (ALT, AZ) = ({self.local_alt_deg} deg, {self.local_az_deg} deg)')
                 
-                    self.announce(f'>> Executing Dither Number [{dithnum +1}/{self.num_dithers}]')
+                self.announce(f'>> Executing Dither Number [{dithnum +1}/{self.num_dithers}]')
                 
                 # Do the observation
                 
@@ -2458,9 +2459,7 @@ class RoboOperator(QtCore.QObject):
                 system = 'observation'
                 try:
                     
-                    if self.ditherStepSize > 0.0:
-                        
-                        self.do(f'mount_random_dither_arcsec {self.ditherStepSize}')
+                    
                     
                     # 3: trigger image acquisition
                     
@@ -2499,6 +2498,8 @@ class RoboOperator(QtCore.QObject):
                             self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
                             self.do(f'robo_observe altaz {self.local_alt_deg} {self.local_az_deg} --test')
                         else:
+                            
+                            # now do the observation
                             self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science')
                         
                         
@@ -2506,8 +2507,12 @@ class RoboOperator(QtCore.QObject):
                         
                     else:
                         system = 'ccd'
+                        # do the dither
+                        if self.ditherStepSize > 0.0:
+                            self.do(f'mount_random_dither_arcsec {self.ditherStepSize}')
+                            
                         if self.test_mode:
-                            self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
+                            #self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
                             self.do(f'robo_do_exposure --test')
                         else:
                             self.do(f'robo_do_exposure --science')

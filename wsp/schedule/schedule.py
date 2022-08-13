@@ -254,28 +254,32 @@ class Schedule(object):
                 
                 # get all the rows that can be observed
                 stmt = f'SELECT * from summary'
-                stmt += f' WHERE validStart <= {obstime_mjd} and validStop >= {obstime_mjd} and observed = 0'
+                #stmt += f' WHERE validStart <= {obstime_mjd} and validStop >= {obstime_mjd} and observed = 0'
                 
                 #### THIS DOES THE SORTING USING PANDAS DATAFRAME COMMANDS ####
                 #df = pd.read_sql('SELECT * FROM summary;',self.conn)
-                df = pd.read_sql(stmt, self.conn)
+                self.df = pd.read_sql(stmt, self.conn)
+                
+                self.df = self.df[self.df["validStart"]<= obstime_mjd]
+                self.df = self.df[self.df["validStop"] >= obstime_mjd]
+                self.df = self.df[self.df["observed"] == 0]
                 
                 # Now make some additions to the observations
                 # Priority: if not in database, add default 0 priority column
-                if 'priority' not in df:
-                    df['priority'] = 0
+                if 'priority' not in self.df:
+                    self.df['priority'] = 0
                 # Filename: add the name of the file so that this gets passed through to the 
-                df['origin_filename'] = self.schedulefile_name
+                self.df['origin_filename'] = self.schedulefile_name
                 
                 ### NOW VALIDATE THE SCHEDULE FILE DATAFRAME ###
                 # a bad schedule file will raise an exception here
-                wintertoo.validate.validate_schedule_df(df)
+                wintertoo.validate.validate_schedule_df(self.df)
     
                 
                 # let's turn it into a list of dicts
                 dataRanked = []
-                for i in range(len(df)):
-                    dataRanked.append(dict(df.iloc[i]))
+                for i in range(len(self.df)):
+                    dataRanked.append(dict(self.df.iloc[i]))
             
                 
                 # now close the connection to the database
@@ -469,19 +473,18 @@ if __name__ == '__main__':
     logger = None
     schedule = Schedule(base_directory, config, logger, verbose = True)
     
-    obstime_mjd = 59761.1837315294
+    obstime_mjd = 59804.1530797029
 
-    
-    #schedulefile_dir = os.path.join(os.getenv("HOME"), 'data','schedules','ToO')
-    #schedulefile_name = 'timed_requests_04_09_2022_04_1649502448_.db'
-    schedulefile_path = os.readlink(os.path.join(os.getenv("HOME"), 'data','nightly_schedule.lnk'))
+
+    #schedulefile_path = os.readlink(os.path.join(os.getenv("HOME"), 'data','nightly_schedule.lnk'))
+    schedulefile_path = os.path.join(os.getenv("HOME"), 'data','schedules', 'nightly_20220810.db')
     schedulefile_dir = os.path.dirname(schedulefile_path)
     schedulefile_name = schedulefile_path.split('/')[-1]
     
     
     #schedule.loadSchedule(os.path.join(schedulefile_dir, schedulefile_name))
-    #schedule.loadSchedule('nightly')
     schedule.loadSchedule('nightly')
+    #schedule.loadSchedule(schedulefile_name)
     #schedule.loadSchedule(None)
     
     # reset the schedule to fully unobserved
@@ -490,6 +493,7 @@ if __name__ == '__main__':
     # list the ranked observations
     #order = schedule.getRankedObs(obstime_mjd = obstime_mjd, printList = True)
     schedule.log('')
+    currentObs = schedule.getTopRankedObs(obstime_mjd)
     
     # now fake observe by stepping through the observations in the ranked order and logging them
     while schedule.remaining_valid_observations > 0:
@@ -500,6 +504,8 @@ if __name__ == '__main__':
     
     schedule.log('all done with schedule!')
     
-    
+    # reset the schedule to fully unobserved
+    schedule.log('resetting observed to false again')
+    schedule._reset_observation_log()
     
     
