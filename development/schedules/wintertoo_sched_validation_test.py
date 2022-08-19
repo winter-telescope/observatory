@@ -25,10 +25,14 @@ print(f'wsp_path = {wsp_path}')
 from utils import utils
 from ephem import ephem_utils
 
-schedulepaths = [os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_schedule.lnk')),
-                 os.path.join(os.getenv("HOME"), 'data','schedules','ToO','timed_requests_08_12_2022_14_1660339301_.db')]
+schedulepaths = [#os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_schedule.lnk')),
+                 #os.path.join(os.getenv("HOME"), 'data','schedules','ToO','timed_requests_08_12_2022_14_1660339301_.db'),
+                 #os.path.join(os.getenv("HOME"), 'data', 'schedules', 'ToO', 'timed_requests_08_15_2022_15_1660601716_.db'),
+                 #os.path.join(os.getenv("HOME"), 'data', 'schedules', 'ToO', '/home/winter/data/schedules/ToO/timed_requests_08_16_2022_13_1660680719_.db'),
+                 os.path.join(os.getenv("HOME"), 'data', 'schedules', 'ToO', '/home/winter/data/schedules/ToO/testcrab.db'),   
+                 ]
 
-schedulepaths = [os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_schedule.lnk'))]
+#schedulepaths = [os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_schedule.lnk'))]
 
 for schedulepath in schedulepaths:
     engine = db.create_engine('sqlite:///'+schedulepath)
@@ -37,9 +41,10 @@ for schedulepath in schedulepaths:
     df = pd.read_sql('SELECT * FROM summary;',conn)
     
     df['priority'] = 0
+    minalt = 20
+    default_max_airmass = 1.0/np.cos((90 - minalt)*np.pi/180.0)
+
     if 'maxAirmass' not in df:
-        minalt = 20
-        default_max_airmass = 1.0/np.cos((90 - minalt)*np.pi/180.0)
         df['maxAirmass'] = default_max_airmass
     
     #df['origin_filename'] = too_file
@@ -53,8 +58,8 @@ for schedulepath in schedulepaths:
             return True
         
         except Exception as e:
-            #print(e)
-            print('schedule not valid')
+            print(f'type(e) = {type(e)}')
+            #print('schedule not valid')
             
             return False
         
@@ -73,7 +78,7 @@ for schedulepath in schedulepaths:
 
 
     # calculate the current Alt and Az of the target 
-    obstime_mjd = 59762.1726555993
+    obstime_mjd = 59809.1
     obstime_utc = astropy.time.Time(obstime_mjd, format = 'mjd', \
                                     location=site)
         
@@ -89,7 +94,9 @@ for schedulepath in schedulepaths:
     df['azDeg'] = local_az_deg
     
     df_select = df.loc[(df['airmass'] < df['maxAirmass']) & (df['airmass'] > 0)]
-    
+    #df_select = df[df['airmass'] < df['maxAirmass']]
+    #df_select = df_select[df_select['airmass'] > 0]
+    #%%
     # check if there is any ephem in view
     bodies_inview = np.array([])
     bodies = list(config['ephem']['min_target_separation'].keys())
@@ -121,23 +128,24 @@ for schedulepath in schedulepaths:
     # add the ephem in view to the dataframe
     df_select['ephem_inview'] = ephem_inview
     
-    plt.figure(figsize = (10,4))
-    plt.suptitle('Checking Airmass Cut')
-    plt.subplot(1,2,1)
-    plt.plot(df['obsHistID'], df['altDeg'], 'o', label = 'All Data')
-    plt.plot(df_select['obsHistID'], df_select['altDeg'], 'o', label = 'Selection')
-    plt.plot(df['obsHistID'], df['obsHistID']*0.0 + minalt, '-', label = 'Min Alt')
-    plt.ylabel('Current Target Alt [deg]')
-    plt.xlabel('obsHistID')
-    plt.legend()
+    fig, axes = plt.subplots(1,2,figsize = (10,4))
+    ax = axes[0]
+    fig.suptitle(f'Checking Airmass Cut\nFile: {os.path.basename(schedulepath)}, MJD = {obstime_mjd:.3f}')
+    ax.plot(df['obsHistID'], df['altDeg'], 'o', label = 'All Data')
+    ax.plot(df_select['obsHistID'], df_select['altDeg'], 'o', label = 'Selection')
+    ax.plot(df['obsHistID'], df['obsHistID']*0.0 + minalt, '-', label = 'Min Alt')
+    ax.set_ylabel('Current Target Alt [deg]')
+    ax.set_xlabel('obsHistID')
+    ax.legend()
     
-    plt.subplot(1,2,2)
-    plt.plot(df['obsHistID'], df['airmass'], 'o', label = 'All Data')
-    plt.plot(df_select['obsHistID'], df_select['airmass'], 'o', label = 'Selection')
-    plt.plot(df['obsHistID'], df['obsHistID']*0.0 + default_max_airmass, '-', label = 'Max Airmass')
-    plt.ylabel('Current Target Airmass [-]')
-    plt.xlabel('obsHistID')
-    plt.legend()
+    ax = axes[1]
+    ax.plot(df['obsHistID'], df['airmass'], 'o', label = 'All Data')
+    ax.plot(df_select['obsHistID'], df_select['airmass'], 'o', label = 'Selection')
+    ax.plot(df['obsHistID'], df['obsHistID']*0.0 + default_max_airmass, '-', label = 'Max Airmass')
+    ax.set_ylabel('Current Target Airmass [-]')
+    ax.set_xlabel('obsHistID')
+    ax.set_ylim(-5, 5)
+    ax.legend()
     plt.tight_layout()
     
     

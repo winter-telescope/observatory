@@ -112,14 +112,15 @@ class Focus_loop_v3:
         self.vcurve_fit_x = np.linspace(9500, 10500, 1000)
         self.vcurve_fit_y, self.xafit, self.xbfit, xcfit = plot_curve.FocV(self.vcurve_fit_x, self.mlfit, self.xcfit_vcurve, self.deltafit, self.y0fit, return_x = True)
         
-        """
+        
         ####### NOW DO THE FOLLOW-UP PARABOLIC FIT TO THE FWHM #######
         
-        cond = (self.pos > self.xafit) & (self.pos < (self.xbfit)) & (self.FWHM_med > 0) & (self.FWHM_med < 7) #& (self.HFD_med < 6) # changed from FWHM>1.5
+        cond = (self.FWHM_med > 0) #& (self.pos > self.xafit) & (self.pos < (self.xbfit))  # & (self.FWHM_med < 7) #& (self.HFD_med < 6) # changed from FWHM>1.5
         self.pos_parabola = self.pos[cond]
         self.FWHM_med_parabola = self.FWHM_med[cond]
         self.FWHM_std_parabola = self.FWHM_std[cond]
         self.images_parabola = self.images[cond]
+        """
         print(self.pos_parabola)
         popt, pcov = plot_curve.fit_parabola(self.pos_parabola, self.FWHM_med_parabola, stds = None)
         
@@ -184,6 +185,13 @@ class Focus_loop_v3:
                                           'yerr': list(self.HFD_stderr_med_vcurve),
                                           'images': list(self.images_vcurve)}
                                          },
+                                'fwhm':
+                                    {'raw_data':
+                                        {'x' : list(self.pos_parabola),
+                                         'y' : list(self.FWHM_med_parabola),
+                                         'yerr': list(self.FWHM_std_parabola),
+                                         'images': list(self.images_parabola)},
+                                    },
                                 """
                                 'parabolic_fit':
                                     {'param':
@@ -212,12 +220,41 @@ class Focus_loop_v3:
         #x0_diff = abs(self.nom_focus - x0_fit)
         #x0_err = self.delta_xc
             
-        self.save_focus_data()
+        #self.save_focus_data()
         
         #return x0_fit, x0_err
         return x0_fit
-        
     
+    def analyze_best_focus_image(self, best_focus_image):
+        
+        try:
+            mean, median, std, stderr_mean, stderr_med = genstats.get_img_fluxdiameter(best_focus_image, pixscale = self.pixscale, 
+                                                                                       exclude = False)
+            mean_fwhm, med_fwhm, std_fwhm = genstats.get_img_fwhm(best_focus_image, pixscale = self.pixscale, 
+                                                                                       exclude = False)
+            print(f'type(mean_fwhm) = {type(mean_fwhm)}, mean_fwhm = {mean_fwhm}')
+            # now add the info to the focus data dictionary
+            self.fitresults.update({'best_focus_image': 
+                                        {'hfd' : 
+                                             {'mean'    : mean*self.pixscale,
+                                              'med'     : median*self.pixscale,
+                                              'std'     : std*self.pixscale,
+                                              'stderr_mean'     : stderr_mean*self.pixscale,
+                                              'stderr_med'      : stderr_med*self.pixscale,
+                                              },
+                                         'fwhm' : 
+                                             {'mean'    : float(mean_fwhm*self.pixscale),
+                                              'med'     : float(med_fwhm*self.pixscale),
+                                              'std'     : float(std_fwhm*self.pixscale),
+                                              },
+                                         'image' : best_focus_image,
+                                         },
+                                    })
+                
+        except Exception as e:
+                print(f'could not analyze image {best_focus_image}: {e}')
+        
+        
     def rate_images(self, imglist):
         focuser_pos_good = []
         images_good = []
@@ -305,16 +342,23 @@ class Focus_loop_v3:
             os.symlink(self.results_filepath, results_log_last_link)
         
     
-    def plot_focus_curve(self, timestamp_utc = None):
+    def plot_focus_curve(self, timestamp_utc = None, best_focus_image_filepath = None):
         
         #path = '/home/winter/data/df_focuser/filter_range.csv'
         path = self.results_filepath
+        args = ['python', os.path.join(wsp_path, 'focuser','vcurve_plot_support.py'), '--p',path]
         if timestamp_utc is None:
-            args = ['python', os.path.join(wsp_path, 'focuser','vcurve_plot_support.py'), '--p',path]
+            pass
         
         else:
-            args = ['python', os.path.join(wsp_path, 'focuser','vcurve_plot_support.py'), '--p', path, '--t', str(timestamp_utc)]
-            print(f'args = {args}')
+            args = args + ['--t', str(timestamp_utc)]
+            
+        if best_focus_image_filepath is None:
+            pass
+        else:
+            args = args + ['--focus_image', best_focus_image_filepath]
+            
+        print(f'args = {args}')
         process = subprocess.call(args)
         
 
@@ -468,6 +512,13 @@ if __name__ == '__main__':
         # now analyze the data (rate the images and load the observed filterpositions)
         #x0_fit, x0_err = loop.analyzeData(focuser_pos, images)
         x0_fit = loop.analyzeData(focuser_pos, images)
+        # get a fake best focus image
+        index_near_focus = np.argmin(loop.fitresults['fwhm']['raw_data']['y'])
+        best_focus_image_filepath = loop.fitresults['fwhm']['raw_data']['images'][index_near_focus]
+        loop.analyze_best_focus_image(best_focus_image_filepath)
+        
+        loop.save_focus_data()
+        
         timestamp_utc = datetime.now(tz = pytz.utc).timestamp()
         loop.plot_focus_curve(timestamp_utc = timestamp_utc)
         #xvals, yvals = loop.plot_focus_curve(plotting = True)

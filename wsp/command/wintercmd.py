@@ -174,7 +174,20 @@ class Wintercmd(QtCore.QObject):
     newCmdRequest = QtCore.pyqtSignal(object)
     
     
-    def __init__(self, base_directory, config, state, alertHandler, mirror_cover, daemonlist, telescope, dome, chiller, powerManager, logger, viscam, ccd):
+    def __init__(self, base_directory, 
+                 config, 
+                 state, 
+                 alertHandler, 
+                 mirror_cover, 
+                 daemonlist, 
+                 telescope, 
+                 dome, 
+                 chiller, 
+                 powerManager, 
+                 logger, 
+                 viscam, 
+                 ccd,
+                 ephem):
         # init the parent class
         #super().__init__()
         super(Wintercmd, self).__init__()
@@ -198,6 +211,7 @@ class Wintercmd(QtCore.QObject):
         self.viscam = viscam
         self.ccd = ccd
         self.mirror_cover = mirror_cover
+        self.ephem = ephem
         self.defineParser()
         # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
         self.telescope.signals.wrapWarning.connect(self.raiseWrapError)
@@ -969,56 +983,99 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('dither the mount by some arcseconds in ra and dec')
         self.cmdparser.add_argument('dist', nargs = 2, type = float, action = None,
                                     help = '<ra_dist_arcsec> <dec_dist_arcsec>')
+        
+        # optional argument to make the dither relative to the current position rather than to the offset=zero position
+        self.cmdparser.add_argument('--relative', '-r',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = "<force move?>")
         self.getargs()
+        #print(f'args = {self.args}')
         ra_dist_arcsec = self.args.dist[0]
         dec_dist_arcsec = self.args.dist[1]
+        do_relative_offset = self.args.relative
         
-        # Get the start coordinates
+        # Get the center coordinates
         ra0_j2000_hours = self.state['mount_ra_j2000_hours']
         dec0_j2000_deg = self.state['mount_dec_j2000_deg']
-        start = astropy.coordinates.SkyCoord(ra = ra0_j2000_hours*u.hour, dec = dec0_j2000_deg*u.deg)
+        
+        # Now account for any previous dither/mount offset
+        if do_relative_offset:
+            ra_center_j2000_hours = ra0_j2000_hours
+            dec_center_j2000_deg = dec0_j2000_deg
+        else:
+            ra_center_j2000_hours = ra0_j2000_hours - self.state["mount_offsets_ra_arcsec_total"]*(1/3600)*(24/360)
+            dec_center_j2000_deg = dec0_j2000_deg - self.state["mount_offsets_dec_arcsec_total"]*(1/3600)
+        
+        start = astropy.coordinates.SkyCoord(ra = ra_center_j2000_hours*u.hour, 
+                                             dec = dec_center_j2000_deg*u.deg)
         
         # figure out where to go
         offset_ra = ra_dist_arcsec *u.arcsecond
         offset_dec = dec_dist_arcsec * u.arcsecond
         end = start.spherical_offsets_by(offset_ra, offset_dec)
-        ra_j2000_hours_goal = end.ra.hour
-        dec_j2000_deg_goal = end.dec.deg
+        #ra_j2000_hours_goal = end.ra.hour
+        #dec_j2000_deg_goal = end.dec.deg
         
         # calculate the literal difference required by PWI4 mount_offset
         ra_delta_arcsec = end.ra.arcsecond - start.ra.arcsecond
         dec_delta_arcsec = end.dec.arcsecond - start.dec.arcsecond
         
-        ra_delta_arcsec_from_current = ra_delta_arcsec - self.state["mount_offsets_ra_arcsec_total"]
-        dec_delta_arcsec_from_current = dec_delta_arcsec - self.state["mount_offsets_dec_arcsec_total"]
+        if do_relative_offset:
+            ra_delta_arcsec_from_current = ra_delta_arcsec 
+            dec_delta_arcsec_from_current = dec_delta_arcsec 
+        else:
+            ra_delta_arcsec_from_current = ra_delta_arcsec - self.state["mount_offsets_ra_arcsec_total"]
+            dec_delta_arcsec_from_current = dec_delta_arcsec - self.state["mount_offsets_dec_arcsec_total"]
         # what is the total angular 3d distance to travel?
         sep = start.separation(end)
         
+        # calculate the target alt/az
+        obstime_mjd = self.ephem.state.get('mjd',0)
+        obstime = astropy.time.Time(obstime_mjd, format = 'mjd', \
+                                    location=self.ephem.site)
+        frame = astropy.coordinates.AltAz(obstime = obstime, location = self.ephem.site)
+        local_end_coords = end.transform_to(frame)
+        goal_alt = local_end_coords.alt.deg
+        goal_az = local_end_coords.az.deg
+        
+        
         if True:
+            if do_relative_offset:
+                self.logger.info('executing RELATIVE dither with respect to current mount position')
+            else:
+                self.logger.info('executing ABSOLUTE dither with respect to the zero-offset mount position')
             self.logger.info(f'executing dither: RA Dist = {ra_dist_arcsec:.6f}, Dec Dist = {dec_dist_arcsec:.6f}')
             self.logger.info(f'executing dither: RA Dist = {ra_dist_arcsec:.6f}, Dec Dist = {dec_dist_arcsec:.6f}')
             self.logger.info(f'literal differences to pass to PWI4 mount_offset')
             self.logger.info(f'ra delta   = {ra_delta_arcsec:>10.6f} arcsec ({ra_delta_arcsec/60.0:>6.3f} arcmin)')
             self.logger.info(f'dec delta = {dec_delta_arcsec:>10.6f} arcsec ({dec_delta_arcsec/60.0:>6.3f} arcmin)')
-    
+            
+            self.logger.info(f'Alt/Az Coords: Current --> Finish')
+            self.logger.info(f'Alt : {self.state["mount_alt_deg"]:>10.6f} --> {goal_alt:>10.6f} (deg)')
+            self.logger.info(f'Az : {self.state["mount_az_deg"]:>10.6f} --> {goal_az:>10.6f} (deg)')
+
             self.logger.info(f'RA/Dec Coords: Start --> Finish')
             self.logger.info(f'ra : {start.ra.hour:>10.6f} --> {end.ra.hour:>10.6f} (hour)')
             self.logger.info(f'dec: {start.dec.deg:>10.6f} --> {end.dec.deg:>10.6f} (deg)')
             self.logger.info(f'separation = {sep.arcsecond:0.6f} arcsec')
         
         if ra_dist_arcsec != 0.0:
-            self.parse(f'mount_offset ra add_arcsec {ra_delta_arcsec_from_current}')
+            self.parse(f'mount_offset ra add_arcsec {ra_delta_arcsec_from_current:.3f}')
         
         time.sleep(0.5)
         if dec_dist_arcsec != 0.0:
-            self.parse(f'mount_offset dec add_arcsec {dec_delta_arcsec_from_current}')
+            self.parse(f'mount_offset dec add_arcsec {dec_delta_arcsec_from_current:.3f}')
         
         # now check to make sure it got to the right place
-        threshold_arcsec = 1.0
+        if goal_alt < 35:
+            threshold_arcsec = 5.0 # 1.0 #NPL 8-16-22: increased this to handle times where there is more rms pointing jitter, noticed this when pointing ~20 deg alt
+        else:
+            threshold_arcsec = 1.0
         # wait for the dist to target to be low and the ra/dec near what they're meant to be
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 60.0
+        timeout = 10.0
         # wait for the telescope to stop moving before returning
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
@@ -1070,7 +1127,7 @@ class Wintercmd(QtCore.QObject):
         
     def mount_random_dither_arcsec(self):
         """Usage: mount_random_dither <boxwidth>"""        
-        self.defineCmdParser("execute a random dither from within a ra-dec box of half-witdh <boxwidth> arcseconds")
+        self.defineCmdParser("execute a random dither from within a ra-dec box of full-witdh <boxwidth> arcseconds")
         
         self.cmdparser.add_argument('boxwidth',
                                     type = float,
@@ -1081,7 +1138,7 @@ class Wintercmd(QtCore.QObject):
         
         boxwidth = self.args.boxwidth
 
-        ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-boxwidth, boxwidth, 2)
+        ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-boxwidth/2.0, boxwidth/2.0, 2)
         
         self.parse(f'mount_dither_arcsec_radec {ra_dist_arcsec} {dec_dist_arcsec}')
         
@@ -3705,7 +3762,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 30
+        timeout = 10
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
@@ -3719,8 +3776,8 @@ class Wintercmd(QtCore.QObject):
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
-                raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested exptime = {secs}, but it is {self.state["ccd_exptime"]}')
-            
+                self.log(f'command timed out after {timeout} seconds before completing. Requested exptime = {secs}, but it is {self.state["ccd_exptime"]}')
+                break
             stop_condition = ( (self.state['ccd_exptime'] == secs) )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -3729,7 +3786,44 @@ class Wintercmd(QtCore.QObject):
             
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f'wintercmd: ccd_exptime set successfully. Current Exptime = {self.state["ccd_exptime"]}')
+                try_again = False
                 break 
+            try_again = True
+        
+        if try_again:
+            
+            # sometimes it just doesn't take...
+            sigcmd = signalCmd('setexposure', secs)
+            self.ccd.newCommand.emit(sigcmd)
+            
+            ## Wait until end condition is satisfied, or timeout ##
+            condition = True
+            timeout = 10
+            # create a buffer list to hold several samples over which the stop condition must be true
+            n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+            stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+            # get the current timestamp
+            start_timestamp = datetime.utcnow().timestamp()
+            while True:
+                QtCore.QCoreApplication.processEvents()
+                time.sleep(self.config['cmd_status_dt'])
+                timestamp = datetime.utcnow().timestamp()
+                dt = (timestamp - start_timestamp)
+                #print(f'wintercmd: wait time so far = {dt}')
+                if dt > timeout:
+                    raise TimeoutError(f'command timed out after {timeout} seconds before completing. Requested exptime = {secs}, but it is {self.state["ccd_exptime"]}')
+                
+                stop_condition = ( (self.state['ccd_exptime'] == secs) )
+                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+                # now replace the last element
+                stop_condition_buffer[-1] = stop_condition
+                
+                if all(entry == condition for entry in stop_condition_buffer):
+                    self.logger.info(f'wintercmd: ccd_exptime set successfully. Current Exptime = {self.state["ccd_exptime"]}')
+                    break 
+        
         
     @cmd
     def ccd_set_tec_sp(self):
@@ -3803,7 +3897,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = self.state['ccd_exposureTimeout'] + 10
+        timeout = self.state['ccd_exposureTimeout'] + 30
         # create a buffer list to hold several samples over which the stop condition must be true
         
         

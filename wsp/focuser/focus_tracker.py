@@ -183,7 +183,7 @@ class FocusTracker(object):
         
         return last_focus, last_focus_timestamp
     
-    def getFiltersToFocus(self, obs_timestamp = 'now', graceperiod_hours = 6):
+    def getFiltersToFocus(self, obs_timestamp = 'now', graceperiod_hours = 6, cam = 'summer'):
         """
         runs through the active filter list and checks the last focus for each
         one. if any filters need focusing it adds them to dictionary of filters
@@ -208,7 +208,7 @@ class FocusTracker(object):
             
         graceperiod_seconds = graceperiod_hours*3600
         # step through the active filters and decide what needs to be re-run
-        self.getFocusFilters(self.cam)
+        self.getFocusFilters(cam)
         for filterID in self.focus_filters:
             last_focus_timestamp_utc = self.focus_log[filterID]['last_focus_timestamp_utc']
             

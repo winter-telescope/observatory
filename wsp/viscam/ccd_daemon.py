@@ -250,7 +250,86 @@ class CCD(QtCore.QObject):
                     raise TimeoutError(f'command timed out')
                 else:
                     break
+    @Pyro5.server.expose
+    def pollExptime(self):        
+        try:
+            #print('polling exposure time')
+            #self.log(f'polling exposure time')
             
+            if self.exptime is None:
+                # USE THIS IF YOU WANT TO ACTUALLY READ FROM CAMERA
+                self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
+                self.waitForClientIdle()
+                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+    
+                
+            else:
+               # just read from client register
+                self.exptime = self.cc._exposure[self.camnum]
+            
+            #print(f"EXPOSURE TIME = {self.exptime}")
+            self.state.update({'exptime' : self.exptime})
+            
+        except Exception as e:
+            #self.log(f'badness while polling exposure time: {e}')
+            self.log(e)
+            
+    @Pyro5.server.expose   
+    def pollTECTemp(self):
+        try:
+            #print('polling ccd temp')
+            #self.log(f'polling ccd temp')
+            self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
+            self.waitForClientIdle()
+            self.state.update({'tec_temp' : self.tec_temp})
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            
+        except Exception as e:
+            #self.log(f'badness while polling ccd temp: {e}')
+            self.log(e)
+            
+    @Pyro5.server.expose
+    def pollTECSetpoint(self):
+        try:
+            #print('polling tec setpoint')
+            #self.log('polling tec setpoint')
+            self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
+            self.waitForClientIdle()
+            self.state.update({'tec_setpoint' : self.tec_setpoint})
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            
+        except Exception as e:
+            #self.log(f'badness while polling tec setpoint: {e}')
+            self.log(e)
+    @Pyro5.server.expose    
+    def pollPCBTemp(self):
+        try:
+            #print('polling pcb temp')
+            #self.log('polling pcb temp')
+            self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
+            self.waitForClientIdle()
+            self.state.update({'pcb_temp' : self.pcb_temp})
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            
+        except Exception as e:
+            #self.log(f'badness while polling pcb temp: {e}')
+            self.log(e)
+    @Pyro5.server.expose
+    def pollTECStatus(self):
+        try:
+            #print('polling tec status')
+            #self.log('polling tec status')
+            fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
+            self.waitForClientIdle()
+            self.tec_status = int(fpgastatus_str[0])
+            self.state.update({'tec_status' : self.tec_status})
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            
+        except Exception as e:
+            #self.log(f'badness while polling tec status: {e}')
+            self.log(e)
+            
+    @Pyro5.server.expose    
     def pollStatus(self):
         
         # things that don't require asking anything of the camera server
@@ -265,86 +344,19 @@ class CCD(QtCore.QObject):
             #self.log('polling status')
             self.doing_poll = True
             
-            
-            try:
-                #print('polling exposure time')
-                #self.log(f'polling exposure time')
-                
-                if self.exptime is None:
-                    # USE THIS IF YOU WANT TO ACTUALLY READ FROM CAMERA
-                    self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
-                    self.waitForClientIdle()
-                    self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-
-                    
-                else:
-                   # just read from client register
-                    self.exptime = self.cc._exposure[self.camnum]
-                
-                #print(f"EXPOSURE TIME = {self.exptime}")
-                self.state.update({'exptime' : self.exptime})
-                
-            except Exception as e:
-                #self.log(f'badness while polling exposure time: {e}')
-                self.log(e)
-           
+            self.pollExptime()
             time.sleep(1)
             
-            try:
-                #print('polling ccd temp')
-                #self.log(f'polling ccd temp')
-                self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
-                self.waitForClientIdle()
-                self.state.update({'tec_temp' : self.tec_temp})
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
-            except Exception as e:
-                #self.log(f'badness while polling ccd temp: {e}')
-                self.log(e)
-            
+            self.pollTECTemp()
             time.sleep(1)
             
-            try:
-                #print('polling tec setpoint')
-                #self.log('polling tec setpoint')
-                self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
-                self.waitForClientIdle()
-                self.state.update({'tec_setpoint' : self.tec_setpoint})
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
-            except Exception as e:
-                #self.log(f'badness while polling tec setpoint: {e}')
-                self.log(e)
-            
+            self.pollTECSetpoint()
             time.sleep(1)
             
-            try:
-                #print('polling pcb temp')
-                #self.log('polling pcb temp')
-                self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
-                self.waitForClientIdle()
-                self.state.update({'pcb_temp' : self.pcb_temp})
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
-            except Exception as e:
-                #self.log(f'badness while polling pcb temp: {e}')
-                self.log(e)
-            
+            self.pollPCBTemp()
             time.sleep(1)
             
-            try:
-                #print('polling tec status')
-                #self.log('polling tec status')
-                fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
-                self.waitForClientIdle()
-                self.tec_status = int(fpgastatus_str[0])
-                self.state.update({'tec_status' : self.tec_status})
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
-            except Exception as e:
-                #self.log(f'badness while polling tec status: {e}')
-                self.log(e)
-            
+            self.pollTECStatus()
             time.sleep(1)
             
             try:
@@ -355,12 +367,8 @@ class CCD(QtCore.QObject):
                 self.log(e)
                 
             # record this update time
-            
             self.state.update({'last_poll_attempt_timestamp': datetime.utcnow().timestamp()})   
                 
-                #print(f'>> TEC TEMP = {self.tec_temp}')
-            
-            
             # done with the current poll
             self.doing_poll = False
             pass

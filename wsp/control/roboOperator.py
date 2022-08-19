@@ -47,6 +47,11 @@ from focuser import focusing
 from focuser import focus_tracker
 from viscam import summerRebootTracker
 
+# print all the columns
+pd.set_option('display.max_columns', None)
+pd.set_option('display.expand_frame_repr', False)
+
+
 class TargetError(Exception):
     pass
 
@@ -365,7 +370,8 @@ class RoboOperator(QtCore.QObject):
             
         # set up the schedule
         ## after this point we should have something in self.schedule.currentObs
-        self.schedule.loadSchedule(self.survey_schedulefile_name, postPlot = True)
+        self.change_schedule(self.survey_schedulefile_name, postPlot = True)
+        #self.schedule.loadSchedule(self.survey_schedulefile_name, postPlot = True)
         
         
         ### SET UP POINTING MODEL BUILDER ###
@@ -724,21 +730,27 @@ class RoboOperator(QtCore.QObject):
             # get the current timestamp and MJD
             #---------------------------------------------------------------------
                 # turn the timestamp into mjd
+                
+            #TODO: NPL 8-17-22 there's no reason (I THINK) not to always use the time from self.ephem?
+            obstime_mjd = self.ephem.state.get('mjd',0)
+            obstime_timestamp_utc = astropy.time.Time(obstime_mjd, format = 'mjd').unix
+            """
             if self.sunsim:
                 # for some reason self.state doesn't update if it's in this loop. look into that.
                 obstime_mjd = self.ephem.state.get('mjd',0)
                 obstime_timestamp_utc = astropy.time.Time(obstime_mjd, format = 'mjd').unix
             else:
                 obstime_mjd = 'now'
+                obstime_mjd = astropy.time.Time(datetime.utcnow()).mjd
                 obstime_timestamp_utc = datetime.now(tz = pytz.utc).timestamp()
-                
+            """    
                 
             #---------------------------------------------------------------------
             # check if we need to focus the telescope
             #---------------------------------------------------------------------
             graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
             if self.test_mode == True:
-                print(f"not checking focus bc we're in test mode")
+                self.log(f"not checking focus bc we're in test mode")
                 pass
             else:
                 filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, graceperiod_hours = graceperiod_hours)
@@ -809,6 +821,20 @@ class RoboOperator(QtCore.QObject):
                     # first stow the rotator
                     self.rotator_stop_and_reset()
                     
+                    if self.schedule.end_of_schedule == True:
+                        if self.schedulefile_name is None:
+                            pass
+                        else:
+                            self.announce(f'{self.schedule.schedulefile_name} completed! shutting down schedule connection')
+                        self.handle_end_of_schedule()
+                    # nothing is up right now, just loop back and check again
+                    self.checktimer.start()
+                    
+                    """ 
+                    # NPL: 8-17-22
+                    # this is the old way, but it stops the loop when the schedule is done,
+                    # we don't want to do that, want to keep the thread open to wait for 
+                    # any new schedules.
                     # if we're at the bottom of the schedule, then handle the end of the schedule
                     if self.schedule.end_of_schedule == True:
                             self.announce('schedule complete! shutting down schedule connection')
@@ -817,6 +843,7 @@ class RoboOperator(QtCore.QObject):
                         # nothing is up right now, just loop back and check again
                         self.checktimer.start()
                     return
+                """
                 else:
                     # if we got an observation, then let's go do it!!
                     #self.do_currentObs(currentObs)
@@ -836,9 +863,18 @@ class RoboOperator(QtCore.QObject):
         query all available schedules (survey + any schedules in the TOO folder),
         then rank them and return the highest ranked instance. this is what we want to observe
         """
+        self.log(f'running load_best_observing_target routine...')
+        
+        #TODO: this is dumb and slow. all of wsp should be pulling obstime_mjd from ephem, not duplicating the effort here.
+        if obstime_mjd == 'now':
+            obstime_mjd = float(astropy.time.Time(datetime.utcnow()).mjd)
+        
         # get all the files in the ToO High Priority folder
         ToO_schedule_directory = os.path.join(os.getenv("HOME"), self.config['scheduleFile_ToO_directory'])
         ToOscheduleFiles = glob.glob(os.path.join(ToO_schedule_directory, '*.db'))
+        
+        self.log(f'found these schedule files in the TOO directory: {ToOscheduleFiles}')
+        self.log(f'analyzing schedules...')
         
         if len(ToOscheduleFiles) > 0:
             # bundle up all the schedule files in a single pandas dataframe
@@ -851,18 +887,37 @@ class RoboOperator(QtCore.QObject):
                     engine = db.create_engine('sqlite:///'+too_file)
                     conn = engine.connect()
                     df = pd.read_sql('SELECT * FROM summary;',conn)
-                    df['origin_filename'] = too_file
+                    
+                    # if targname not in the df, add in a default
+                    if 'targName' not in df:
+                        df['targName'] = ''
+                    
+                    # keep analyzing and making cuts unless you throw away all the entries
+                    df['origin_filepath'] = too_file
+                    df['origin_filename'] = os.path.basename(too_file)
                     conn.close()
                 
                     ### if we were able to load and query the SQL db, check to make sure the schema are correct
                     wintertoo.validate.validate_schedule_df(df)
+                    self.log(f'obstime_mjd = {obstime_mjd}')
+                    select_cols = df[['raDeg','decDeg', 'filter', 'progPI', 'priority', 'obsHistID', 'targName', 'observed','origin_filename']]
+                    self.log(f'entries before making any cuts: df = \n{select_cols}')
+
                     
                     ### if the schema were correct, make cuts based on observability
                     # Note: if we don't do this we can end up in a situation where do_Observation will reject an 
                     #       observation, but this will keep submitting it and we'll get stuck in a useless loop
                     # select only targets within their valid start and stop times
-                    df = df.loc[(obstime_mjd >= df['validStart']) & (obstime_mjd<= df['validStop'])]
+                    df = df.loc[(obstime_mjd >= df['validStart']) & (obstime_mjd<= df['validStop']) & (df['observed'] == 0)]
                     
+                    select_cols = df[['raDeg','decDeg', 'filter', 'progPI', 'priority', 'obsHistID', 'targName', 'observed','origin_filename']]
+                    self.log(f'after making cuts on start/stop times and observed status: df = \n{select_cols}')
+
+                    if len(df) == 0:
+                        self.log(f'{too_file}: no valid entries after start/stop/observed cuts')
+                        continue
+                    else:
+                        pass
                     # if the maxAirmass is not specified, add it in
                     if 'maxAirmass' not in df:
                         default_max_airmass = 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)
@@ -877,13 +932,14 @@ class RoboOperator(QtCore.QObject):
                                                         obstime = obstime_astropy,
                                                         location = self.ephem.site)
                     self.log('made the frame ?')
-                    #print('RA')
-                    #print(df['raDeg'])
-                    #print('DEC')
-                    #print(df['decDeg'])
+                    self.log(f"df['raDeg'] = {df['raDeg']}")
+                    self.log(f"df['decDeg'] = {df['decDeg']}")
+                    
                     j2000_coords = astropy.coordinates.SkyCoord(ra = df['raDeg']*u.deg, dec = df['decDeg']*u.deg, frame = 'icrs')
                     self.log('made the j2000 coords?')
+                    
 
+                    
                     local_coords = j2000_coords.transform_to(frame)
                     local_alt_deg = local_coords.alt.deg
                     local_az_deg = local_coords.az.deg
@@ -893,10 +949,22 @@ class RoboOperator(QtCore.QObject):
                     df['currentAzDeg'] = local_az_deg
                     
                     # make a cut based on airmass
-                    df = df.loc[(df['currentAirmass'] < df['maxAirmass']) & (df['currentAirmass'] > 0)]                    
+                    df = df.loc[(df['currentAirmass'] < df['maxAirmass']) & (df['currentAirmass'] > 0)]          
+                    select_cols = df[['raDeg','decDeg', 'filter', 'progPI', 'priority', 'obsHistID', 'targName', 'origin_filename']]
+                    self.log(f'after airmass cuts: df = \n{select_cols}')
                     
                     # do a cut on max altitude also to make sure we don't point too high
-                    df = df.loc[df['currentAltDeg'] < self.config['telescope']['max_alt']]
+                    df = df.loc[(df['currentAltDeg'] <= self.config['telescope']['max_alt']) & 
+                                (df['currentAltDeg'] >= self.config['telescope']['min_alt'])]
+                    
+                    select_cols = df[['raDeg','decDeg', 'filter', 'progPI', 'priority', 'obsHistID', 'targName', 'origin_filename']]
+                    self.log(f'after elevation cuts: df = \n{select_cols}')
+                    
+                    if len(df) == 0:
+                        self.log(f'{too_file}: no valid entries after elevation & airmass cuts')
+                        continue
+                    else:
+                        pass
                     
                     # calculate whether each target will be too close to ephemeris at the current obstime
                     bodies_inview = np.array([])
@@ -929,15 +997,30 @@ class RoboOperator(QtCore.QObject):
                     # add the ephem in view to the dataframe
                     df['ephem_inview'] = ephem_inview
                     
-                    # make a cut on only targets without ephemeris in the way
-                    df = df.loc[df['ephem_inview'] is False]
+                    self.log(f'df["ephem_inview"]: \n{df["ephem_inview"]}')
                     
+                    # make a cut on only targets without ephemeris in the way
+                    df = df.loc[df['ephem_inview'] == False]
+                    
+                    if len(df) == 0:
+                        self.log(f'{too_file}: no valid entries after making cuts on nearby ephemeris')
+                        continue
+                    else:
+                        pass
+                    
+                    # if we got here then the list isn't empty
+                                        
                     # now add the schedule to the master TOO list
                     full_df = pd.concat([full_df,df])
+                        
+                    
                 
-                except Exception as e:
+                except wintertoo.validate.RequestValidationError as e:
                     too_filename = os.path.basename(os.path.normpath(too_file))
-                    self.log(f'skipping TOO schedule {too_filename}, schema not valid: {e}')
+                    #self.log(f'skipping TOO schedule {too_filename}, schema not valid: {e}')
+                    self.log(traceback.format_exc())
+                except Exception as e:
+                    self.log(f'error running load_best_observing_target: {e}')
                     self.log(traceback.format_exc())
                         
             
@@ -961,7 +1044,7 @@ class RoboOperator(QtCore.QObject):
                 
                 # the best target is the first one in this sorted pandas dataframe
                 currentObs = dict(full_df.iloc[0])
-                scheduleFile = currentObs['origin_filename']
+                scheduleFile = currentObs['origin_filepath']
                 scheduleFile_without_path = scheduleFile.split('/')[-1]
                 self.announce(f'we should be observing from {scheduleFile_without_path}, obsHistID = {currentObs["obsHistID"]}')
                 # point self.schedule to the TOO
@@ -1122,7 +1205,7 @@ class RoboOperator(QtCore.QObject):
         self.running = False
         #TODO: Anything else that needs to happen before stopping the thread
 
-    def change_schedule(self, schedulefile_name):
+    def change_schedule(self, schedulefile_name, postPlot = False):
         """
         This function handles the initialization needed to start observing a
         new schedule. It is called when the changeSchedule signal is caught,
@@ -1130,12 +1213,14 @@ class RoboOperator(QtCore.QObject):
         """
 
         print(f'scheduleExecutor: setting up new survey schedule from file >> {schedulefile_name}')
-
+        # NPL 8-17-22 I don't think we want to stop the roboOperator in this case?
+        """
         if self.running:
             self.stop()
+        """
         self.survey_schedulefile_name = schedulefile_name
         self.schedulefile_name = schedulefile_name
-        self.schedule.loadSchedule(schedulefile_name)
+        self.schedule.loadSchedule(schedulefile_name, postPlot = postPlot)
 
     def get_data_to_log(self,currentObs = 'default',):
         
@@ -1611,14 +1696,18 @@ class RoboOperator(QtCore.QObject):
                     
                             # estimate required exposure time
                             if filterID == 'g':
-                                #flat_exptime = 40000/(1.14e8 * (-1*self.state["sun_alt"] ** -6.2))
+                                #flat_exptime = 30000.0/(1.14e8 * (-1*self.state["sun_alt"])**-6.2)
                                 a = 75.08
                                 n = -1.31
                             else:
-                                #flat_exptime = 40000.0/(2.319937e9 * (-1*self.state["sun_alt"])**(-8.004657))
+                                #flat_exptime = 30000.0/(2.319937e9 * ((-1*self.state["sun_alt"])**-8.004657))
+                                
                                 a = 73.40
                                 n = -1.23
-                            flat_exptime = 40000/(np.exp(a*(-1*self.state["sun_alt"] ** n)))
+                            
+                            flat_exptime = 30000.0/(np.exp(a*(-1*self.state["sun_alt"])**n))
+                            if filterID in ['u', 'i']:
+                                flat_exptime = flat_exptime*1.6
                             
                             minexptime = 2.5 + i
                             maxexptime = 60
@@ -1789,7 +1878,7 @@ class RoboOperator(QtCore.QObject):
             system = 'telescope'
             self.do(f'mount_tracking_off')
             
-            self.log(f'starting the bias observations')
+            self.log(f'starting the darks sequence')
         
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -1800,64 +1889,66 @@ class RoboOperator(QtCore.QObject):
             return
         #cycle through all the active filters:for filterID in 
         filterIDs = self.focusTracker.getActiveFilters()
-        for filterID in filterIDs:
-            try:
-                self.announce(f'doing darks for filter: {filterID}')
-
-                # step through each filter to focus, and run a focus loop
-                # 1. change filter to filterID
-                system = 'filter wheel'
-                if self.cam == 'summer':
-                    # get filter number
-                    for position in self.config['filter_wheels'][self.cam]['positions']:
-                        if self.config['filter_wheels'][self.cam]['positions'][position] == filterID:
-                            filter_num = position
-                        else:
-                            pass
-                        
-                    self.do(f'command_filter_wheel {filter_num}')
-        
-        
-                system = 'rotator'
-                try:
-                    self.do('rotator_stop')
-                    self.do('rotator_home')
-                
-                except Exception as e:
-                    msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-                    self.log(msg)
-                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                    err = roboError(context, self.lastcmd, system, msg)
-                    self.hardware_error.emit(err)
-                    return
+        # just pick the first of the active filters to do the darks in
+        try:
+            self.announce(f'doing darks sequence')
+            """
+            # step through each filter to focus, and run a focus loop
+            # 1. change filter to filterID
+            system = 'filter wheel'
+            if self.cam == 'summer':
+                # get filter number
+                for position in self.config['filter_wheels'][self.cam]['positions']:
+                    if self.config['filter_wheels'][self.cam]['positions'][position] == filterID:
+                        filter_num = position
+                    else:
+                        pass
                     
-                system = 'ccd'
-                try:
-                    self.do(f'ccd_set_exposure 30.0')
-                    ndarks = 5
-                    for i in range(ndarks):
-                        self.announce(f'Executing Auto Darks {i+1}/5')
-                        qcomment = f"Auto Darks {i+1}/{ndarks}"
+                self.do(f'command_filter_wheel {filter_num}')
+    
+            """
+            system = 'rotator'
+            try:
+                self.do('rotator_stop')
+                self.do('rotator_home')
             
-                        self.do(f'robo_do_exposure -d --comment "{qcomment}"')
-                except Exception as e:
-                    msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-                    self.log(msg)
-                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                    err = roboError(context, self.lastcmd, system, msg)
-                    self.hardware_error.emit(err)
-                    return
             except Exception as e:
-                msg = f'roboOperator: could not complete darks for {filterID} due to error with {system}: due to {e.__class__.__name__}, {e}'
+                msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
                 self.log(msg)
                 self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
+                return
+                
+            system = 'ccd'
+            try:
+                self.do(f'ccd_set_exposure 30.0')
+                ndarks = 5
+                for i in range(ndarks):
+                    self.announce(f'Executing Auto Darks {i+1}/5')
+                    qcomment = f"Auto Darks {i+1}/{ndarks}"
+        
+                    self.do(f'robo_do_exposure -d --comment "{qcomment}"')
+            except Exception as e:
+                msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                return
+            
+        except Exception as e:
+            msg = f'roboOperator: could not complete darks for  due to error with {system}: due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
                 #return
+            
 
         self.announce('darks sequence completed successfully!')
     
-    def do_focusLoop(self, nom_focus = 'default', total_throw = 'default', nsteps = 'default', updateFocusTracker = True, focusType = 'Vcurve'):
+    def do_focusLoop(self, nom_focus = 'model', total_throw = 'default', nsteps = 'default', updateFocusTracker = True, focusType = 'Vcurve'):
         """
         Runs a focus loop in the CURRENT filter.
         Adaptation of Cruz Soto's doFocusLoop in wintercmd
@@ -1926,10 +2017,10 @@ class RoboOperator(QtCore.QObject):
             
             if total_throw == 'default':
                 #total_throw = self.config['focus_loop_param']['total_throw']
-                total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
+                total_throw = self.config['focus_loop_param']['sweep_param']['narrow']['total_throw']
             if nsteps == 'default':
                 #nsteps = self.config['focus_loop_param']['nsteps']
-                nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
+                nsteps = self.config['focus_loop_param']['sweep_param']['narrow']['nsteps']
                 
             # init a focus loop object on the current filter
             #    config, nom_focus, total_throw, nsteps, pixscale
@@ -2159,7 +2250,6 @@ class RoboOperator(QtCore.QObject):
             # now analyze the data (rate the images and load the observed filterpositions)
             x0_fit = loop.analyzeData(focuser_pos, images)
             
-            loop.plot_focus_curve(timestamp_utc = obstime_timestamp_utc)
             
             
             #print(f'x0_fit = {x0_fit}, type(x0_fit) = {type(x0_fit)}')
@@ -2183,8 +2273,25 @@ class RoboOperator(QtCore.QObject):
                     self.do(f'm2_focuser_goto {next_pos}')
                     cur_focus = next_pos
 
-                self.do(f'm2_focuser_goto {x0_fit}')
-                #TODO: update the focusTracker
+                
+                # take an image
+                
+                # note the path of the image and pass this to analyzer
+                
+                system = 'ccd'
+                self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
+
+            
+                image_directory, image_filename = self.ccd.getLastImagePath()
+                best_focus_image_filepath = os.path.join(image_directory, image_filename)
+                
+                loop.analyze_best_focus_image(best_focus_image_filepath)
+                
+                # save the data
+                loop.save_focus_data()
+                
+                loop.plot_focus_curve(timestamp_utc = obstime_timestamp_utc)
+
                 
                 if updateFocusTracker:
                     
@@ -2238,8 +2345,8 @@ class RoboOperator(QtCore.QObject):
             
         elif filterIDs == 'reference':
             # focus in the reference filters specified in focus_loop_param
-            filterIDs = self.config['focus_loop_param']['filters'][self.cam]
-            
+            #filterIDs = self.config['focus_loop_param']['filters'][self.cam]
+            filterIDs = self.focusTracker.getFocusFilters(self.cam)
             
         self.announce(f'running focus loops for filters: {filterIDs}')
         
@@ -2402,8 +2509,8 @@ class RoboOperator(QtCore.QObject):
         # put the dither for loop here:
         for dithnum in range(self.num_dithers):
             # how many dithers remain AFTER this one?
-            self.remaining_dithers = self.num_dithers - dithnum
-            self.log(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}, self.remaining_dithers = {self.remaining_dithers}')
+            self.remaining_dithers = (self.num_dithers - dithnum) - 1
+            #self.announce(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}, self.remaining_dithers = {self.remaining_dithers}')
             # for each dither, execute the observation
             if self.running & self.ok_to_observe:
                 
@@ -2453,6 +2560,11 @@ class RoboOperator(QtCore.QObject):
                 
                 self.announce(f'>> Executing Dither Number [{dithnum +1}/{self.num_dithers}]')
                 
+                # Do one last housekeeping check to make sure the camera is happy
+                if self.cam == 'summer':
+                    # this should make sure that we get a ccd timestamp update between exposures? NPL 8-19-22
+                    self.ccd.pollTECTemp()
+                    
                 # Do the observation
                 
                 context = 'do_currentObs'
@@ -2579,7 +2691,7 @@ class RoboOperator(QtCore.QObject):
         self.checkWhatToDo()
     
     def log_observation_and_gotoNext(self, gotoNext = True, logObservation = True):
-        #self.logger.info(f'robo: image timer finished, logging observation with option gotoNext = {gotoNext}')
+        self.announce(f'robo: handling end of observation with options gotoNext = {gotoNext}, logObservation = {logObservation}')
         """
         if currentObs == 'default':
             currentObs = self.schedule.currentObs
@@ -2598,10 +2710,12 @@ class RoboOperator(QtCore.QObject):
         else:    
     
             if self.schedule.currentObs is not None and self.running:
+
                 if logObservation:
+                    self.announce('robo: logging observation')
                     self.schedule.log_observation()
-                    self.logger.info('robo: logging observation')
-                
+                    #self.logger.info('robo: logging observation')
+
             else:  
                 if self.schedule.currentObs is None:
                     self.logger.info('robo: in log and goto next, but there is no observation to log.')

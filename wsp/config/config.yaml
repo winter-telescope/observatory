@@ -80,10 +80,10 @@ dither_defaults:
     camera:
         summer:
             ditherNumber: 5
-            ditherStepSize: 7
+            ditherStepSize: 15
         winter:
             ditherNumber: 5
-            ditherStepSize: 7
+            ditherStepSize: 15
     
 
 
@@ -128,7 +128,9 @@ log_link_name: 'winter.log'
 ########### ROBO MANAGER ###########
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
-max_sun_alt_for_observing: -18
+#max_sun_alt_for_observing: -18
+max_sun_alt_for_observing: -12
+
 
 robotic_manager_triggers:
     timeformat: '%H:%M:%S.%f'
@@ -307,7 +309,7 @@ telescope:
     home_alt_degs: 45.0
     #home_az_degs: 349.0
     home_az_degs: 0
-    min_alt: 15.0
+    min_alt: 30
     max_alt: 85.0
     rotator_field_angle_zeropoint: 155.0 
     rotator_home_degs: -25.0
@@ -489,7 +491,7 @@ weather_limits:
 ephem:
     # note that changing these will not update the housekeeping fields, that must be done manually
     min_target_separation:
-        moon: 45.0
+        moon: 25.0
         mercury: 5
         venus: 5
         mars: 5
@@ -510,7 +512,7 @@ focus_loop_param:
     #micron_interval: 100
     focus_filters:
         summer:
-            - 'g'
+            - 'r'
         winter:
             - 'J'
     targets:
@@ -905,7 +907,7 @@ fields:
         units: None
         dtype: int64
         rate: hk
-        var: "schedule.remaining_valid_observations"
+        var: "schedule.remaining_observable_entries"
     
 #telescope
     pwi4_version_field0:

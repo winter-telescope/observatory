@@ -223,11 +223,25 @@ class local_ccd(QtCore.QObject):
         
     def tecStop(self):
         self.remote_object.tecStop()
-        
+    
     def getExposure(self):
         exptime = self.remote_object.getExposure()
     
         #print(f'exposure time = {exptime}')
+    
+    # some polling functions
+    def pollStatus(self):
+        self.remote_object.pollStatus()
+    def pollExptime(self):
+        self.remote_object.pollExptime()
+    def pollTECTemp(self):
+        self.remote_object.pollTECTemp()
+    def pollTECSetpoint(self):
+        self.remote_object.pollTECSetpoint()
+    def pollPCBTemp(self):
+        self.remote_object.pollPCBTemp()
+    def pollTECStatus(self):
+        self.remote_object.pollTECStatus()
     
     def shutdownCameraClient(self):
         self.remote_object.shutdownCameraClient()

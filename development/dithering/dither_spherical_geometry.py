@@ -20,8 +20,20 @@ ra0_j2000_hours = ra.hour
 dec0_j2000_deg = dec.deg
 """
 
-ra0_j2000_hours = 13.26334
-dec0_j2000_deg = 42.033334
+config = dict({'site':
+                {
+                    # lat/lon. expects a format that can be read with astropy.coordinates.Angle()
+                    'lat': '33d21m21.6s',
+                    'lon': '-116d51m46.8s',
+                    # height (site altitude). height is a number, units are something that can be parsed with astropy.units.Unit()
+                    'height': 1706,
+                    'height_units': 'm',
+                    'timezone': 'America/Los_Angeles',
+                }})
+
+
+ra0_j2000_hours = 5
+dec0_j2000_deg = 33
 
 #axis = 'dec'
 #arcsec = 10
@@ -179,8 +191,11 @@ print(f' \tseparation = {sep.arcsecond:0.6f} arcsec')
 
 print()
 #%% get distances for a random dither
+
 dither_step_size = 7.5
-ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-dither_step_size, dither_step_size, 2)
+#ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-dither_step_size, dither_step_size, 2)
+ra_dist_arcsec = 0
+dec_dist_arcsec = 60
 
 start = astropy.coordinates.SkyCoord(ra = ra0_j2000_hours*u.hour, dec = dec0_j2000_deg*u.deg)
 
@@ -195,20 +210,43 @@ ra_delta_arcsec = end.ra.arcsecond - start.ra.arcsecond
 dec_delta_arcsec = end.dec.arcsecond - start.dec.arcsecond
 
 sep = start.separation(end)
+
+
+
 print(f'Random Dither, dither step size = {dither_step_size}')
+print(f' Original Pointing: ')
+print(f' \tRA0 = {ra0_j2000_hours:>10.6f} h')
+print(f' \tDec0 = {dec0_j2000_deg:>10.6f} deg')
+
 print(f' actual angular distance to move:')
-print(f' \tra dist to target  = {ra_dist_arcsec:.2f} arcsec')
-print(f' \tdec dist to target = {dec_dist_arcsec:.2f} arcsec')
+print(f' \tRA dist to target  = {ra_dist_arcsec:.2f} arcsec')
+print(f' \tDec dist to target = {dec_dist_arcsec:.2f} arcsec')
 
 print(f' literal differences to pass to PWI4 mount_offset')
-print(f' \tra delta  = {ra_delta_arcsec:>10.6f} arcsec')
-print(f' \tdec delta = {dec_delta_arcsec:>10.6f} arcsec')
+print(f' \tRA delta   = {ra_delta_arcsec:>10.6f} arcsec ({ra_delta_arcsec/60.0:>6.3f} arcmin)')
+print(f' \tDec delta = {dec_delta_arcsec:>10.6f} arcsec ({dec_delta_arcsec/60.0:>6.3f} arcmin)')
 
 print(f' RA/Dec Coords: Start --> Finish')
-print(f' \tra : {ra0_j2000.hour:>10.6f} --> {ra_j2000_goal.hour:>10.6f} (hour)')
-print(f' \tdec: {dec0_j2000.deg:>10.6f} --> {dec_j2000_goal.deg:>10.6f} (deg)')
+print(f' \tRA : {ra0_j2000.hour:>10.6f} --> {ra_j2000_goal.hour:>10.6f} (hour)')
+print(f' \tDec: {dec0_j2000.deg:>10.6f} --> {dec_j2000_goal.deg:>10.6f} (deg)')
 print(f' \tseparation = {sep.arcsecond:0.6f} arcsec')
 
+
+
     
-    
+# recover the original pointing using just the current ra/dec and the PWI4 offsets
+ra_cur = ra_j2000_goal.hour
+dec_cur = dec_j2000_goal.deg
+pwi4_offset_ra = ra_delta_arcsec
+pwi4_offset_dec = dec_delta_arcsec
+
+
+ra_center = ra_cur - pwi4_offset_ra*(1/3600)*(24/360)
+dec_center = dec_cur - pwi4_offset_dec*(1/3600)
+
+
+
+print(f' Recovered Central Pointing')
+print(f' \tRA0 = {ra_center:>10.6f}')
+print(f' \tDec0 = {dec_center:>10.6f}')
     

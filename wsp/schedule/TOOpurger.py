@@ -14,6 +14,8 @@ import glob
 import shutil
 import yaml
 from datetime import datetime
+import wintertoo.validate
+
 
 # add the wsp directory to the PATH
 code_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -69,7 +71,8 @@ for sched_filepath in ToO_scheduleFilepaths:
     sched_obj = schedule.Schedule(base_directory = base_directory,
                                   config = config,
                                   logger = logger,
-                                  scheduleFile_directory = scheduleFile_ToO_directory)
+                                  scheduleFile_directory = scheduleFile_ToO_directory,
+                                  verbose = True)
     
     # set up the ToO schedule
     sched_obj.loadSchedule(schedulefile_name  = sched_filepath)
@@ -90,11 +93,11 @@ for schedname in ToOschedules:
     log(f'searching for valid observations in {schedname}...')
     TOOschedule = ToOschedules[schedname]['schedule']
     TOOschedule.gotoNextObs(obstime_mjd = 'now')
-    remaining_valid_observations = TOOschedule.remaining_valid_observations
-    log(f'> Remaining Observable Entries: {remaining_valid_observations}')
+    remaining_observable_entries = TOOschedule.remaining_observable_entries
+    log(f'> Remaining Observable Entries: {remaining_observable_entries}')
     
     # if the file has no remaining valid observations, move it to the completed folder
-    if remaining_valid_observations == 0:
+    if remaining_observable_entries == 0:
         log(f'>> MOVING TO COMPLETED FOLDER')
         destination = os.path.join(scheduleFile_ToO_directory, 'archived', schedname)
         source = os.path.join(scheduleFile_ToO_directory, schedname)
