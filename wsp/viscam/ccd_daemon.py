@@ -77,6 +77,8 @@ class CCD(QtCore.QObject):
     imageAcquired = QtCore.pyqtSignal()
     imageSaved = QtCore.pyqtSignal()
     
+    doReconnect = QtCore.pyqtSignal()
+    
     #shutdownCameraClientSignal = QtCore.pyqtSignal()
     
     """
@@ -112,6 +114,7 @@ class CCD(QtCore.QObject):
         
         # empty var initialization
         # there will be issues on startup if these don't exist!
+        self.cc = None
         self.exptime = None
         self.tec_temp = None
         self.tec_setpoint = None
@@ -162,7 +165,7 @@ class CCD(QtCore.QObject):
         self.allowPollingSignal.connect(self.allowPolling)
         self.preventPollingSignal.connect(self.preventPolling)
         self.imageSaved.connect(self.raiseImageSavedFlag)
-        
+        self.doReconnect.connect(self.reconnect)
         # create a QTimer which will allow regular polling of the status
         self.pollTimer_dt = 20*1000
         """
@@ -1035,6 +1038,9 @@ class CCD(QtCore.QObject):
         
 
     @Pyro5.server.expose
+    def triggerReconnect(self):
+        self.doReconnect.emit()
+        
     def reconnect(self):
         #self.pollTimer.stop()
         try:
@@ -1065,20 +1071,35 @@ class CCD(QtCore.QObject):
             self.log(f'could not start launch server due to {type(e)}: {e}')
             self.server_running = False
         
+        # wait for the server to set up before we attempt to connect
+        time.sleep(10)
         # init the camera client
         # do this in a while loop but have a timeout
         t_elapsed = 0
-        dt = 0.5
+        attempt = 0
+        dt = 5.0
         timeout = 10.0
+        max_attempts = 5
         
-        while t_elapsed < timeout:
+        #while t_elapsed < timeout:
+        while attempt < max_attempts:
             try:
+                self.log(f'trying to instantiate huaso client...')
                 #self.cc = cameraClient.CameraClient('huaso_server', ('localhost', 43322))
                 #self.connected = self.cc._connect()
                 # 7-15-21 updating with Rob's new huaso_server client approach
+                self.log(f'type(self.cc) = {type(self.cc)}')
+                self.log(f'self.cc = {self.cc}')
+                if self.cc is not None:
+                    try:
+                        self.log('attempting to shut down any existing camera client')
+                        self.cc._shutdown()
+                    except Exception as e:
+                        self.log(f'could not shut down camera client because of {type(e)}: {e} ')
                 self.cc = cameraClient.CameraClient('SUMMER', ('localhost', 43322), verbose = False, debug = False)
                 self.connected = self.cc._connect()
-            except:
+            except Exception as e:
+                self.log(f'could not connect to huaso server because of {type(e)}: {e}')
                 self.connected = False
             
             if self.connected:
@@ -1086,6 +1107,7 @@ class CCD(QtCore.QObject):
             else:
                 time.sleep(dt)
                 t_elapsed += dt
+                attempt += 1
             
             
             

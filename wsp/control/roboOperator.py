@@ -1608,13 +1608,16 @@ class RoboOperator(QtCore.QObject):
                 # the dome is open and we're ready for observations. just pass
                 pass
             else:
-                # the dome and sun are okay, but the dome is closed. we should open the dome
-                self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
-                self.doTry('dome_open')
-                """
-                self.checktimer.start()
-                return
-                """
+                if self.dometest:
+                    self.log('observatory and sun are ready for observing, ignoring the dome shutter in dometest mode')
+                else:
+                    # the dome and sun are okay, but the dome is closed. we should open the dome
+                    self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
+                    self.doTry('dome_open')
+                    """
+                    self.checktimer.start()
+                    return
+                    """
                 
             # if we made it to here, we're good to do the auto calibration
             
@@ -2561,9 +2564,9 @@ class RoboOperator(QtCore.QObject):
                 self.announce(f'>> Executing Dither Number [{dithnum +1}/{self.num_dithers}]')
                 
                 # Do one last housekeeping check to make sure the camera is happy
-                if self.cam == 'summer':
+                #if self.cam == 'summer':
                     # this should make sure that we get a ccd timestamp update between exposures? NPL 8-19-22
-                    self.ccd.pollTECTemp()
+                    #self.ccd.pollTECTemp()
                     
                 # Do the observation
                 

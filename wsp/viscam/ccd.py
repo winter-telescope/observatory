@@ -247,7 +247,8 @@ class local_ccd(QtCore.QObject):
         self.remote_object.shutdownCameraClient()
         
     def reconnectServer(self):
-        self.remote_object.reconnect()
+        self.remote_object.triggerReconnect()
+        #self.remote_object.reconnect()
         
     def killServer(self):
         self.remote_object.killServer()

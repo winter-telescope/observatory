@@ -3776,7 +3776,7 @@ class Wintercmd(QtCore.QObject):
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
-                self.log(f'command timed out after {timeout} seconds before completing. Requested exptime = {secs}, but it is {self.state["ccd_exptime"]}')
+                self.logger.info(f'command timed out after {timeout} seconds before completing. Requested exptime = {secs}, but it is {self.state["ccd_exptime"]}')
                 break
             stop_condition = ( (self.state['ccd_exptime'] == secs) )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
