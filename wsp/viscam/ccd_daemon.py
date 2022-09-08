@@ -77,6 +77,8 @@ class CCD(QtCore.QObject):
     imageAcquired = QtCore.pyqtSignal()
     imageSaved = QtCore.pyqtSignal()
     
+    doReconnect = QtCore.pyqtSignal()
+    
     #shutdownCameraClientSignal = QtCore.pyqtSignal()
     
     """
@@ -112,6 +114,7 @@ class CCD(QtCore.QObject):
         
         # empty var initialization
         # there will be issues on startup if these don't exist!
+        self.cc = None
         self.exptime = None
         self.tec_temp = None
         self.tec_setpoint = None
@@ -162,7 +165,7 @@ class CCD(QtCore.QObject):
         self.allowPollingSignal.connect(self.allowPolling)
         self.preventPollingSignal.connect(self.preventPolling)
         self.imageSaved.connect(self.raiseImageSavedFlag)
-        
+        self.doReconnect.connect(self.reconnect)
         # create a QTimer which will allow regular polling of the status
         self.pollTimer_dt = 20*1000
         """
@@ -250,7 +253,86 @@ class CCD(QtCore.QObject):
                     raise TimeoutError(f'command timed out')
                 else:
                     break
+    @Pyro5.server.expose
+    def pollExptime(self):        
+        try:
+            #print('polling exposure time')
+            #self.log(f'polling exposure time')
             
+            if self.exptime is None:
+                # USE THIS IF YOU WANT TO ACTUALLY READ FROM CAMERA
+                self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
+                self.waitForClientIdle()
+                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+    
+                
+            else:
+               # just read from client register
+                self.exptime = self.cc._exposure[self.camnum]
+            
+            #print(f"EXPOSURE TIME = {self.exptime}")
+            self.state.update({'exptime' : self.exptime})
+            
+        except Exception as e:
+            #self.log(f'badness while polling exposure time: {e}')
+            self.log(e)
+            
+    @Pyro5.server.expose   
+    def pollTECTemp(self):
+        try:
+            #print('polling ccd temp')
+            #self.log(f'polling ccd temp')
+            self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
+            self.waitForClientIdle()
+            self.state.update({'tec_temp' : self.tec_temp})
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            
+        except Exception as e:
+            #self.log(f'badness while polling ccd temp: {e}')
+            self.log(e)
+            
+    @Pyro5.server.expose
+    def pollTECSetpoint(self):
+        try:
+            #print('polling tec setpoint')
+            #self.log('polling tec setpoint')
+            self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
+            self.waitForClientIdle()
+            self.state.update({'tec_setpoint' : self.tec_setpoint})
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            
+        except Exception as e:
+            #self.log(f'badness while polling tec setpoint: {e}')
+            self.log(e)
+    @Pyro5.server.expose    
+    def pollPCBTemp(self):
+        try:
+            #print('polling pcb temp')
+            #self.log('polling pcb temp')
+            self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
+            self.waitForClientIdle()
+            self.state.update({'pcb_temp' : self.pcb_temp})
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            
+        except Exception as e:
+            #self.log(f'badness while polling pcb temp: {e}')
+            self.log(e)
+    @Pyro5.server.expose
+    def pollTECStatus(self):
+        try:
+            #print('polling tec status')
+            #self.log('polling tec status')
+            fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
+            self.waitForClientIdle()
+            self.tec_status = int(fpgastatus_str[0])
+            self.state.update({'tec_status' : self.tec_status})
+            self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
+            
+        except Exception as e:
+            #self.log(f'badness while polling tec status: {e}')
+            self.log(e)
+            
+    @Pyro5.server.expose    
     def pollStatus(self):
         
         # things that don't require asking anything of the camera server
@@ -265,86 +347,19 @@ class CCD(QtCore.QObject):
             #self.log('polling status')
             self.doing_poll = True
             
-            
-            try:
-                #print('polling exposure time')
-                #self.log(f'polling exposure time')
-                
-                if self.exptime is None:
-                    # USE THIS IF YOU WANT TO ACTUALLY READ FROM CAMERA
-                    self.exptime = self.cc.getexposure(self.camnum)[self.camnum]
-                    self.waitForClientIdle()
-                    self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-
-                    
-                else:
-                   # just read from client register
-                    self.exptime = self.cc._exposure[self.camnum]
-                
-                #print(f"EXPOSURE TIME = {self.exptime}")
-                self.state.update({'exptime' : self.exptime})
-                
-            except Exception as e:
-                #self.log(f'badness while polling exposure time: {e}')
-                self.log(e)
-           
+            self.pollExptime()
             time.sleep(1)
             
-            try:
-                #print('polling ccd temp')
-                #self.log(f'polling ccd temp')
-                self.tec_temp = self.cc.getccdtemp(self.camnum)[self.camnum]
-                self.waitForClientIdle()
-                self.state.update({'tec_temp' : self.tec_temp})
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
-            except Exception as e:
-                #self.log(f'badness while polling ccd temp: {e}')
-                self.log(e)
-            
+            self.pollTECTemp()
             time.sleep(1)
             
-            try:
-                #print('polling tec setpoint')
-                #self.log('polling tec setpoint')
-                self.tec_setpoint = self.cc.gettecpt(self.camnum)[self.camnum]
-                self.waitForClientIdle()
-                self.state.update({'tec_setpoint' : self.tec_setpoint})
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
-            except Exception as e:
-                #self.log(f'badness while polling tec setpoint: {e}')
-                self.log(e)
-            
+            self.pollTECSetpoint()
             time.sleep(1)
             
-            try:
-                #print('polling pcb temp')
-                #self.log('polling pcb temp')
-                self.pcb_temp = self.cc.getpcbtemp(self.camnum)[self.camnum]
-                self.waitForClientIdle()
-                self.state.update({'pcb_temp' : self.pcb_temp})
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
-            except Exception as e:
-                #self.log(f'badness while polling pcb temp: {e}')
-                self.log(e)
-            
+            self.pollPCBTemp()
             time.sleep(1)
             
-            try:
-                #print('polling tec status')
-                #self.log('polling tec status')
-                fpgastatus_str = self.cc.getfpgastatus(self.camnum)[self.camnum]
-                self.waitForClientIdle()
-                self.tec_status = int(fpgastatus_str[0])
-                self.state.update({'tec_status' : self.tec_status})
-                self.state.update({'last_update_timestamp' : datetime.utcnow().timestamp()})
-                
-            except Exception as e:
-                #self.log(f'badness while polling tec status: {e}')
-                self.log(e)
-            
+            self.pollTECStatus()
             time.sleep(1)
             
             try:
@@ -355,12 +370,8 @@ class CCD(QtCore.QObject):
                 self.log(e)
                 
             # record this update time
-            
             self.state.update({'last_poll_attempt_timestamp': datetime.utcnow().timestamp()})   
                 
-                #print(f'>> TEC TEMP = {self.tec_temp}')
-            
-            
             # done with the current poll
             self.doing_poll = False
             pass
@@ -1027,6 +1038,9 @@ class CCD(QtCore.QObject):
         
 
     @Pyro5.server.expose
+    def triggerReconnect(self):
+        self.doReconnect.emit()
+        
     def reconnect(self):
         #self.pollTimer.stop()
         try:
@@ -1057,20 +1071,35 @@ class CCD(QtCore.QObject):
             self.log(f'could not start launch server due to {type(e)}: {e}')
             self.server_running = False
         
+        # wait for the server to set up before we attempt to connect
+        time.sleep(10)
         # init the camera client
         # do this in a while loop but have a timeout
         t_elapsed = 0
-        dt = 0.5
+        attempt = 0
+        dt = 5.0
         timeout = 10.0
+        max_attempts = 5
         
-        while t_elapsed < timeout:
+        #while t_elapsed < timeout:
+        while attempt < max_attempts:
             try:
+                self.log(f'trying to instantiate huaso client...')
                 #self.cc = cameraClient.CameraClient('huaso_server', ('localhost', 43322))
                 #self.connected = self.cc._connect()
                 # 7-15-21 updating with Rob's new huaso_server client approach
+                self.log(f'type(self.cc) = {type(self.cc)}')
+                self.log(f'self.cc = {self.cc}')
+                if self.cc is not None:
+                    try:
+                        self.log('attempting to shut down any existing camera client')
+                        self.cc._shutdown()
+                    except Exception as e:
+                        self.log(f'could not shut down camera client because of {type(e)}: {e} ')
                 self.cc = cameraClient.CameraClient('SUMMER', ('localhost', 43322), verbose = False, debug = False)
                 self.connected = self.cc._connect()
-            except:
+            except Exception as e:
+                self.log(f'could not connect to huaso server because of {type(e)}: {e}')
                 self.connected = False
             
             if self.connected:
@@ -1078,6 +1107,7 @@ class CCD(QtCore.QObject):
             else:
                 time.sleep(dt)
                 t_elapsed += dt
+                attempt += 1
             
             
             

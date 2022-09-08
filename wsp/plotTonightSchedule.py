@@ -71,10 +71,10 @@ except:
 
 qresult = np.array(result.fetchall())
     
-# Already in radians
-ra  = np.array(qresult[:,4],dtype=np.float32)
+# RA and DEC are in degrees, but radians are needed for plotting
+ra  = np.array(qresult[:,5],dtype=np.float32) * np.pi/180.0
 ra[ra > np.pi] -= 2*np.pi
-dec = np.array(qresult[:,5],dtype=np.float32)
+dec = np.array(qresult[:,6],dtype=np.float32) * np.pi/180.0
 
 plt.scatter(ra,dec,alpha=0.2, color='r',label='Tonight')
 plt.legend(loc='lower right',frameon=True)

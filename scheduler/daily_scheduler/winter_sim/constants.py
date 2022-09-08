@@ -138,8 +138,8 @@ SETTLE_TIME = 1. * u.second
 
 TIME_BLOCK_SIZE = 30. * u.min
 
-PROGRAM_NAME_TO_ID = {'engineering': 0, 
-                      'WINTER':1, 'SUMMER': 2, 'Palomar': 3, 'collaboration' :4 }
+PROGRAM_NAME_TO_ID = {'Calibration': 0,
+                      'Survey':1, 'MIT': 2, 'Caltech': 3, 'Engineering' :4 }
 PROGRAM_NAMES = list(PROGRAM_NAME_TO_ID.keys())
 PROGRAM_ID_TO_NAME = {v: k for k, v in list(PROGRAM_NAME_TO_ID.items())}
 PROGRAM_IDS = list(PROGRAM_ID_TO_NAME.keys())

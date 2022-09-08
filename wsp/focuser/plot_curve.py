@@ -72,8 +72,8 @@ def Fit_FocV(x, y, yerr, ml, xc, delta, y0):
         absolute_sigma = False
     else:
         absolute_sigma = True
-    popt, pcov = curve_fit(FocV, x, y, p0, sigma = yerr, absolute_sigma = absolute_sigma, 
-                           bounds = ([-np.inf, xc-500, -np.inf, 3.0], [0.0, xc+500, np.inf, 6.0]), method = 'dogbox')
+    popt, pcov = curve_fit(FocV, x, y, p0, sigma = yerr, absolute_sigma = absolute_sigma)#, 
+                           #bounds = ([-np.inf, xc-500, -np.inf, 3.0], [0.0, xc+500, np.inf0, 6.0]), method = 'dogbox')
 
     return popt, pcov
 

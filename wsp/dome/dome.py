@@ -324,7 +324,7 @@ class local_dome(QtCore.QObject):
                     # we want the az_goal to always be within the tracking threshold of the telescope az
                     # self.az_error = abs(self.telescope_az - self.az_goal) <-- calculated in self.parse_state
                     if self.az_error > self.tracking_error_threshold:
-                        self.log(f'UPDATING DOME GOAL: self.az_error = {self.az_error}, self.az_goal = {self.az_goal}, self.tracking_error_threshold = {self.tracking_error_threshold}, self.telescope az = {self.telescope_az}, self.telescope.state["mount.azimuth_degs"] = {self.telescope.state["mount.azimuth_degs"]}')
+                        #self.log(f'UPDATING DOME GOAL: self.az_error = {self.az_error}, self.az_goal = {self.az_goal}, self.tracking_error_threshold = {self.tracking_error_threshold}, self.telescope az = {self.telescope_az}, self.telescope.state["mount.azimuth_degs"] = {self.telescope.state["mount.azimuth_degs"]}')
                         self.moveDome.emit(self.telescope_az)
                 
             except:

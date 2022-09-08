@@ -67,9 +67,12 @@ import shutil
 import matplotlib.pyplot as plt
 import traceback as tb
 import sqlalchemy as db
+import pandas as pd
 # import ObsWriter
 import logging
 import subprocess
+
+import wintertoo.validate
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -80,10 +83,12 @@ from utils import utils
 from utils import logging_setup
 
 
+
+
 class Schedule(object):
     # This is a class that handles the connection between WSP/roboOperator and the schedule file SQLite database
 
-    def __init__(self, base_directory, config, logger, scheduleFile_directory = 'default', verbose = False):#, date = 'today'):
+    def __init__(self, base_directory, config, logger, scheduleFile_directory = 'default', verbose = True):#, date = 'today'):
         """
         sets up logging and opens connection to the database. Does
         not actually access any data yet.
@@ -108,6 +113,7 @@ class Schedule(object):
         self.end_of_schedule = False
         # number of observations after the current time
         self.remaining_valid_observations = 1000
+        self.remaining_observable_entries = 1000
 
    
     def log(self, msg, level = logging.INFO):
@@ -116,53 +122,92 @@ class Schedule(object):
         else:
             self.logger.log(level, msg)
     
+    def validateSchedule(self):
+        # try to validate the schedule:
+        try:
+            # first connect to the database
+            self.connectToDB()
+            
+            # get all the rows that can be observed
+            stmt = f'SELECT * FROM Summary'
+            
+            #### THIS DOES THE SORTING USING PANDAS DATAFRAME COMMANDS ####
+            #df = pd.read_sql(stmt, self.conn)
+            self.log(f'type(self.conn) = {type(self.conn)}')
+            df = pd.read_sql('SELECT * FROM Summary;',self.conn)
+            # now close the connection to the database
+            self.closeConnection
+            
+            # Now make some additions to the observations
+            # Priority: if not in database, add default 0 priority column
+            if 'priority' not in df:
+                df['priority'] = 0
+            
+            ### NOW VALIDATE THE SCHEDULE FILE DATAFRAME ###
+            # a bad schedule file will raise an exception here
+            wintertoo.validate.validate_schedule_df(df)
+
+            
+            return True
+        
+        except Exception as e:
+            #print(e)
+            self.log(f'schedule not valid: {e}')
+            
+            return False
+    
     
     #def loadSchedule(self, schedulefile_name, obsHistID = 0, startFresh=False):
     def loadSchedule(self, schedulefile_name, obsHistID = 0, postPlot = False):
 
-        """
-        Load the schedule starting at the currentTime.
-        ### Note: At the moment currentTime is a misnomer, we are selecting by the IDs of the observations
-        since the schedule database does not include any time information. Should change this to
-        actually refer to time before deployment.
-        """
-        # NPL: 12-14-21 removed any time stuff here and any calls to query the schedule
-        # now this method just loads up the schedule and tries to make a connection
-        # other methods are now used to actually try to pull observations
-        
-        
-        
+        #print(f'schedulefile_name = {schedulefile_name}')
         # set up the schedule file
         if schedulefile_name is None:
-            self.schedulefile = None
-            self.currentObs = None
-            self.currentObsHistID = None
-
+            self.schedule_is_valid = False
+            
         else:
+            
+            
             if schedulefile_name.lower() == 'nightly':
-                self.schedulefile_name = 'data'
                 self.scheduleType = 'nightly'
                 self.schedulefile = os.readlink(os.path.join(os.getenv("HOME"), self.config['scheduleFile_nightly_link_directory'], self.config['scheduleFile_nightly_link_name']))
+                self.schedulefile_name = os.path.basename(os.path.normpath(self.schedulefile))
                 if postPlot:
                     res = subprocess.Popen(args=['python','plotTonightSchedule.py'])
                     pass
             else:
                 if '.db' not in schedulefile_name:
                     schedulefile_name = schedulefile_name + '.db'
-                self.schedulefile_name = schedulefile_name
+                schedulefile_name = schedulefile_name
                 self.scheduleType = 'target'
                 #self.schedulefile = os.getenv("HOME") + '/' + self.scheduleFile_directory + '/' + self.schedulefile_name
-                self.schedulefile = os.path.join(self.scheduleFile_directory, self.schedulefile_name)
-            
+                # nifty fact: this works whether schedulefile_name is name or the full path
+                self.schedulefile = os.path.join(self.scheduleFile_directory, schedulefile_name)
+                # just want the name of the file here not the full pathname
+                self.schedulefile_name = os.path.basename(os.path.normpath(self.schedulefile))
+                
+            # validate the scheule:
+            self.log(f'checking if schedule is valid:')
+            self.schedule_is_valid = self.validateSchedule()
+            #print(f'self.scheduleFile_directory = {self.scheduleFile_directory}')
+            #print(f'self.schedulefile = {self.schedulefile}')
+            #print(f'self.schedulefile_name = {self.schedulefile_name}')
+                
+        if not self.schedule_is_valid:
+            self.schedulefile = None
+            self.currentObs = None
+            self.currentObsHistID = None
+            self.schedulefile_name = None
+            self.scheduleType = None
             
     def connectToDB(self):
         
         try:
             
-            #self.log(f'scheduler: attempting to create sql engine to schedule file at {self.schedulefile}')
+            self.log(f'scheduler: attempting to create sql engine to schedule file at {self.schedulefile}')
             self.engine = db.create_engine('sqlite:///' + self.schedulefile)    
             self.conn = self.engine.connect()
-            #self.log('scheduler: successfully connected to db')
+            self.log('scheduler: successfully connected to db')
             
         
         except Exception as e:
@@ -191,43 +236,70 @@ class Schedule(object):
     
     def getRankedObs(self, obstime_mjd = 'now', printList = True):
         #print(f'in getRanked Obs, obstime_mjd = {obstime_mjd}')
-        try:
-            # first connect to the database
-            self.connectToDB()
-            
-            # get all the rows that can be observed
-            stmt = f'SELECT * from summary'
-            stmt += f' WHERE validStart <= {obstime_mjd} and validStop >= {obstime_mjd} and observed = 0'
-            #stmt += f' ORDER by Priority DESC, validStop ASC'
-            stmt += f' ORDER by validStop ASC'
-            tmpresult = self.conn.execute(stmt)
-            #print(f'in getRankedObs, tmpresult = {tmpresult}')
-            # this is a list of sqlalchemy.engine.row.LegacyRow
-            dataRankedSQL = tmpresult.fetchall()
-            
-            # let's turn it into a list of dicts
-            dataRanked = []
-            for row in dataRankedSQL:
-                dataRanked.append(dict(row))
-            #print(f'in getRankedObs, dataRanked = {dataRanked}')
-            # now turn dataRanked into a list of dictionaries
-            
-            
-            # now close the connection to the database
-            self.closeConnection
-        
-        except Exception as e:
-            # now close the connection to the database
-            self.closeConnection()
+        # check if the schedule is invalid
+        if self.schedule_is_valid is False:
             dataRanked = None
-            print(f"ERROR [schedule.py]: database query failed for next object: {e}")
-            print(tb.format_exc())
-        if printList:
-            # list the observations in their ranked order:
-            self.log('Valid Observations Ranked by validStop:')
-            for i in range(len(dataRanked)):
-                row = dataRanked[i]
-                self.log(f'  {i}: obsHistID = {row["obsHistID"]}, validStop = {row["validStop"]}, observed = {row["observed"]}')
+            self.log('schedule file is invalid. cannot query observations')
+        else:
+            try:
+                # first connect to the database
+                self.connectToDB()
+                
+                # get all the rows that can be observed
+                stmt = f'SELECT * from summary'
+                #stmt += f' WHERE validStart <= {obstime_mjd} and validStop >= {obstime_mjd} and observed = 0'
+                
+                #### THIS DOES THE SORTING USING PANDAS DATAFRAME COMMANDS ####
+                #df = pd.read_sql('SELECT * FROM summary;',self.conn)
+                self.df = pd.read_sql(stmt, self.conn)
+                
+                self.df = self.df[self.df["validStop"] >= obstime_mjd]
+                self.df = self.df[self.df["observed"] == 0]
+                
+                # Now make some additions to the observations
+                # Priority: if not in database, add default 0 priority column
+                if 'priority' not in self.df:
+                    self.df['priority'] = 0
+                # Filename: add the name of the file so that this gets passed through to the 
+                self.df['origin_filename'] = self.schedulefile_name
+                self.df['origin_filepath'] = self.schedulefile
+                
+                ### NOW VALIDATE THE SCHEDULE FILE DATAFRAME ###
+                # a bad schedule file will raise an exception here
+                wintertoo.validate.validate_schedule_df(self.df)
+    
+                # we have now validatd the schedule and only selected observations whose validStop time haven't passed
+                # at this point make a note of the total number of remaining observable targets
+                self.remaining_observable_entries = len(self.df)
+                print(f'remaining_observable_entries = {self.remaining_observable_entries}')
+                
+                # now select only observations that are currently in their observing window
+                self.df = self.df[self.df["validStart"]<= obstime_mjd]
+
+    
+    
+                # let's turn it into a list of dicts
+                dataRanked = []
+                for i in range(len(self.df)):
+                    dataRanked.append(dict(self.df.iloc[i]))
+            
+                
+                # now close the connection to the database
+                self.closeConnection
+            
+            except Exception as e:
+                # now close the connection to the database
+                self.closeConnection()
+                dataRanked = None
+                print(f"ERROR [schedule.py]: database query failed for next object: {e}")
+                #print(tb.format_exc())
+            if printList:
+                # list the observations in their ranked order:
+                self.log('Valid Observations Ranked by validStop:')
+                for i in range(len(dataRanked)):
+                    row = dataRanked[i]
+                    self.log(f'  {i}: obsHistID = {row["obsHistID"]}, validStop = {row["validStop"]}, observed = {row["observed"]}')
+                    
         return dataRanked
     
     def updateCurrentObs(self, currentObs, obstime_mjd = 'now'):
@@ -263,8 +335,9 @@ class Schedule(object):
             self.remaining_valid_observations = 0
             self.end_of_schedule = True
         else:
+            # moved this to inside getRankedObs
             self.remaining_valid_observations = len(dataRanked)
-            if self.remaining_valid_observations == 0:
+            if self.remaining_observable_entries == 0:
                      self.end_of_schedule = True
             else:
                 self.end_of_schedule = False
@@ -279,8 +352,13 @@ class Schedule(object):
         if obstime_mjd == 'now':
             obstime_mjd = astropy.time.Time(datetime.utcnow()).mjd
         
-        
-        dataRanked = self.getRankedObs(obstime_mjd)
+        # check if the schedule is invalid
+        if self.schedule_is_valid is False:
+            dataRanked = None
+            self.log('schedule file is invalid. cannot query observations')
+        else:
+            # if the schedule is okay then rank valid observations
+            dataRanked = self.getRankedObs(obstime_mjd)
         #print(dataRanked)
         if dataRanked is None:
             self.remaining_valid_observations = 0
@@ -371,7 +449,7 @@ class Schedule(object):
             #nextResult_dict = dict(nextResult)
             if self.verbose:
                 self.log(f'got next entry from schedule file: obsHistID = {nextResult["obsHistID"]}')#', requestID = {nextResult_dict["requestID"]}')
-                self.log(f'remaining valid observations: {self.remaining_valid_observations}')
+                self.log(f'remaining_observable_entries: {self.remaining_observable_entries}')
                 self.log('> loading entry as currentObs')
             #nextResult_dict = dict(nextResult)
             self.currentObs = nextResult
@@ -398,16 +476,36 @@ if __name__ == '__main__':
     logger = None
     schedule = Schedule(base_directory, config, logger, verbose = True)
     
-    #schedulefile_dir = os.path.join(os.getenv("HOME"), 'data','schedules','ToO')
-    #schedulefile_name = 'timed_requests_04_09_2022_04_1649502448_.db'
+    obstime_mjd = 59804.1530797029
+
+
     schedulefile_path = os.readlink(os.path.join(os.getenv("HOME"), 'data','nightly_schedule.lnk'))
+    #schedulefile_path = os.path.join(os.getenv("HOME"), 'data','schedules', 'nightly_20220810.db')
+    #schedulefile_path = os.path.join(os.getenv("HOME"), 'data', 'schedules','ToO', 'timed_requests_08_15_2022_15_1660601716_.db')
     schedulefile_dir = os.path.dirname(schedulefile_path)
     schedulefile_name = schedulefile_path.split('/')[-1]
     
-    obstime_mjd = 59683.229421296295
     
     #schedule.loadSchedule(os.path.join(schedulefile_dir, schedulefile_name))
-    schedule.loadSchedule('nightly')
+    #schedule.loadSchedule('nightly')
+    #schedule.loadSchedule(schedulefile_name)
+    #schedule.loadSchedule(None)
+    schedulefile = '/home/winter/data/schedules/ToO/testcrab.db'
+    """
+    print(f'scheduler: attempting to create sql engine to schedule file at {schedulefile}')
+    engine = db.create_engine('sqlite:///' + schedulefile)    
+    conn = engine.connect()
+    
+    stmt = f'SELECT * FROM Summary'
+    
+    #### THIS DOES THE SORTING USING PANDAS DATAFRAME COMMANDS ####
+    #df = pd.read_sql(stmt, self.conn)
+    print(f'type(conn) = {type(conn)}')
+    df = pd.read_sql('SELECT * FROM Summary;',conn)
+    conn.close()
+    
+    """
+    schedule.loadSchedule(schedulefile)
     
     # reset the schedule to fully unobserved
     schedule._reset_observation_log()
@@ -415,6 +513,8 @@ if __name__ == '__main__':
     # list the ranked observations
     #order = schedule.getRankedObs(obstime_mjd = obstime_mjd, printList = True)
     schedule.log('')
+    currentObs = schedule.getTopRankedObs(obstime_mjd)
+    schedule.log(f'remaining_observable_entries: {schedule.remaining_observable_entries}')
     
     # now fake observe by stepping through the observations in the ranked order and logging them
     while schedule.remaining_valid_observations > 0:
@@ -425,6 +525,8 @@ if __name__ == '__main__':
     
     schedule.log('all done with schedule!')
     
-    
+    # reset the schedule to fully unobserved
+    schedule.log('resetting observed to false again')
+    schedule._reset_observation_log()
     
     

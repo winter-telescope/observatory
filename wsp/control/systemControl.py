@@ -260,14 +260,7 @@ class control(QtCore.QObject):
         if mode == 'r':
             # send a signal that we've started up wsp!
             self.alertHandler.slack_log(f':futurama-bender-robot::telescope: *Starting WSP in Robotic Mode!*')
-        """
-        # NPL: 4-29-21: moving the schedule stuff over to the roboOperator.
-        #init the scheduler
-        self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger, date = 'today')
-        ## init the database writer
-        self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
-        """
-
+        
         # init the chiller
         if '--smallchiller' in opts:
             self.chiller = small_chiller.local_chiller(base_directory = self.base_directory, config = self.config, alertHandler = self.alertHandler)
@@ -321,18 +314,14 @@ class control(QtCore.QObject):
                                              logger = self.logger, 
                                              viscam = self.viscam, 
                                              ccd = self.ccd, 
-                                             mirror_cover = self.mirror_cover)
+                                             mirror_cover = self.mirror_cover,
+                                             ephem = self.ephem)
         
         if mode in ['r','m']:
             #init the schedule executor
             #self.scheduleExec = schedule_executor.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
             pass
-        """
-        #NPL 4-27-21: commenting out this listener stuff. I don't think it's used anymore
-            listener = self.scheduleExec
-        else:
-            listener = None
-        """
+
         # init the command executor
         self.cmdexecutor = commandParser.cmd_executor(telescope = self.telescope, wintercmd = self.wintercmd, logger = self.logger)#, listener = listener)
         
@@ -390,44 +379,3 @@ class control(QtCore.QObject):
 
 
 
-        
-        
-        ### Old deprecated stuff staged for deletion:
-
-        """
-        if mode in 's':
-            
-            #init the schedule executor
-            self.scheduleExec = commandParser.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
-            # init the cmd executor
-            listener = self.scheduleExec
-            self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger, self.scheduleExec)
-
-            # init the cmd prompt
-            self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
-
-
-            # connect the new command signal to the executors
-            self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
-            self.scheduleExec.newcmd.connect(self.cmdexecutor.add_to_queue)
-        else:
-            self.wintercmd = wintercmd.Wintercmd(self.config, self.hk.state, self.telescope, self.logger)
-            #self.wintercmd = wintercmd.ManualCmd(self.config, self.hk.state, self.telescope, self.logger)
-
-            # init the cmd executor
-            self.cmdexecutor = commandParser.cmd_executor(self.telescope, self.wintercmd, self.logger)
-
-            # init the cmd prompt
-            self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
-            # connect the new command signal to the executors
-            self.cmdprompt.newcmd.connect(self.cmdexecutor.add_to_queue)
-
-            # set up the command server which listens for command requests of the network
-            self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
-            # connect the command server to the command executor
-            self.commandServer.newcmd.connect(self.cmdexecutor.add_to_queue)
-        """
-
-        ## Not loving this approach at the moment, trying something else
-        # if mode == 0:
-        #     self.cmdprompt.newcmd.connect(self.scheduleExec.stop)

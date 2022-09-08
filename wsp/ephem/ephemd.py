@@ -179,7 +179,7 @@ class EphemMon(object):
                 timestamp = self.time_utc.timestamp()
                 astropy_time = astropy.time.Time(self.time_utc, format = 'datetime')
                 
-                mjd = astropy_time.mjd
+                mjd = float(astropy_time.mjd)
             # turn the timestamp into MJD
         
             

@@ -363,7 +363,9 @@ class CommandHandler(QtCore.QObject):
                              #timeout = 10000)
                 
                 # log that we sent the command unless it's godome (avoids flooding the log with dome nudges while tracking)
-                if not cmd == 'godome':
+                if cmd == 'godome':
+                    pass
+                else:
                     self.log(f'CommandHandler: Sent command {cmd} to dome. Received reply: {reply}')
                 self.newReply.emit(reply)
             

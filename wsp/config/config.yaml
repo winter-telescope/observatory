@@ -73,7 +73,18 @@ obslog_database_name: 'WINTER_ObsLog' #.db is implied
 # dither table
 # base directory is wsp path
 dither_file: 'config/dither_list.conf'
-
+dither_defaults:
+# for each camera specifiy:
+# ditherNumber (number of dithers to do)
+# ditherStepSize (box width for random dither to be selected from)
+    camera:
+        summer:
+            ditherNumber: 5
+            ditherStepSize: 15
+        winter:
+            ditherNumber: 5
+            ditherStepSize: 15
+    
 
 
 
@@ -117,7 +128,9 @@ log_link_name: 'winter.log'
 ########### ROBO MANAGER ###########
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
-max_sun_alt_for_observing: -18
+#max_sun_alt_for_observing: -18
+max_sun_alt_for_observing: -12
+
 
 robotic_manager_triggers:
     timeformat: '%H:%M:%S.%f'
@@ -296,7 +309,7 @@ telescope:
     home_alt_degs: 45.0
     #home_az_degs: 349.0
     home_az_degs: 0
-    min_alt: 15.0
+    min_alt: 30
     max_alt: 85.0
     rotator_field_angle_zeropoint: 155.0 
     rotator_home_degs: -25.0
@@ -478,7 +491,7 @@ weather_limits:
 ephem:
     # note that changing these will not update the housekeeping fields, that must be done manually
     min_target_separation:
-        moon: 45.0
+        moon: 25.0
         mercury: 5
         venus: 5
         mars: 5
@@ -497,6 +510,11 @@ focus_loop_param:
             total_throw: 800
             nsteps: 12
     #micron_interval: 100
+    focus_filters:
+        summer:
+            - 'r'
+        winter:
+            - 'J'
     targets:
         targ1:
             target_type: altaz
@@ -515,7 +533,7 @@ focus_loop_param:
             target: '40 304'
     focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
-    focus_graceperiod_hours: 6
+    focus_graceperiod_hours: 12
     max_focus_attempts: 2
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
@@ -529,6 +547,7 @@ focus_loop_param:
     results_log_dir: 'results'
     results_log_last_link: 'last_focus_results.lnk'
     results_plot_last_link: 'last_focus_plot.lnk'
+    focus_model_params: 'focus_model_params.json'
 
 filt_limits:
     uband:
@@ -570,7 +589,7 @@ filters:
         u:
             name: "SDSS u'"
             nominal_focus: 9960
-            active: False
+            active: True
             focus_exptime: 30
         g:
             name: "SDSS g'"
@@ -580,12 +599,12 @@ filters:
         r:
             name: "SDSS r'"
             nominal_focus: 9960
-            active: False
+            active: True
             focus_exptime: 10
         i:
             name: "SDSS i'"
             nominal_focus: 9960
-            active: False
+            active: True
             focus_exptime: 10
     winter:
         J:
@@ -636,7 +655,7 @@ pointing_model:
         min_az: 5
         max_az: 355
     # current default pointing model to use
-    pointing_model_file: 'pointing_model_20220311.pxp'
+    pointing_model_file: 'pointing_model_20220811.pxp'
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
     default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'
@@ -888,7 +907,7 @@ fields:
         units: None
         dtype: int64
         rate: hk
-        var: "schedule.remaining_valid_observations"
+        var: "schedule.remaining_observable_entries"
     
 #telescope
     pwi4_version_field0:
@@ -1100,28 +1119,28 @@ fields:
         units: 'arcsec'
         dtype: float64
         rate: hk
-        var: telescope.state["mount.ra_arcsec.total"]
+        var: telescope.state["mount.offsets.ra_arcsec.total"]
     mount_offsets_ra_arcsec_rate:
         ftype: raw
         label: 'RA'
         units: 'arcsecps'
         dtype: float64
         rate: hk
-        var: telescope.state["mount.ra_arcsec.rate"]
+        var: telescope.state["mount.offsets.ra_arcsec.rate"]
     mount_offsets_dec_arcsec_total:
         ftype: raw
         label: 'Dec'
         units: 'arcsec'
         dtype: float64
         rate: hk
-        var: telescope.state["mount.dec_arcsec.total"]
+        var: telescope.state["mount.offsets.dec_arcsec.total"]
     mount_offsets_dec_arcsec_rate:
         ftype: raw
         label: 'RA'
         units: 'arcsecps'
         dtype: float64
         rate: hk
-        var: telescope.state["mount.dec_arcsec.rate"]
+        var: telescope.state["mount.offsets.dec_arcsec.rate"]
     
     # axis0 = AZ
     mount_az_is_enabled:
