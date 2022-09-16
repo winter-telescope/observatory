@@ -63,18 +63,20 @@ def physicalCentroid(X, Y, Z, method = 'com', plots = False, *args, **kwargs):
 plt.close('all')
 
 start = datetime.now().timestamp()
-impath = 'SUMMER_20220331_230838_Camera0.fits'
-
+#impath = 'SUMMER_20220331_230838_Camera0.fits'
+impath = 'Preview_20220914_213835_2sec_Bin4_-19.8C_gain390.fit'
 hdu = fits.open(impath)[0]
 
+darkpath = 'Dark_ASIImg_2sec_Bin4_-19.8C_gain390_2022-09-14_205448_frame0001.fit'
+darkhdu = fits.open(darkpath)[0]
 
 
-rawdata = hdu.data
+rawdata = hdu.data - darkhdu.data #
 
 mean, median, std = astropy.stats.sigma_clipped_stats(rawdata, sigma=3.0)  
 print((mean, median, std))  
 
-data = rawdata-median
+data = rawdata -median
 
 #data = data[920:1000,750:900]
 #data = data[300:1700, 800:1900]
@@ -87,10 +89,10 @@ X,Y = np.meshgrid(xi, yi, indexing = 'xy')
 #%%
 
 
-daofind = photutils.detection.IRAFStarFinder(fwhm=3.0, 
+daofind = photutils.detection.IRAFStarFinder(fwhm=7.0, 
                                             threshold=5.*std,
                                             peakmax = 30000.0,
-                                            brightest = 10)  
+                                            brightest = 5)  
 sources = daofind(data)  
 end = datetime.now().timestamp()
 dt = end - start
@@ -128,7 +130,7 @@ apertures.plot(color='m', lw=1.5, alpha=1)
 
 xpos = sources['xcentroid']
 ypos = sources['ycentroid']
-box_size = 25
+box_size = 100
 # centroid the sources
 x, y = photutils.centroids.centroid_sources(data, xpos = xpos, ypos = ypos, box_size = box_size, 
                                             footprint = None, error = None, mask = None, 
@@ -141,6 +143,7 @@ plt.scatter(x, y, marker='+', s=80, color='red')
 footprint = np.ones(np.repeat(box_size, 2), dtype=bool)
 h = 3.5
 fig, axes = plt.subplots(1, len(sources), figsize = (h*len(sources),h))
+test_offset_pix = 0
 for i in range(len(xpos)):
     xp = xpos[i]
     yp = ypos[i]
@@ -149,7 +152,7 @@ for i in range(len(xpos)):
     
     ax = axes[i]
     slices_large, slices_small = astropy.nddata.utils.overlap_slices(data.shape,
-                                                footprint.shape, (yp+5, xp+5))
+                                                footprint.shape, (yp+test_offset_pix, xp+test_offset_pix))
     data_cutout = data[slices_large]
     #plt.figure(figsize = (4,4))
     #plt.imshow(data_cutout, origin='lower', interpolation='nearest')
