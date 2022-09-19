@@ -107,7 +107,7 @@ apertures = photutils.aperture.CircularAperture(positions, r=4.)
 
 norm = astropy.visualization.ImageNormalize(data, 
                                              interval = astropy.visualization.ZScaleInterval(),
-                                             stretch = astropy.visualization.SqrtStretch())
+                                             stretch = astropy.visualization.LinearStretch())
 
 
 
