@@ -5,7 +5,7 @@ Created on Mon Apr  4 14:44:43 2022
 
 @author: nlourie
 """
-
+import os
 import photutils.detection
 import astropy.stats
 from astropy.io import fits
@@ -64,10 +64,11 @@ plt.close('all')
 
 start = datetime.now().timestamp()
 #impath = 'SUMMER_20220331_230838_Camera0.fits'
-impath = 'Preview_20220914_213835_2sec_Bin4_-19.8C_gain390.fit'
+imdir = 'GuiderDitherData_20220918'
+impath = os.path.join(imdir, 'Preview_20220918_201222_2sec_Bin4_-19.8C_gain390.fit')
 hdu = fits.open(impath)[0]
 
-darkpath = 'Dark_ASIImg_2sec_Bin4_-19.8C_gain390_2022-09-14_205448_frame0001.fit'
+darkpath = os.path.join(imdir, 'Calibrations', 'Dark_ASIImg_2sec_Bin4_-19.8C_gain390_2022-09-18_201707_frame0001.fit')
 darkhdu = fits.open(darkpath)[0]
 
 
@@ -76,7 +77,7 @@ rawdata = hdu.data - darkhdu.data #
 mean, median, std = astropy.stats.sigma_clipped_stats(rawdata, sigma=3.0)  
 print((mean, median, std))  
 
-data = rawdata -median
+data = rawdata# -median
 
 #data = data[920:1000,750:900]
 #data = data[300:1700, 800:1900]
@@ -110,7 +111,7 @@ norm = astropy.visualization.ImageNormalize(data,
 
 
 
-#%%
+
 
 
 #norm = astropy.visualization.mpl_normalize.ImageNormalize(stretch=astropy.visualization.SqrtStretch())
