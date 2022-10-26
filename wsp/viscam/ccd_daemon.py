@@ -630,9 +630,9 @@ class CCD(QtCore.QObject):
         ###### QUEUE PARAMETERS ######
         #header.append(fits.Card('PROGRMPI',     state.get('programPI',''),                   'Queue program PI'))
         #header.append(fits.Card('PROGRMID',     state.get('programID',''),                   'Queue program ID'))
-        header.append(fits.Card('PROGID',       state.get('programPI',''),                      'Queue program PI'))
+        header.append(fits.Card('PROGID',       state.get('robo_programID',''),                      'Queue program PI'))
         header.append(fits.Card('PROGNAME',     state.get('programName',''),                    'Queue program name'))
-        header.append(fits.Card('PROGPI',       state.get('robo_progID',''),                    'Queue program ID'))
+        header.append(fits.Card('PROGPI',       state.get('programPI',''),                    'Queue program ID'))
         header.append(fits.Card('QCOMMENT',     state.get('qcomment',''),                       'Queue comment'))
         header.append(fits.Card('FIELDID',      state.get('robo_fieldID',''),                   'Field ID number'))
         header.append(fits.Card('OBHISTID',     state.get('robo_obsHistID',''),                 'obsHistID: line in schedulefile'))

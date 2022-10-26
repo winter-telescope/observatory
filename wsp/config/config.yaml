@@ -2020,7 +2020,7 @@ fields:
         dtype: float64
         rate: slow
         var: robostate["fieldID"]
-    robo_progID:
+    robo_programID:
         ftype: raw
         label: 'ID'
         units: None

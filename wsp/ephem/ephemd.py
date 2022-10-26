@@ -198,7 +198,7 @@ class EphemMon(object):
             # get sun altitude
             self.prev_sunalt = self.sunalt
             #self.sunalt = self.get_sun_alt(obstime = self.time_utc, time_format = 'datetime')
-            self.sunalt = self.get_sun_alt(obstime = mjd, time_format = 'mjd')
+            self.sunalt, self.sunaz = self.get_sun_altaz(obstime = mjd, time_format = 'mjd')
             if self.sunalt > self.prev_sunalt:
                 self.sun_rising = True
             else:
@@ -225,7 +225,7 @@ class EphemMon(object):
             self.logger.exception(f'error in update: {e}')
             pass
     
-    def get_sun_alt(self, obstime = 'now', time_format = 'datetime'):
+    def get_sun_altaz(self, obstime = 'now', time_format = 'datetime'):
         
         if obstime == 'now':
             obstime = datetime.utcnow()
@@ -239,9 +239,11 @@ class EphemMon(object):
         sun_coords = sunloc.transform_to(frame)
         
         sunalt = sun_coords.alt.value
-        return sunalt
+        sunaz = sun_coords.az.value
+        
+        return sunalt, sunaz
     
-    def get_moon_altaz(self, obstime = 'now', time_format = 'datetime'):
+    def get_moon_altaz_radec(self, obstime = 'now', time_format = 'datetime'):
         
         if obstime == 'now':
             obstime = datetime.utcnow()
@@ -256,7 +258,40 @@ class EphemMon(object):
         
         alt = coords.alt.value
         az = coords.az.value
-        return alt, az
+        radeg = loc.ra.deg
+        decdeg = loc.dec.deg
+        return alt, az, radeg, decdeg
+    
+    def get_moon_info(self, obstime = 'now', time_format = 'datetime'):
+        
+        """
+        header.append(fits.Card('MOONRA',       state.get('moon_ra_deg', ''),                   'Moon J2000.0 R.A. (deg)'))
+        header.append(fits.Card('MOONDEC',      state.get('moon_dec_deg', ''),                  'Moon J2000.0 Dec. (deg)'))
+        header.append(fits.Card('MOONILLF',     state.get('moon_illf', ''),                     'Moon illuminated fraction (frac)'))
+        header.append(fits.Card('MOONPHAS',     state.get('moon_phase', ''),                    'Moon phase angle (deg)'))
+        header.append(fits.Card('MOONESB',      state.get('moon_excess_brightness_vband', ''),  'Moon excess in sky brightness V-band'))
+        header.append(fits.Card('MOONALT',      state.get('moon_alt', ''),                      'Moon altitude (deg)'))
+        header.append(fits.Card('MOONAZ',       state.get('moon_az', ''),                       'Moon azimuth (deg)'))
+        """
+        
+        if obstime == 'now':
+            obstime = datetime.utcnow()
+        
+        obstime = astropy.time.Time(obstime, format = time_format)
+
+        frame = astropy.coordinates.AltAz(obstime = obstime, location = self.site)
+        
+        loc = astropy.coordinates.get_moon(obstime)
+        
+        coords = loc.transform_to(frame)
+        
+        alt = coords.alt.value
+        az = coords.az.value
+        radeg = loc.ra.deg
+        decdeg = loc.dec.deg
+        
+        moonphase = ''
+        moonesb = ''
     
     """
     def setup_ephem_dist_dict(self):
