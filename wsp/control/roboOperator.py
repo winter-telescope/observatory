@@ -1711,6 +1711,8 @@ class RoboOperator(QtCore.QObject):
                             flat_exptime = 30000.0/(np.exp(a*(-1*self.state["sun_alt"])**n))
                             if filterID in ['u', 'i']:
                                 flat_exptime = flat_exptime*1.6
+                            if filterID == 'g':
+                                flat_exptime = flat_exptime*0.5
                             
                             minexptime = 2.5 + i
                             maxexptime = 60

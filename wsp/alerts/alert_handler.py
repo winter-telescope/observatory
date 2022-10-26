@@ -36,10 +36,12 @@ class SlackDispatcher(object):
         self.logger = logger
         self.client = slack_sdk.WebClient(token = self.auth_config.get("slackbot_token", ""))
         
-    def log(self, msg, level = logging.INFO):
+    def log(self, msg, level = logging.INFO, verbose = False):
         if self.logger is None:
-                #print(msg)
-                pass
+                if verbose:
+                    print(msg)
+                else:
+                    pass
         else:
             self.logger.log(level = level, msg = msg) 
     
@@ -65,27 +67,36 @@ class SlackDispatcher(object):
                 reply_text = response.text
                 
                 # log the post
-                self.log(f'SlackDispatcher: posted slack message to {channel}. Got status code {status_code}: {reply_text}')
+                self.log(f'SlackDispatcher: posted slack message to {channel}. Got status code {status_code}: {reply_text}', verbose = verbose)
                 
             except Exception as e:
                 status_code = -999
                 reply_text = e
                 
                 # log the post failure
-                self.log(f'SlackDispatcher: failed to post slack message to {channel}. Got status code {status_code}: {reply_text}')
+                self.log(f'SlackDispatcher: failed to post slack message to {channel}. Got status code {status_code}: {reply_text}', verbose = verbose)
         #return status_code, reply_text
     
-    def postImage(self, filepath, msg = '', verbose = False):
+    def postImage(self, channel_list, filepath, msg = '', verbose = False):
         # post an image to the channel
-        try:
-            result = self.client.files_upload(
-                channels = '#winter_observatory',
-                initial_comment = msg,
-                file = filepath,
-                )
-            self.log(result)
-        except slack_sdk.errors.SlackApiError as e:
-            self.log(f"Error uploading file: {e}")
+        # allow just a single address, in addition to a list
+        if type(channel_list) is str:
+            channel_list = [channel_list]
+        
+        for channel in channel_list:
+            # append a "#" to the front of the channel name
+            channel_addr = '#' + channel
+            if verbose:
+                self.log(f'posting image to channel {channel_addr}', verbose = verbose)
+            try:
+                result = self.client.files_upload(
+                    channels = channel_addr,
+                    initial_comment = msg,
+                    file = filepath,
+                    )
+                self.log(result, verbose = verbose)
+            except slack_sdk.errors.SlackApiError as e:
+                self.log(f"Error uploading file: {e}", verbose = verbose)
             
     
 class EmailDispatcher(object):
@@ -232,7 +243,8 @@ class AlertHandler(object):
         
         full_message = message + mentions
         # now post the message
-        self.slacker.postImage(filepath, full_message, verbose = verbose)
+        channel = '#winter_observatory'
+        self.slacker.postImage(channel, filepath, full_message, verbose = verbose)
         
 if __name__ == '__main__':
     
