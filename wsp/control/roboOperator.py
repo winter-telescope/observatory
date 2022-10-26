@@ -444,7 +444,7 @@ class RoboOperator(QtCore.QObject):
                   'obstype',     
                   'programPI',
                   'programID',
-                  'progName',
+                  'programName',
                   'qcomment',
                   'targtype',
                   'targName',
