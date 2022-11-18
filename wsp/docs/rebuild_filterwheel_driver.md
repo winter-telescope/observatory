@@ -1,0 +1,29 @@
+## Steps for rebuilding the FLI filterwheel driver on the SUMMER raspberry pi
+- `ssh winterpi@192.68.1.228`
+- First we need to make a directory to store the linux driver in the current set (it gets it automatically with the $(uname -r) variable of linux libraries
+  - `/lib/modules/$(uname -r)`
+  - `sudo mkdir misc`
+- Now go to the directory with the build files (okay some day I should move it out of Downloads)...
+  - `cd  ~/Downloads/fliusb-linux-kernel-4.18`
+  - `sudo make clean`
+  - `sudo make`
+- Now move the driver to the current set of libraries and add it to the list of drivers
+  - `sudo cp fliusb.ko /lib/modules/$(uname -r)/misc`
+  - `sudo depmod -a`
+  - `modprobe fliusb`
+- Now check if it worked:
+  - `sudo dmesg`
+  - If it works, should see something like: "[107239.574970] fliusb_init[944]: fliusb module loaded" on the last line(s)
+- Now reboot
+  - `sudo reboot`
+- Should now be good, try running wsp normally. The pi autolaunches the server daemon which handles the filter and shutter commanding
+- You can test filter moves with the wsp wintercmd: `command_filter_wheel <position integer>`
+- Working example:
+    - > wintercmd: command_filter_wheel 2
+    -  > wintercmd: got ssignal  to move filter wheel to pos = 2
+    -  > viscamd cmd handler: caught doCommand signal: send_filter_wheel_command
+    -  > going to try to execute the filter wheel move
+    -  > http://192.168.1.228:5001/filter_wheel?n=2
+    -  > Status 200 Response:  {"fw_pos": 2, "fw_status": 1, "fw_response_code": 0}
+
+- 
