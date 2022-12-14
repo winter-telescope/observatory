@@ -1,5 +1,5 @@
 ## Steps for rebuilding the FLI filterwheel driver on the SUMMER raspberry pi
-- `ssh winterpi@192.68.1.228`
+- `ssh winterpi@192.168.1.228`
 - First we need to make a directory to store the linux driver in the current set (it gets it automatically with the $(uname -r) variable of linux libraries
   - `/lib/modules/$(uname -r)`
   - `sudo mkdir misc`
