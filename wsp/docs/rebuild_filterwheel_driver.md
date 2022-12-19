@@ -10,7 +10,7 @@
 - Now move the driver to the current set of libraries and add it to the list of drivers
   - `sudo cp fliusb.ko /lib/modules/$(uname -r)/misc`
   - `sudo depmod -a`
-  - `modprobe fliusb`
+  - `sudo modprobe fliusb`
 - Now check if it worked:
   - `sudo dmesg`
   - If it works, should see something like: "[107239.574970] fliusb_init[944]: fliusb module loaded" on the last line(s)
