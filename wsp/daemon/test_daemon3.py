@@ -15,7 +15,7 @@ import Pyro5.server
 #from PyQt5 import uic, QtGui, QtWidgets
 from PyQt5 import QtCore
 #from astropy.io import fits
-#import numpy as np
+import numpy as np
 import sys
 import signal
 #import queue
@@ -43,7 +43,7 @@ class TimerThread(QtCore.QThread):
         super(TimerThread, self).__init__()
         print('created a timer thread')
         # Set up the timeout. Convert seconds to ms
-        self.timeout = timeout*1000.0
+        self.timeout = int(np.round(timeout*1000.0, 0))
         
         
     def run(self):
@@ -143,7 +143,7 @@ class PyroGUI(QtCore.QObject):
         self.expTimerComplete.emit()
 
     def startExpTimer(self, waittime):
-        self.timer.setInterval(waittime)
+        self.timer.setInterval(int(np.round(waittime, 0)))
         self.timer.start()
             
         
