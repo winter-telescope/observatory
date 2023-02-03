@@ -74,6 +74,7 @@ class control(QtCore.QObject):
         super(control, self).__init__(parent)
         
         print(f'control: base_directory = {base_directory}')
+        print(f'MODE = {mode}')
         self.opts = opts
     
         # pass in the config
@@ -105,6 +106,37 @@ class control(QtCore.QObject):
         daemon_utils.cleanup(daemons_to_kill)
         
         
+        # clean out any found entries if the nameserver is still running
+        # ALL MODES
+        
+        ###### DAEMONS #####
+        # start the name server using subprocess
+        # Note: there are other ways to do this, but this enforces that the name server is a child process that will be killed if wsp dies
+        # check if the nameserver is already running. if so, don't add to daemon_list. if not, add it and launch.
+        try:
+            nameserverd = Pyro5.core.locate_ns()
+            
+            try:
+                # unregister all the entries
+                entrylist = list(nameserverd.list().keys())[1:]
+                print(f'entries in pyro5 nameserver: {entrylist}')
+                for name in entrylist:
+                    print(f'removing {name}...')
+                    nameserverd.remove(name)
+                    
+                entrylist = list(nameserverd.list().keys())[1:]
+                print(f'entries in pyro5 nameserver: {entrylist}')
+            except Exception as e:
+                print(f'could not cleanup nameserver entries: {e}')
+                
+        except:
+            # the nameserver is not running
+            print(f'control: nameserver not already running. starting from wsp')
+            nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = "pyro5-ns", python = False)
+            self.daemonlist.add_daemon(nameserverd)
+        
+        
+        
         self.daemonlist = daemon_utils.daemon_list()
         
         if mode in ['r', 'i', 'm']:
@@ -125,20 +157,6 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.hkd)
         
         if mode in ['r','m']:
-            # ALL MODES
-            
-            ###### DAEMONS #####
-            # start the name server using subprocess
-            # Note: there are other ways to do this, but this enforces that the name server is a child process that will be killed if wsp dies
-            # check if the nameserver is already running. if so, don't add to daemon_list. if not, add it and launch.
-            try:
-                nameserverd = Pyro5.core.locate_ns()
-            
-            except:
-                # the nameserver is not running
-                print(f'control: nameserver not already running. starting from wsp')
-                nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = "pyro5-ns", python = False)
-                self.daemonlist.add_daemon(nameserverd)
             
             
             
