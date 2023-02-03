@@ -20,6 +20,7 @@ import time
 import signal
 from labjack import ljm
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -104,7 +105,29 @@ class labjack(object):
 
         # send the options to the labjack
         ljm.eWriteNames(self.handle, len(opts), opts.keys(), opts.values())
+    
+    def setup_counters(self):
+        # set up channels to work as pulse counters, eg for the flowmeters
+        channel_type = 'DIGITAL_COUNTERS'
+        digital_counters = self.config[channel_type]
+        """
+        loop through all the DIGITAL_COUNTERS entries in the config file.
+        each digital counter is an entry in the digital counter list. Set
+        all of these channels to be digital counters 
+        """
+        print("SETTING UP DIGITAL COUNTERS:")
+        #Enable clock0.  Default frequency is 80 MHz.
+        ljm.eWriteName(self.handle, "DIO_EF_CLOCK0_ENABLE", 1)
+        for ch in digital_counters:
+            # add the digital counters to the counter channel list
+            self.input_channels.append(ch)
+            print(f'    > adding  {ch}')
+            ljm.eWriteName(self.handle, f"{ch}_EF_ENABLE", 0)
+            ljm.eWriteName(self.handle, f"{ch}_EF_INDEX", 8) # use 8 for counter, 3 for freq
+            ljm.eWriteName(self.handle, f"{ch}_EF_ENABLE",1)
+            print(f'    > added  {ch}')
 
+        
     def setup_dac(self):
         pass
 
@@ -113,7 +136,12 @@ class labjack(object):
             self.setup_ain()
         except Exception as e:
             pass
-
+        
+        try:
+            self.setup_counters()
+        except Exception as e:
+            #pass
+            print(f'error adding digital counters: {e}')
         try:
             self.setup_dio()
         except Exception as e:
@@ -131,7 +159,11 @@ class labjack(object):
     def dio_off(self):
         # turn off a dio channel
         pass
-
+    
+    def read_counters(self):
+        # read all of the counter inputs
+        pass    
+    
     def read_all(self):
         # read all of the inputs
         #print(f'reading labjack at {self.address}')
@@ -210,17 +242,42 @@ if __name__ == '__main__':
 
     lj = labjack_set(config, wsp_path)
 
-    ch = []
-
-    for i in range(10):
-        lj.read_all_labjacks()
-        v = lj.labjacks['lj0'].state['AIN1']
-        ch.append(v )
-        print(f'lj0: AIN1 = {v}')
-        time.sleep(0.5)
-
+    voltarr = []
+    flowarr = []
+    
+    oldtime = datetime.now().timestamp()
+    oldcount = ljm.eReadName(lj.labjacks['lj0'].handle,"DIO0_EF_READ_A" )
+    
+    while True:
+    #for i in range(100):
+        try:
+            newtime = datetime.now().timestamp()
+            lj.read_all_labjacks()
+            #dt = ljm.eReadName(lj.labjacks['lj0'].handle,"DIO0_EF_READ_A_F" )
+            
+            newcount = ljm.eReadName(lj.labjacks['lj0'].handle,"DIO0_EF_READ_A" )
+            delta_count = newcount - oldcount
+            dt = newtime - oldtime
+            
+            flow = delta_count/dt/1000*60.0
+            oldtime = newtime
+            oldcount = newcount
+            
+            #freq = dt
+            #freq = 1.0/dt
+            #flow = freq/1000.0*60.0 # LPM
+            #flow = dt
+            v = lj.labjacks['lj0'].state['AIN1']
+            
+            voltarr.append(v )
+            flowarr.append(flow)
+            print(f'lj0: AIN1 = {v}, Flow = {flow} LPM')
+            time.sleep(0.5)
+        except KeyboardInterrupt:
+            break
+#%%
     plt.figure()
-    plt.plot(ch)
+    plt.plot(flowarr[1:])
     #%%
     """
     fioState = 1

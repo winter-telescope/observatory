@@ -51,14 +51,18 @@ ANALOG_INPUTS:
 #    AIN44444:
 #        RANGE: 1
 
-
+DIGITAL_COUNTERS:
+    - DIO0
+    - DIO1
+#    - FIO1
+#    - FIO2
+#    - FIO3
+#    - FIO4
+#    - FIO5
 
 ### DIGITAL INPUTS/OUTPUTS ###
 DIGITAL_INPUTS:
-    - FIO0
-    - FIO1
-    - FIO2
-    - FIO3
+    - FIO6
     
 DIGITAL_OUTPUTS:
     # output is zero or one

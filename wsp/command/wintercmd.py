@@ -217,7 +217,7 @@ class Wintercmd(QtCore.QObject):
         self.telescope.signals.wrapWarning.connect(self.raiseWrapError)
         
         # connect the warning from the chiller to shut off the TEC to a handling function
-        self.chiller.TECshutoffCmd.connect(self.handle_chiller_alarm)
+        #self.chiller.TECshutoffCmd.connect(self.handle_chiller_alarm)
         
         # wait QTimer to try to keep responsive instead of 
         

@@ -111,7 +111,7 @@ class Dirfile(object):
         
         
         # write the linterp entry in the dirfile db format file
-        self.format_file.write(f'{field} LINTERP {input_field} {LUT_file}')
+        self.format_file.write(f'{field} LINTERP {input_field} {LUT_file}\n')
         
         # now add the units and axis label to the format file
         if (not units is None):

@@ -32,7 +32,11 @@ import signal
 from datetime import datetime
 import threading
 import logging
-from pymodbus.client.sync import ModbusSerialClient
+try:
+    from pymodbus.client.sync import ModbusSerialClient
+except:
+    from pymodbus.client.serial import ModbusSerialClient
+
 import time
 from datetime import datetime
 import json
