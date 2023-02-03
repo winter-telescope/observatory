@@ -82,7 +82,7 @@ class hk_loop(QtCore.QThread):
         
         # describe the loop rate
         self.rate = 'hk'
-        self.dt = self.config['daq_dt'][self.rate]
+        self.dt = int(np.round(self.config['daq_dt'][self.rate],0))
         
         # set up the connection to the pyro5 server to get the simulated time if we're in sunsim mode
         if self.sunsim:
@@ -486,7 +486,7 @@ class daq_loop(QtCore.QThread):
         self.kwargs = kwargs
 
         # describe the loop rate
-        self.dt = dt
+        self.dt = int(np.round(dt,0))
         
         # keep this as an option to debug and print out the thread of each operation
         self._print_thread_name_in_update_ = print_thread_name_in_update

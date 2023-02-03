@@ -35,10 +35,11 @@ sys.path.insert(1, wsp_path)
 print(f'housekeeping: wsp_path = {wsp_path}')
 
 # winter modules
-from housekeeping import easygetdata as egd
+#from housekeeping import easygetdata as egd
 from housekeeping import data_handler
 from housekeeping import labjacks
 from daemon import daemon_utils
+#from housekeeping import dirfile_python
 
 # the main housekeeping class, it lives in the namespace of the control class
 
@@ -190,10 +191,11 @@ class housekeeping():
             
     def start_housekeeping_poll_loop(self):
         self.timer = QtCore.QTimer()
-        self.timer.setInterval(self.config['daq_dt']['hk'])
+        hk_poll_dt = int(np.round(self.config['daq_dt']['hk'], 0))
+        self.timer.setInterval(hk_poll_dt)
         self.timer.timeout.connect(self.poll_housekeeping)
         self.timer.start()
-                
+    '''            
     def create_dirfile(self):
         """
         Create the dirfile to hold the data from the DAQ loops
@@ -261,6 +263,7 @@ class housekeeping():
                                           LUT_file = self.base_directory + '/' + self.config['derived_fields'][field]['LUT_file'],
                                           units = self.config['derived_fields'][field]['units'],
                                           label = self.config['derived_fields'][field]['label'])
+    '''
     def build_dicts(self):
         """
         gets the fields and daq rates from the config file

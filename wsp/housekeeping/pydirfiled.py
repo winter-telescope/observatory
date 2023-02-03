@@ -88,7 +88,7 @@ class DirfileWriter(QtCore.QObject):
         #dt = 0.25
         
         self.spf = self.config['dirfile_spf']#10
-        self.dt = self.config['dirfile_write_dt']/self.spf
+        self.dt = int(self.config['dirfile_write_dt']/self.spf)
         
         # current state values
         self.state = dict()

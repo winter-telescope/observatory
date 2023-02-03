@@ -107,7 +107,24 @@ class control(QtCore.QObject):
         
         self.daemonlist = daemon_utils.daemon_list()
         
-        if mode in ['r','i','m']:
+        if mode in ['r', 'i', 'm']:
+            # test daemon
+            self.testd = daemon_utils.PyDaemon(name = 'test', filepath = f"{wsp_path}/daemon/test_daemon.py")
+            self.daemonlist.add_daemon(self.testd)
+            
+            # chiller daemon
+            if '--smallchiller' in opts:
+                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py")#, args = ['-v'])
+            else:
+                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
+            self.daemonlist.add_daemon(self.chillerd)
+            pass
+        
+            # housekeeping data logging daemon (hkd = housekeeping daemon)
+            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
+            self.daemonlist.add_daemon(self.hkd)
+        
+        if mode in ['r','m']:
             # ALL MODES
             
             ###### DAEMONS #####
@@ -123,16 +140,7 @@ class control(QtCore.QObject):
                 nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = "pyro5-ns", python = False)
                 self.daemonlist.add_daemon(nameserverd)
             
-            # test daemon
-            self.testd = daemon_utils.PyDaemon(name = 'test', filepath = f"{wsp_path}/daemon/test_daemon.py")
-            self.daemonlist.add_daemon(self.testd)
             
-            # chiller daemon
-            if '--smallchiller' in opts:
-                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py")#, args = ['-v'])
-            else:
-                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
-            self.daemonlist.add_daemon(self.chillerd)
             
             # SUMMER accesories (eg viscam)
             self.viscamd = daemon_utils.PyDaemon(name = 'viscam', filepath = f"{wsp_path}/viscam/viscamd.py")
@@ -142,9 +150,7 @@ class control(QtCore.QObject):
             self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.ccdd)
             
-            # housekeeping data logging daemon (hkd = housekeeping daemon)
-            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
-            self.daemonlist.add_daemon(self.hkd)
+            
             
             # power (PDU/NPS) daemon
             self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
