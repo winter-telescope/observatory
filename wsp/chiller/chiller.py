@@ -167,7 +167,10 @@ if __name__ == '__main__':
     '''
     #%%
     chiller.update_state()
-    chiller.print_state()
+    #chiller.print_state()
+    print(f'Chiller On = {bool(chiller.state["UserRemoteStartStop"])}')
+    print(f"Current  T = {chiller.state['SystemDisplayValueStatus']}")
+    print(f"Setpoint T = {chiller.state['UserSetpoint']}")
     
     #%%
     #chiller.WriteRegister('UserSetpoint', 18.1)

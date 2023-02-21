@@ -197,7 +197,7 @@ class CommandHandler(QtCore.QObject):
             try:
                 # SEND THE COMMAND
                 
-                reply = self.sock.write_register(address = addr, value = value, unit = 1)
+                reply = self.sock.write_register(address = addr, value = value, slave = 1)
                 if not reply.isError():
                     self.log(f'CommandHandler: Command sent successfully! reply = {reply}')
                 else:
@@ -398,7 +398,7 @@ class StatusMonitor(QtCore.QObject):
                         try:
                             addr = self.config['registers'][reg]['addr'] + self.modbus_offset
                             
-                            reply = self.sock.read_holding_registers(address = addr, count = 1, unit = 1)
+                            reply = self.sock.read_holding_registers(address = addr, count = 1, slave = 1)
                             if not reply.isError():
                                     # get the raw value from the register list
                                     rawval = reply.registers[0]

@@ -30,10 +30,10 @@ sys.path.insert(1, wsp_path)
 print(f'wsp: wsp_path = {wsp_path}')
 
 # winter modules
-from power import power
-from telescope import pwi4
+#from power import power
+#from telescope import pwi4
 #from telescope import telescope
-from command import commandServer_multiClient
+#from command import commandServer_multiClient
 #from housekeeping import easygetdata
 from control import systemControl
 from utils import utils

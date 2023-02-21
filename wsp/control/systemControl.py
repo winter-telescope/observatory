@@ -33,7 +33,7 @@ sys.path.insert(1, wsp_path)
 print(f'control: wsp_path = {wsp_path}')
 
 # winter modules
-from power import power
+#from power import power
 #from telescope import pwi4
 from telescope import telescope
 from telescope import mirror_cover 
@@ -105,6 +105,9 @@ class control(QtCore.QObject):
                            'powerd.py']
         daemon_utils.cleanup(daemons_to_kill)
         
+        # make the list that will hold all the daemon process we launch
+        self.daemonlist = daemon_utils.daemon_list()
+
         
         # clean out any found entries if the nameserver is still running
         # ALL MODES
@@ -137,7 +140,6 @@ class control(QtCore.QObject):
         
         
         
-        self.daemonlist = daemon_utils.daemon_list()
         
         if mode in ['r', 'i', 'm']:
             # test daemon
