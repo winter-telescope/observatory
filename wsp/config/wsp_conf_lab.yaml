@@ -1,0 +1,23 @@
+# WSP Config
+
+# Specify what hardware is attached, eg what daemons to launch
+
+cameras:
+    winter:
+        opts:
+            sensors:
+                - sb
+                - sc
+
+chillers:
+    bigchiller
+        addr: /path/to/chiller/port
+
+pdus:
+    pdu1:
+        conf: None
+        addr: 192.168.X.X
+
+    
+
+    
