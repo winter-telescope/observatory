@@ -121,7 +121,12 @@ class housekeeping():
             # add NON INSTRUMENT status polls to housekeeping
             self.housekeeping_poll_functions.append(self.dome.update_state)
             self.housekeeping_poll_functions.append(self.ephem.update_state)
-        
+            
+            self.housekeeping_poll_functions.append(self.viscam.update_state)
+            self.housekeeping_poll_functions.append(self.ccd.update_state)
+            self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
+            self.housekeeping_poll_functions.append(self.powerManager.update_state)
+            
         self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
                                                   dt = self.config['daq_dt']['hk'],
                                                   name = 'labjack_daqloop'
@@ -138,10 +143,7 @@ class housekeeping():
         # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
         self.housekeeping_poll_functions.append(self.chiller.update_state)
-        self.housekeeping_poll_functions.append(self.viscam.update_state)
-        self.housekeeping_poll_functions.append(self.ccd.update_state)
-        self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
-        self.housekeeping_poll_functions.append(self.powerManager.update_state)
+        
 
         self.hk_loop = data_handler.hk_loop(config = self.config, 
                                                state = self.state, 
