@@ -676,7 +676,7 @@ default_value: -999
 
 ### Labjack Definitions ###
 labjacks:
-    lj0:
+    LJ0:
         config: 'labjack0_config.yaml'
 
 # define fields.
@@ -2056,139 +2056,280 @@ fields:
         rate: hk
         var: robostate["targetPriority"]
     ### LABJACK STUFF###
-    V_LJ0_AIN0:
+    Flow_LJ0_1:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow1']
+    Flow_LJ0_2:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow2']
+    Flow_LJ0_3:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow3']
+    Flow_LJ0_4:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow4']
+    Flow_LJ0_5:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow5']
+    Flow_LJ0_6:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow6']
+    T_LJ0_AIN0:
+        ftype: raw
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN0']
-    V_LJ0_AIN1:
+        var: labjacks.state['TEMP_LJ0_AIN0']
+    T_LJ0_AIN1:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN1']
-    V_LJ0_AIN2:
+        var: labjacks.state['TEMP_LJ0_AIN1']
+    T_LJ0_AIN2:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN2']
-    V_LJ0_AIN3:
+        var: labjacks.state['TEMP_LJ0_AIN2']
+    T_LJ0_AIN3:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN3']
-    V_LJ0_AIN4:
+        var: labjacks.state['TEMP_LJ0_AIN3']
+    T_LJ0_AIN4:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN4']
-    V_LJ0_AIN5:
+        var: labjacks.state['TEMP_LJ0_AIN4']
+    T_LJ0_AIN5:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN5']
-    V_LJ0_AIN6:
+        var: labjacks.state['TEMP_LJ0_AIN5']
+    T_LJ0_AIN6:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN6']
-    V_LJ0_AIN7:
+        var: labjacks.state['TEMP_LJ0_AIN6']
+    T_LJ0_AIN7:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN7']
-    V_LJ0_AIN8:
+        var: labjacks.state['TEMP_LJ0_AIN7']
+    T_LJ0_AIN8:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN8']
-    V_LJ0_AIN9:
+        var: labjacks.state['TEMP_LJ0_AIN8']
+    T_LJ0_AIN9:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN9']
-    V_LJ0_AIN10:
+        var: labjacks.state['TEMP_LJ0_AIN9']
+    T_LJ0_AIN10:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN10']
-    V_LJ0_AIN11:
+        var: labjacks.state['TEMP_LJ0_AIN10']
+    T_LJ0_AIN11:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN11']
-    V_LJ0_AIN12:
+        var: labjacks.state['TEMP_LJ0_AIN11']
+    T_LJ0_AIN12:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN12']
-    V_LJ0_AIN13:
+        var: labjacks.state['TEMP_LJ0_AIN12']
+    T_LJ0_AIN13:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN13']
-    V_LJ0_AIN14:
+        var: labjacks.state['TEMP_LJ0_AIN13']
+    T_LJ0_AIN14:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN14']
-    LJ0_FIO0:
-        ftype: raw
-        label: 'State'
-        units: '-'
-        dtype: float64
-        rate: slow
-        var: labjacks.labjacks['lj0'].state['FIO0']
-    LJ0_FIO1:
-        ftype: raw
-        label: 'State'
-        units: '-'
-        dtype: float64
-        rate: slow
-        var: labjacks.labjacks['lj0'].state['FIO1']
-    LJ0_FIO2:
-        ftype: raw
-        label: 'State'
-        units: '-'
-        dtype: float64
-        rate: slow
-        var: labjacks.labjacks['lj0'].state['FIO2']
-    LJ0_FIO3:
-        ftype: raw
-        label: 'State'
-        units: '-'
-        dtype: float64
-        rate: slow
-        var: labjacks.labjacks['lj0'].state['FIO3']
+        var: labjacks.state['TEMP_LJ0_AIN14']
+    
+    # V_LJ0_AIN1:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN1']
+    # V_LJ0_AIN2:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN2']
+    # V_LJ0_AIN3:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN3']
+    # V_LJ0_AIN4:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN4']
+    # V_LJ0_AIN5:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN5']
+    # V_LJ0_AIN6:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN6']
+    # V_LJ0_AIN7:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN7']
+    # V_LJ0_AIN8:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN8']
+    # V_LJ0_AIN9:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN9']
+    # V_LJ0_AIN10:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN10']
+    # V_LJ0_AIN11:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN11']
+    # V_LJ0_AIN12:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN12']
+    # V_LJ0_AIN13:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN13']
+    # V_LJ0_AIN14:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN14']
+    # LJ0_FIO0:
+    #     ftype: raw
+    #     label: 'State'
+    #     units: '-'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['FIO0']
+    # LJ0_FIO1:
+    #     ftype: raw
+    #     label: 'State'
+    #     units: '-'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['FIO1']
+    # LJ0_FIO2:
+    #     ftype: raw
+    #     label: 'State'
+    #     units: '-'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['FIO2']
+    # LJ0_FIO3:
+    #     ftype: raw
+    #     label: 'State'
+    #     units: '-'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['FIO3']
     
     # Viscam housekeeping
 
@@ -2406,38 +2547,38 @@ header_fields:
     
     
 
-derived_fields:
-    # note the base directory for the LUT is the wsp directory
-    T_LJ0:
-        ftype: lincom
-        input_field: 'V_LJ0_AIN14'
-        slope: -92.6
-        intercept: 194.45
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN0:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN0'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN1:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN1'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN2:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN2'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN3:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN3'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
+# derived_fields:
+#     # note the base directory for the LUT is the wsp directory
+#     T_LJ0:
+#         ftype: lincom
+#         input_field: 'V_LJ0_AIN14'
+#         slope: -92.6
+#         intercept: 194.45
+#         label: 'T'
+#         units: 'C'
+#     T_LJ0_AIN0:
+#         ftype: linterp
+#         input_field: 'V_LJ0_AIN0'
+#         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+#         label: 'T'
+#         units: 'C'
+#     T_LJ0_AIN1:
+#         ftype: linterp
+#         input_field: 'V_LJ0_AIN1'
+#         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+#         label: 'T'
+#         units: 'C'
+#     T_LJ0_AIN2:
+#         ftype: linterp
+#         input_field: 'V_LJ0_AIN2'
+#         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+#         label: 'T'
+#         units: 'C'
+#     T_LJ0_AIN3:
+#         ftype: linterp
+#         input_field: 'V_LJ0_AIN3'
+#         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
+#         label: 'T'
+#         units: 'C'
         
 

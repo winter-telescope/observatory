@@ -244,36 +244,38 @@ class DirfileWriter(QtCore.QObject):
             os.symlink(self.dirpath, hk_linkpath)
         
         # add the fields from the config file to the dirfile
-        for field in self.config['fields']:
-            # add handling for the various field types ('ftype') allowed by the dirfile standards as they come up
-            
-
-            self.df.add_raw_entry(field = field, 
-                                  #spf = self.spf[self.config['fields'][field]['rate']],
-                                  spf = self.spf,
-                                  # now that we're not using easygetdata we don't need a dtype object, just a string name
-                                  #dtype = np.dtype(self.config['fields'][field]['dtype']),
-                                  dtype = self.config['fields'][field]['dtype'],
-                                  units = self.config['fields'][field]['units'],
-                                  label = self.config['fields'][field]['label'])
-        
-        # add in any derived fields
-        for field in self.config['derived_fields']:
-            ftype = self.config['derived_fields'][field]['ftype'].lower()
-            if ftype == 'lincom':
-                self.df.add_lincom_entry(field = field, 
-                                        input_field = self.config['derived_fields'][field]['input_field'], 
-                                        slope = self.config['derived_fields'][field]['slope'], 
-                                        intercept = self.config['derived_fields'][field]['intercept'],
-                                        units = self.config['derived_fields'][field]['units'],
-                                        label = self.config['derived_fields'][field]['label'])
-            elif ftype == 'linterp':
-                self.df.add_linterp_entry(field, 
-                                          input_field = self.config['derived_fields'][field]['input_field'], 
-                                          LUT_file = self.base_directory + '/' + self.config['derived_fields'][field]['LUT_file'],
-                                          units = self.config['derived_fields'][field]['units'],
-                                          label = self.config['derived_fields'][field]['label'])
+        if 'fields' in self.config:
+            for field in self.config['fields']:
+                # add handling for the various field types ('ftype') allowed by the dirfile standards as they come up
+                
     
+                self.df.add_raw_entry(field = field, 
+                                      #spf = self.spf[self.config['fields'][field]['rate']],
+                                      spf = self.spf,
+                                      # now that we're not using easygetdata we don't need a dtype object, just a string name
+                                      #dtype = np.dtype(self.config['fields'][field]['dtype']),
+                                      dtype = self.config['fields'][field]['dtype'],
+                                      units = self.config['fields'][field]['units'],
+                                      label = self.config['fields'][field]['label'])
+            
+        # add in any derived fields
+        if 'derived_fields' in self.config:
+            for field in self.config['derived_fields']:
+                ftype = self.config['derived_fields'][field]['ftype'].lower()
+                if ftype == 'lincom':
+                    self.df.add_lincom_entry(field = field, 
+                                            input_field = self.config['derived_fields'][field]['input_field'], 
+                                            slope = self.config['derived_fields'][field]['slope'], 
+                                            intercept = self.config['derived_fields'][field]['intercept'],
+                                            units = self.config['derived_fields'][field]['units'],
+                                            label = self.config['derived_fields'][field]['label'])
+                elif ftype == 'linterp':
+                    self.df.add_linterp_entry(field, 
+                                              input_field = self.config['derived_fields'][field]['input_field'], 
+                                              LUT_file = self.base_directory + '/' + self.config['derived_fields'][field]['LUT_file'],
+                                              units = self.config['derived_fields'][field]['units'],
+                                              label = self.config['derived_fields'][field]['label'])
+        
     
     
     

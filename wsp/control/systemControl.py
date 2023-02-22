@@ -61,6 +61,7 @@ from alerts import alert_handler
 from viscam import viscam
 from viscam import ccd
 from power import powerManager
+from housekeeping import labjack_handler_local
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -102,7 +103,9 @@ class control(QtCore.QObject):
                            'dirfiled.py',
                            'roboManagerd.py',
                            'sun_simulator.py',
-                           'powerd.py']
+                           'powerd.py',
+                           'labjackd.py',
+                           ]
         daemon_utils.cleanup(daemons_to_kill)
         
         # make the list that will hold all the daemon process we launch
@@ -157,6 +160,11 @@ class control(QtCore.QObject):
             # housekeeping data logging daemon (hkd = housekeeping daemon)
             self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
             self.daemonlist.add_daemon(self.hkd)
+        
+        if mode in ['i']:
+            # labjack daemon
+            self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py")
+            self.daemonlist.add_daemon(self.labjackd)
         
         if mode in ['r','m']:
             
@@ -262,11 +270,6 @@ class control(QtCore.QObject):
         # init the ephemeris
         self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
-        # init the weather by creating a local object that interfaces with the remote object from the weather daemon
-        
-        #self.weather = local_weather.Weather(self.base_directory, config = self.config, logger = self.logger)
-        self.weather = 'placeholder'
-        
         # init the schedule. put it here so it can be passed into housekeeping
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
@@ -293,8 +296,10 @@ class control(QtCore.QObject):
         else:
             self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
 
+        # init the labjacks        
+        self.labjacks = labjack_handler_local.local_labjackHandler(self.base_directory, self.config, self.logger)
         
-
+        
         ### SET UP THE HOUSEKEEPING ###
             
             
@@ -307,8 +312,8 @@ class control(QtCore.QObject):
                                                 schedule = self.schedule,
                                                 telescope = self.telescope,
                                                 dome = self.dome,
-                                                weather = self.weather,
                                                 chiller = self.chiller,
+                                                labjacks = self.labjacks,
                                                 powerManager = self.powerManager,
                                                 counter = self.counter,
                                                 ephem = self.ephem,

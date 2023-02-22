@@ -46,7 +46,22 @@ from daemon import daemon_utils
 
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, mirror_cover=None, dome = None, weather = None, chiller = None, powerManager = None, counter = None, ephem = None, viscam = None, ccd = None, robostate = None, sunsim = False, logger = None):
+    def __init__(self, config, base_directory, mode = None, 
+                 schedule = None, 
+                 telescope = None, 
+                 mirror_cover=None, 
+                 dome = None, 
+                 chiller = None, 
+                 labjacks = None,
+                 powerManager = None, 
+                 counter = None, 
+                 ephem = None, 
+                 viscam = None, 
+                 ccd = None, 
+                 robostate = None, 
+                 sunsim = False, 
+                 logger = None,
+                 ):
         
         
         # store the config
@@ -60,8 +75,8 @@ class housekeeping():
         self.schedule = schedule
         self.telescope = telescope
         self.dome = dome
-        self.weather = weather
         self.chiller = chiller
+        self.labjacks = labjacks
         self.powerManager = powerManager
         self.counter = counter
         self.ephem = ephem
@@ -78,7 +93,7 @@ class housekeeping():
             lj0:
                 config: 'labjack0_config.yaml'
         '''
-        self.labjacks = labjacks.labjack_set(self.config, self.base_directory)
+        #self.labjacks = labjacks.labjack_set(self.config, self.base_directory)
         #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
         
         #self.labjacks.read_all_labjacks()
@@ -110,7 +125,9 @@ class housekeeping():
         # create the housekeeping poll list
         self.housekeeping_poll_functions = list()
         
-        
+        if mode.lower() in ['i']:
+            #TODO: this should also run in 'm' and 'r' mode eventually...
+            self.housekeeping_poll_functions.append(self.labjacks.update_state)
         # define the DAQ loops
         if mode.lower() in ['m','r']:
             self.daq_telescope = data_handler.daq_loop(func = self.telescope.update_state, 
@@ -127,12 +144,13 @@ class housekeeping():
             self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
             self.housekeeping_poll_functions.append(self.powerManager.update_state)
             
+        """
         self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
                                                   dt = self.config['daq_dt']['hk'],
                                                   name = 'labjack_daqloop'
                                                   )
                                                   #rate = 'very_slow')
-        
+        """
         # write the current state to a file
         
         
@@ -150,7 +168,6 @@ class housekeeping():
                                                curframe = self.curframe,
                                                schedule = self.schedule,
                                                telescope = self.telescope,
-                                               weather = self.weather,
                                                labjacks = self.labjacks,
                                                counter = self.counter,
                                                dome = self.dome,

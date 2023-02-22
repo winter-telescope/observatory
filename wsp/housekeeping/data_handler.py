@@ -50,7 +50,7 @@ print(f'data_handler: wsp_path = {wsp_path}')
 
 class hk_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, schedule, telescope,weather, mirror_cover, labjacks, counter, dome, chiller, powerManager, ephem, viscam, ccd, robostate, sunsim = False, verbose = False, logger = None):
+    def __init__(self,config, state, curframe, schedule, telescope, mirror_cover, labjacks, counter, dome, chiller, powerManager, ephem, viscam, ccd, robostate, sunsim = False, verbose = False, logger = None):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -58,7 +58,6 @@ class hk_loop(QtCore.QThread):
 
         # subclass the methods passed in (ie, the hardware systems)
         self.telescope = telescope
-        self.weather = weather
         self.schedule = schedule
         self.labjacks = labjacks
         self.counter = counter
@@ -219,7 +218,7 @@ class hk_loop(QtCore.QThread):
 #TODO: slow_loop is deprecated! NPL 3-8-21
 class slow_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, telescope,weather,schedule,labjacks):
+    def __init__(self,config, state, curframe, telescope,schedule,labjacks):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -227,7 +226,6 @@ class slow_loop(QtCore.QThread):
 
         # subclass the methods passed in (ie, the hardware systems)
         self.telescope = telescope
-        self.weather = weather
         self.schedule = schedule
         self.labjacks = labjacks
 
