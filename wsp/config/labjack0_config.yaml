@@ -67,8 +67,8 @@ DIGITAL_COUNTERS:
 #        OUTPUT: 0
 
 ### FLOWMETERS ###
-# note the test flowmeter is BV2000-250: 1000 ppl, the ones ordered for the full
-# thing are BV2000-075: K-factor = 12500 ppl
+# note the test flowmeter is BV2000-250: 1000 ppl = 3785 ppg, the ones ordered for the full
+# thing are BV2000-075: K-factor = 4700 ppl = 17800 ppg
 # https://assets.omega.com/spec/dynasonics_product_summary_brochure_ttm-br-01388-en_2.pdf
 FLOWMETERS:
     Flow1:
