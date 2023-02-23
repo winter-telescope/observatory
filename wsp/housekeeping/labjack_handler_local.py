@@ -131,9 +131,11 @@ if __name__ == '__main__':
     
     labjacks = local_labjackHandler(wsp_path, config)
     
-    
+    #%%
     labjacks.update_state()
     print(json.dumps(labjacks.state, indent = 3))
+    
+    #%%
     """
     while True:
         try:
