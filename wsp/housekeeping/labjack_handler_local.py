@@ -133,18 +133,20 @@ if __name__ == '__main__':
     
     #%%
     labjacks.update_state()
-    print(json.dumps(labjacks.state, indent = 3))
-    
+    #print(json.dumps(labjacks.state, indent = 3))
+    field = "COUNT_LJ0_DIO0"
+    print(f"{field} : {labjacks.state[field]}")
     #%%
-    """
     while True:
         try:
             labjacks.update_state()
-            print(json.dumps(labjacks.state, indent = 3))
-            time.sleep(0.5)
+            #print(json.dumps(labjacks.state, indent = 3))
+            field = "COUNT_LJ0_DIO0"
+            print(f"{field} : {labjacks.state[field]}")
+            time.sleep(30)
         except KeyboardInterrupt:
             break
-    """
+    
         
         
      

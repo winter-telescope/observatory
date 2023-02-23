@@ -60,9 +60,14 @@ class PyroDaemon(QtCore.QThread):
         self.name = name
         
     def run(self):
+        try:
+            host = None
+            ns = Pyro5.core.locate_ns()
+        except Exception as e:
+            host = Pyro5.socketutil.get_ip_address('localhost', workaround127 = True)
+            ns = Pyro5.core.locate_ns(host = host)
+        
         daemon = Pyro5.server.Daemon()
-
-        ns = Pyro5.core.locate_ns()
         self.uri = daemon.register(self.obj)
         ns.register(self.name, self.uri)
         daemon.requestLoop()
