@@ -50,23 +50,27 @@ class PyroDaemon(QtCore.QThread):
     crash. We may want to handle this more gracefully somehow if the nameserver
     dies.
     """
-    def __init__(self, obj, name, host = None, verbose = False):
+    def __init__(self, obj, name, ns_host = None, daemon_host = None, verbose = False):
         QtCore.QThread.__init__(self)
         
         # the object is the remote object which will be registered with the name server
         self.obj = obj
-        if host is None:
-            self.host = Pyro5.socketutil.get_ip_address('localhost', workaround127 = True)
+        if ns_host is None:
+            self.ns_host = Pyro5.socketutil.get_ip_address('localhost', workaround127 = True)
         else:
-            self.host = host
+            self.ns_host = ns_host
+        if daemon_host is None:
+            self.daemon_host = Pyro5.socketutil.get_ip_address('localhost', workaround127 = True)
+        else:
+            self.daemon_host = daemon_host
         # the name will be used to register it in the name server
         self.name = name
         
     def run(self):
         
-        ns = Pyro5.core.locate_ns(host = self.host)
+        ns = Pyro5.core.locate_ns(host = self.ns_host)
         
-        daemon = Pyro5.server.Daemon()
+        daemon = Pyro5.server.Daemon(host = self.daemon_host)
         self.uri = daemon.register(self.obj)
         ns.register(self.name, self.uri)
         daemon.requestLoop()
@@ -74,13 +78,13 @@ class PyroDaemon(QtCore.QThread):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, Object, name, host = None, parent=None ):            
+    def __init__(self, Object, name, ns_host = None, daemon_host = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'PyroGUI {name}: main thread = {threading.get_ident()}')
         
         self.Object = Object
                 
-        self.pyro_thread = PyroDaemon(obj = self.Object, name = name, host = host)
+        self.pyro_thread = PyroDaemon(obj = self.Object, name = name, ns_host = ns_host, daemon_host = daemon_host)
         self.pyro_thread.start()
 
 
