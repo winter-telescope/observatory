@@ -7,7 +7,7 @@ This is a document to specify a generic camera API that WSP will use to communic
 At the moment, most of these functions don't return. Maybe we want to have them return a boolean, or some kind of status code instead?
 
 ### Deamon Handling
-- `reconnectCameraDaemon(daemon_name)` -> None
+- `reconnectCameraDaemon()` -> None
 - `killCameraDaemon()` -> None
 - `restartCameraDaemon()` -> None
 
