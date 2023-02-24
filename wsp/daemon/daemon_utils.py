@@ -50,22 +50,21 @@ class PyroDaemon(QtCore.QThread):
     crash. We may want to handle this more gracefully somehow if the nameserver
     dies.
     """
-    def __init__(self, obj, name, verbose = False):
+    def __init__(self, obj, name, host = None, verbose = False):
         QtCore.QThread.__init__(self)
         
         # the object is the remote object which will be registered with the name server
         self.obj = obj
-        
+        if host is None:
+            self.host = Pyro5.socketutil.get_ip_address('localhost', workaround127 = True)
+        else:
+            self.host = host
         # the name will be used to register it in the name server
         self.name = name
         
     def run(self):
-        try:
-            host = None
-            ns = Pyro5.core.locate_ns()
-        except Exception as e:
-            host = Pyro5.socketutil.get_ip_address('localhost', workaround127 = True)
-            ns = Pyro5.core.locate_ns(host = host)
+        
+        ns = Pyro5.core.locate_ns(host = self.host)
         
         daemon = Pyro5.server.Daemon()
         self.uri = daemon.register(self.obj)
@@ -75,13 +74,13 @@ class PyroDaemon(QtCore.QThread):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, Object, name, parent=None ):            
+    def __init__(self, Object, name, host = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'PyroGUI {name}: main thread = {threading.get_ident()}')
         
         self.Object = Object
                 
-        self.pyro_thread = PyroDaemon(obj = self.Object, name = name)
+        self.pyro_thread = PyroDaemon(obj = self.Object, name = name, host = host)
         self.pyro_thread.start()
 
 

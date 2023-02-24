@@ -193,8 +193,8 @@ class PyroGUI(QtCore.QObject):
         #dt = self.config['daq_dt']['hk']
         dt = 2000
         self.labjackHandler = LabjackHandler(base_directory, config, dt = dt, logger = logger, verbose = False)
-        
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.labjackHandler, name = 'labjacks')
+        host = '192.168.1.10'
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.labjackHandler, name = 'labjacks', host = host)
         self.pyro_thread.start()
         
   

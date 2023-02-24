@@ -20,9 +20,9 @@ class Hello(object):
 obj = Hello()
 name = 'hello'
 heimdall = '192.168.1.10'
-ns = Pyro5.core.locate_ns(host = heimdall)
+ns = Pyro5.core.locate_ns()#host = heimdall)
 #%%
 freya = '192.168.1.20'
-daemon = Pyro5.server.Daemon(host = freya)
+daemon = Pyro5.server.Daemon()#host = heimdall)
 uri = daemon.register(obj)
 ns.register(name, uri)

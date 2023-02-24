@@ -12,8 +12,8 @@ This is a test file for developing the TCP command interface
 import socket
 
 s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-s.connect((socket.gethostname(),7000))
-
+#s.connect((socket.gethostname(),7000))
+s.connect(('192.168.1.20', 34633))
 
 
 
