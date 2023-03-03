@@ -142,13 +142,12 @@ class local_camera(QtCore.QObject):
             uri = self.ns.lookup(self.daemonname)
             self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
-        except:
+        except Exception as e:
             self.connected = False
+            if self.verbose:
+                self.log(f'connection to remote object failed: {e}')
             pass
-        '''
-        except Exception:
-            self.logger.error('connection with remote object failed', exc_info = True)
-        '''
+        
     def update_state(self):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
@@ -213,32 +212,32 @@ class local_camera(QtCore.QObject):
     def setExposure(self, exptime):
         self.remote_object.setexposure(exptime)
                 
-    def doExposure(self, obstype = None):
+    def doExposure(self, obstype = 'test', addr = []):
         # first get the housekeeping state
         self.update_hk_state()
         
         # now dispatch the observation
         
         try:
-            self.remote_object.doExposure(state = self.hk_state, obstype = obstype)
+            self.remote_object.doExposure(state = self.hk_state, obstype = obstype, addr = addr)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
         
-    def tecSetSetpoint(self, temp):
-        self.remote_object.tecSetSetpoint(temp)
+    def tecSetSetpoint(self, temp, addr = []):
+        self.remote_object.tecSetSetpoint(temp, addr = addr)
     
-    def tecStart(self):
-        self.remote_object.tecStart()
+    def tecStart(self, addr = []):
+        self.remote_object.tecStart(addr = addr)
         
-    def tecStop(self):
-        self.remote_object.tecStop()
+    def tecStop(self, addr = []):
+        self.remote_object.tecStop(addr = addr)
     
     
-    def shutdownCameraClient(self):
-        self.remote_object.shutdownCameraClient()
+    def shutdownCameraClient(self, addr = []):
+        self.remote_object.shutdownCameraClient(addr = addr)
         
-    def reconnectCameraDaemon(self):
-        self.remote_object.reconnectCameraDaemon()
+    def reconnectCameraDaemon(self, addr = []):
+        self.remote_object.reconnectCameraDaemon(addr = addr)
         #self.remote_object.reconnect()
         
     def killCameraDaemon(self):
