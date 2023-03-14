@@ -73,22 +73,22 @@ DIGITAL_COUNTERS:
 FLOWMETERS:
     Flow1:
         input: DIO0
-        K_ppl: 1000 # pulses per liter
+        K_ppl: 4700 # pulses per liter
     Flow2:
         input: DIO1
-        K_ppl: 1000
+        K_ppl: 4700
     Flow3:
         input: DIO2
-        K_ppl: 1000
+        K_ppl: 4700
     Flow4:
         input: DIO3
-        K_ppl: 1000
+        K_ppl: 4700
     Flow5:
         input: DIO6
-        K_ppl: 1000
+        K_ppl: 4700
     Flow6:
         input: DIO7
-        K_ppl: 1000
+        K_ppl: 4700
       
 ### THERMOMETERS ###
 # these can be either field type (following dirfile standards): linterp (provide a LUT_file),

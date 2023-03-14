@@ -85,7 +85,7 @@ class control(QtCore.QObject):
         # pass in the base directory
         self.base_directory = base_directory
         
-        
+        print(f'\nsystemControl: running with opts = {opts}')
         
         ### ADD HARDWARE DAEMONS TO THE DAEMON LAUNCHER ###
         # init the list of hardware daemons
