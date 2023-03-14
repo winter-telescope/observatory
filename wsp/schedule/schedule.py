@@ -57,7 +57,6 @@ It loads in a csv file with the following columns:
 import os
 import sys
 import numpy as np
-import unicodecsv
 from datetime import datetime,timedelta
 #from astropy.time import Time
 import astropy.time

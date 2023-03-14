@@ -18,7 +18,7 @@ are cited where functions are lifted from elsewhere (or are meant to be!).
 
 
 
-import unicodecsv
+#import unicodecsv
 import numpy as np
 from datetime import datetime,timedelta
 import time
@@ -604,7 +604,7 @@ def getImages(starttime, endtime, camera = 'SUMMER', fullpath = True):
     # sort the list (not sure why it doesn't automatically)
     imglist = sorted(imglist)
     return imglist
-
+"""
 ## Functions gratefully lifted from MINERVA and converted to python3 ##
 def readcsv(filename,skiprows=0):
     # parse the csv file
@@ -624,7 +624,7 @@ def readcsv(filename,skiprows=0):
             except: csv[key] = np.asarray(csv[key])
         return csv
 
-
+"""
 def tonight_local(timestamp = 'now', tz = 'America/Los_Angeles'):
     # a similar version of the minerva function by NPL
     # NPL: 4/27/21 changing the conventions. 
