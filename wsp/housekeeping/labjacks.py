@@ -273,7 +273,7 @@ if __name__ == '__main__':
     flowarr = []
     
     oldtime = datetime.now().timestamp()
-    oldcount = ljm.eReadName(lj.labjacks['lj0'].handle,"DIO0_EF_READ_A" )
+    oldcount = ljm.eReadName(lj.labjacks['LJ0'].handle,"DIO0_EF_READ_A" )
     
     while True:
     #for i in range(100):
