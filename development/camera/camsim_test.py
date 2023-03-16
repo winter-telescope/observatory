@@ -25,6 +25,13 @@ sys.path.insert(1, wsp_path)
 
 from housekeeping import data_handler
 
+
+
+class CommandThread(QtCore.QThread):
+    
+    
+
+
 class WINTERCamSim(QtCore.QObject):
 
     def __init__(self, config, logger = None, verbose = False ):
@@ -58,6 +65,7 @@ class WINTERCamSim(QtCore.QObject):
         while periodically updating the housekeeping. at the end of the exposure
         time use the getFakeImage method to generate a fake set of data,
         and then save it.
+        
         """
         pass
     
