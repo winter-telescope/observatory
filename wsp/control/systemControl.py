@@ -175,7 +175,8 @@ class control(QtCore.QObject):
             pass
         
             # housekeeping data logging daemon (hkd = housekeeping daemon)
-            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py", args = ['-n', self.ns_host]) #change to dirfiled.py if you want to use the version that uses easygetdata
+            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py", 
+                                             args = ['-n', self.ns_host]) #change to dirfiled.py if you want to use the version that uses easygetdata
             self.daemonlist.add_daemon(self.hkd)
         
         if mode in ['i']:

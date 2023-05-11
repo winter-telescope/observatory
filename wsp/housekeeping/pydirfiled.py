@@ -124,7 +124,9 @@ class DirfileWriter(QtCore.QObject):
             uri = ns.lookup('state')
             self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
-        except:
+        except Exception as e:
+            if self.verbose:
+                print(f'Could not init remote object: {e}')
             self.connected = False
             pass
         '''
@@ -134,6 +136,8 @@ class DirfileWriter(QtCore.QObject):
     def update_state(self):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
+        if self.verbose:
+            print(f'pydirfiled: updating state')
         if not self.connected:
             self.init_remote_object()
             
@@ -348,6 +352,7 @@ if __name__ == "__main__":
     verbose = False
     doLogging = True
     ns_host = None
+    #ns_host = '192.168.1.10'
     
     options = "vpn:"
     long_options = ["verbose", "print", "ns_host:"]
@@ -389,7 +394,8 @@ if __name__ == "__main__":
         logger = logging_setup.setup_logger(base_directory, config)    
     else:
         logger = None
-
+    
+    print(f'dirfiled: connecting with ns_host = {ns_host}')
     main = Main(base_directory = wsp_path, config = config, logger = logger, ns_host = ns_host)
 
     
