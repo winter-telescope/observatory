@@ -87,11 +87,13 @@ class control(QtCore.QObject):
         
         print(f'\nsystemControl: running with opts = {opts}')
         
+        
+        
         ### ADD HARDWARE DAEMONS TO THE DAEMON LAUNCHER ###
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['pyro5-ns', 
+        daemons_to_kill = [#'pyro5-ns', 
                            'ccd_daemon.py' ,
                            'viscamd.py',
                            'domed.py', 
@@ -119,8 +121,18 @@ class control(QtCore.QObject):
         # start the name server using subprocess
         # Note: there are other ways to do this, but this enforces that the name server is a child process that will be killed if wsp dies
         # check if the nameserver is already running. if so, don't add to daemon_list. if not, add it and launch.
+        
+        # first, figure out what nameserver address to use
+        for currentArgument, currentValue in opts:
+            if currentArgument in ("-n", "--host"):
+                self.ns_host = currentValue
+                print(f'ns_host = {self.ns_host}')
+            else:
+                self.ns_host = self.config['pyro5_ns_default_addr']
+        
+        
         try:
-            nameserverd = Pyro5.core.locate_ns()
+            nameserverd = Pyro5.core.locate_ns(host = self.ns_host)
             
             try:
                 # unregister all the entries
@@ -138,7 +150,7 @@ class control(QtCore.QObject):
         except:
             # the nameserver is not running
             print(f'control: nameserver not already running. starting from wsp')
-            nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = "pyro5-ns", python = False)
+            nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = f"pyro5-ns -n {self.ns_host}", python = False)
             self.daemonlist.add_daemon(nameserverd)
         
         
@@ -151,9 +163,9 @@ class control(QtCore.QObject):
             
             # chiller daemon
             if '--smallchiller' in opts:
-                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py")#, args = ['-v'])
+                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py", args = ['-n', self.ns_host])
             else:
-                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
+                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py", args = ['-n', self.ns_host])
             self.daemonlist.add_daemon(self.chillerd)
             pass
         

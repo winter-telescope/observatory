@@ -163,9 +163,11 @@ if __name__ == "__main__":
 
     # GET ANY COMMAND LINE ARGUMENTS
     args = sys.argv[1:]
-    
+    print(f'args = {args}')
+
     options = "rimvn:"
-    long_options = ["robo", "instrument", "manual", "verbose", "host:", "smallchiller"]
+    long_options = ["robo", "instrument", "manual", "verbose", "host:", 
+                    "smallchiller", "sunsim", "domesim", "dometest"]
     arguments, values = getopt.getopt(args, options, long_options)
     # checking each argument
     print()
@@ -182,13 +184,7 @@ if __name__ == "__main__":
         elif currentArgument in ("-m", "--manual"):
             mode = 'm'
             
-        elif currentArgument in ("-n", "--host"):
-            ns_host = currentValue
-            print(f'ns_host = {ns_host}')
-            
-        elif currentArgument in ("--smallchiller"):
-            print(f'Running with the smallchiller')
-            
+        
     modes = dict()
     modes.update({'r' : "Entering [R]obotic schedule file mode (will initiate observations!)"})
     modes.update({'i' : "Entering [I]nstrument mode: initializing instrument subsystems and waiting for commands"})
@@ -248,6 +244,8 @@ if __name__ == "__main__":
     
     # If an option was specified from the command line, then use that
     if not mode is None:
+        #print(f'Starting WSP with mode = {mode}, opts = {opts}')
+        
         winter = systemControl.control(mode = mode, config = config, base_directory = wsp_path, logger = logger, opts = opts)
     '''
     # If no option was specified, then start up the text user interface

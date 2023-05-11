@@ -16,8 +16,11 @@ site:
 usb_serial_dev:
     chiller: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AQ00T8I9-if00-port0'
     steppers: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AG0JG9J3-if00-port0'
-    
-    
+
+########## DAEMONS ##########
+# pyro5 nameserver default location
+pyro5_ns_default_addr: 192.168.1.10
+
 ########## FITS IMAGE DIRECTORY ##########
 image_directory: 'data/images'
 #image_prefix: 'viscam_'
