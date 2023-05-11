@@ -38,7 +38,8 @@ if __name__ == '__main__':
 # winter modules
 from utils import utils
 
-
+def sayHello():
+    return 'Hello!'
 
 def setup_logger(base_dir, config):
     """
