@@ -32,6 +32,7 @@ import signal
 import threading
 import logging
 import json
+import getopt
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -186,7 +187,7 @@ class LabjackHandler(QtCore.QObject):
         
 class PyroGUI(QtCore.QObject):   
                   
-    def __init__(self, base_directory, config, logger, verbose, parent=None ):            
+    def __init__(self, base_directory, config, logger, verbose, ns_host, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         # how often do you want to poll the labjack (ms)?
@@ -195,7 +196,7 @@ class PyroGUI(QtCore.QObject):
         self.labjackHandler = LabjackHandler(base_directory, config, dt = dt, logger = logger, verbose = False)
         #ns_host = '192.168.1.10'
         #daemon_host = '192.168.1.20'
-        ns_host = None
+        
         daemon_host = None
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.labjackHandler, name = 'labjacks', ns_host = ns_host, daemon_host = daemon_host)
         self.pyro_thread.start()
@@ -211,6 +212,40 @@ def sigint_handler( *args):
     QtCore.QCoreApplication.quit()
 
 if __name__ == "__main__":
+    
+    #### GET ANY COMMAND LINE ARGUMENTS #####
+    
+    args = sys.argv[1:]
+    print(f'args = {args}')
+    
+    # set the defaults
+    verbose = False
+    doLogging = True
+    ns_host = None
+    
+    options = "vpn:"
+    long_options = ["verbose", "print", "ns_host:"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
+    
+
+    ##### RUN THE APP #####
+    
+    
     app = QtCore.QCoreApplication(sys.argv)
     
     doLogging = False
@@ -227,9 +262,8 @@ if __name__ == "__main__":
         logger = logging_setup.setup_logger(base_directory, config)    
     else:
         logger = None    
-    verbose = False
     
-    main = PyroGUI(wsp_path, config, verbose = verbose, logger = logger)
+    main = PyroGUI(wsp_path, config, verbose = verbose, logger = logger, ns_host = ns_host)
 
     
     signal.signal(signal.SIGINT, sigint_handler)

@@ -9,7 +9,10 @@ This is part of wsp
 
 # Purpose #
 
-This is a standalone daemon for handling communications with the temporary chiller for the visible-wavelegnth camera. It uses a PyQt5 for managing threading and event handling, and uses Pyro5 for  hosting a remote object which wraps a TCP/IP interface and allows communication between WSP and the daemon.
+This is a standalone daemon for handling communications with the temporary 
+chiller for the visible-wavelegnth camera. It uses a PyQt5 for managing 
+threading and event handling, and uses Pyro5 for  hosting a remote object which 
+wraps a TCP/IP interface and allows communication between WSP and the daemon.
 
 Not sure if the RTU serial connection will let us do multithreading, so may 
 need to move everything to the main event loop.
@@ -35,6 +38,7 @@ from datetime import datetime
 import json
 import serial # pip install pyserial
 import yaml
+import getopt
 
 
 
@@ -993,7 +997,7 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, config, logger = None, verbose = False, alertHandler = None, chillerAlarmParser = None, parent=None ):            
+    def __init__(self, config, logger = None, verbose = False, alertHandler = None, chillerAlarmParser = None, ns_host = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
 
         self.config = config
@@ -1017,7 +1021,7 @@ class PyroGUI(QtCore.QObject):
                                chillerAlarmParser = chillerAlarmParser)
         
               
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.chiller, name = 'chiller')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.chiller, name = 'chiller', ns_host = ns_host)
         self.pyro_thread.start()
         
 
@@ -1038,52 +1042,35 @@ def sigint_handler( *args):
 
 if __name__ == "__main__":
     
-    #### GET ANY COMMAND LINE ARGUMENTS #####
+    ##### GET ANY COMMAND LINE ARGUMENTS #####
     
     args = sys.argv[1:]
-    
-    
-    modes = dict()
-    modes.update({'-v' : "Running in VERBOSE mode"})
-    modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
+    print(f'args = {args}')
     
     # set the defaults
     verbose = False
     doLogging = True
+    ns_host = None
     
-    # Debugging mode
-    #verbose = True
-    #doLogging = False
-    
-    #print(f'args = {args}')
-    
-    if len(args)<1:
-        pass
-    
-    else:
-        for arg in args:
-            
-            if arg in modes.keys():
-                
-                # remove the dash when passing the option
-                opt = arg.replace('-','')
-                if opt == 'v':
-                    print(modes[arg])
-                    verbose = True
-                    
-                elif opt == 'p':
-                    print(modes[arg])
-                    doLogging = False
-                
-                
-            else:
-                print(f'Invalid mode {arg}')
-    
+    options = "vpn:"
+    long_options = ["verbose", "print", "ns_host:"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
 
-
-    
-    
-    
     
     ##### RUN THE APP #####
     app = QtCore.QCoreApplication(sys.argv)
@@ -1121,7 +1108,7 @@ if __name__ == "__main__":
     chillerAlarmParser = small_chiller_alarm_parser.ChillerAlarmParser(alarm_config = alarm_config, verbose = False)
     
     # set up the main app. note that verbose is set above
-    main = PyroGUI(config = config, logger = logger, verbose = verbose, alertHandler = alertHandler, chillerAlarmParser = chillerAlarmParser)
+    main = PyroGUI(config = config, logger = logger, verbose = verbose, alertHandler = alertHandler, chillerAlarmParser = chillerAlarmParser, ns_host = ns_host)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)

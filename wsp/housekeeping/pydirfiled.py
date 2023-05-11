@@ -32,7 +32,7 @@ import signal
 #import threading
 from datetime import datetime
 import pathlib
-
+import getopt
 
 
 
@@ -74,13 +74,14 @@ class DirfileWriter(QtCore.QObject):
     """
     
     
-    def __init__(self, base_directory, config, logger, verbose = False):
+    def __init__(self, base_directory, config, logger, ns_host = None, verbose = False):
         super(DirfileWriter, self).__init__()
         
         self.base_directory = base_directory
         self.config = config
         self.logger = logger
         self.verbose = verbose
+        self.ns_host = ns_host
         
         # define the housekeeping data dictionaries
         # samples per frame for each daq loop
@@ -119,7 +120,9 @@ class DirfileWriter(QtCore.QObject):
     def init_remote_object(self):
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:state")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('state')
+            self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
         except:
             self.connected = False
@@ -318,10 +321,10 @@ class DirfileWriter(QtCore.QObject):
             
 class Main(QtCore.QObject):
     ## Initialize Class ##
-    def __init__(self, base_directory, config, logger, opts = None,parent = None):
+    def __init__(self, base_directory, config, logger, ns_host = None, opts = None,parent = None):
         super(Main, self).__init__(parent)
 
-        self.dirfileWriter = DirfileWriter(base_directory, config, logger)
+        self.dirfileWriter = DirfileWriter(base_directory, config, logger, ns_host)
         
     
             
@@ -335,6 +338,41 @@ def sigint_handler( *args):
     QtCore.QCoreApplication.quit()
 
 if __name__ == "__main__":
+    
+    ##### GET ANY COMMAND LINE ARGUMENTS #####
+    
+    args = sys.argv[1:]
+    print(f'args = {args}')
+    
+    # set the defaults
+    verbose = False
+    doLogging = True
+    ns_host = None
+    
+    options = "vpn:"
+    long_options = ["verbose", "print", "ns_host:"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
+    
+    ##### RUN THE APP #####
+    
+    
+    
+    
     app = QtCore.QCoreApplication(sys.argv)
     
     # set the wsp path as the base directory
@@ -344,7 +382,7 @@ if __name__ == "__main__":
     config_file = base_directory + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
-    doLogging = True
+
     
     # set up the logger
     if doLogging:
@@ -352,7 +390,7 @@ if __name__ == "__main__":
     else:
         logger = None
 
-    main = Main(base_directory = wsp_path, config = config, logger = logger)
+    main = Main(base_directory = wsp_path, config = config, logger = logger, ns_host = ns_host)
 
     
     signal.signal(signal.SIGINT, sigint_handler)

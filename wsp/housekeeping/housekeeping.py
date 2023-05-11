@@ -214,75 +214,7 @@ class housekeeping():
         self.timer.setInterval(hk_poll_dt)
         self.timer.timeout.connect(self.poll_housekeeping)
         self.timer.start()
-    '''            
-    def create_dirfile(self):
-        """
-        Create the dirfile to hold the data from the DAQ loops
-        All the fields from the config file will be added automatically
-        """
-        # create the dirfile directory
-        hk_dir = os.getenv("HOME") + '/' + self.config['housekeeping_data_directory']
-        
-        now = datetime.utcnow() # or can use now for local time
-        #now = str(int(now.timestamp())) # give the name the current ctime
-        now_str = now.strftime('%Y%m%d_%H%M%S') # give the name a more readable date format
-        self.dirname = now_str + '.dm'
-        self.dirpath = hk_dir + '/' + self.dirname
-        
-        # create the directory and filenames for the data storage
-        hk_link_dir = os.getenv("HOME") + '/' + self.config['housekeeping_data_link_directory']
-        hk_link_name = self.config['housekeeping_data_link_name']
-        hk_linkpath = hk_link_dir + '/' + hk_link_name
-        
-        # create the data directory if it doesn't exist already
-        pathlib.Path(hk_dir).mkdir(parents = True, exist_ok = True)
-        print(f'housekeeping: making directory: {hk_dir}')
-                
-        # create the data link directory if it doesn't exist already
-        pathlib.Path(hk_link_dir).mkdir(parents = True, exist_ok = True)
-        print(f'housekeeping: making directory: {hk_link_dir}')
-        
-        # create the dirfile database
-        self.df = egd.EasyGetData(self.dirpath, "w")
-        print(f'housekeeping; creating dirfile at {self.dirpath}')
-        #/* make a link to the current dirfile - kst can read this to make life easy... */
-        print(f'housekeeping: trying to create link at {hk_linkpath}')
-        
-        try:
-            os.symlink(self.dirpath, hk_linkpath)
-        except FileExistsError:
-            print('housekeeping: deleting existing symbolic link')
-            os.remove(hk_linkpath)
-            os.symlink(self.dirpath, hk_linkpath)
-        
-        # add the fields from the config file to the dirfile
-        for field in self.config['fields']:
-            # add handling for the various field types ('ftype') allowed by the dirfile standards as they come up
-            
-
-            self.df.add_raw_entry(field = field, 
-                                  spf = self.spf[self.config['fields'][field]['rate']],
-                                  dtype = np.dtype(self.config['fields'][field]['dtype']),
-                                  units = self.config['fields'][field]['units'],
-                                  label = self.config['fields'][field]['label'])
-        
-        # add in any derived fields
-        for field in self.config['derived_fields']:
-            ftype = self.config['derived_fields'][field]['ftype'].lower()
-            if ftype == 'lincom':
-                self.df.add_lincom_entry(field = field, 
-                                        input_field = self.config['derived_fields'][field]['input_field'], 
-                                        slope = self.config['derived_fields'][field]['slope'], 
-                                        intercept = self.config['derived_fields'][field]['intercept'],
-                                        units = self.config['derived_fields'][field]['units'],
-                                        label = self.config['derived_fields'][field]['label'])
-            elif ftype == 'linterp':
-                self.df.add_linterp_entry(field, 
-                                          input_field = self.config['derived_fields'][field]['input_field'], 
-                                          LUT_file = self.base_directory + '/' + self.config['derived_fields'][field]['LUT_file'],
-                                          units = self.config['derived_fields'][field]['units'],
-                                          label = self.config['derived_fields'][field]['label'])
-    '''
+    
     def build_dicts(self):
         """
         gets the fields and daq rates from the config file

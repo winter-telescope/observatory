@@ -25,6 +25,7 @@ import time
 import signal
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import Pyro5.client
+import Pyro5.nameserver
 import yaml
 
 # add the wsp directory to the PATH
@@ -93,7 +94,7 @@ class control(QtCore.QObject):
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = [#'pyro5-ns', 
+        daemons_to_kill = [#'ns_daemon', 
                            'ccd_daemon.py' ,
                            'viscamd.py',
                            'domed.py', 
@@ -124,7 +125,7 @@ class control(QtCore.QObject):
         
         # first, figure out what nameserver address to use
         for currentArgument, currentValue in opts:
-            if currentArgument in ("-n", "--host"):
+            if currentArgument in ("-n", "--ns_host"):
                 self.ns_host = currentValue
                 print(f'ns_host = {self.ns_host}')
             else:
@@ -133,7 +134,8 @@ class control(QtCore.QObject):
         
         try:
             nameserverd = Pyro5.core.locate_ns(host = self.ns_host)
-            
+            '''
+            # Don't think I need to do this...
             try:
                 # unregister all the entries
                 entrylist = list(nameserverd.list().keys())[1:]
@@ -146,21 +148,24 @@ class control(QtCore.QObject):
                 print(f'entries in pyro5 nameserver: {entrylist}')
             except Exception as e:
                 print(f'could not cleanup nameserver entries: {e}')
-                
+            '''
         except:
             # the nameserver is not running
-            print(f'control: nameserver not already running. starting from wsp')
-            nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = f"pyro5-ns -n {self.ns_host}", python = False)
-            self.daemonlist.add_daemon(nameserverd)
-        
-        
-        
+            print('control: nameserver not already running. starting from wsp')
+            nameserverd = daemon_utils.PyDaemon(name = 'ns_daemon', filepath = f"{wsp_path}/daemon/ns_launcherd.py",
+                                                args = ['-n', self.ns_host], 
+                                                python = True)
+            # self.daemonlist.add_daemon(nameserverd)
+            # We have to actually launch the nameserver!
+            print(f'Launching Nameserver at ns_host = {self.ns_host}')
+            nameserverd.launch()
+            #Pyro5.nameserver.start_ns_loop(host = self.ns_host) # this will hang here.
         
         if mode in ['r', 'i', 'm']:
             # test daemon
             self.testd = daemon_utils.PyDaemon(name = 'test', filepath = f"{wsp_path}/daemon/test_daemon.py")
             self.daemonlist.add_daemon(self.testd)
-            
+                    
             # chiller daemon
             if '--smallchiller' in opts:
                 self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py", args = ['-n', self.ns_host])
@@ -170,14 +175,14 @@ class control(QtCore.QObject):
             pass
         
             # housekeeping data logging daemon (hkd = housekeeping daemon)
-            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
+            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py", args = ['-n', self.ns_host]) #change to dirfiled.py if you want to use the version that uses easygetdata
             self.daemonlist.add_daemon(self.hkd)
         
         if mode in ['i']:
             # labjack daemon
-            self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py")
+            self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])
             self.daemonlist.add_daemon(self.labjackd)
-        
+        '''
         if mode in ['r','m']:
             
             
@@ -195,12 +200,12 @@ class control(QtCore.QObject):
             # power (PDU/NPS) daemon
             self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
             self.daemonlist.add_daemon(self.powerd)
-        
+        '''
         if '--sunsim' in opts:              
             self.sunsim = True
         else:
             self.sunsim = False
-            
+        '''    
         # option to ignore whether the shutter is open, which let you test with the dome closed
         if '--dometest' in opts:
             self.dometest = True
@@ -238,10 +243,15 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.roboManagerd)
             
             
-        
+        '''        
         # Launch all hardware daemons
         self.daemonlist.launch_all()
-        
+        # now add the nameserver. we already started it, so we'll add it only 
+        # after starting the rest. this will still let us shut them all down together?
+        # might want to nix this altogether. 
+        #self.daemonlist.add_daemon(nameserverd)
+
+                
         
         
         ### SET UP THE HARDWARE ###
@@ -338,12 +348,12 @@ class control(QtCore.QObject):
                                                 )
         
         
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.hk, name = 'state')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.hk, name = 'state', ns_host = self.ns_host)
         self.pyro_thread.start()
         
-        '''
+        """
         In this section we set up the appropriate command interface and executors for the chosen mode
-        '''
+        """
         ### SET UP THE COMMAND LINE INTERFACE
         self.wintercmd = wintercmd.Wintercmd(self.base_directory, 
                                              self.config, 

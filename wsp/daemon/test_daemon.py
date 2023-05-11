@@ -19,6 +19,7 @@ from PyQt5 import QtCore
 import sys
 import signal
 #import queue
+import getopt
 import threading
 
 # add the wsp directory to the PATH
@@ -114,13 +115,13 @@ class Counter(QtCore.QObject):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, parent=None ):            
+    def __init__(self, ns_host, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
         self.counter = Counter(start = 0, step = 1, dt = 1000, name = 'counter', verbose = False)
                 
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.counter, name = 'counter')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.counter, name = 'counter', ns_host = ns_host)
         self.pyro_thread.start()
         
         """
@@ -142,10 +143,41 @@ def sigint_handler( *args):
     QtCore.QCoreApplication.quit()
 
 if __name__ == "__main__":
-    app = QtCore.QCoreApplication(sys.argv)
-
     
-    main = PyroGUI()
+    ##### GET ANY COMMAND LINE ARGUMENTS #####
+    
+    args = sys.argv[1:]
+    print(f'args = {args}')
+    
+    # set the defaults
+    verbose = False
+    doLogging = True
+    ns_host = None
+    
+    options = "vpn:"
+    long_options = ["verbose", "print", "ns_host:"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
+    
+    ##### RUN THE APP #####
+    app = QtCore.QCoreApplication(sys.argv)
+    
+    
+    main = PyroGUI(ns_host = ns_host)
 
     
     signal.signal(signal.SIGINT, sigint_handler)

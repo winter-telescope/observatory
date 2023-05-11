@@ -770,7 +770,6 @@ if __name__ == "__main__":
     
     #### GET ANY COMMAND LINE ARGUMENTS #####
     
-    # GET ANY COMMAND LINE ARGUMENTS
     args = sys.argv[1:]
     print(f'args = {args}')
     

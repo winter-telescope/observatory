@@ -14,7 +14,14 @@ import Pyro5.client
 
 ns = Pyro5.core.locate_ns(host = '192.168.1.10')
 #uri = ns.lookup('labjacks')
-uri = ns.lookup('hello')
-obj = Pyro5.client.Proxy(uri)
+#uri = ns.lookup('hello')
+#obj = Pyro5.client.Proxy(uri)
 
-print(f'Name server registered items: {ns.list()}')
+#print(f'Name server registered items: {ns.list()}')
+
+uri = ns.lookup('state')
+state = Pyro5.client.Proxy(uri)
+
+
+uri = ns.lookup('labjacks')
+lj = Pyro5.client.Proxy(uri)
