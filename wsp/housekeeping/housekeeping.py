@@ -58,6 +58,8 @@ class housekeeping():
                  ephem = None, 
                  viscam = None, 
                  ccd = None, 
+                 summercamera = None,
+                 wintercamera = None,
                  robostate = None, 
                  sunsim = False, 
                  logger = None,
@@ -82,6 +84,8 @@ class housekeeping():
         self.ephem = ephem
         self.viscam = viscam
         self.ccd = ccd
+        self.summercamera = summercamera
+        self.wintercamera = wintercamera
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
@@ -141,6 +145,8 @@ class housekeeping():
             
             self.housekeeping_poll_functions.append(self.viscam.update_state)
             self.housekeeping_poll_functions.append(self.ccd.update_state)
+            self.housekeeping_poll_functions.append(self.summercamera.update_state)
+            self.housekeeping_poll_functions.append(self.wintercamera.update_state)
             self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
             self.housekeeping_poll_functions.append(self.powerManager.update_state)
             
@@ -176,6 +182,8 @@ class housekeeping():
                                                ephem = self.ephem,
                                                viscam = self.viscam,
                                                ccd = self.ccd,
+                                               summercamera = self.summercamera,
+                                               wintercamera = self.wintercamera,
                                                mirror_cover = self.mirror_cover,
                                                robostate = self.robostate,
                                                sunsim = self.sunsim,

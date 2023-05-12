@@ -79,18 +79,13 @@ class local_camera(QtCore.QObject):
         # setup connection to pyro state
         self.init_hk_state_object()
         self.update_hk_state()
-    ### General Pyro Stuff
-    def get_pyro_nameserver(self):
-        try:
-            self.ns = Pyro5.core.locate_ns(host = self.ns_host)
-        except Exception as e:
-            self.log(f'could not connect to pyro nameserver at {self.ns_host}: {e}')
         
     ### Things for getting the housekeeping state from the Pyro Server ###
     
     def init_hk_state_object(self):
         # init the remote object
         try:
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
             uri = self.ns.lookup("state")
             self.remote_hk_state_object = Pyro5.client.Proxy(uri)
             self.hk_connected = True
@@ -114,7 +109,7 @@ class local_camera(QtCore.QObject):
             except Exception as e:
                 if self.verbose:
                     self.logger.info(f'local ccd could not update remote housekeeping state: {e}')
-                pass    
+                self.hk_connected = False    
         
     ###    
     def doCommand(self, cmd_obj):

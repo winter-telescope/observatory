@@ -63,6 +63,8 @@ from viscam import viscam
 from viscam import ccd
 from power import powerManager
 from housekeeping import labjack_handler_local
+from camera import camera
+
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -130,7 +132,12 @@ class control(QtCore.QObject):
                 print(f'ns_host = {self.ns_host}')
             else:
                 self.ns_host = self.config['pyro5_ns_default_addr']
-        
+            
+            if currentArgument in ("-v", "--verbose"):
+                self.verbose = True
+            else:
+                self.verbose = False
+            
         
         try:
             nameserverd = Pyro5.core.locate_ns(host = self.ns_host)
@@ -183,7 +190,10 @@ class control(QtCore.QObject):
             # labjack daemon
             self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])
             self.daemonlist.add_daemon(self.labjackd)
-        
+            
+            
+            
+            
         if mode in ['r','m']:
             
             
@@ -296,12 +306,25 @@ class control(QtCore.QObject):
         # init the schedule. put it here so it can be passed into housekeeping
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
+        
         # init the viscam shutter, filter wheel, and raspberry pi
         #self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
         self.viscam = viscam.local_viscam(base_directory = self.base_directory)
         
+        #TODO: deprecate this
         # init the viscam ccd
         self.ccd = ccd.local_ccd(base_directory = self.base_directory, config = self.config, logger = self.logger)
+        
+        
+        # init the sumnmer camera interface
+        self.summercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
+                                          daemon_pyro_name = 'summercamera', pyro_ns_host = self.ns_host,
+                                          logger = self.logger, verbose = self.verbose)
+        
+        # init the winter camera interface
+        self.wintercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
+                                          daemon_pyro_name = 'wintercamera', pyro_ns_host = self.ns_host,
+                                          logger = self.logger, verbose = self.verbose)
 
         # init the alert handler
         auth_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['auth_config_file'] )) , Loader = yaml.FullLoader)
@@ -309,7 +332,8 @@ class control(QtCore.QObject):
         alert_config = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['alert_config_file'])) , Loader = yaml.FullLoader)
 
         self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
-        if mode == 'r':
+        if mode == 'r':        self.wintercamera = wintercamera
+
             # send a signal that we've started up wsp!
             self.alertHandler.slack_log(f':futurama-bender-robot::telescope: *Starting WSP in Robotic Mode!*')
         
@@ -342,6 +366,8 @@ class control(QtCore.QObject):
                                                 ephem = self.ephem,
                                                 viscam = self.viscam, 
                                                 ccd = self.ccd, 
+                                                summercamera = self.summercamera,
+                                                wintercamera = self.wintercamera,
                                                 mirror_cover = self.mirror_cover,
                                                 robostate = self.robostate,
                                                 sunsim = self.sunsim,

@@ -626,6 +626,11 @@ filters:
             nominal_focus: 10000
             active: False
             focus_exptime: 30
+        dark:
+            name: "Dark Mirror"
+            nominal_focus: 10000
+            active: False
+            focus_exptime: 30
         
 
 filter_wheels:

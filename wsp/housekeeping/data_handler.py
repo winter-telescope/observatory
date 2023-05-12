@@ -42,15 +42,13 @@ wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 print(f'data_handler: wsp_path = {wsp_path}')
 
-# winter modules
-#from housekeeping import easygetdata as egd
-#from telescope import pwi4
-
 
 
 class hk_loop(QtCore.QThread):
 
-    def __init__(self,config, state, curframe, schedule, telescope, mirror_cover, labjacks, counter, dome, chiller, powerManager, ephem, viscam, ccd, robostate, sunsim = False, verbose = False, logger = None):
+    def __init__(self,config, state, curframe, schedule, telescope, mirror_cover, labjacks, 
+                 counter, dome, chiller, powerManager, ephem, viscam, 
+                 ccd, summercamera, wintercamera, robostate, sunsim = False, verbose = False, logger = None):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -67,6 +65,8 @@ class hk_loop(QtCore.QThread):
         self.ephem = ephem
         self.viscam = viscam
         self.ccd = ccd
+        self.summercamera = summercamera
+        self.wintercamera = wintercamera
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.verbose = verbose
@@ -133,12 +133,7 @@ class hk_loop(QtCore.QThread):
             except Exception as e:
                 self.logger.error(f'could not get sunsim timestamp: {e}')
                 return -777
-                #print('WTF')
-                #if self.verbose:
-                #self.log(f'could not update observatory state: {e}')
-                #exc_info = sys.exc_info()
-                #traceback.print_exception(*exc_info)
-                pass
+
         
         else:
             self.setup_sunsim_connection()
@@ -175,19 +170,13 @@ class hk_loop(QtCore.QThread):
 
         for field in self.config['fields']:
 
-            #if self.config['fields'][field]['rate'] == self.rate:
             #TODO: NPL 3-8-21 making just a single housekeeping loop, so ignoring the rate
             try:
                 # update the state and frame dictionaries
                 curval = self.get(self.config['fields'][field]['var'])
                 self.state.update({field : curval})
                 
-                #NPL 6-1-21: removing the dirfile handling from wsp
-                """
-                # update the vectors in the current frame
-                # shift over the vector by one, then replace the last
-                self.curframe[field] = np.append(self.curframe[field][1:], curval)
-                """
+                
             except Exception as e:
                 """
                 we end up here if there's a problem either getting the field,
@@ -214,249 +203,7 @@ class hk_loop(QtCore.QThread):
                  if self.verbose:
                      print(f'datahandler: could not update field [{field}] due to {e.__class__}: {e}')
                  pass
-
-#TODO: slow_loop is deprecated! NPL 3-8-21
-class slow_loop(QtCore.QThread):
-
-    def __init__(self,config, state, curframe, telescope,schedule,labjacks):
-        QtCore.QThread.__init__(self)
-        # loop execution number
-        self.index = 0
-        self.timestamp = datetime.utcnow().timestamp()
-
-        # subclass the methods passed in (ie, the hardware systems)
-        self.telescope = telescope
-        self.schedule = schedule
-        self.labjacks = labjacks
-
-        # pass the config to the thread
-        self.config = config
-
-        # give thread access to these methods to update the data as it comes in
-        self.state = state
-        self.curframe = curframe
-
-        # describe the loop rate
-        self.rate = 'slow'
-        self.dt = self.config['daq_dt'][self.rate]
-
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update_status)
-        self.timer.start()
-        #self.exec()
-        print(f'datahandler: running slowloop update in thread {self.currentThread()}')
-
-
-    def __del__(self):
-        self.wait()
-
-    def get(self, varname, default_val = -999):
-        try:
-            return eval( 'self.' + varname)
-        except Exception as e:
-            #print('could not get thing: ',e)
-            return default_val
-
-    def update_status(self, default_value = -999):
-        self.index +=1
-        self.timestamp = datetime.utcnow().timestamp()
-
-        # is it faster to put the labjack poll here?
-        #self.labjacks.read_all_labjacks()
-
-
-        for field in self.config['fields']:
-
-            if self.config['fields'][field]['rate'] == self.rate:
-                # if the field is to be sampled at the loop rate, then log it
-                try:
-                    # update the state and frame dictionaries
-                    curval = self.get(self.config['fields'][field]['var'])
-                    self.state.update({field : curval})
-
-                    # update the vectors in the current frame
-                    # shift over the vector by one, then replace the last
-                    self.curframe[field] = np.append(self.curframe[field][1:], curval)
-                except Exception as e:
-                    """
-                    we end up here if there's a problem either getting the field,
-                    or with the config for that field. either way log it and
-                    just keep moving
-                    """
-                    #print(f'could not update field [{field}] due to {e.__class__}: {e}')
-                    pass
-            else:
-                pass
-
-
-
-#TODO: fast_loop is deprecated! NPL 3-8-21
-
-class fast_loop(QtCore.QThread):
-
-    def __init__(self,config, state, curframe, telescope):
-        QtCore.QThread.__init__(self)
-
-        # subclass the methods passed in (ie, the hardware systems)
-        self.telescope = telescope
-
-
-        # loop execution number
-        self.index = 0
-        self.timestamp = datetime.utcnow().timestamp()
-
-        # pass the config to the thread
-        self.config = config
-
-        # give thread access to these methods to update the data as it comes in
-        self.state = state
-        self.curframe = curframe
-
-        # describe the loop rate
-        self.rate = 'fast'
-        self.dt = self.config['daq_dt'][self.rate]
-
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update)
-        self.timer.start()
-        #self.exec()
-        print(f'datahandler: running fastloop update in thread {self.currentThread()}')
-
-    def __del__(self):
-        self.wait()
-
-    def get(self, varname, default_val = -999):
-        try:
-            return eval( 'self.' + varname)
-        except Exception as e:
-            #print('could not get thing: ',e)
-            return default_val
-
-    def update_status(self, default_value = -999):
-        #print('telescope mount az = ', self.telescope.state.mount.azimuth_degs)
-        for field in self.config['fields']:
-
-            if self.config['fields'][field]['rate'] == self.rate:
-                # if the field is to be sampled at the loop rate, then log it
-                try:
-                    # update the state and frame dictionaries
-                    curval = self.get(self.config['fields'][field]['var'])
-                    self.state.update({field : curval})
-
-                    # update the vectors in the current frame
-                    # shift over the vector by one, then replace the last
-                    self.curframe[field] = np.append(self.curframe[field][1:], curval)
-                except Exception as e:
-                    """
-                    we end up here if there's a problem either getting the field,
-                    or with the config for that field. either way log it and
-                    just keep moving
-                    """
-                    #print(f'could not update field [{field}] due to {e.__class__}: {e}')
-                    pass
-            else:
-                pass
-
-
-
-    def update(self):
-        # Update the loop number
-        self.index +=1
-        self.timestamp = datetime.utcnow().timestamp()
-
-        """
-        ### POLL THE DATA ###
-
-        # poll telescope status
-        try:
-            self.telescope_status = self.telescope.status()
-        except Exception as e:
-            '''
-            do nothing here. this avoids flooding the log with errors if
-            the system is disconnected. Instead, this should be handled by the
-            watchdog to signal/log when the system is offline at a reasonable
-            cadance.
-            '''
-            #self.telescope_status = pwi4.defaultPWI4Status()
-            #print(f'could not poll telescope status: {type(e)}: {e}')
-            pass
-        """
-        ### MAP THE DATA TO THE STORED VARIABLES ###
-        self.update_status()
-
-
-    """
-    def run(self):
-        print("fastloop: starting")
-        '''
-        while True:
-            self.update()
-            time.sleep(float(self.dt) / 1000.)
-
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update)
-        self.timer.start()
-        #self.exec()
-        '''
-        print("fastloop: ending?")
-    """
-
-class daq_loop_old(QtCore.QThread):
-    """
-    This is a generic QThread which will execute the specified function
-    at the specified cadence.
-
-    It is meant for polling different sensors or instruments or servers
-    each in their own thread so they don't bog each other down.
-    """
-    def __init__(self, func, dt, name = '', print_thread_name_in_update = False, *args, **kwargs):
-        QtCore.QThread.__init__(self)
-
-        self.index = 0
-        self.name = name
-        
-        # define the function and options that will be run in this daq loop
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-        # describe the loop rate
-        self.dt = dt
-        
-        self._print_thread_name_in_update_ = print_thread_name_in_update
-    
-        print(f'{self.name}: starting timed loop')
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update)
-        self.timer.start()
-        #self.exec()
-        print(f'{self.name}: running daqloop of func: {self.func.__name__} in thread {self.currentThread()}')
-    
-    def __del__(self):
-        self.wait()
-
-    def update(self):
-        ### POLL THE DATA ###
-        try:
-            self.func(*self.args, **self.kwargs)
-            
-            if self._print_thread_name_in_update_:
-                print(f'{self.name}: running func: {self.func.__name__} in thread {self.currentThread()}')
-            
-        except Exception as e:
-            '''
-            do nothing, don't want to clog up the program with errors if there's
-            a problem. let this get handled elsewhere.
-            '''
-            print(f'could not execute function {self.func.__name__} because of {type(e)}: {e}')
-            pass
-
-        self.index += 1
-        
+     
         
         
 class daq_loop(QtCore.QThread):
@@ -525,79 +272,12 @@ class daq_loop(QtCore.QThread):
         self.timer.start()
         self.exec()
         
-        #NPL: 4-28-21, I'm not sure why this is here. It only prints after the daqloop is quit since it's hiding after the exec. 
-        #TODO: delete this. just commenting out now to check operation
-        """
-        if self._thread_numbering_ == 'pyqt':
-            print(f'{self.name}: running daqloop of func: {self.func.__name__} in thread {self.currentThread()}')
-        else:
-            print(f'{self.name}: running daqloop of func: {self.func.__name__} in thread {threading.get_ident()}')
-            
-         """   
+       
     def __del__(self):
         self.wait()
     
     
-    
-
-'''
-# This is the old version that takes the conf. let's ditch this.
-class daq_loop(QtCore.QThread):
-    """
-    This is a generic QThread which will execute the specified function
-    at the specified cadence.
-
-    It is meant for polling different sensors or instruments or servers
-    each in their own thread so they don't bog each other down.
-    """
-    def __init__(self, config, func, rate, *args, **kwargs):
-        QtCore.QThread.__init__(self)
-
-        # pass in methods from elsewhere
-        self.config = config
-        #self.telescope = telescope
-        self.index = 0
-
-        # define the function and options that will be run in this daq loop
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-        # describe the loop rate
-        self.rate = rate
-        self.dt = self.config['daq_dt'][self.rate]
-
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update)
-        self.timer.start()
-        #self.exec()
-        print(f'datahandler: running daqloop of func: {self.func.__name__} in thread {self.currentThread()}')
-    def __del__(self):
-        self.wait()
-
-
-    def update(self):
-
-
-        ### POLL THE DATA ###
-
-        try:
-            #print(f'daq_loop: index = {self.index}')
-            self.func(*self.args, **self.kwargs)
-            #self.telescope.update_state()
-        except Exception as e:
-            """
-            do nothing, don't want to clog up the program with errors if there's
-            a problem. let this get handled elsewhere.
-            """
-            #print(f'could not execute function {self.func.__name__} because of {type(e)}: {e}')
-            pass
-
-
-        self.index += 1
-
-'''
+''' 
 class write_thread(QtCore.QThread):
 
     def __init__(self,config, dirfile, state, curframe):
@@ -636,20 +316,5 @@ class write_thread(QtCore.QThread):
         for field in self.curframe.keys():
             #print(f'writethread: writing to {field}: {self.curframe[field]}')
             self.db.write_field(field, self.curframe[field], start_frame = 'last')
+'''
 
-    '''
-    def run(self):
-        print("writethread: starting")
-        """
-        while True:
-            self.update()
-            time.sleep(float(self.dt) / 1000.)
-
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update)
-        self.timer.start()
-        #self.exec()
-        """
-        print("writethread: ending?")
-    '''
