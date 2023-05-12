@@ -120,6 +120,8 @@ class DirfileWriter(QtCore.QObject):
     def init_remote_object(self):
         # init the remote object
         try:
+            if self.verbose:
+                print(f'trying to reconnect to remote object "state" at ns_host = {self.ns_host}')
             ns = Pyro5.core.locate_ns(host = self.ns_host)
             uri = ns.lookup('state')
             self.remote_object = Pyro5.client.Proxy(uri)
@@ -137,7 +139,7 @@ class DirfileWriter(QtCore.QObject):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
         if self.verbose:
-            print(f'pydirfiled: updating state')
+            print(f'dirfiled: updating state')
         if not self.connected:
             self.init_remote_object()
             
@@ -153,6 +155,7 @@ class DirfileWriter(QtCore.QObject):
             except Exception as e:
                 if self.verbose:
                     print(f'dirfiled: could not update remote state: {e}')
+                self.connected = False
                 pass
         
         self.samples_in_curframe += 1
@@ -325,10 +328,10 @@ class DirfileWriter(QtCore.QObject):
             
 class Main(QtCore.QObject):
     ## Initialize Class ##
-    def __init__(self, base_directory, config, logger, ns_host = None, opts = None,parent = None):
+    def __init__(self, base_directory, config, logger, ns_host = None, opts = None, verbose = False, parent = None):
         super(Main, self).__init__(parent)
 
-        self.dirfileWriter = DirfileWriter(base_directory, config, logger, ns_host)
+        self.dirfileWriter = DirfileWriter(base_directory, config, logger, ns_host, verbose = verbose)
         
     
             
@@ -387,7 +390,7 @@ if __name__ == "__main__":
     config_file = base_directory + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
-
+    
     
     # set up the logger
     if doLogging:
@@ -395,8 +398,10 @@ if __name__ == "__main__":
     else:
         logger = None
     
+    
+    
     print(f'dirfiled: connecting with ns_host = {ns_host}')
-    main = Main(base_directory = wsp_path, config = config, logger = logger, ns_host = ns_host)
+    main = Main(base_directory = wsp_path, config = config, logger = logger, ns_host = ns_host, verbose = verbose)
 
     
     signal.signal(signal.SIGINT, sigint_handler)

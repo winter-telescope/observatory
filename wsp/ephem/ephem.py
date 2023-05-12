@@ -27,9 +27,10 @@ from utils import utils
 
 class local_ephem(object):
     
-    def __init__(self, base_directory, config, logger = None):
+    def __init__(self, base_directory, config, ns_host = None, logger = None):
         self.base_directory = base_directory
         self.config = config
+        self.ns_host = ns_host
         self.logger = logger
         
         # default value for bad query
@@ -63,7 +64,9 @@ class local_ephem(object):
     def init_remote_object(self):
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:ephem")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('ephem')
+            self.remote_object = Pyro5.client.Proxy(uri)
         
         except Exception as e:
             

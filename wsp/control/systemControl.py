@@ -183,7 +183,7 @@ class control(QtCore.QObject):
             # labjack daemon
             self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])
             self.daemonlist.add_daemon(self.labjackd)
-        '''
+        
         if mode in ['r','m']:
             
             
@@ -201,12 +201,12 @@ class control(QtCore.QObject):
             # power (PDU/NPS) daemon
             self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
             self.daemonlist.add_daemon(self.powerd)
-        '''
+        
         if '--sunsim' in opts:              
             self.sunsim = True
         else:
             self.sunsim = False
-        '''    
+            
         # option to ignore whether the shutter is open, which let you test with the dome closed
         if '--dometest' in opts:
             self.dometest = True
@@ -244,7 +244,7 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.roboManagerd)
             
             
-        '''        
+                
         # Launch all hardware daemons
         self.daemonlist.launch_all()
         # now add the nameserver. we already started it, so we'll add it only 
@@ -274,7 +274,7 @@ class control(QtCore.QObject):
         self.powerManager = powerManager.local_PowerManager(self.base_directory)
         
         # init the test object (goes with the test_daemon)
-        self.counter =  test_daemon_local.local_counter(wsp_path)
+        self.counter =  test_daemon_local.local_counter(wsp_path, ns_host = self.ns_host)
 
         # init the telescope
         self.telescope = telescope.Telescope(config = self.config, 
@@ -291,7 +291,7 @@ class control(QtCore.QObject):
         self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, logger = self.logger)
         
         # init the ephemeris
-        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, logger = self.logger)
+        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, ns_host = self.ns_host, logger = self.logger)
         
         # init the schedule. put it here so it can be passed into housekeeping
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
@@ -317,10 +317,10 @@ class control(QtCore.QObject):
         if '--smallchiller' in opts:
             self.chiller = small_chiller.local_chiller(base_directory = self.base_directory, config = self.config, alertHandler = self.alertHandler)
         else:
-            self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
+            self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config, ns_host = self.ns_host)
 
         # init the labjacks        
-        self.labjacks = labjack_handler_local.local_labjackHandler(self.base_directory, self.config, self.logger)
+        self.labjacks = labjack_handler_local.local_labjackHandler(self.base_directory, self.config, self.ns_host, self.logger)
         
         
         ### SET UP THE HOUSEKEEPING ###

@@ -35,12 +35,13 @@ class local_labjackHandler(QtCore.QObject):
     '''
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, logger = None, verbose = False):
+    def __init__(self, base_directory, config, ns_host = None, logger = None, verbose = False):
         super(local_labjackHandler, self).__init__()
         
         # Define attributes
         self.base_directory = base_directory
         self.config = config
+        self.ns_host = ns_host
         self.logger = logger
         self.verbose = verbose
         self.state = dict()
@@ -83,7 +84,9 @@ class local_labjackHandler(QtCore.QObject):
     def init_remote_object(self):
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:labjacks")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('labjacks')
+            self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
         except Exception as e:
             self.connected = False

@@ -25,10 +25,10 @@ from utils import utils
 
 class local_counter(object):
     
-    def __init__(self, base_directory, logger = None):
+    def __init__(self, base_directory, ns_host = None, logger = None):
         self.base_directory = base_directory
         
-        
+        self.ns_host = ns_host
         self.logger = logger
         self.msg = 'local initial value'
         self.count = None
@@ -52,7 +52,9 @@ class local_counter(object):
     def init_remote_object(self):
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:counter")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('counter')
+            self.remote_object = Pyro5.client.Proxy(uri)
         
         except Exception as e:
             self.log('connection with remote object failed', exc_info = True)

@@ -395,7 +395,8 @@ class PyroGUI(QtCore.QObject):
         
         self.ephem = EphemMon(config = config, dt = 200, name = 'ephem', sunsim = sunsim, verbose = verbose, logger = logger)
                 
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.ephem, name = 'ephem')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.ephem, name = 'ephem',
+                                                   ns_host = config['pyro5_ns_default_addr'])
         self.pyro_thread.start()
         
         """

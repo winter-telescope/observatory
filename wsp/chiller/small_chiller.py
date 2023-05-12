@@ -49,12 +49,13 @@ class local_chiller(QtCore.QObject):
     newCommand = QtCore.pyqtSignal(object)
     TECshutoffCmd = QtCore.pyqtSignal()
     
-    def __init__(self, base_directory, config, alertHandler=None):
+    def __init__(self, base_directory, config, ns_host = None, alertHandler=None):
         super(local_chiller, self).__init__()
         
         # Define attributes
         self.base_directory = base_directory
         self.config = config
+        self.ns_host = ns_host
         self.state = dict()
         self.remote_state = dict()
         self.connected = False
@@ -154,7 +155,9 @@ class local_chiller(QtCore.QObject):
     def init_remote_object(self):
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:chiller")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('chiller')
+            self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
         except:
             self.connected = False

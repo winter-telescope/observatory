@@ -30,7 +30,7 @@ print(f'State Count is {count}')
 uri = ns.lookup('labjacks')
 lj = Pyro5.client.Proxy(uri)
 ljstate = lj.getState()
-print(f'LJ State = {ljstate}')
+print(f'LJ T3 = {ljstate["TEMP_LJ0_AIN3"]}')
 
 
 uri = ns.lookup('chiller')
