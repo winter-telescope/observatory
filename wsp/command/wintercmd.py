@@ -3991,6 +3991,199 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('shut down the huaso server')
         sigcmd = signalCmd('killServer')
         self.ccd.newCommand.emit(sigcmd)
+    
+        
+    
+    ##### CAMERA API METHODS #####
+    @cmd
+    def startupCamera(self):
+        
+        self.defineCmdParser('startup the camera')
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'startupCamera: args = {self.args}')
+        
+        if self.args.winter:
+            camera = self.wintercamera
+        elif self.args.summer:
+            camera = self.summercamera
+        
+        sigcmd = signalCmd('startupCamera')
+        
+        self.logger.info(f'wintercmd: starting up {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def shutdownCamera(self):
+        
+        self.defineCmdParser('shutdown the camera')
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'startupCamera: args = {self.args}')
+        
+        if self.args.winter:
+            camera = self.wintercamera
+        elif self.args.summer:
+            camera = self.summercamera
+        
+        sigcmd = signalCmd('shutdownCamera')
+        
+        self.logger.info(f'wintercmd: starting up {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def doExposure(self):
+        
+        self.defineCmdParser('take an exposure with the camera')
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'doExposure: args = {self.args}')
+        
+        if self.args.winter:
+            camera = self.wintercamera
+        elif self.args.summer:
+            camera = self.summercamera
+        
+        sigcmd = signalCmd('doExposure')
+        
+        self.logger.info(f'wintercmd: doing exposure on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def tecSetSetpoint(self):
+        
+        self.defineCmdParser('set the TEC setpoint')
+        
+        self.cmdparser.add_argument('temp',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<temperature_celsius>')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'doExposure: args = {self.args}')
+        
+        if self.args.winter:
+            camera = self.wintercamera
+        elif self.args.summer:
+            camera = self.summercamera
+        
+        temp = self.args.temp[0]
+        
+        sigcmd = signalCmd('tecSetSetpoint', temp)
+        
+        self.logger.info(f'wintercmd: setting TEC setpoint on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def setExposure(self):
+        
+        self.defineCmdParser('set the exposure time')
+        
+        self.cmdparser.add_argument('exptime',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<exptime_seconds>')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'setExposure: args = {self.args}')
+        
+        if self.args.winter:
+            camera = self.wintercamera
+        elif self.args.summer:
+            camera = self.summercamera
+        
+        exptime = self.args.exptime[0]
+        
+        sigcmd = signalCmd('setExposure', exptime)
+        
+        self.logger.info(f'wintercmd: setting exposure time on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def tecStart(self):
+        
+        self.defineCmdParser('start the TEC')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'tecStart: args = {self.args}')
+        
+        if self.args.winter:
+            camera = self.wintercamera
+        elif self.args.summer:
+            camera = self.summercamera
+                
+        sigcmd = signalCmd('tecStart')
+        
+        self.logger.info(f'wintercmd: starting TEC on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def tecStop(self):
+            
+        self.defineCmdParser('stop the TEC')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'tecStop: args = {self.args}')
+        
+        if self.args.winter:
+            camera = self.wintercamera
+        elif self.args.summer:
+            camera = self.summercamera
+                
+        sigcmd = signalCmd('tecStop')
+        
+        self.logger.info(f'wintercmd: stopping TEC on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
         
     @cmd
     def generate_supernovae_db(self):

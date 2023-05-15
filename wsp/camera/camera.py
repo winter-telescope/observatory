@@ -142,6 +142,8 @@ class local_camera(QtCore.QObject):
     def init_remote_object(self):
         # init the remote object
         try:
+            if self.verbose:
+                self.log(f'init_remote_object: trying to connect to {self.daemonname}')
             ns = Pyro5.core.locate_ns(host = self.ns_host)
             uri = ns.lookup(self.daemonname)
             self.remote_object = Pyro5.client.Proxy(uri)
@@ -155,19 +157,31 @@ class local_camera(QtCore.QObject):
     def update_state(self):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
+        #self.log(f'updating remote state: self.connected = {self.connected}')
+        
         if not self.connected:
+            self.log(f'self.connected = {self.connected}: try to init_remote_object again')
             self.init_remote_object()
-            
+        
+        if not self.hk_connected:
+            self.init_hk_state_object()
+        
         else:
             try:
+                #self.log(f'updating remote state')
                 self.remote_state = self.remote_object.getStatus()
-                
-                
+            except Exception as e:
+                self.log(f'camera: could not update remote state: {e}')
+                self.connected = False
+                pass    
+           
+            try:
                 self.parse_state()
                 
                 
             except Exception as e:
-                #self.log(f'camera: could not update remote state: {e}')
+                self.log(f'camera: could not parse remote state: {e}')
+                #self.connected = False
                 pass
             
             # get the last image name
@@ -180,11 +194,6 @@ class local_camera(QtCore.QObject):
                 if self.verbose:
                     self.log(f'could not get last image filename due to {e}')#', {tb.format_exc()}')
             """
-    def log(self, msg, level = logging.INFO):
-        if self.logger is None:
-                print(msg)
-        else:
-            self.logger.log(level = level, msg = msg)
     
     
     def getLastImagePath(self):
@@ -213,40 +222,43 @@ class local_camera(QtCore.QObject):
         self.update_state()
         print(f'state = {json.dumps(self.state, indent = 2)}')
         
-    
-    def setExposure(self, exptime):
-        self.remote_object.setexposure(exptime)
+    #### CAMERA API METHODS ####
+    def setExposure(self, exptime, addrs = None):
+        self.remote_object.setExposure(exptime)
                 
-    def doExposure(self, obstype = 'test', addr = []):
+    def doExposure(self, imtype = 'test', addrs = None):
         # first get the housekeeping state
         self.update_hk_state()
         
         # now dispatch the observation
         
+        filepath = os.path.join(os.getenv("HOME"), 'data', 'wsp')
+        
         try:
-            self.remote_object.doExposure(state = self.hk_state, obstype = obstype, addr = addr)
+            self.remote_object.doExposure(filepath = filepath, imtype = imtype, metadata = self.hk_state, addrs = addrs)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
         
-    def tecSetSetpoint(self, temp, addr = []):
-        self.remote_object.tecSetSetpoint(temp, addr = addr)
+    def tecSetSetpoint(self, temp, addrs = None):
+        self.remote_object.tecSetSetpoint(temp, addrs = addrs)
     
-    def tecStart(self, addr = []):
-        self.remote_object.tecStart(addr = addr)
+    def tecStart(self, addrs = None):
+        self.remote_object.tecStart(addrs = addrs)
         
-    def tecStop(self, addr = []):
-        self.remote_object.tecStop(addr = addr)
-    
-    
-    def shutdownCameraClient(self, addr = []):
-        self.remote_object.shutdownCameraClient(addr = addr)
+    def tecStop(self, addrs = None):
+        self.remote_object.tecStop(addrs = addrs)
         
-    def reconnectCameraDaemon(self, addr = []):
-        self.remote_object.reconnectCameraDaemon(addr = addr)
+    def startupCamera(self, addrs = None):
+        self.remote_object.startupCamera(addrs = addrs)
+        
+    def shutdownCamera(self, addrs = None):
+        self.remote_object.shutdownCamera(addrs = addrs)
+        
+    def restartCameraDaemon(self, addrs = None):
+        self.remote_object.restartCameraDaemon(addrs = addrs)
         #self.remote_object.reconnect()
         
-    def killCameraDaemon(self):
-        self.remote_object.killCameraDaemon()
+    
 
         
 # Try it out

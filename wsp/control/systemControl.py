@@ -318,12 +318,12 @@ class control(QtCore.QObject):
         
         # init the sumnmer camera interface
         self.summercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
-                                          daemon_pyro_name = 'summercamera', pyro_ns_host = self.ns_host,
+                                          daemon_pyro_name = 'SUMMERcamera', ns_host = self.ns_host,
                                           logger = self.logger, verbose = self.verbose)
         
         # init the winter camera interface
         self.wintercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
-                                          daemon_pyro_name = 'wintercamera', pyro_ns_host = self.ns_host,
+                                          daemon_pyro_name = 'WINTERcamera', ns_host = self.ns_host,
                                           logger = self.logger, verbose = self.verbose)
 
         # init the alert handler

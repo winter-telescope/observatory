@@ -132,6 +132,8 @@ class housekeeping():
         if mode.lower() in ['i']:
             #TODO: this should also run in 'm' and 'r' mode eventually...
             self.housekeeping_poll_functions.append(self.labjacks.update_state)
+            #self.housekeeping_poll_functions.append(self.summercamera.update_state)
+            self.housekeeping_poll_functions.append(self.wintercamera.update_state)
         # define the DAQ loops
         if mode.lower() in ['m','r']:
             self.daq_telescope = data_handler.daq_loop(func = self.telescope.update_state, 
@@ -145,8 +147,7 @@ class housekeeping():
             
             self.housekeeping_poll_functions.append(self.viscam.update_state)
             self.housekeeping_poll_functions.append(self.ccd.update_state)
-            self.housekeeping_poll_functions.append(self.summercamera.update_state)
-            self.housekeeping_poll_functions.append(self.wintercamera.update_state)
+            
             self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
             self.housekeeping_poll_functions.append(self.powerManager.update_state)
             
@@ -214,6 +215,7 @@ class housekeeping():
         #print(f'housekeeping: {self.robostate}')
         for func in self.housekeeping_poll_functions:
             # do the function
+            #print(func)
             func()
             
     def start_housekeeping_poll_loop(self):
