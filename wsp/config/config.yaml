@@ -2534,7 +2534,205 @@ fields:
         dtype: float64
         rate: hk
         var: chiller.state['max_dt_since_last_update']
-
+        
+########### HOUSEKEEPING WINTER SENSORS ##########
+        
+    bench_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_timestamp']
+    bench_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_fpa']
+    bench_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_roic']    
+    bench_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_sb']
+    bench_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_pb']
+    bench_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_V_p5v']
+    bench_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_V_n3v']
+    bench_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_V_tec']
+    bench_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_I_tec']
+    bench_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_FPGA_power_flag']   
+    bench_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_FPGA_tecdisable_flag']   
+    bench_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_FPGA_watchdog_flag']           
+    bench_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_V_p5v_flag']     
+    bench_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_V_n3v_flag']    
+    bench_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_fpa_flag']    
+    bench_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_roic_flag']    
+    bench_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_pb_flag']    
+    bench_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_sb_flag']            
+    bench_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_V_tec_flag']    
+    bench_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_I_tec_flag']  
+    bench_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_V_tec_sp']
+    bench_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_fpa_sp']    
+    bench_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_tec_setpoint']  
+    bench_T_fpa_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_T_fpa_pid']   
+    bench_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_tec_status']  
+    bench_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintersenor.state['bench_exptime']
+    bench_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_connected']
+     bench_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintersenor.state['bench_new_img_flag']       
 #### FITS HEADER STUFF. THESE ARE STRINGS! WILL NOT BE LOGGED TO THE DIRFILE
 header_fields:
     operator_name:
