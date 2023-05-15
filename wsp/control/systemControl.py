@@ -332,7 +332,7 @@ class control(QtCore.QObject):
         alert_config = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['alert_config_file'])) , Loader = yaml.FullLoader)
 
         self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
-        if mode == 'r':        self.wintercamera = wintercamera
+        if mode == 'r':        
 
             # send a signal that we've started up wsp!
             self.alertHandler.slack_log(f':futurama-bender-robot::telescope: *Starting WSP in Robotic Mode!*')
@@ -394,6 +394,8 @@ class control(QtCore.QObject):
                                              logger = self.logger, 
                                              viscam = self.viscam, 
                                              ccd = self.ccd, 
+                                             summercamera = self.summercamera,
+                                             wintercamera = self.wintercamera,
                                              mirror_cover = self.mirror_cover,
                                              ephem = self.ephem)
         

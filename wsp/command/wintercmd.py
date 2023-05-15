@@ -187,6 +187,8 @@ class Wintercmd(QtCore.QObject):
                  logger, 
                  viscam, 
                  ccd,
+                 summercamera,
+                 wintercamera,
                  ephem):
         # init the parent class
         #super().__init__()
@@ -210,6 +212,8 @@ class Wintercmd(QtCore.QObject):
         self.logger = logger
         self.viscam = viscam
         self.ccd = ccd
+        self.summercamera = summercamera
+        self.wintercamera = wintercamera
         self.mirror_cover = mirror_cover
         self.ephem = ephem
         self.defineParser()
