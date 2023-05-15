@@ -45,7 +45,7 @@ class local_camera(QtCore.QObject):
     imageSaved = QtCore.pyqtSignal()
     
     def __init__(self, base_directory, config, daemon_pyro_name,
-                 pyro_ns_host = None,
+                 ns_host = None,
                  logger = None, verbose = False,
                  ):
         super(local_camera, self).__init__()
@@ -54,7 +54,7 @@ class local_camera(QtCore.QObject):
         self.base_directory = base_directory
         self.config = config
         self.daemonname = daemon_pyro_name # the name that the camera daemon is registered under
-        self.ns_host = pyro_ns_host # the ip address of the pyro name server, eg `192.168.1.10`
+        self.ns_host = ns_host # the ip address of the pyro name server, eg `192.168.1.10`
         self.state = dict()
         self.hk_state = dict()
         self.remote_state = dict()
@@ -80,13 +80,21 @@ class local_camera(QtCore.QObject):
         self.init_hk_state_object()
         self.update_hk_state()
         
+        
+    def log(self, msg, level = logging.INFO):
+        msg = f'{self.daemonname}_local: {msg}'
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg) 
+    
     ### Things for getting the housekeeping state from the Pyro Server ###
     
     def init_hk_state_object(self):
         # init the remote object
         try:
             ns = Pyro5.core.locate_ns(host = self.ns_host)
-            uri = self.ns.lookup("state")
+            uri = ns.lookup("state")
             self.remote_hk_state_object = Pyro5.client.Proxy(uri)
             self.hk_connected = True
         except:
@@ -94,7 +102,7 @@ class local_camera(QtCore.QObject):
             pass
         '''
         except Exception:
-            self.logger.error('connection with remote object failed', exc_info = True)
+            self.log('connection with remote object failed', exc_info = True)
         '''
     def update_hk_state(self):
         # poll the state, if we're not connected try to reconnect
@@ -108,7 +116,7 @@ class local_camera(QtCore.QObject):
                 
             except Exception as e:
                 if self.verbose:
-                    self.logger.info(f'local ccd could not update remote housekeeping state: {e}')
+                    self.log(f'could not update remote housekeeping state: {e}')
                 self.hk_connected = False    
         
     ###    
@@ -134,7 +142,8 @@ class local_camera(QtCore.QObject):
     def init_remote_object(self):
         # init the remote object
         try:
-            uri = self.ns.lookup(self.daemonname)
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup(self.daemonname)
             self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
         except Exception as e:
@@ -151,7 +160,7 @@ class local_camera(QtCore.QObject):
             
         else:
             try:
-                self.remote_state = self.remote_object.GetStatus()
+                self.remote_state = self.remote_object.getStatus()
                 
                 
                 self.parse_state()
@@ -162,14 +171,15 @@ class local_camera(QtCore.QObject):
                 pass
             
             # get the last image name
+            """
             try:
                 self.image_directory, self.image_filename = self.remote_object.getLastImagePath()
             except Exception as e:
                 self.image_directory = 'UNKNOWN'
                 self.image_filename = 'UNKNOWN'
                 if self.verbose:
-                    self.logger.error(f'ccd: could not get last image filename due to {e}')#', {tb.format_exc()}')
-    
+                    self.log(f'could not get last image filename due to {e}')#', {tb.format_exc()}')
+            """
     def log(self, msg, level = logging.INFO):
         if self.logger is None:
                 print(msg)
@@ -247,14 +257,24 @@ if __name__ == '__main__':
         
     logger = logging_setup.setup_logger(wsp_path, config)        
     
-    cam = local_camera(wsp_path, config, logger, daemon_pyro_name = 'camsim')
+    logger = None
+    verbose = True
+    
+    """
+    def __init__(self, base_directory, config, daemon_pyro_name,
+                 pyro_ns_host = None,
+                 logger = None, verbose = False,
+                 ):
+    """
+    cam = local_camera(wsp_path, config, daemon_pyro_name = 'WINTERcamera',
+                       ns_host = '192.168.1.10', logger = logger, verbose = verbose)
     
     cam.print_state()
     
     
-    while False:
+    while True:
         try:
-            cam.update_state()
+            #cam.update_state()
             cam.print_state()
             time.sleep(1)
             
