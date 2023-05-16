@@ -2536,7 +2536,7 @@ fields:
         var: chiller.state['max_dt_since_last_update']
         
 ########### HOUSEKEEPING WINTER SENSORS ##########
-        
+# Bench Sensor        
     bench_timestamp:
         ftype: raw
         label: 'time'
@@ -2732,7 +2732,1195 @@ fields:
         units: None
         dtype: int64
         rate: 'hk'
-        var: wintercamera.state['bench_new_img_flag']       
+        var: wintercamera.state['bench_new_img_flag']   
+# StarA Sensor        
+    sa_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_timestamp']
+    sa_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_fpa']
+    sa_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_roic']    
+    sa_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_sb']
+    sa_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_pb']
+    sa_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_p5v']
+    sa_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_n3v']
+    sa_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_tec']
+    sa_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_I_tec']
+    sa_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_FPGA_power_flag']   
+    sa_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_FPGA_tecdisable_flag']   
+    sa_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_FPGA_watchdog_flag']           
+    sa_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_p5v_flag']     
+    sa_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_n3v_flag']    
+    sa_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_fpa_flag']    
+    sa_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_roic_flag']    
+    sa_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_pb_flag']    
+    sa_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_sb_flag']            
+    sa_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_tec_flag']    
+    sa_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_I_tec_flag']  
+    sa_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_tec_sp']
+    sa_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_fpa_sp']    
+    sa_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_tec_setpoint']  
+    sa_T_fpa_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_T_fpa_pid']   
+    sa_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_tec_status']  
+    sa_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_exptime']
+    sa_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_connected']
+    sa_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sa_new_img_flag']   
+
+# StarB Sensor        
+    sb_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_timestamp']
+    sb_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_fpa']
+    sb_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_roic']    
+    sb_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_sb']
+    sb_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_pb']
+    sb_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_p5v']
+    sb_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_n3v']
+    sb_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_tec']
+    sb_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_I_tec']
+    sb_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_FPGA_power_flag']   
+    sb_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_FPGA_tecdisable_flag']   
+    sb_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_FPGA_watchdog_flag']           
+    sb_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_p5v_flag']     
+    sb_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_n3v_flag']    
+    sb_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_fpa_flag']    
+    sb_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_roic_flag']    
+    sb_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_pb_flag']    
+    sb_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_sb_flag']            
+    sb_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_tec_flag']    
+    sb_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_I_tec_flag']  
+    sb_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_tec_sp']
+    sb_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_fpa_sp']    
+    sb_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_tec_setpoint']  
+    sb_T_fpa_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_T_fpa_pid']   
+    sb_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_tec_status']  
+    sb_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_exptime']
+    sb_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_connected']
+    sb_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sb_new_img_flag']   
+
+# StarC Sensor        
+    sc_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_timestamp']
+    sc_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_fpa']
+    sc_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_roic']    
+    sc_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_sb']
+    sc_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_pb']
+    sc_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_p5v']
+    sc_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_n3v']
+    sc_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_tec']
+    sc_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_I_tec']
+    sc_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_FPGA_power_flag']   
+    sc_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_FPGA_tecdisable_flag']   
+    sc_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_FPGA_watchdog_flag']           
+    sc_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_p5v_flag']     
+    sc_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_n3v_flag']    
+    sc_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_fpa_flag']    
+    sc_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_roic_flag']    
+    sc_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_pb_flag']    
+    sc_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_sb_flag']            
+    sc_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_tec_flag']    
+    sc_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_I_tec_flag']  
+    sc_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_tec_sp']
+    sc_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_fpa_sp']    
+    sc_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_tec_setpoint']  
+    sc_T_fpa_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_T_fpa_pid']   
+    sc_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_tec_status']  
+    sc_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_exptime']
+    sc_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_connected']
+    sc_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['sc_new_img_flag']   
+        
+# PortA Sensor        
+    pa_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_timestamp']
+    pa_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_fpa']
+    pa_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_roic']    
+    pa_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_sb']
+    pa_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_pb']
+    pa_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_p5v']
+    pa_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_n3v']
+    pa_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_tec']
+    pa_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_I_tec']
+    pa_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_FPGA_power_flag']   
+    pa_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_FPGA_tecdisable_flag']   
+    pa_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_FPGA_watchdog_flag']           
+    pa_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_p5v_flag']     
+    pa_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_n3v_flag']    
+    pa_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_fpa_flag']    
+    pa_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_roic_flag']    
+    pa_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_pb_flag']    
+    pa_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_sb_flag']            
+    pa_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_tec_flag']    
+    pa_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_I_tec_flag']  
+    pa_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_tec_sp']
+    pa_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_fpa_sp']    
+    pa_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_tec_setpoint']  
+    pa_T_fpa_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_T_fpa_pid']   
+    pa_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_tec_status']  
+    pa_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_exptime']
+    pa_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_connected']
+    pa_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pa_new_img_flag']     
+
+# PortB Sensor        
+    pb_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_timestamp']
+    pb_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_fpa']
+    pb_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_roic']    
+    pb_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_sb']
+    pb_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_pb']
+    pb_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_p5v']
+    pb_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_n3v']
+    pb_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_tec']
+    pb_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_I_tec']
+    pb_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_FPGA_power_flag']   
+    pb_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_FPGA_tecdisable_flag']   
+    pb_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_FPGA_watchdog_flag']           
+    pb_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_p5v_flag']     
+    pb_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_n3v_flag']    
+    pb_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_fpa_flag']    
+    pb_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_roic_flag']    
+    pb_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_pb_flag']    
+    pb_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_sb_flag']            
+    pb_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_tec_flag']    
+    pb_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_I_tec_flag']  
+    pb_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_tec_sp']
+    pb_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_fpa_sp']    
+    pb_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_tec_setpoint']  
+    pb_T_fpa_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_T_fpa_pid']   
+    pb_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_tec_status']  
+    pb_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_exptime']
+    pb_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_connected']
+    pb_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pb_new_img_flag']   
+
+# PortC Sensor        
+    pc_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_timestamp']
+    pc_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_fpa']
+    pc_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_roic']    
+    pc_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_sb']
+    pc_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_pb']
+    pc_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_p5v']
+    pc_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_n3v']
+    pc_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_tec']
+    pc_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_I_tec']
+    pc_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_FPGA_power_flag']   
+    pc_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_FPGA_tecdisable_flag']   
+    pc_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_FPGA_watchdog_flag']           
+    pc_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_p5v_flag']     
+    pc_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_n3v_flag']    
+    pc_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_fpa_flag']    
+    pc_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_roic_flag']    
+    pc_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_pb_flag']    
+    pc_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_sb_flag']            
+    pc_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_tec_flag']    
+    pc_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_I_tec_flag']  
+    pc_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_tec_sp']
+    pc_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_fpa_sp']    
+    pc_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_tec_setpoint']  
+    pc_T_fpa_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_T_fpa_pid']   
+    pc_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_tec_status']  
+    pc_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_exptime']
+    pc_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_connected']
+    pc_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: wintercamera.state['pc_new_img_flag']   
+
 #### FITS HEADER STUFF. THESE ARE STRINGS! WILL NOT BE LOGGED TO THE DIRFILE
 header_fields:
     operator_name:
@@ -2752,40 +3940,4 @@ header_fields:
     mount_model_filename:
         var: telescope.state["mount.model.filename"]
     
-    
-
-# derived_fields:
-#     # note the base directory for the LUT is the wsp directory
-#     T_LJ0:
-#         ftype: lincom
-#         input_field: 'V_LJ0_AIN14'
-#         slope: -92.6
-#         intercept: 194.45
-#         label: 'T'
-#         units: 'C'
-#     T_LJ0_AIN0:
-#         ftype: linterp
-#         input_field: 'V_LJ0_AIN0'
-#         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-#         label: 'T'
-#         units: 'C'
-#     T_LJ0_AIN1:
-#         ftype: linterp
-#         input_field: 'V_LJ0_AIN1'
-#         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-#         label: 'T'
-#         units: 'C'
-#     T_LJ0_AIN2:
-#         ftype: linterp
-#         input_field: 'V_LJ0_AIN2'
-#         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-#         label: 'T'
-#         units: 'C'
-#     T_LJ0_AIN3:
-#         ftype: linterp
-#         input_field: 'V_LJ0_AIN3'
-#         LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-#         label: 'T'
-#         units: 'C'
-        
-
+   
