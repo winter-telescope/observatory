@@ -2733,6 +2733,34 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['bench_new_img_flag']   
+    bench_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['bench_V_fpa']
+    bench_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['bench_V_roic']
+    bench_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['bench_V_pb']
+    bench_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['bench_V_sb']
 # StarA Sensor        
     sa_timestamp:
         ftype: raw
@@ -2930,7 +2958,34 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['sa_new_img_flag']   
-
+    sa_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_fpa']
+    sa_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_roic']
+    sa_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_pb']
+    sa_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sa_V_sb']
 # StarB Sensor        
     sb_timestamp:
         ftype: raw
@@ -3128,7 +3183,34 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['sb_new_img_flag']   
-
+    sb_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_fpa']
+    sb_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_roic']
+    sb_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_pb']
+    sb_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sb_V_sb']
 # StarC Sensor        
     sc_timestamp:
         ftype: raw
@@ -3326,7 +3408,34 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['sc_new_img_flag']   
-        
+    bench_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['bench_V_fpa']
+    sc_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_roic']
+    sc_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_pb']
+    sc_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['sc_V_sb']        
 # PortA Sensor        
     pa_timestamp:
         ftype: raw
@@ -3524,7 +3633,34 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['pa_new_img_flag']     
-
+    bench_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['bench_V_fpa']
+    pa_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_roic']
+    pa_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_pb']
+    pa_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pa_V_sb']
 # PortB Sensor        
     pb_timestamp:
         ftype: raw
@@ -3722,7 +3858,34 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['pb_new_img_flag']   
-
+    pb_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_fpa']
+    pb_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_roic']
+    pb_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_pb']
+    pb_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pb_V_sb']
 # PortC Sensor        
     pc_timestamp:
         ftype: raw
@@ -3920,7 +4083,34 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['pc_new_img_flag']   
-
+    bench_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['bench_V_fpa']
+    pc_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_roic']
+    pc_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_pb']
+    pc_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: wintercamera.state['pc_V_sb']
 #### FITS HEADER STUFF. THESE ARE STRINGS! WILL NOT BE LOGGED TO THE DIRFILE
 header_fields:
     operator_name:
