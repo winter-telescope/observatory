@@ -228,13 +228,14 @@ class local_camera(QtCore.QObject):
                 
     def doExposure(self, imdir=None, imname = None, imtype = 'test', addrs = None):
         # first get the housekeeping state
+        self.log(f'updating housekeeping state before sending exposure request')
         self.update_hk_state()
         
         # now dispatch the observation
-                
+        self.log(f'now sending doExposure request')     
         if imname is None:
             
-            imgtime = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+            imgtime = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")[:-3]
             
             imname = f'{self.daemonname}_{imgtime}'
             
@@ -242,7 +243,7 @@ class local_camera(QtCore.QObject):
         if imdir is None:
             imdir = os.path.join(os.getenv("HOME"), 'data', 'images', 'tmp')
             
-        
+        self.log(f'sending doExposure request to camera: imdir = {imdir}, imname = {imname}')
         
         try:
             self.remote_object.doExposure(imdir = imdir, imname = imname, imtype = imtype, metadata = self.hk_state, addrs = addrs)
@@ -251,6 +252,9 @@ class local_camera(QtCore.QObject):
         
     def tecSetSetpoint(self, temp, addrs = None):
         self.remote_object.tecSetSetpoint(temp, addrs = addrs)
+    
+    def tecSetVolt(self, volt, addrs = None):
+        self.remote_object.tecSetVolt(volt, addrs = addrs)
     
     def tecStart(self, addrs = None):
         self.remote_object.tecStart(addrs = addrs)

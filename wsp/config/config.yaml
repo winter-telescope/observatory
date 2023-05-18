@@ -2698,13 +2698,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: wintercamera.state['bench_tec_setpoint']  
-    bench_T_fpa_pid:
+    bench_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['bench_T_fpa_pid']   
+        var: wintercamera.state['bench_T_pid']   
     bench_V_tec_status:
         ftype: raw
         label: 'status'
@@ -2923,13 +2923,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: wintercamera.state['sa_tec_setpoint']  
-    sa_T_fpa_pid:
+    sa_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['sa_T_fpa_pid']   
+        var: wintercamera.state['sa_T_pid']   
     sa_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3148,13 +3148,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: wintercamera.state['sb_tec_setpoint']  
-    sb_T_fpa_pid:
+    sb_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['sb_T_fpa_pid']   
+        var: wintercamera.state['sb_T_pid']   
     sb_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3373,13 +3373,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: wintercamera.state['sc_tec_setpoint']  
-    sc_T_fpa_pid:
+    sc_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['sc_T_fpa_pid']   
+        var: wintercamera.state['sc_T_pid']   
     sc_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3408,13 +3408,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['sc_new_img_flag']   
-    bench_V_fpa:
+    sc_V_fpa:
         ftype: raw
         label: 'Voltage'
         units: 'V'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['bench_V_fpa']
+        var: wintercamera.state['sc_V_fpa']
     sc_V_roic:
         ftype: raw
         label: 'Voltage'
@@ -3598,13 +3598,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: wintercamera.state['pa_tec_setpoint']  
-    pa_T_fpa_pid:
+    pa_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['pa_T_fpa_pid']   
+        var: wintercamera.state['pa_T_pid']   
     pa_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3633,13 +3633,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['pa_new_img_flag']     
-    bench_V_fpa:
+    pa_V_fpa:
         ftype: raw
         label: 'Voltage'
         units: 'V'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['bench_V_fpa']
+        var: wintercamera.state['pa_V_fpa']
     pa_V_roic:
         ftype: raw
         label: 'Voltage'
@@ -3823,13 +3823,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: wintercamera.state['pb_tec_setpoint']  
-    pb_T_fpa_pid:
+    pb_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['pb_T_fpa_pid']   
+        var: wintercamera.state['pb_T_pid']   
     pb_V_tec_status:
         ftype: raw
         label: 'status'
@@ -4048,13 +4048,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: wintercamera.state['pc_tec_setpoint']  
-    pc_T_fpa_pid:
+    pc_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['pc_T_fpa_pid']   
+        var: wintercamera.state['pc_T_pid']   
     pc_V_tec_status:
         ftype: raw
         label: 'status'
@@ -4083,13 +4083,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: wintercamera.state['pc_new_img_flag']   
-    bench_V_fpa:
+    pc_V_fpa:
         ftype: raw
         label: 'Voltage'
         units: 'V'
         dtype: float64
         rate: 'hk'
-        var: wintercamera.state['bench_V_fpa']
+        var: wintercamera.state['pc_V_fpa']
     pc_V_roic:
         ftype: raw
         label: 'Voltage'

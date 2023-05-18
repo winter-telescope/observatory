@@ -204,7 +204,9 @@ class RoboOperator(QtCore.QObject):
 
     
 
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim, dometest):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
+                 alertHandler, schedule, telescope, dome, chiller, ephem, viscam, 
+                 ccd, mirror_cover, robostate, sunsim, dometest):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory

@@ -4002,7 +4002,7 @@ class Wintercmd(QtCore.QObject):
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
-        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
         
         self.getargs()
 
@@ -4026,7 +4026,7 @@ class Wintercmd(QtCore.QObject):
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
-        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
         
         self.getargs()
 
@@ -4047,10 +4047,20 @@ class Wintercmd(QtCore.QObject):
     def doExposure(self):
         
         self.defineCmdParser('take an exposure with the camera')
+        # argument to hold the camera 
+        camgroup = self.cmdparser.add_mutually_exclusive_group()
+        camgroup.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        camgroup.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
         # argument to hold the observation type
-        group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
-        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        imtypegroup = self.cmdparser.add_mutually_exclusive_group()
+        imtypegroup.add_argument('-s',    '--science',   action = 'store_true', default = False)
+        imtypegroup.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
+        imtypegroup.add_argument('-t',    '--test',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
         
         self.getargs()
 
@@ -4067,6 +4077,91 @@ class Wintercmd(QtCore.QObject):
         
         camera.newCommand.emit(sigcmd)
         
+        
+        
+        """
+        self.getargs()
+        
+        if self.args.science:
+            obstype = 'SCIENCE'
+            dark = False
+        elif self.args.dark:
+            obstype = 'DARK'
+            dark = True
+        elif self.args.flat:
+            obstype = 'FLAT'
+            dark = False
+        elif self.args.focus:
+            obstype = 'FOCUS'
+            dark = False
+        elif self.args.bias:
+            obstype = 'BIAS'
+            dark = True
+        elif self.args.test:
+            obstype = 'TEST'
+            dark = False
+        elif self.args.pointing:
+            obstype = 'POINTING'
+            dark = False
+        else:
+            # SET THE DEFAULT
+            obstype = ''
+            dark = False
+        
+        print(f'wintercmd: obstype = {obstype}, dark = {dark}')
+        
+        self.logger.info(f'wintercmd: args = {self.args}')
+        
+        # it the obstype is '' then just leave it be
+        if obstype != '':
+            self.parse(f'robo_set_obstype {obstype}')
+
+        sigcmd = signalCmd('doExposure',
+                               dark = dark)
+        
+        self.ccd.newCommand.emit(sigcmd)
+        
+        self.logger.info(f'wintercmd: running ccd_do_exposure in thread {threading.get_ident()}')
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = self.state['ccd_exposureTimeout'] + 30
+        # create a buffer list to hold several samples over which the stop condition must be true
+        
+        
+        #n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        # Change this to trigger on 1 True sample, since the flag is on for a short time and may get skipped
+        n_buffer_samples = 1
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'ccd_do_exposure command timed out after {timeout} seconds before completing')
+            
+            stop_condition = ( (self.state['ccd_doing_exposure'] == False) & (self.state['ccd_image_saved_flag']))
+            #self.logger.info(f'count = {self.state["count"]}')
+            #self.logger.info(f'wintercmd: ccd_doing_exposure = {self.state["ccd_doing_exposure"]}, ccd_image_saved_flag = {self.state["ccd_image_saved_flag"]}')
+            #self.logger.info(f'wintercmd: stop_condition_buffer = {stop_condition_buffer}')
+            #self.logger.info('')
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
+                break 
+        """
+        
+        
     @cmd
     def tecSetSetpoint(self):
         
@@ -4081,11 +4176,11 @@ class Wintercmd(QtCore.QObject):
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
-        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
         
         self.getargs()
 
-        self.logger.info(f'doExposure: args = {self.args}')
+        self.logger.info(f'tecSetSetpoint: args = {self.args}')
         
         if self.args.winter:
             camera = self.wintercamera
@@ -4097,6 +4192,39 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('tecSetSetpoint', temp)
         
         self.logger.info(f'wintercmd: setting TEC setpoint on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def tecSetVolt(self):
+        
+        self.defineCmdParser('set the TEC voltage')
+        
+        self.cmdparser.add_argument('voltage',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<tec_voltage>')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'tecSetVolt: args = {self.args}')
+        
+        if self.args.winter:
+            camera = self.wintercamera
+        elif self.args.summer:
+            camera = self.summercamera
+        
+        voltage = self.args.voltage[0]
+        
+        sigcmd = signalCmd('tecSetVolt', voltage)
+        
+        self.logger.info(f'wintercmd: setting TEC voltage on {camera.daemonname} to {voltage} V')
         
         camera.newCommand.emit(sigcmd)
         
@@ -4114,7 +4242,7 @@ class Wintercmd(QtCore.QObject):
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
-        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
         
         self.getargs()
 
@@ -4137,12 +4265,19 @@ class Wintercmd(QtCore.QObject):
     def tecStart(self):
         
         self.defineCmdParser('start the TEC')
-        
-        
+        """
+        self.cmdparser.add_argument('coeffs',
+                                    nargs = 1,
+                                    action = None,
+                                    type = list,
+                                    default = [],
+                                    help = '<exptime_seconds>')
+        """
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
-        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
         
         self.getargs()
 
@@ -4152,6 +4287,8 @@ class Wintercmd(QtCore.QObject):
             camera = self.wintercamera
         elif self.args.summer:
             camera = self.summercamera
+            
+        
                 
         sigcmd = signalCmd('tecStart')
         
@@ -4168,7 +4305,7 @@ class Wintercmd(QtCore.QObject):
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
-        group.add_argument('-s',    '--summer',      action = 'store_true', default = False)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
         
         self.getargs()
 
@@ -4184,7 +4321,67 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'wintercmd: stopping TEC on {camera.daemonname}')
         
         camera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def setPIDp(self):
+        """
+        Convenience function for tuning the WINTER sensor PID parameters
+        """
+        self.defineCmdParser('set camera PID proportional coefficient')
         
+        self.cmdparser.add_argument('coeff',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<PID_coefficient>')
+        
+        self.getargs()
+        coeff = self.args.coeff[0]
+        
+        sigcmd = signalCmd('setPIDp', coeff)
+        self.logger.info(f'wintercmd: sending update to WINTER TEC PID kp = {coeff}')
+        self.wintercamera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def setPIDi(self):
+        """
+        Convenience function for tuning the WINTER sensor PID parameters
+        """
+        self.defineCmdParser('set camera PID integral coefficient')
+        
+        self.cmdparser.add_argument('coeff',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<PID_coefficient>')
+        
+        self.getargs()
+        coeff = self.args.coeff[0]
+        
+        sigcmd = signalCmd('setPIDi', coeff)
+        self.logger.info(f'wintercmd: sending update to WINTER TEC PID ki = {coeff}')
+        self.wintercamera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def setPIDd(self):
+        """
+        Convenience function for tuning the WINTER sensor PID parameters
+        """
+        self.defineCmdParser('set camera PID derivative coefficient')
+        
+        self.cmdparser.add_argument('coeff',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<PID_coefficient>')
+        
+        self.getargs()
+        coeff = self.args.coeff[0]
+        
+        sigcmd = signalCmd('setPIDd', coeff)
+        self.logger.info(f'wintercmd: sending update to WINTER TEC PID kd = {coeff}')
+        self.wintercamera.newCommand.emit(sigcmd)
+    
     @cmd
     def generate_supernovae_db(self):
         self.defineCmdParser('Generate supernovae observation schedule')
