@@ -4172,7 +4172,7 @@ class Wintercmd(QtCore.QObject):
         # local_camera expects this:
             #doExposure(self, imdir=None, imname = None, imtype = 'test', addrs = None):
 
-        sigcmd = signalCmd('doExposure', imdir = imdir, imname = imname, imtype = imtype, addrs = addrs)
+        sigcmd = signalCmd('doExposure', imdir = imdir, imname = imname, imtype = imtype, mode = mode, addrs = addrs)
         
         self.logger.info(f'wintercmd: doing exposure on {camera.daemonname}')
         

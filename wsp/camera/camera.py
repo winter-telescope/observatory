@@ -229,7 +229,7 @@ class local_camera(QtCore.QObject):
     def setExposure(self, exptime, addrs = None):
         self.remote_object.setExposure(exptime)
                 
-    def doExposure(self, imdir=None, imname = None, imtype = 'test', addrs = None):
+    def doExposure(self, imdir=None, imname = None, imtype = 'test', mode = None, addrs = None):
         # first get the housekeeping state
         self.log(f'updating housekeeping state before sending exposure request')
         self.update_hk_state()
@@ -245,11 +245,12 @@ class local_camera(QtCore.QObject):
         
         if imdir is None:
             imdir = os.path.join(os.getenv("HOME"), 'data', 'images', 'tmp')
-            
+        
+        
         self.log(f'sending doExposure request to camera: imdir = {imdir}, imname = {imname}')
         
         try:
-            self.remote_object.doExposure(imdir = imdir, imname = imname, imtype = imtype, metadata = self.hk_state, addrs = addrs)
+            self.remote_object.doExposure(imdir = imdir, imname = imname, imtype = imtype, mode = mode, metadata = self.hk_state, addrs = addrs)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
         
