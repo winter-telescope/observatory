@@ -354,7 +354,7 @@ if __name__ == '__main__':
 
     config = utils.loadconfig(wsp_path + '/config/config.yaml')
     
-    dome = local_dome(wsp_path, config)
+    dome = local_dome(wsp_path, config, ns_host = '192.168.1.10')
 
     while True:
         try:

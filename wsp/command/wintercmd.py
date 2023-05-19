@@ -3553,21 +3553,15 @@ class Wintercmd(QtCore.QObject):
             self.promptThread.stop()
             self.execThread.stop()
         
+        """
+        #NPL 5-19-23 commenting out
         # try to shut down the ccd camera client
         try:
             self.parse('ccd_shutdown_client')
             time.sleep(1)
         except Exception as e:
             print(f'could not shut down ccd camera client. {type(e)}: {e}')
-        
-        # try to shut down the ccd camera server
-        """try:
-            self.parse('ccd_killServer')
-            time.sleep(1)
-        except Exception as e:
-            print(f'could not shut down ccd camera huaso server. {type(e)}: {e}')"""
-        
-        #sys.exit()#sigint_handler()
+        """
         
         # try to kill the ccd huaso_server
         # we don't have a path from loacl to remote for this yet.
@@ -3582,6 +3576,7 @@ class Wintercmd(QtCore.QObject):
             os.kill(pid, signal.SIGKILL)
         
         # kill the program
+        print(f'Now trying to kill the QCoreApplication...')
         QtCore.QCoreApplication.quit()
 
 ##### Mirror cover commands ####

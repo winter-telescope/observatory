@@ -54,7 +54,7 @@ print(f'wsp_path = {wsp_path}')
 from daemon import daemon_utils
 from utils import utils
 from utils import logging_setup
-from watchdog import watchdog
+#from watchdog import watchdog
 from alerts import alert_handler
 
 
@@ -543,7 +543,8 @@ class Dome(QtCore.QObject):
         
         # shut down the wsp watchdog
         self.log('Shutting down any runing instance of the WSP watchdog...')
-        watchdog.shutdown_watchdog()
+        #TODO Turn this back on!!
+        #watchdog.shutdown_watchdog()
         
         
         # after the watchdog is stopped, kill wsp
@@ -718,8 +719,8 @@ if __name__ == "__main__":
     # set the defaults
     verbose = False
     doLogging = True
-    ns_host = None
-    domesim = False
+    ns_host = '192.168.1.10'
+    domesim = True
     
     options = "vpn:s"
     long_options = ["verbose", "print", "ns_host:","domesim"]

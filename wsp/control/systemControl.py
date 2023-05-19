@@ -212,10 +212,17 @@ class control(QtCore.QObject):
             self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
             self.daemonlist.add_daemon(self.powerd)
             """
-        if mode in ['i']:
+            
             # labjack daemon
             self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])
             self.daemonlist.add_daemon(self.labjackd)
+            
+            
+        if mode in ['i']:
+            
+            pass
+            
+            
             
             
             
@@ -245,7 +252,7 @@ class control(QtCore.QObject):
             # Dome Daemon
             domeargs = ['-n', self.ns_host]
             if self.domesim:
-                domeargs.append(['--domesim'])
+                domeargs.append('--domesim')
             self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py", args = ['-n', self.ns_host])
 
             self.daemonlist.add_daemon(self.domed)
@@ -263,7 +270,10 @@ class control(QtCore.QObject):
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
-            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py", args = opts)
+            ephemargs = ['-n', self.ns_host]
+            if self.sunsim:
+                ephemargs.append('--sunsim')
+            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py", args = ephemargs)
             self.daemonlist.add_daemon(self.ephemd)
         
         if mode in ['r']:
