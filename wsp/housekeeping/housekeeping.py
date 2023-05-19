@@ -56,10 +56,12 @@ class housekeeping():
                  powerManager = None, 
                  counter = None, 
                  ephem = None, 
-                 viscam = None, 
-                 ccd = None, 
-                 summercamera = None,
-                 wintercamera = None,
+                 #viscam = None, 
+                 #ccd = None, 
+                 #summercamera = None,
+                 #wintercamera = None,
+                 camdict = None,
+                 fwdict = None,
                  robostate = None, 
                  sunsim = False, 
                  logger = None,
@@ -82,10 +84,12 @@ class housekeeping():
         self.powerManager = powerManager
         self.counter = counter
         self.ephem = ephem
-        self.viscam = viscam
-        self.ccd = ccd
-        self.summercamera = summercamera
-        self.wintercamera = wintercamera
+        #self.viscam = viscam
+        #self.ccd = ccd
+        #self.summercamera = summercamera
+        #self.wintercamera = wintercamera
+        self.camdict = camdict
+        self.fwdict = fwdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
@@ -131,9 +135,10 @@ class housekeeping():
         
         if mode.lower() in ['i']:
             #TODO: this should also run in 'm' and 'r' mode eventually...
-            self.housekeeping_poll_functions.append(self.labjacks.update_state)
+            #self.housekeeping_poll_functions.append(self.labjacks.update_state)
             #self.housekeeping_poll_functions.append(self.summercamera.update_state)
-            self.housekeeping_poll_functions.append(self.wintercamera.update_state)
+            #self.housekeeping_poll_functions.append(self.wintercamera.update_state)
+            pass
         # define the DAQ loops
         if mode.lower() in ['m','r']:
             self.daq_telescope = data_handler.daq_loop(func = self.telescope.update_state, 
@@ -145,12 +150,22 @@ class housekeeping():
             self.housekeeping_poll_functions.append(self.dome.update_state)
             self.housekeeping_poll_functions.append(self.ephem.update_state)
             
-            self.housekeeping_poll_functions.append(self.viscam.update_state)
-            self.housekeeping_poll_functions.append(self.ccd.update_state)
+            #self.housekeeping_poll_functions.append(self.viscam.update_state)
+            #self.housekeeping_poll_functions.append(self.ccd.update_state)
             
             self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
-            self.housekeeping_poll_functions.append(self.powerManager.update_state)
-            
+            #self.housekeeping_poll_functions.append(self.powerManager.update_state)
+        
+        # things that should happen in all modes
+        self.housekeeping_poll_functions.append(self.labjacks.update_state)
+        self.housekeeping_poll_functions.append(self.powerManager.update_state)
+
+        for cam in self.camdict:
+            self.housekeeping_poll_functions.append(self.camdict[cam].update_state)
+        
+        for fw in self.fwdict:
+            self.housekeeping_poll_functions.append(self.fwdict[fw].update_state)
+        
         """
         self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
                                                   dt = self.config['daq_dt']['hk'],
@@ -181,10 +196,12 @@ class housekeeping():
                                                chiller = self.chiller,
                                                powerManager = self.powerManager,
                                                ephem = self.ephem,
-                                               viscam = self.viscam,
-                                               ccd = self.ccd,
-                                               summercamera = self.summercamera,
-                                               wintercamera = self.wintercamera,
+                                               #viscam = self.viscam,
+                                               #ccd = self.ccd,
+                                               #summercamera = self.summercamera,
+                                               #wintercamera = self.wintercamera,
+                                               camdict = self.camdict,
+                                               fwdict = self.fwdict,
                                                mirror_cover = self.mirror_cover,
                                                robostate = self.robostate,
                                                sunsim = self.sunsim,

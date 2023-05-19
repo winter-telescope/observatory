@@ -118,7 +118,10 @@ class RoboOperatorThread(QtCore.QThread):
     # a generic do command signal for executing any command in robothread
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, viscam, ccd, mirror_cover, robostate, sunsim, dometest):
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, 
+                 #viscam, ccd, 
+                 camdict, fwdict,
+                 mirror_cover, robostate, sunsim, dometest):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -134,8 +137,10 @@ class RoboOperatorThread(QtCore.QThread):
         self.logger = logger
         self.alertHandler = alertHandler
         self.ephem = ephem
-        self.viscam = viscam
-        self.ccd = ccd
+        #self.viscam = viscam
+        #self.ccd = ccd
+        self.camdict = camdict
+        self.fwdict = fwdict,
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
@@ -154,8 +159,10 @@ class RoboOperatorThread(QtCore.QThread):
                                      dome = self.dome, 
                                      chiller = self.chiller, 
                                      ephem = self.ephem,
-                                     viscam = self.viscam,
-                                     ccd = self.ccd,
+                                     #viscam = self.viscam,
+                                     #ccd = self.ccd,
+                                     camdict = self.camdict,
+                                     fwdict = self.fwdict,
                                      mirror_cover = self.mirror_cover,
                                      robostate = self.robostate,
                                      sunsim = self.sunsim,
@@ -205,8 +212,10 @@ class RoboOperator(QtCore.QObject):
     
 
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
-                 alertHandler, schedule, telescope, dome, chiller, ephem, viscam, 
-                 ccd, mirror_cover, robostate, sunsim, dometest):
+                 alertHandler, schedule, telescope, dome, chiller, ephem, 
+                 #viscam, ccd, 
+                 camdict, fwdict,
+                 mirror_cover, robostate, sunsim, dometest):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -225,15 +234,17 @@ class RoboOperator(QtCore.QObject):
         self.alertHandler = alertHandler
         self.ephem = ephem
         self.schedule = schedule
-        self.viscam = viscam
-        self.ccd = ccd
+        #self.viscam = viscam
+        #self.ccd = ccd
+        self.camdict = camdict,
+        self.fwdict = fwdict,
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
         self.dometest = dometest
         
         # for now just trying to start leaving places in the code to swap between winter and summer
-        self.cam = 'summer'
+        self.camname = 'summer'
         
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger = self.logger)
@@ -1680,10 +1691,10 @@ class RoboOperator(QtCore.QObject):
                     # step through each filter to focus, and run a focus loop
                     # 1. change filter to filterID
                     system = 'filter wheel'
-                    if self.cam == 'summer':
+                    if self.camname == 'summer':
                         # get filter number
-                        for position in self.config['filter_wheels'][self.cam]['positions']:
-                            if self.config['filter_wheels'][self.cam]['positions'][position] == filterID:
+                        for position in self.config['filter_wheels'][self.camname]['positions']:
+                            if self.config['filter_wheels'][self.camname]['positions'][position] == filterID:
                                 filter_num = position
                             else:
                                 pass
@@ -1903,10 +1914,10 @@ class RoboOperator(QtCore.QObject):
             # step through each filter to focus, and run a focus loop
             # 1. change filter to filterID
             system = 'filter wheel'
-            if self.cam == 'summer':
+            if self.camname == 'summer':
                 # get filter number
-                for position in self.config['filter_wheels'][self.cam]['positions']:
-                    if self.config['filter_wheels'][self.cam]['positions'][position] == filterID:
+                for position in self.config['filter_wheels'][self.camname]['positions']:
+                    if self.config['filter_wheels'][self.camname]['positions'][position] == filterID:
                         filter_num = position
                     else:
                         pass
@@ -1989,15 +2000,15 @@ class RoboOperator(QtCore.QObject):
         
         
         try:
-            if self.cam == 'summer':
+            if self.camname == 'summer':
                 
                 filterpos = self.state['Viscam_Filter_Wheel_Position'] # eg. 3
                 pixscale = self.config['viscam_platescale_as']
                 
                 
             
-            filterID = self.config['filter_wheels'][self.cam]['positions'][filterpos] # eg. 'r'
-            filtername = self.config['filters'][self.cam][filterID]['name'] # eg. "SDSS r' (Chroma)"
+            filterID = self.config['filter_wheels'][self.camname]['positions'][filterpos] # eg. 'r'
+            filtername = self.config['filters'][self.camname][filterID]['name'] # eg. "SDSS r' (Chroma)"
             
             if nom_focus == 'last':
                 #TODO: make this query the focusTracker to find the last focus position
@@ -2010,13 +2021,13 @@ class RoboOperator(QtCore.QObject):
                     
                     if nom_focus is None:
                         self.log(f'no previous focus position found, defaulting to nominal.')
-                        nom_focus = self.config['filters'][self.cam][filterID]['nominal_focus']
+                        nom_focus = self.config['filters'][self.camname][filterID]['nominal_focus']
                     
                 except Exception as e:
                     self.log(f'could not get a value for the last focus position. defaulting to default focus. Traceback = {traceback.format_exc()}')
-                    nom_focus = self.config['filters'][self.cam][filterID]['nominal_focus']                    
+                    nom_focus = self.config['filters'][self.camname][filterID]['nominal_focus']                    
             elif nom_focus == 'default':
-                nom_focus = self.config['filters'][self.cam][filterID]['nominal_focus']
+                nom_focus = self.config['filters'][self.camname][filterID]['nominal_focus']
             
             elif nom_focus == 'model':
                 # put the model here
@@ -2051,7 +2062,7 @@ class RoboOperator(QtCore.QObject):
         # note that the list of focus positions is loop.filter_range
         
         #### START THE FOCUS LOOP ####
-        self.log(f'setting up focus loop for {self.cam} {filtername} (filterpos = {filterpos}, filterID = {filterID})')
+        self.log(f'setting up focus loop for {self.camname} {filtername} (filterpos = {filterpos}, filterID = {filterID})')
         
         # first drive the focuser in past the first position
         # loop.filter_range is arranged small to big distances, so start smaller to ensure we approach all points from the same direction
@@ -2093,7 +2104,7 @@ class RoboOperator(QtCore.QObject):
                 system = 'focuser'
                 self.do(f'm2_focuser_goto {dist}')
                 
-                self.exptime = self.config['filters'][self.cam][filterID]['focus_exptime']
+                self.exptime = self.config['filters'][self.camname][filterID]['focus_exptime']
                 self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
                 
                 # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
@@ -2352,8 +2363,8 @@ class RoboOperator(QtCore.QObject):
             
         elif filterIDs == 'reference':
             # focus in the reference filters specified in focus_loop_param
-            #filterIDs = self.config['focus_loop_param']['filters'][self.cam]
-            filterIDs = self.focusTracker.getFocusFilters(self.cam)
+            #filterIDs = self.config['focus_loop_param']['filters'][self.camname]
+            filterIDs = self.focusTracker.getFocusFilters(self.camname)
             
         self.announce(f'running focus loops for filters: {filterIDs}')
         
@@ -2363,10 +2374,10 @@ class RoboOperator(QtCore.QObject):
                 # step through each filter to focus, and run a focus loop
                 # 1. change filter to filterID
                 system = 'filter wheel'
-                if self.cam == 'summer':
+                if self.camname == 'summer':
                     # get filter number
-                    for position in self.config['filter_wheels'][self.cam]['positions']:
-                        if self.config['filter_wheels'][self.cam]['positions'][position] == filterID:
+                    for position in self.config['filter_wheels'][self.camname]['positions']:
+                        if self.config['filter_wheels'][self.camname]['positions'][position] == filterID:
                             filter_num = position
                         else:
                             pass
@@ -2501,8 +2512,8 @@ class RoboOperator(QtCore.QObject):
         # self.observed is managed elsewhere
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
         self.maxAirmass = float(currentObs.get('maxAirmass', 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)))
-        self.num_dithers = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.cam]['ditherNumber']))
-        self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.cam]['ditherStepSize']))
+        self.num_dithers = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.camname]['ditherNumber']))
+        self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.camname]['ditherStepSize']))
         self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
         self.targetName = str(currentObs.get('targName', ''))
         self.qcomment = str(currentObs.get('origin_filename', ''))
@@ -2568,7 +2579,7 @@ class RoboOperator(QtCore.QObject):
                 self.announce(f'>> Executing Dither Number [{dithnum +1}/{self.num_dithers}]')
                 
                 # Do one last housekeeping check to make sure the camera is happy
-                #if self.cam == 'summer':
+                #if self.camname == 'summer':
                     # this should make sure that we get a ccd timestamp update between exposures? NPL 8-19-22
                     #self.ccd.pollTECTemp()
                     
@@ -2598,10 +2609,10 @@ class RoboOperator(QtCore.QObject):
                     
                     # changing the filter can take a little time so only do it if the filter is DIFFERENT than the current
                     system = 'filter wheel'
-                    if self.cam == 'summer':
+                    if self.camname == 'summer':
                         # get filter number
-                        for position in self.config['filter_wheels'][self.cam]['positions']:
-                            if self.config['filter_wheels'][self.cam]['positions'][position] == self.filter_scheduled:
+                        for position in self.config['filter_wheels'][self.camname]['positions']:
+                            if self.config['filter_wheels'][self.camname]['positions'][position] == self.filter_scheduled:
                                 filter_num = position
                             else:
                                 pass

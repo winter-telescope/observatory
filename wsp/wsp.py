@@ -166,7 +166,7 @@ if __name__ == "__main__":
     print(f'args = {args}')
 
     options = "rimvn:"
-    long_options = ["robo", "instrument", "manual", "verbose", "ns_host:", 
+    long_options = ["robo", "instrument", "manual", "verbose", "ns_host=", 
                     "smallchiller", "sunsim", "domesim", "dometest"]
     arguments, values = getopt.getopt(args, options, long_options)
     # checking each argument

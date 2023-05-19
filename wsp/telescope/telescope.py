@@ -70,16 +70,28 @@ class Telescope(pwi4_client.PWI4):
         try:
             self.mount_connect()
             time.sleep(1)
+        except Exception as e:
+            self.log(f'could not connect to telescope! error: {e}')
+        try:
             self.mount_stop()
             time.sleep(1)
+        except Exception as e:
+            self.log(f'could not stop mount! error: {e}')
+        try:
             self.mount_tracking_off()
             time.sleep(1)
+        except Exception as e:
+            self.log(f'could not turn mount tracking off! error: {e}')
+        try:
             self.rotator_stop()
             time.sleep(1)
+        except Exception as e:
+            self.log(f'could not stop rotator! error: {e}')
+        try:
             self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
             time.sleep(1)
         except Exception as e:
-            self.log(f'could not communicate with telescope! error: {e}')
+            self.log(f'could not send rotator to home position! error: {e}')
         
     def log(self, msg):
         msg = f'telescope: {msg}'
@@ -221,8 +233,9 @@ if __name__ == '__main__':
     # load the config
     config_file = wsp_path + '/config/config.yaml'
     config = utils.loadconfig(config_file)
-    
-    telescope = Telescope(config, 'thor', logger = None)
+    host = 'thor'
+    host = '192.168.1.106'
+    telescope = Telescope(config, host, logger = None)
     print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
     #%%
     print(f'Getting Updated State from Telescope:')

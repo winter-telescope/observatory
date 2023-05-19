@@ -185,10 +185,12 @@ class Wintercmd(QtCore.QObject):
                  chiller, 
                  powerManager, 
                  logger, 
-                 viscam, 
-                 ccd,
-                 summercamera,
-                 wintercamera,
+                 #viscam, 
+                 #ccd,
+                 #summercamera,
+                 #wintercamera,
+                 camdict,
+                 fwdict,
                  ephem):
         # init the parent class
         #super().__init__()
@@ -210,10 +212,12 @@ class Wintercmd(QtCore.QObject):
         self.base_directory = base_directory
         self.config = config
         self.logger = logger
-        self.viscam = viscam
-        self.ccd = ccd
-        self.summercamera = summercamera
-        self.wintercamera = wintercamera
+        #self.viscam = viscam
+        #self.ccd = ccd
+        #self.summercamera = summercamera
+        #self.wintercamera = wintercamera
+        self.camdict = camdict
+        self.fwdict = fwdict
         self.mirror_cover = mirror_cover
         self.ephem = ephem
         self.defineParser()
@@ -4009,9 +4013,11 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'startupCamera: args = {self.args}')
         
         if self.args.winter:
-            camera = self.wintercamera
+            camname = 'winter'
         elif self.args.summer:
-            camera = self.summercamera
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
         
         sigcmd = signalCmd('startupCamera')
         
@@ -4033,9 +4039,11 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'startupCamera: args = {self.args}')
         
         if self.args.winter:
-            camera = self.wintercamera
+            camname = 'winter'
         elif self.args.summer:
-            camera = self.summercamera
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
         
         sigcmd = signalCmd('shutdownCamera')
         
@@ -4049,7 +4057,7 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('take an exposure with the camera')
         # argument to hold the camera 
         camgroup = self.cmdparser.add_mutually_exclusive_group()
-        camgroup.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        camgroup.add_argument('-w',    '--winter',      action = 'store_true', default = False)
         camgroup.add_argument('-c',    '--summer',      action = 'store_true', default = False)
         
         # argument to hold the observation type
@@ -4062,16 +4070,109 @@ class Wintercmd(QtCore.QObject):
         imtypegroup.add_argument('-b',    '--bias',      action = 'store_true', default = False)
         imtypegroup.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
         
+        # also add a mode argument
+        self.cmdparser.add_argument('--mode',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    default = '',
+                                    help = '<image_mode>')
+        
+        # add ability to pass in image directory
+        self.cmdparser.add_argument('--imdir',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    default = '',
+                                    help = '<image_directory>')
+        
+        # add ability to pass in sensor addresses
+        self.cmdparser.add_argument('--addrs',
+                                    nargs = 1,
+                                    action = None,
+                                    type = list,
+                                    default = [],
+                                    help = '<camera_address_list>')
+        
+        # add ability to pass in sensor addresses
+        self.cmdparser.add_argument('--imname',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    default = '',
+                                    help = '<image_name>')
+        
         self.getargs()
+        
+        ###### Handle the image TYPE ######
+        if self.args.science:
+            imtype = 'SCIENCE'
+        elif self.args.dark:
+            imtype = 'DARK'
+        elif self.args.flat:
+            imtype = 'FLAT'
+        elif self.args.focus:
+            imtype = 'FOCUS'
+        elif self.args.bias:
+            imtype = 'BIAS'
+        elif self.args.test:
+            imtype = 'TEST'
+        elif self.args.pointing:
+            imtype = 'POINTING'
+        else:
+            # SET THE DEFAULT
+            imtype = 'TEST'
+        
+        ###### Handle the image MODE ######
+        if type(self.args.mode) is list:
+            mode = self.args.mode[0] 
+        else:
+            mode = self.args.mode
+        # Set default image mode
+        if mode == '':
+            mode = None
+        
+        ###### Handle the image DIRECTORY ######
+        if type(self.args.imdir) is list:
+            imdir = self.args.imdir[0]
+        else:
+            imdir = self.args.imdir
+        # set default imdir
+        if imdir == '':
+            imdir = None
+            
+        ###### Handle the image DIRECTORY ######
+        if type(self.args.imname) is list:
+            imname = self.args.imname[0]
+        else:
+            imname = self.args.imname
+        # set default imdir
+        if imname == '':
+            imname = None
+        
+        ###### Handle the imager ADDRESSES ######
+        addrs = self.args.addrs
+        # Set default image mode
+        if addrs == []:
+            addrs = None
+        
+        self.logger.info(f'wintercmd: doExposure: args = {self.args}')
+        self.logger.info(f'wintercmd: imtype = {imtype}, mode = {mode}, imdir = {imdir}, addrs = {addrs}')
 
-        self.logger.info(f'doExposure: args = {self.args}')
         
         if self.args.winter:
-            camera = self.wintercamera
+            camname = 'winter'
         elif self.args.summer:
-            camera = self.summercamera
+            camname = 'summer'
+        else:
+            camname = 'winter'
         
-        sigcmd = signalCmd('doExposure')
+        camera = self.camdict[camname]
+        
+        # local_camera expects this:
+            #doExposure(self, imdir=None, imname = None, imtype = 'test', addrs = None):
+
+        sigcmd = signalCmd('doExposure', imdir = imdir, imname = imname, imtype = imtype, addrs = addrs)
         
         self.logger.info(f'wintercmd: doing exposure on {camera.daemonname}')
         
@@ -4183,9 +4284,11 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'tecSetSetpoint: args = {self.args}')
         
         if self.args.winter:
-            camera = self.wintercamera
+            camname = 'winter'
         elif self.args.summer:
-            camera = self.summercamera
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
         
         temp = self.args.temp[0]
         
@@ -4216,9 +4319,11 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'tecSetVolt: args = {self.args}')
         
         if self.args.winter:
-            camera = self.wintercamera
+            camname = 'winter'
         elif self.args.summer:
-            camera = self.summercamera
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
         
         voltage = self.args.voltage[0]
         
@@ -4249,9 +4354,11 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'setExposure: args = {self.args}')
         
         if self.args.winter:
-            camera = self.wintercamera
+            camname = 'winter'
         elif self.args.summer:
-            camera = self.summercamera
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
         
         exptime = self.args.exptime[0]
         
@@ -4284,9 +4391,11 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'tecStart: args = {self.args}')
         
         if self.args.winter:
-            camera = self.wintercamera
+            camname = 'winter'
         elif self.args.summer:
-            camera = self.summercamera
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
             
         
                 
@@ -4312,9 +4421,11 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'tecStop: args = {self.args}')
         
         if self.args.winter:
-            camera = self.wintercamera
+            camname = 'winter'
         elif self.args.summer:
-            camera = self.summercamera
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
                 
         sigcmd = signalCmd('tecStop')
         
@@ -4381,6 +4492,9 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('setPIDd', coeff)
         self.logger.info(f'wintercmd: sending update to WINTER TEC PID kd = {coeff}')
         self.wintercamera.newCommand.emit(sigcmd)
+    
+    
+    ####### End Camera API Methods #######
     
     @cmd
     def generate_supernovae_db(self):

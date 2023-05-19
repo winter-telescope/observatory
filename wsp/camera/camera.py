@@ -160,7 +160,8 @@ class local_camera(QtCore.QObject):
         #self.log(f'updating remote state: self.connected = {self.connected}')
         
         if not self.connected:
-            self.log(f'self.connected = {self.connected}: try to init_remote_object again')
+            if self.verbose:
+                self.log(f'self.connected = {self.connected}: try to init_remote_object again')
             self.init_remote_object()
         
         if not self.hk_connected:
@@ -171,7 +172,8 @@ class local_camera(QtCore.QObject):
                 #self.log(f'updating remote state')
                 self.remote_state = self.remote_object.getStatus()
             except Exception as e:
-                self.log(f'camera: could not update remote state: {e}')
+                if self.verbose:
+                    self.log(f'camera: could not update remote state: {e}')
                 self.connected = False
                 pass    
            
@@ -180,7 +182,8 @@ class local_camera(QtCore.QObject):
                 
                 
             except Exception as e:
-                self.log(f'camera: could not parse remote state: {e}')
+                if self.verbose:
+                    self.log(f'camera: could not parse remote state: {e}')
                 #self.connected = False
                 pass
             

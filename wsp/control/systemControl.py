@@ -137,8 +137,28 @@ class control(QtCore.QObject):
                 self.verbose = True
             else:
                 self.verbose = False
-            
+                
+            if currentArgument in ("--domesim"):
+                self.domesim = True
+            else:
+                self.domesim = False
+           
+
+            if currentArgument in ('--sunsim'):              
+                self.sunsim = True
+            else:
+                self.sunsim = False
+                
+            # option to ignore whether the shutter is open, which let you test with the dome closed
+            if currentArgument in ('--dometest'):
+                self.dometest = True
+            else:
+                self.dometest = False
         
+        print(f'sysControl: domesim = {self.domesim}')
+        print(f'sysControl: sunsim = {self.sunsim}')
+        print(f'sysControl: dometest = {self.dometest}')
+
         try:
             nameserverd = Pyro5.core.locate_ns(host = self.ns_host)
             '''
@@ -185,7 +205,13 @@ class control(QtCore.QObject):
             self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py", 
                                              args = ['-n', self.ns_host]) #change to dirfiled.py if you want to use the version that uses easygetdata
             self.daemonlist.add_daemon(self.hkd)
-        
+            
+            # power (PDU/NPS) daemon
+            """
+            #TODO: 5/19/23 need to add this back in
+            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
+            self.daemonlist.add_daemon(self.powerd)
+            """
         if mode in ['i']:
             # labjack daemon
             self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])
@@ -197,7 +223,7 @@ class control(QtCore.QObject):
         if mode in ['r','m']:
             
             
-            
+            """
             # SUMMER accesories (eg viscam)
             self.viscamd = daemon_utils.PyDaemon(name = 'viscam', filepath = f"{wsp_path}/viscam/viscamd.py")
             self.daemonlist.add_daemon(self.viscamd)
@@ -205,36 +231,29 @@ class control(QtCore.QObject):
             # ccd daemon
             self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.ccdd)
+            """
+            pass
             
             
-            
-            # power (PDU/NPS) daemon
-            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
-            self.daemonlist.add_daemon(self.powerd)
         
-        if '--sunsim' in opts:              
-            self.sunsim = True
-        else:
-            self.sunsim = False
-            
-        # option to ignore whether the shutter is open, which let you test with the dome closed
-        if '--dometest' in opts:
-            self.dometest = True
-        else:
-            self.dometest = False
+        
         
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
             
             ###### DAEMONS #####
             # Dome Daemon
-            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py", args = opts)
+            domeargs = ['-n', self.ns_host]
+            if self.domesim:
+                domeargs.append(['--domesim'])
+            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py", args = ['-n', self.ns_host])
+
             self.daemonlist.add_daemon(self.domed)
             
-            if '--domesim' in opts:
+            if self.domesim:
                 # start up the fake dome as a daemon
-                self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
-                self.daemonlist.add_daemon(self.domesim)
+                self.domesimd = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
+                self.daemonlist.add_daemon(self.domesimd)
                 
             if self.sunsim:
                 # start up the fake sun_simulator
@@ -298,7 +317,7 @@ class control(QtCore.QObject):
                                                       config = self.config, logger = self.logger)
         
         # init the dome
-        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, logger = self.logger)
+        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, ns_host = self.ns_host, logger = self.logger)
         
         # init the ephemeris
         self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, ns_host = self.ns_host, logger = self.logger)
@@ -306,16 +325,15 @@ class control(QtCore.QObject):
         # init the schedule. put it here so it can be passed into housekeeping
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
-        
+        """
         # init the viscam shutter, filter wheel, and raspberry pi
-        #self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
         self.viscam = viscam.local_viscam(base_directory = self.base_directory)
         
         #TODO: deprecate this
         # init the viscam ccd
         self.ccd = ccd.local_ccd(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
-        
+        """
         # init the sumnmer camera interface
         self.summercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
                                           daemon_pyro_name = 'SUMMERcamera', ns_host = self.ns_host,
@@ -325,7 +343,16 @@ class control(QtCore.QObject):
         self.wintercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
                                           daemon_pyro_name = 'WINTERcamera', ns_host = self.ns_host,
                                           logger = self.logger, verbose = self.verbose)
-
+        
+        # init the camera dictionary to hold all the cameras we have access to
+        self.camdict = dict({'winter' : self.wintercamera,
+                             #'summer' : self.summercamera,
+                             })
+        
+        # init the filter wheels and the fwdict filter wheel dictionary
+        self.fwdict = dict()
+        
+        
         # init the alert handler
         auth_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['auth_config_file'] )) , Loader = yaml.FullLoader)
         user_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['user_config_file'] )) , Loader = yaml.FullLoader)
@@ -364,10 +391,12 @@ class control(QtCore.QObject):
                                                 powerManager = self.powerManager,
                                                 counter = self.counter,
                                                 ephem = self.ephem,
-                                                viscam = self.viscam, 
-                                                ccd = self.ccd, 
-                                                summercamera = self.summercamera,
-                                                wintercamera = self.wintercamera,
+                                                #viscam = self.viscam, 
+                                                #ccd = self.ccd, 
+                                                #summercamera = self.summercamera,
+                                                #wintercamera = self.wintercamera,
+                                                camdict = self.camdict,
+                                                fwdict = self.fwdict,
                                                 mirror_cover = self.mirror_cover,
                                                 robostate = self.robostate,
                                                 sunsim = self.sunsim,
@@ -392,10 +421,12 @@ class control(QtCore.QObject):
                                              chiller = self.chiller, 
                                              powerManager = self.powerManager, 
                                              logger = self.logger, 
-                                             viscam = self.viscam, 
-                                             ccd = self.ccd, 
-                                             summercamera = self.summercamera,
-                                             wintercamera = self.wintercamera,
+                                             #viscam = self.viscam, 
+                                             #ccd = self.ccd, 
+                                             #summercamera = self.summercamera,
+                                             #wintercamera = self.wintercamera,
+                                             camdict = self.camdict,
+                                             fwdict = self.fwdict,
                                              mirror_cover = self.mirror_cover,
                                              ephem = self.ephem)
         
@@ -433,8 +464,10 @@ class control(QtCore.QObject):
                                                               dome = self.dome, 
                                                               chiller = self.chiller, 
                                                               ephem = self.ephem, 
-                                                              viscam=self.viscam, 
-                                                              ccd = self.ccd, 
+                                                              #viscam=self.viscam, 
+                                                              #ccd = self.ccd, 
+                                                              camdict = self.camdict,
+                                                              fwdict = self.fwdict,
                                                               mirror_cover = self.mirror_cover,
                                                               robostate = self.robostate,
                                                               sunsim = self.sunsim,

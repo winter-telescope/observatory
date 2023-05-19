@@ -23,6 +23,7 @@ import os
 import sys
 import Pyro5.core
 import Pyro5.server
+import Pyro5.client
 from datetime import datetime
 from PyQt5 import QtCore
 import time
@@ -51,12 +52,13 @@ class local_dome(QtCore.QObject):
     stopTracking = QtCore.pyqtSignal()
     moveDome = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, logger = None, telescope = None):
+    def __init__(self, base_directory, config, ns_host = None, logger = None, telescope = None):
         super(local_dome, self).__init__()
         
         # Define attributes
         self.base_directory = base_directory
         self.config = config
+        self.ns_host = ns_host
         self.logger = logger
         self.state = dict()
         self.remote_state = dict()
@@ -98,7 +100,9 @@ class local_dome(QtCore.QObject):
     def init_remote_object(self):
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:dome")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('dome')
+            self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
         except:
             self.connected = False

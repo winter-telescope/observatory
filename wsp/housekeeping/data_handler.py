@@ -47,8 +47,10 @@ print(f'data_handler: wsp_path = {wsp_path}')
 class hk_loop(QtCore.QThread):
 
     def __init__(self,config, state, curframe, schedule, telescope, mirror_cover, labjacks, 
-                 counter, dome, chiller, powerManager, ephem, viscam, 
-                 ccd, summercamera, wintercamera, robostate, sunsim = False, verbose = False, logger = None):
+                 counter, dome, chiller, powerManager, ephem, 
+                 #viscam, ccd, summercamera, wintercamera, 
+                 camdict, fwdict,
+                 robostate, sunsim = False, verbose = False, logger = None):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -63,10 +65,12 @@ class hk_loop(QtCore.QThread):
         self.chiller = chiller
         self.powerManager = powerManager
         self.ephem = ephem
-        self.viscam = viscam
-        self.ccd = ccd
-        self.summercamera = summercamera
-        self.wintercamera = wintercamera
+        #self.viscam = viscam
+        #self.ccd = ccd
+        #self.summercamera = summercamera
+        #self.wintercamera = wintercamera
+        self.camdict = camdict
+        self.fwdict = fwdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.verbose = verbose
