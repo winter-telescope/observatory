@@ -50,7 +50,7 @@ class hk_loop(QtCore.QThread):
                  counter, dome, chiller, powerManager, ephem, 
                  #viscam, ccd, summercamera, wintercamera, 
                  camdict, fwdict,
-                 robostate, sunsim = False, verbose = False, logger = None):
+                 robostate, sunsim = False, verbose = False, ns_host = None, logger = None):
         QtCore.QThread.__init__(self)
         # loop execution number
         self.index = 0
@@ -75,6 +75,7 @@ class hk_loop(QtCore.QThread):
         self.robostate = robostate
         self.verbose = verbose
         self.sunsim = sunsim
+        self.ns_host = ns_host
         self.logger = logger
         # pass the config to the thread
         self.config = config
@@ -114,7 +115,9 @@ class hk_loop(QtCore.QThread):
             self.log(f'(Thread {threading.get_ident()}) hk_loop: creating pyro connection to sun simulator')
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy(f"PYRONAME:sunsim")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('sunsim')
+            self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
         except Exception as e:
             self.connected = False
@@ -135,6 +138,7 @@ class hk_loop(QtCore.QThread):
                 return remote_state['timestamp']
                 
             except Exception as e:
+                self.connected = False
                 self.logger.error(f'could not get sunsim timestamp: {e}')
                 return -777
 

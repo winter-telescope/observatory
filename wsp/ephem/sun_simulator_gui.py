@@ -22,6 +22,7 @@ import shlex
 import time
 import numpy as np
 import traceback
+import getopt
 import yaml
 import logging
 import pytz
@@ -54,7 +55,7 @@ class SunSimulator(QtWidgets.QMainWindow):
     
     newState = QtCore.pyqtSignal(str)
     
-    def __init__(self, logger = None, *args, **kwargs):
+    def __init__(self, ns_host = None, logger = None, *args, **kwargs):
 
         """
         Initializes the main window
@@ -65,6 +66,7 @@ class SunSimulator(QtWidgets.QMainWindow):
         
         self.threadpool = QtCore.QThreadPool()
         
+        self.ns_host = ns_host
         self.logger = logger
         
         self.log(f'main thread {threading.get_ident()}: setting up simulated dome')
@@ -298,21 +300,57 @@ class SunSimulator(QtWidgets.QMainWindow):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, logger = None, parent=None ):            
+    def __init__(self, ns_host = None, logger = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
-        self.sunsim = SunSimulator(logger = logger)
+        self.sunsim = SunSimulator(ns_host = ns_host, logger = logger)
                 
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.sunsim, name = 'sunsim')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.sunsim, name = 'sunsim', ns_host = ns_host)
         self.pyro_thread.start()
 
         
     
 if __name__ == '__main__':
     
+
+    
+    
+    #### GET ANY COMMAND LINE ARGUMENTS #####
+    
+    args = sys.argv[1:]
+    print(f'args = {args}')
+    
+    # set the defaults
+    verbose = True
     doLogging = True
-    sunsim = True
+    ns_host = '192.168.1.10'
+    sunsim = False
+    
+    options = "vpn:s"
+    long_options = ["verbose", "print", "ns_host:","sunsim"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
+            
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
+        
+        elif currentArgument in ("-s", "--sunsim"):
+            sunsim = True
+            
+    print(f'ephemd: launching with ns_host = {ns_host}, sunsim = {sunsim}')
     
     config = yaml.load(open(wsp_path + '/config/config.yaml'), Loader = yaml.FullLoader)
     # set up the logger
@@ -324,7 +362,7 @@ if __name__ == '__main__':
         
     
     app = QtWidgets.QApplication(sys.argv)
-    main = PyroGUI(logger = logger)
+    main = PyroGUI(ns_host = ns_host, logger = logger)
     
     
 

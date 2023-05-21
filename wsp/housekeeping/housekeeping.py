@@ -64,6 +64,7 @@ class housekeeping():
                  fwdict = None,
                  robostate = None, 
                  sunsim = False, 
+                 ns_host = None, 
                  logger = None,
                  ):
         
@@ -93,6 +94,7 @@ class housekeeping():
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
+        self.ns_host = ns_host
         self.logger = logger
         # setup any labjacks that are in the config
         '''
@@ -205,6 +207,7 @@ class housekeeping():
                                                mirror_cover = self.mirror_cover,
                                                robostate = self.robostate,
                                                sunsim = self.sunsim,
+                                               ns_host = self.ns_host, 
                                                logger = self.logger)
 
         

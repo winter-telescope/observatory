@@ -120,11 +120,17 @@ class local_ephem(object):
 # Try it out
 if __name__ == '__main__':
     
+    ns_host = '192.168.1.10'
+    logger = None
+    
     config = utils.loadconfig(wsp_path + '/config/config.yaml')
+
+    ephem = local_ephem(wsp_path, config, ns_host = ns_host, logger = logger)
+
 
     while True:
         try:
-            ephem = local_ephem(wsp_path, config)
+            ephem.update_state()
             #counter.get_remote_status()
             #counter.print_status()
             print(f'sunalt = {ephem.state["sunalt"]}')

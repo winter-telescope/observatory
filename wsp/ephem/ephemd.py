@@ -61,8 +61,10 @@ class EphemMon(object):
         self.sunsim = sunsim
         self.verbose = verbose
         self.state = dict()
+        self.sunsimState = dict()
         self.observatoryState = dict() # this will hold the current state of the FULL instrument
-        
+        self.connected = False
+        self.sunsim_connected = False
         # set up site
         lat = astropy.coordinates.Angle(self.config['site']['lat'])
         lon = astropy.coordinates.Angle(self.config['site']['lon'])
@@ -109,6 +111,8 @@ class EphemMon(object):
     # observatory state polling:
     def init_remote_object(self):
         # init the remote object
+        if self.verbose:
+            self.log(f'trying to re-init conn with state daemon, ns_host = {self.ns_host}')
         try:
             ns = Pyro5.core.locate_ns(host = self.ns_host)
             uri = ns.lookup('state')
@@ -126,6 +130,11 @@ class EphemMon(object):
     def update_observatoryState(self):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
+        if self.verbose:
+            self.log(f'ephemd: telemetry connected = {self.connected}')
+            if self.sunsim:
+                self.log(f'ephemd: sunsim connected = {self.sunsim_connected}')
+        
         if not self.connected:
             self.init_remote_object()
         else:
@@ -133,6 +142,7 @@ class EphemMon(object):
                 self.observatoryState = self.remote_object.GetStatus()
                 
             except Exception as e:
+                self.connected = False
                 if self.verbose:
                     print(f'ephemd: could not update observatory state: {e}')
                 pass
@@ -143,6 +153,7 @@ class EphemMon(object):
                 try:
                     self.sunsimState = self.sunsim_remote_object.GetStatus()
                 except Exception as e:
+                    self.sunsim_connected = False
                     if True:#self.verbose:
                         self.logger.exception(f'ephemd: could not update sunsim state: {e}')
                     pass
@@ -152,10 +163,12 @@ class EphemMon(object):
         self.current_az = self.observatoryState.get('mount_az_deg', None)
     def init_sunsim_remote_object(self):
         # init the remote object
+        if self.verbose:
+            self.log(f'trying to re-init conn with sunsim daemon, ns_host = {self.ns_host}')
         try:
             ns = Pyro5.core.locate_ns(host = self.ns_host)
             uri = ns.lookup('sunsim')
-            self.remote_object = Pyro5.client.Proxy(uri)
+            self.sunsim_remote_object = Pyro5.client.Proxy(uri)
             self.sunsim_connected = True
         except Exception as e:
             self.sunsim_connected = False
@@ -386,6 +399,8 @@ class EphemMon(object):
     
     @Pyro5.server.expose
     def getState(self):
+        if self.verbose:
+            print(self.state)
         return self.state
     
     def printState(self):
@@ -435,7 +450,7 @@ if __name__ == "__main__":
     # set the defaults
     verbose = False
     doLogging = True
-    ns_host = None
+    ns_host = '192.168.1.10'
     sunsim = False
     
     options = "vpn:s"
@@ -462,40 +477,7 @@ if __name__ == "__main__":
             sunsim = True
             
     print(f'ephemd: launching with ns_host = {ns_host}, sunsim = {sunsim}')
-    """
-    modes = dict()
-    modes.update({'-v' : "Running in VERBOSE mode"})
-    modes.update({'--sunsim' : "Running in simulated sun mode"})
     
-    # set the defaults
-    verbose = False
-    doLogging = True
-    sunsim = False
-    #print(f'args = {args}')
-    
-    if len(args)<1:
-        pass
-    
-    else:
-        for arg in args:
-            
-            if arg in modes.keys():
-                
-                # remove the dash when passing the option
-                opt = arg.replace('-','')
-                if opt == 'v':
-                    print(f'ephemd: {modes[arg]}')
-                    verbose = True
-                elif opt == 'p':
-                    print(f'ephemd: {modes[arg]}')
-                    doLogging = False
-                elif opt == 'sunsim':
-                    print(f'ephemd: {modes[arg]}')
-                    sunsim = True
-
-            else:
-                print(f'ephemd: Invalid mode {arg}')
-    """
     ##### RUN THE APP #####
     app = QtCore.QCoreApplication(sys.argv)
 

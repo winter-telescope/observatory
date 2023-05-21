@@ -410,6 +410,7 @@ class control(QtCore.QObject):
                                                 mirror_cover = self.mirror_cover,
                                                 robostate = self.robostate,
                                                 sunsim = self.sunsim,
+                                                ns_host = self.ns_host,
                                                 logger = self.logger
                                                 )
         
