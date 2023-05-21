@@ -2536,6 +2536,64 @@ fields:
         rate: hk
         var: chiller.state['max_dt_since_last_update']
         
+########### CAMERA API FIELDS ##########
+    winter_camera_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['timestamp']
+    winter_camera_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['command_pass']
+    winter_camera_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['command_active']
+    winter_camera_exptime:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['exptime']
+    winter_camera_doing_exposure:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['doing_exposure']
+    winter_camera_command_timeout:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['command_timeout']
+    winter_camera_command_sent_timestamp:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['command_sent_timestamp']
+    winter_camera_command_elapsed_dt:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['command_elapsed_dt']
+        
 ########### HOUSEKEEPING WINTER SENSORS ##########
 # Bench Sensor        
     bench_timestamp:
@@ -2762,6 +2820,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['bench_V_sb']
+    bench_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_command_active']
+    bench_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_command_pass']
 # StarA Sensor        
     sa_timestamp:
         ftype: raw
@@ -2987,6 +3059,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sa_V_sb']
+    sa_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_command_active']
+    sa_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_command_pass']
 # StarB Sensor        
     sb_timestamp:
         ftype: raw
@@ -3212,6 +3298,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sb_V_sb']
+    sb_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_command_active']
+    sb_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_command_pass']
 # StarC Sensor        
     sc_timestamp:
         ftype: raw
@@ -3436,7 +3536,21 @@ fields:
         units: 'V'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sc_V_sb']        
+        var: camdict['winter'].state['sc_V_sb'] 
+    sc_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_command_active']
+    sc_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_command_pass']       
 # PortA Sensor        
     pa_timestamp:
         ftype: raw
@@ -3662,6 +3776,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pa_V_sb']
+    pa_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_command_active']
+    pa_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_command_pass']
 # PortB Sensor        
     pb_timestamp:
         ftype: raw
@@ -3887,6 +4015,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pb_V_sb']
+    pb_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_command_active']
+    pb_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_command_pass']
 # PortC Sensor        
     pc_timestamp:
         ftype: raw
@@ -4112,6 +4254,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pc_V_sb']
+    pc_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_command_active']
+    pc_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_command_pass']
 #### FITS HEADER STUFF. THESE ARE STRINGS! WILL NOT BE LOGGED TO THE DIRFILE
 header_fields:
     operator_name:

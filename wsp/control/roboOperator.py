@@ -244,7 +244,7 @@ class RoboOperator(QtCore.QObject):
         self.dometest = dometest
         
         # for now just trying to start leaving places in the code to swap between winter and summer
-        self.camname = 'summer'
+        self.camname = 'winter'
         
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger = self.logger)
@@ -537,6 +537,19 @@ class RoboOperator(QtCore.QObject):
         else:
             self.log(f'specified obstype {qcomment} is not a valid string! doing nothing.')
     
+    def switchCamera(self, camname):
+        
+        try:
+            camera = self.camdict[camname]
+            fw = self.fwdict[camname]
+            
+            # if that worked then switch it
+            self.camera = camera
+            self.fw = fw
+            self.camname = camname
+        except Exception as e:
+            self.log(f'could not switch camera to {camname}: {e}')
+            
     def restart_robo(self, arg = 'auto'):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
         # if we get passed test mode, or have already started in test mode, then turn on sun_override
@@ -747,16 +760,7 @@ class RoboOperator(QtCore.QObject):
             #TODO: NPL 8-17-22 there's no reason (I THINK) not to always use the time from self.ephem?
             obstime_mjd = self.ephem.state.get('mjd',0)
             obstime_timestamp_utc = astropy.time.Time(obstime_mjd, format = 'mjd').unix
-            """
-            if self.sunsim:
-                # for some reason self.state doesn't update if it's in this loop. look into that.
-                obstime_mjd = self.ephem.state.get('mjd',0)
-                obstime_timestamp_utc = astropy.time.Time(obstime_mjd, format = 'mjd').unix
-            else:
-                obstime_mjd = 'now'
-                obstime_mjd = astropy.time.Time(datetime.utcnow()).mjd
-                obstime_timestamp_utc = datetime.now(tz = pytz.utc).timestamp()
-            """    
+
                 
             #---------------------------------------------------------------------
             # check if we need to focus the telescope
@@ -786,35 +790,7 @@ class RoboOperator(QtCore.QObject):
             # here we should check if the temperature has changed by some amount and nudge the focus if need be
             
             
-            #---------------------------------------------------------------------
-            # check if we should reboot the SUMMER accessories
-            #---------------------------------------------------------------------
-            """
-            #TODO: 4-19-22 clean this up and make it less hard coded and sucky
-            dt_hr_since_last_reboot = self.SUMMERrebootTracker.getHoursSinceLastReboot()
-            if dt_hr_since_last_reboot > self.config['viscam_accessories_reboot_param']['reboot_graceperiod_hours']:
-                # it has been too long since the last reboot... power cycle the accessories
-                self.announce(f'It has been {dt_hr_since_last_reboot} hrs since last SUMMER accessories reboot. Attempting to power cycle now...')
-                
-                # first get the proper outlet
-                pdu_conf = utils.loadconfig(os.path.join(self.base_directory, 'config', 'powerconfig.yaml'))
-                for pdu in pdu_conf['pdus']:
-                    pdu_num = pdu_conf['pdus'][pdu]['pdu_number']
-                    for outlet_num in pdu_conf['pdus'][pdu]['outlets']:
-                        device = pdu_conf['pdus'][pdu]['outlets'][outlet_num]
-                        if  device == 'SUMMERacc':
-                            break
-                            
-                # we now have all the infor topower cycle 'SUMMERacc'
-                self.doTry(f'pdu_cycle {pdu_num} {outlet_num}')
-                                
-                # now update the reboot log that we tried
-                self.SUMMERrebootTracker.updateRebootTime()
-                
-                # now wait for a bit and check the status again
-                self.waitAndCheck(2*60)
-                return
-            """    
+            
             #---------------------------------------------------------------------
             # check what we should be observing NOW
             #---------------------------------------------------------------------
@@ -2532,16 +2508,7 @@ class RoboOperator(QtCore.QObject):
             # for each dither, execute the observation
             if self.running & self.ok_to_observe:
                 
-                # all the stuff where we got observation attributes was here but moving out
                 
-                
-                """ 
-                self.ra_radians_scheduled = float(currentObs['fieldRA'])
-                self.dec_radians_scheduled = float(currentObs['fieldDec'])
-                
-                self.alt_deg_scheduled = float(currentObs['altitude'])
-                self.az_deg_scheduled = float(currentObs['azimuth'])            
-                """
                 # convert ra and dec from radians to astropy objects
                 self.j2000_ra_scheduled = astropy.coordinates.Angle(self.ra_deg_scheduled * u.deg)
                 self.j2000_dec_scheduled = astropy.coordinates.Angle(self.dec_deg_scheduled * u.deg)
@@ -2593,15 +2560,15 @@ class RoboOperator(QtCore.QObject):
                     
                     # 3: trigger image acquisition
                     
-                    self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
+                    self.logger.info(f'robo: making sure exposure time on camera to is set to {self.exptime}')
                     
                     # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
-                    if self.exptime == self.state['ccd_exptime']:
+                    if self.exptime == self.state['exptime']:
                         self.log('requested exposure time matches current setting, no further action taken')
                         pass
                     else:
-                        self.log(f'current exptime = {self.state["ccd_exptime"]}, changing to {self.exptime}')
-                        self.do(f'ccd_set_exposure {self.exptime}')
+                        self.log(f'current exptime = {self.state["exptime"]}, changing to {self.exptime}')
+                        self.do(f'set_exposure {self.exptime}')
                     
                     #TODO: we are currently not changing the focus based on the filter! whoopsy. add that here NPL 8-12-22
                     # change the m2 position if we have switched filters

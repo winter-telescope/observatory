@@ -4362,6 +4362,42 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'wintercmd: setting exposure time on {camera.daemonname}')
         
         camera.newCommand.emit(sigcmd)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 10
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                self.logger.info(f'command timed out after {timeout} seconds before completing. Requested exptime = {exptime}, but it is {self.state["ccd_exptime"]}')
+                break
+            stop_condition = ( (self.state[f'{camname}_camera_exptime'] == exptime) & 
+                              (self.state[f'{camname}_camera_command_pass'] == 1))
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                
+                self.logger.info(f'wintercmd: {camname} camera exptime set successfully.')
+                try_again = False
+                break 
+            try_again = True
+        
+        if try_again:
+            pass
+            
     
     @cmd
     def tecStart(self):
