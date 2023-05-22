@@ -646,10 +646,10 @@ filter_wheels:
             7: 'empty'
     winter:
         positions:
-            1: 'Y'
-            2: 'J'
-            3: 'Hs'
-            4: 'dark'
+            1: 'dark'
+            2: 'Y'
+            3: 'J'
+            4: 'Hs'
 
 ########### POINTING MODEL PARAMETERS ###########
 # Construct a grid of 3 x 6 = 18 Alt-Az points

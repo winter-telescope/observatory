@@ -38,9 +38,6 @@ try:
 except:
     from pymodbus.client.serial import ModbusSerialClient
 
-import time
-from datetime import datetime
-import json
 
 
 # add the wsp directory to the PATH
@@ -49,7 +46,6 @@ sys.path.insert(1, wsp_path)
 print(f'wsp_path = {wsp_path}')
 
 
-from housekeeping import data_handler
 from daemon import daemon_utils
 from utils import utils
 from utils import logging_setup

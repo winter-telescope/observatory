@@ -245,6 +245,7 @@ class RoboOperator(QtCore.QObject):
         
         # for now just trying to start leaving places in the code to swap between winter and summer
         self.camname = 'winter'
+        self.switchCamera(self.camname)
         
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger = self.logger)
@@ -2563,12 +2564,14 @@ class RoboOperator(QtCore.QObject):
                     self.logger.info(f'robo: making sure exposure time on camera to is set to {self.exptime}')
                     
                     # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
-                    if self.exptime == self.state['exptime']:
+                    #if self.exptime == self.state['exptime']:
+                    if self.exptime == self.camera.exptime:
                         self.log('requested exposure time matches current setting, no further action taken')
                         pass
                     else:
-                        self.log(f'current exptime = {self.state["exptime"]}, changing to {self.exptime}')
-                        self.do(f'set_exposure {self.exptime}')
+                        #self.log(f'current exptime = {self.state["exptime"]}, changing to {self.exptime}')
+                        self.log(f'current exptime = {self.camera.exptime}, changing to {self.exptime}')
+                        self.do(f'setExposure {self.exptime} --{self.camname}')
                     
                     #TODO: we are currently not changing the focus based on the filter! whoopsy. add that here NPL 8-12-22
                     # change the m2 position if we have switched filters
@@ -2576,6 +2579,7 @@ class RoboOperator(QtCore.QObject):
                     
                     # changing the filter can take a little time so only do it if the filter is DIFFERENT than the current
                     system = 'filter wheel'
+                    """
                     if self.camname == 'summer':
                         # get filter number
                         for position in self.config['filter_wheels'][self.camname]['positions']:
@@ -2588,7 +2592,19 @@ class RoboOperator(QtCore.QObject):
                         else:
                             self.log(f'current filter = {self.state["Viscam_Filter_Wheel_Position"]}, changing to {filter_num}')
                             self.do(f'command_filter_wheel {filter_num}')
-                    
+                    """
+                    # get filter number
+                    for position in self.config['filter_wheels'][self.camname]['positions']:
+                        if self.config['filter_wheels'][self.camname]['positions'][position] == self.filter_scheduled:
+                            filter_num = position
+                        else:
+                            pass
+                    if filter_num == self.fw.position:
+                        self.log('requested filter matches current, no further action taken')
+                    else:
+                        self.log(f'current filter = {self.fw.position}, changing to {filter_num}')
+                        #self.do(f'command_filter_wheel {filter_num}')
+                        self.do(f'fw_goto {filter_num} --{self.camname}')
 
                     if dithnum == 0:
                         if self.test_mode:

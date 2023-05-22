@@ -3991,7 +3991,43 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('killServer')
         self.ccd.newCommand.emit(sigcmd)
     
+    ##### FILTER WHEEL API METHODS #####
+    
+    @cmd
+    def fw_goto(self):
+        self.defineCmdParser('send filterwheel to specified position')
         
+        self.cmdparser.add_argument('pos',
+                                    nargs = 1,
+                                    action = None,
+                                    type = int,
+                                    help = '<position_number>')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'fw_goto: args = {self.args}')
+        
+        if self.args.winter:
+            fwname = 'winter'
+        elif self.args.summer:
+            fwname = 'summer'
+        
+        fw = self.fwdict[fwname]
+        
+        pos = self.args.pos[0]
+        
+        sigcmd = signalCmd('fw_goto', pos)
+        
+        self.logger.info(f'wintercmd: sending {fw.daemonname} to positon {pos}')
+        
+        fw.newCommand.emit(sigcmd)
+    
+    
     
     ##### CAMERA API METHODS #####
     @cmd
