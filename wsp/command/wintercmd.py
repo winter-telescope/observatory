@@ -4175,59 +4175,16 @@ class Wintercmd(QtCore.QObject):
         
         
         
-        """
-        self.getargs()
-        
-        if self.args.science:
-            obstype = 'SCIENCE'
-            dark = False
-        elif self.args.dark:
-            obstype = 'DARK'
-            dark = True
-        elif self.args.flat:
-            obstype = 'FLAT'
-            dark = False
-        elif self.args.focus:
-            obstype = 'FOCUS'
-            dark = False
-        elif self.args.bias:
-            obstype = 'BIAS'
-            dark = True
-        elif self.args.test:
-            obstype = 'TEST'
-            dark = False
-        elif self.args.pointing:
-            obstype = 'POINTING'
-            dark = False
-        else:
-            # SET THE DEFAULT
-            obstype = ''
-            dark = False
-        
-        print(f'wintercmd: obstype = {obstype}, dark = {dark}')
-        
-        self.logger.info(f'wintercmd: args = {self.args}')
-        
-        # it the obstype is '' then just leave it be
-        if obstype != '':
-            self.parse(f'robo_set_obstype {obstype}')
-
-        sigcmd = signalCmd('doExposure',
-                               dark = dark)
-        
-        self.ccd.newCommand.emit(sigcmd)
-        
-        self.logger.info(f'wintercmd: running ccd_do_exposure in thread {threading.get_ident()}')
-        
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = self.state['ccd_exposureTimeout'] + 30
+        #timeout = self.state[f'{camname}_camera_command_timeout']
+        timeout = self.state[f'{camname}_camera_exptime'] + 10.0
         # create a buffer list to hold several samples over which the stop condition must be true
         
         
-        #n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        # Change this to trigger on 1 True sample, since the flag is on for a short time and may get skipped
-        n_buffer_samples = 1
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        ## Change this to trigger on 1 True sample, since the flag is on for a short time and may get skipped
+        #n_buffer_samples = 1
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
 
         # get the current timestamp
@@ -4240,22 +4197,20 @@ class Wintercmd(QtCore.QObject):
             dt = (timestamp - start_timestamp)
             #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
-                raise TimeoutError(f'ccd_do_exposure command timed out after {timeout} seconds before completing')
+                raise TimeoutError(f'doExposure command timed out after {timeout} seconds before completing')
             
-            stop_condition = ( (self.state['ccd_doing_exposure'] == False) & (self.state['ccd_image_saved_flag']))
-            #self.logger.info(f'count = {self.state["count"]}')
-            #self.logger.info(f'wintercmd: ccd_doing_exposure = {self.state["ccd_doing_exposure"]}, ccd_image_saved_flag = {self.state["ccd_image_saved_flag"]}')
-            #self.logger.info(f'wintercmd: stop_condition_buffer = {stop_condition_buffer}')
-            #self.logger.info('')
+            stop_condition = ( (self.state[f'{camname}_camera_doing_exposure'] == False) & 
+                              (self.state[f'{camname}_camera_command_pass'] == 1))
+           
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
             stop_condition_buffer[-1] = stop_condition
             
             if all(entry == condition for entry in stop_condition_buffer):
-                self.logger.info(f'wintercmd: finished the do exposure method without timing out :)')
+                self.logger.info(f'wintercmd: finished the doExposure method without timing out :)')
                 break 
-        """
+        
         
         
     @cmd

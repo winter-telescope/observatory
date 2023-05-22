@@ -126,37 +126,35 @@ class control(QtCore.QObject):
         # check if the nameserver is already running. if so, don't add to daemon_list. if not, add it and launch.
         
         # first, figure out what nameserver address to use
+        
+        # set defaults:
+        self.ns_host = self.config['pyro5_ns_default_addr']
+        self.verbose = False
+        self.domesim = False
+        self.sunsim = False
+        self.dometest = False
+        
         for currentArgument, currentValue in opts:
             if currentArgument in ("-n", "--ns_host"):
                 self.ns_host = currentValue
-                print(f'ns_host = {self.ns_host}')
-            else:
-                self.ns_host = self.config['pyro5_ns_default_addr']
-            
+                
             if currentArgument in ("-v", "--verbose"):
                 self.verbose = True
-            else:
-                self.verbose = False
                 
             if currentArgument in ("--domesim"):
                 self.domesim = True
-            else:
-                self.domesim = False
-           
 
             if currentArgument in ('--sunsim'):              
                 self.sunsim = True
-            else:
-                self.sunsim = False
-                
+
             # option to ignore whether the shutter is open, which let you test with the dome closed
             if currentArgument in ('--dometest'):
                 self.dometest = True
-            else:
-                self.dometest = False
-        
-        print(f'sysControl: domesim = {self.domesim}')
+
+        print(f'sysControl: ns_host = {self.ns_host}')
+        print(f'sysControl: verbose = {self.verbose}')
         print(f'sysControl: sunsim = {self.sunsim}')
+        print(f'sysControl: domesim = {self.domesim}')
         print(f'sysControl: dometest = {self.dometest}')
 
         try:
@@ -253,7 +251,7 @@ class control(QtCore.QObject):
             domeargs = ['-n', self.ns_host]
             if self.domesim:
                 domeargs.append('--domesim')
-            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py", args = ['-n', self.ns_host])
+            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py", args = domeargs)
 
             self.daemonlist.add_daemon(self.domed)
             
@@ -279,7 +277,8 @@ class control(QtCore.QObject):
         if mode in ['r']:
             # ROBOTIC OPERATION MODE!
             # ROBO MANAGER DAEMON
-            self.roboManagerd = daemon_utils.PyDaemon(name = 'robomanager', filepath = f"{wsp_path}/control/roboManagerd.py", args = opts)
+            roboargs = ['-n', self.ns_host]
+            self.roboManagerd = daemon_utils.PyDaemon(name = 'robomanager', filepath = f"{wsp_path}/control/roboManagerd.py", args = roboargs)
             self.daemonlist.add_daemon(self.roboManagerd)
             
             
@@ -327,7 +326,8 @@ class control(QtCore.QObject):
                                                       config = self.config, logger = self.logger)
         
         # init the dome
-        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, ns_host = self.ns_host, logger = self.logger)
+        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, 
+                                    ns_host = self.ns_host, logger = self.logger)
         
         # init the ephemeris
         self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, ns_host = self.ns_host, logger = self.logger)

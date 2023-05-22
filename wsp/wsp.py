@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
     # GET ANY COMMAND LINE ARGUMENTS
     args = sys.argv[1:]
-    print(f'args = {args}')
+    print(f'wsp.py: args = {args}')
 
     options = "rimvn:"
     long_options = ["robo", "instrument", "manual", "verbose", "ns_host=", 
@@ -171,9 +171,9 @@ if __name__ == "__main__":
     arguments, values = getopt.getopt(args, options, long_options)
     # checking each argument
     print()
-    print(f'Parsing sys.argv...')
-    print(f'arguments = {arguments}')
-    print(f'values = {values}')
+    print(f'wsp.py: Parsing sys.argv...')
+    print(f'wsp.py: arguments = {arguments}')
+    print(f'wsp.py: values = {values}')
     for currentArgument, currentValue in arguments:
         if currentArgument in ("-r", "--robo"):
             mode = 'r'
