@@ -209,11 +209,27 @@ if __name__ == '__main__':
     
     header = GetHeader({}, {})
     
+    #header = dict({"DICTKEY" : "DictValue"})
+    
     hdu = fits.PrimaryHDU()
     
     hdu.data = np.zeros((1080, 1920))
-    for card in header:
-        hdu.header.append(card)
     
+    # Now build the image header. Handle differently if it's passed a dict,
+    # or a list of fits.Card objects
+    
+    if type(header) is list:
+        for card in header:
+            try:
+                hdu.header.append(card)
+            except Exception as e:
+                print(f'could not add {card[0]} to header: {e}')
+    elif type(header) is dict:
+        for key in header:
+            try:
+                hdu.header[key] = header[key]
+            except Exception as e:
+                print(f'could not add {key} to header: {e}')
+
     hdu.writeto(os.path.join(os.getenv("HOME"), 'data','test.fits'), overwrite = True)
     
