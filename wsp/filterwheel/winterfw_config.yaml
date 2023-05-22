@@ -15,3 +15,8 @@ filters:
             2: 2000
             3: 3000
             4: 4000
+
+serial:
+
+    port: '/dev/ttyUSB0'
+    address: 1
