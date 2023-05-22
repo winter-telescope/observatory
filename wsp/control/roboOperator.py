@@ -2619,7 +2619,7 @@ class RoboOperator(QtCore.QObject):
                         
                         
                     else:
-                        system = 'ccd'
+                        system = 'camera'
                         # do the dither
                         if self.ditherStepSize > 0.0:
                             self.do(f'mount_random_dither_arcsec {self.ditherStepSize}')
@@ -2754,8 +2754,9 @@ class RoboOperator(QtCore.QObject):
         
         #self.announce(f'in doExposure: self.running = {self.running}')
         self.observation_completed = False
-        self.logger.info(f'robo: running ccd_do_exposure in thread {threading.get_ident()}')
+        self.logger.info(f'robo: running doExposure in thread {threading.get_ident()}')
         # if we got no comment, then do nothing
+        """
         if qcomment == 'altaz':
             qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
         else:
@@ -2770,7 +2771,7 @@ class RoboOperator(QtCore.QObject):
             else:
                 # if we got a new comment, set it
                 self.doTry(f'robo_set_qcomment "{qcomment}"', context = 'doExposure')
-        
+        """
         # first check if any ephemeris bodies are near the target
         self.log('checking that target is not too close to ephemeris bodies')
         ephem_inview = self.ephemInViewTarget_AltAz(target_alt = self.state['mount_alt_deg'],
@@ -2781,16 +2782,10 @@ class RoboOperator(QtCore.QObject):
             
             if not ephem_inview:
                 self.log('ephem check okay: no ephemeris bodies in the field of view.')
-                self.logger.info(f'robo: telling ccd to take exposure!')
-                #self.do(f'ccd_do_exposure')
-                #self.log(f'exposure complete!')
+                self.logger.info(f'robo: telling camera to take exposure!')
                 pass
             else:
                 msg = f'>> ephemeris body is too close to target! skipping...'
-                #self.log(msg)
-                #self.alertHandler.slack_log(msg, group = 'sudo')
-                #self.gotoNext()
-                #NOTE: NPL 9-27-21: don't want to put a gotoNext here b ecause it will start the schedule even if we're not running one yet
                 self.log(msg)
                 self.alertHandler.slack_log(msg, group = None)
                 self.target_ok = False
@@ -2799,9 +2794,9 @@ class RoboOperator(QtCore.QObject):
                 #return
         
         # do the exposure and wrap with appropriate error handling
-        system = 'ccd'
+        system = 'camera'
         context = 'robo doExposure'
-        self.logger.info(f'robo: telling ccd to take exposure!')
+        self.logger.info(f'robo: telling camera to take exposure!')
         
         # pass the correct options to the ccd daemon
         obstype_dict = dict({'FLAT'     : '-f',
@@ -2815,12 +2810,14 @@ class RoboOperator(QtCore.QObject):
         obstype_option = obstype_dict.get(obstype, '')
         
         try:
-            
+            """
             if obstype == 'BIAS':
                 self.do('ccd_do_bias')
             else:
                 self.do(f'ccd_do_exposure {obstype_option}')
-            
+            """
+            #TODO: need to reexamine how we're handling the image filenames and directories
+            self.do(f'doExposure {obstype_option} --{self.camname}')
             
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -2833,10 +2830,11 @@ class RoboOperator(QtCore.QObject):
         
         # if we get to here then we have successfully saved the image
         self.log(f'exposure complete!')
+        """
         if postPlot:
             # make a jpg of the last image and publish it to slack!
             postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
-        
+        """
         # if we got here, the observation was complete
         self.observation_completed = True
     

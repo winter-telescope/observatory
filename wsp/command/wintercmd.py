@@ -4399,6 +4399,7 @@ class Wintercmd(QtCore.QObject):
             if dt > timeout:
                 self.logger.info(f'command timed out after {timeout} seconds before completing. Requested exptime = {exptime}, but it is {self.state["ccd_exptime"]}')
                 break
+            
             stop_condition = ( (self.state[f'{camname}_camera_exptime'] == exptime) & 
                               (self.state[f'{camname}_camera_command_pass'] == 1))
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
