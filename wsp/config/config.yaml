@@ -2535,6 +2535,67 @@ fields:
         dtype: float64
         rate: hk
         var: chiller.state['max_dt_since_last_update']
+########### FILTER WHEEL API FIELDS ###########
+    winter_fw_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['timestamp']
+    winter_fw_pos:
+        ftype: raw
+        label: 'pos'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['position']
+    winter_fw_pos_goal:
+        ftype: raw
+        label: 'pos'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['pos_goal']
+    winter_fw_encoder_pos:
+        ftype: raw
+        label: 'pos'
+        units: 'inches'
+        dtype: float64
+        rate: hk
+        var: fwdict['winter'].state['encoder_pos']
+    winter_fw_encoder_pos_goal:
+        ftype: raw
+        label: 'pos'
+        units: 'inches'
+        dtype: float64
+        rate: hk
+        var: fwdict['winter'].state['encoder_pos_goal']
+    winter_fw_is_moving:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['is_moving']
+    winter_fw_is_homing:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['is_homing']
+    winter_fw_is_homed:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['homed']
+    
+
+
+
         
 ########### CAMERA API FIELDS ##########
     winter_camera_timestamp:

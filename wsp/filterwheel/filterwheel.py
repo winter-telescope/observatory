@@ -126,7 +126,10 @@ class local_filterwheel(QtCore.QObject):
     def goto(self, pos):
         
         self.remote_object.goto(pos)
+    
+    def home(self):
         
+        self.remote_object.home()
     
     
     def print_state(self):

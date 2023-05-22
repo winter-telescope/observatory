@@ -3994,6 +3994,33 @@ class Wintercmd(QtCore.QObject):
     ##### FILTER WHEEL API METHODS #####
     
     @cmd
+    def fw_home(self):
+        self.defineCmdParser('home the filterwheel')
+
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'fw_goto: args = {self.args}')
+        
+        if self.args.winter:
+            fwname = 'winter'
+        elif self.args.summer:
+            fwname = 'summer'
+        
+        fw = self.fwdict[fwname]
+                
+        sigcmd = signalCmd('home')
+        
+        self.logger.info(f'wintercmd: homing {fw.daemonname}')
+        
+        fw.newCommand.emit(sigcmd)
+    
+    @cmd
     def fw_goto(self):
         self.defineCmdParser('send filterwheel to specified position')
         
@@ -4021,7 +4048,7 @@ class Wintercmd(QtCore.QObject):
         
         pos = self.args.pos[0]
         
-        sigcmd = signalCmd('fw_goto', pos)
+        sigcmd = signalCmd('goto', pos)
         
         self.logger.info(f'wintercmd: sending {fw.daemonname} to positon {pos}')
         

@@ -119,6 +119,7 @@ class EZStepper(QtCore.QObject):
                             'position'  : self.pos,
                             'pos_goal'  : self.pos_goal,
                             'encoder_pos' : self.encoder_pos,
+                            'encoder_pos_goal' : self.encoder_pos_goal,
                             'homed'     : self.homed,
                             'is_homing' : self.is_homing,
                             })
@@ -141,7 +142,8 @@ class EZStepper(QtCore.QObject):
         kwargs = cmd_obj.kwargs
         
         msg = f'(Thread {threading.get_ident()}: caught doCommand signal: {cmd_obj.cmd}, args = {args}, kwargs = {kwargs}'
-        print(msg)
+        if self.verbose:
+            self.log(msg)
         try:
             getattr(self, cmd)(*args, **kwargs)
         except:
@@ -151,8 +153,10 @@ class EZStepper(QtCore.QObject):
 
     
     # API methods 
-    def home(self, pos):
+    def home(self):
+        self.log(f'homing filter tray')
         self.encoder_pos = 0.0
+        self.encoder_pos_goal = 0.0
         self.is_moving = 0
         self.pos_goal = 0.0
         self.homed = 1
@@ -162,8 +166,8 @@ class EZStepper(QtCore.QObject):
     
     def goto(self, pos):
         try:
-            print('in goto method')
             self.pos_goal = pos
+            self.encoder_pos_goal = self.config['filters']['encoder_positions'].get(pos, -1.0)
             self.log(f'moving position: {self.pos} --> {self.pos_goal}')
             self.is_moving = 1
             self.update_state()
@@ -171,11 +175,13 @@ class EZStepper(QtCore.QObject):
             # do the simulated move
             dt_total_move = 30.0 # how long will the move take?
             dt_update = 1.0
-            dt = 0.0
             n_steps = int(dt_total_move/dt_update)
+            encoder_positions = np.linspace(self.encoder_pos, self.encoder_pos_goal, n_steps)
             for i in range(n_steps):
+                self.encoder_pos = encoder_positions[i]
+                if self.verbose:
+                    self.log(f'step {i}/{n_steps+1}: encoder pos = {self.encoder_pos}')
                 time.sleep(dt_update)
-                dt += dt_update
                 self.pos = pos = -1
                 self.is_moving = 1
                 self.update_state()
@@ -416,8 +422,8 @@ if __name__ == '__main__':
     argumentList = sys.argv[1:]
     
     verbose = False
-    doLogging = False
-    ns_host = None
+    doLogging = True
+    ns_host = '192.168.1.10'
     # Options
     options = "vpn:a:"
      
@@ -428,10 +434,10 @@ if __name__ == '__main__':
      
     try:
         # Parsing argument
-        print(f'argumentList = {argumentList}')
+        print(f'winterfw: argumentList = {argumentList}')
         arguments, values = getopt.getopt(argumentList, options, long_options)
-        print(f'arguments: {arguments}')
-        print(f'values: {values}')
+        print(f'winterfw: arguments: {arguments}')
+        print(f'winterfw: values: {values}')
         # checking each argument
         for currentArgument, currentValue in arguments:
      
@@ -450,12 +456,12 @@ if __name__ == '__main__':
         # output error, and return with an error code
         print(str(err))
         
-    print(f'verbose = {verbose}')
-    print(f'logging mode = {doLogging}')
+    print(f'winterfw: verbose = {verbose}')
+    print(f'winterfw: logging mode = {doLogging}')
         
     # load the config
-    config_file = 'winter_config.yaml'
-    config = yaml.load(open(config_file), Loader = yaml.FullLoader)
+    fwconfig = os.path.join(wsp_path, 'filterwheel', 'winterfw_config.yaml')
+    config = yaml.load(open(fwconfig), Loader = yaml.FullLoader)
         
     app = QtCore.QCoreApplication(sys.argv)
     

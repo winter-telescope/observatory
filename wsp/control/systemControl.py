@@ -59,11 +59,12 @@ from control import roboOperator
 from ephem import ephem
 from alerts import alert_handler
 #from viscam import web_request
-from viscam import viscam
-from viscam import ccd
+#from viscam import viscam
+#from viscam import ccd
 from power import powerManager
 from housekeeping import labjack_handler_local
 from camera import camera
+from filterwheel import filterwheel
 
 
 # Create the control class -- it inherets from QObject
@@ -273,7 +274,13 @@ class control(QtCore.QObject):
                 ephemargs.append('--sunsim')
             self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py", args = ephemargs)
             self.daemonlist.add_daemon(self.ephemd)
-        
+            
+            
+            # set up filter wheels
+            winterfwargs = ['-n', self.ns_host]
+            self.winterfwd = daemon_utils.PyDaemon(name = 'winterfw', filepath = f"{wsp_path}/filterwheel/winterFilterd.py", args = winterfwargs)
+            self.daemonlist.add_daemon(self.winterfwd)
+            
         if mode in ['r']:
             # ROBOTIC OPERATION MODE!
             # ROBO MANAGER DAEMON
@@ -354,13 +361,20 @@ class control(QtCore.QObject):
                                           daemon_pyro_name = 'WINTERcamera', ns_host = self.ns_host,
                                           logger = self.logger, verbose = self.verbose)
         
+        # init the winter filterwheel interface
+        self.winterfw = filterwheel.local_filterwheel(base_directory = self.base_directory, config = self.config,
+                                                      daemon_pyro_name = 'WINTERfw', ns_host = self.ns_host,
+                                                      logger = self.logger, verbose = self.verbose)
+        
         # init the camera dictionary to hold all the cameras we have access to
         self.camdict = dict({'winter' : self.wintercamera,
                              #'summer' : self.summercamera,
                              })
         
         # init the filter wheels and the fwdict filter wheel dictionary
-        self.fwdict = dict()
+        self.fwdict = dict({'winter' : self.winterfw,
+                            #'summer' : self.summerfw,
+                            })
         
         
         # init the alert handler
