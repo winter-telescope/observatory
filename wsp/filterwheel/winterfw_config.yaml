@@ -11,7 +11,27 @@ filters:
             3: 'J'
             4: 'Hs'
         encoder_positions:
-            1: 1000
-            2: 2000
-            3: 3000
-            4: 4000
+            1: 0
+            2: 22510
+            3: 43745
+            4: 65010
+
+serial:
+
+    port: '/dev/tty.usbserial-AG0JG9J3'
+    address: 1
+    baud_rate: 9600
+
+stepper_config:
+
+    move_max_volt: 80
+    encoder_ratio: 140056
+    speed: 1000
+    homing_steps: 100000
+    max_encoder_err: 50
+    overload_timeout: 100
+    hold_current: 0
+    timeout_secs: 80
+
+state_update_dt: 0.1
+reply_timeout: 0.1
