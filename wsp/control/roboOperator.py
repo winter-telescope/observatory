@@ -452,11 +452,15 @@ class RoboOperator(QtCore.QObject):
                   'target_ra_j2000_hours',
                   'target_dec_j2000_deg',
                   #'lastSeen',
+                  'visitExpTime'
+                  'dithnum'
                   'obsHistID',
                   'priority',
                   'operator',
                   'obstype',     
                   'programPI',
+                  'validStart',
+                  'validStop',
                   'programID',
                   'programName',
                   'qcomment',
@@ -2503,6 +2507,7 @@ class RoboOperator(QtCore.QObject):
 
         # put the dither for loop here:
         for dithnum in range(self.num_dithers):
+            self.dithnum = dithnum + 1
             # how many dithers remain AFTER this one?
             self.remaining_dithers = (self.num_dithers - dithnum) - 1
             #self.announce(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}, self.remaining_dithers = {self.remaining_dithers}')

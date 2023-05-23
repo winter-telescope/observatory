@@ -14,16 +14,17 @@ Generic WSP Camera Object: interface between the camera and camera pyro daemon
 """
 
 import os
-import numpy as np
+#import numpy as np
 import sys
 import Pyro5.core
 import Pyro5.server
 import Pyro5.errors
-import traceback as tb
+#import traceback as tb
 from datetime import datetime
 from PyQt5 import QtCore
 import logging
 import time
+import astropy.io.fits as fits
 import json
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -31,8 +32,11 @@ sys.path.insert(1, wsp_path)
 print(f'camera: wsp_path = {wsp_path}')
 from utils import utils
 from utils import logging_setup
-from housekeeping import data_handler
-
+#from housekeeping import data_handler
+try:
+    import fitsheader
+except:
+    from camera import fitsheader
 
 class local_camera(QtCore.QObject):    
     '''
@@ -65,8 +69,13 @@ class local_camera(QtCore.QObject):
         self.verbose = verbose
         
         # placeholders for getting the image parameters from ccd_daemon
-        self.image_directory = 'UNKNOWN'
-        self.image_filename = 'UNKNOWN'
+        self.connected = 0
+        self.imdir = ''
+        self.imname = ''
+        self.imstarttime = ''
+        self.mode = None
+        self.imtype = None
+        
         
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)
@@ -215,11 +224,42 @@ class local_camera(QtCore.QObject):
         # update the rest of the stuff
         for key in self.remote_state.keys():
             self.state.update({key : self.remote_state[key]})
+    
+        #self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
+        self.state.update({'is_connected' : self.connected,
+                           'imdir'        : self.imdir,
+                           'imname'       : self.imname,
+                           'imstarttime'  : self.imstarttime,
+                           'imtype'       : self.imtype,
+                           })
         
-        self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
+    def getFITSheader(self):
+        #self.log(f'making default header')
+        # make the baseline header
+        try:
+            header = fitsheader.GetHeader(self.hk_state, self.state)
+        except Exception as e:
+            self.log(f'could not build default header: {e}')
+            header = []
+
         
         
-        
+        #self.log('now adding sensor specific fields')
+        # now add some sensor specific stuff
+        for addr in self.state.get('addrs', ['sa', 'sb', 'sc', 'pa', 'pb', 'pc']):
+            try:
+                header.append((f'{addr}TPID'.upper(),          self.state.get(f'{addr}_T_pid', ''),        f'{addr} FPA PID Temp (C)'))
+                header.append((f'{addr}TFPA'.upper(),          self.state.get(f'{addr}_T_fpa', ''),        f'{addr} FPA Temp (C)'))
+                header.append((f'{addr}TROIC'.upper(),         self.state.get(f'{addr}_T_roic', ''),       f'{addr} ROIC Temp (C)'))
+                header.append((f'{addr}TECST'.upper(),         self.state.get(f'{addr}_tec_status', ''),   f'{addr} TEC Status'))
+                header.append((f'{addr}TECSP'.upper(),         self.state.get(f'{addr}_tec_setpoint', ''), f'{addr} TEC Status'))
+                header.append((f'{addr}TECV'.upper(),          self.state.get(f'{addr}_V_tec', ''),        f'{addr} TEC Voltage (V)'))
+                header.append((f'{addr}TECI'.upper(),          self.state.get(f'{addr}_I_tec', ''),        f'{addr} TEC Current (A)'))
+            except Exception as e:
+                self.log(f'could not add {addr} FPA Card entries: {e}')
+        #print(f'got FITS header: {header}')
+        self.header = header
+        return header   
     
     def print_state(self):
         self.update_state()
@@ -229,28 +269,49 @@ class local_camera(QtCore.QObject):
     def setExposure(self, exptime, addrs = None):
         self.remote_object.setExposure(exptime)
                 
-    def doExposure(self, imdir=None, imname = None, imtype = 'test', mode = None, addrs = None):
-        # first get the housekeeping state
-        self.log(f'updating housekeeping state before sending exposure request')
-        self.update_hk_state()
+    def doExposure(self, imdir=None, imname = None, imtype = None, mode = None, addrs = None):
+        
+        
+        
+        
         
         # now dispatch the observation
-        self.log(f'now sending doExposure request')     
+        self.log(f'running doExposure')     
+        
+        self.imstarttime = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+
         if imname is None:
             
-            imgtime = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")[:-3]
             
-            imname = f'{self.daemonname}_{imgtime}'
+            imname = f'{self.daemonname}_{self.imstarttime}'
             
+        self.imname = imname
         
         if imdir is None:
             imdir = os.path.join(os.getenv("HOME"), 'data', 'images', 'tmp')
+        self.imdir = imdir
+        
+        if imtype is None:
+            imtype = 'test'
+        self.imtype = imtype
+        
+        if mode is None:
+            mode = 'cds'
+        self.mode = mode
         
         
-        self.log(f'sending doExposure request to camera: imdir = {imdir}, imname = {imname}')
         
+        self.log(f'updating state dictionaries')
+        # make sure all the state dictionaries are up-to-date
+        self.update_state()
+        
+        # now make the fits header
+        self.log(f'making FITS header')
+        header = self.getFITSheader()
+        #print(f'header = {header}')
+        self.log(f'sending doExposure request to camera: imdir = {self.imdir}, imname = {self.imname}')
         try:
-            self.remote_object.doExposure(imdir = imdir, imname = imname, imtype = imtype, mode = mode, metadata = self.hk_state, addrs = addrs)
+            self.remote_object.doExposure(imdir = self.imdir, imname = self.imname, imtype = self.imtype, mode = self.mode, metadata = header, addrs = addrs)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
         
