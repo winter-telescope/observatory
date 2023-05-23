@@ -159,6 +159,7 @@ class EZStepper(QtCore.QObject):
         self.encoder_pos_goal = 0.0
         self.is_moving = 0
         self.pos_goal = 0.0
+        self.pos = 0.0
         self.homed = 1
         self.update_state()
         
@@ -182,16 +183,16 @@ class EZStepper(QtCore.QObject):
                 if self.verbose:
                     self.log(f'step {i}/{n_steps+1}: encoder pos = {self.encoder_pos}')
                 time.sleep(dt_update)
-                self.pos = pos = -1
+                self.pos = -1
                 self.is_moving = 1
                 self.update_state()
             
             self.pos = pos
             self.is_moving = 0
             self.update_state()
-            self.log(f'move complete!')
+            self.log('move complete!')
         except Exception as e:
-            self.log(f'could not move ')
+            self.log('could not move ')
 
 
         

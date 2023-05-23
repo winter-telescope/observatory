@@ -31,7 +31,8 @@ import pytz
 import pandas as pd
 import sqlalchemy as db
 
-import wintertoo.validate
+#import wintertoo.validate
+
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -46,6 +47,7 @@ from housekeeping import data_handler
 from focuser import focusing
 from focuser import focus_tracker
 from viscam import summerRebootTracker
+from schedule import wintertoo_validate
 
 # print all the columns
 pd.set_option('display.max_columns', None)
@@ -121,7 +123,7 @@ class RoboOperatorThread(QtCore.QThread):
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, 
                  #viscam, ccd, 
                  camdict, fwdict,
-                 mirror_cover, robostate, sunsim, dometest):
+                 mirror_cover, robostate, sunsim, dometest, mountsim):
         super(QtCore.QThread, self).__init__()
         
         self.base_directory = base_directory
@@ -140,11 +142,12 @@ class RoboOperatorThread(QtCore.QThread):
         #self.viscam = viscam
         #self.ccd = ccd
         self.camdict = camdict
-        self.fwdict = fwdict,
+        self.fwdict = fwdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
         self.dometest = dometest
+        self.mountsim = mountsim
     
     def run(self):           
         self.robo = RoboOperator(base_directory = self.base_directory, 
@@ -166,7 +169,8 @@ class RoboOperatorThread(QtCore.QThread):
                                      mirror_cover = self.mirror_cover,
                                      robostate = self.robostate,
                                      sunsim = self.sunsim,
-                                     dometest = self.dometest
+                                     dometest = self.dometest,
+                                     mountsim = self.mountsim
                                      )
         
         # Put all the signal/slot connections here:
@@ -215,7 +219,7 @@ class RoboOperator(QtCore.QObject):
                  alertHandler, schedule, telescope, dome, chiller, ephem, 
                  #viscam, ccd, 
                  camdict, fwdict,
-                 mirror_cover, robostate, sunsim, dometest):
+                 mirror_cover, robostate, sunsim, dometest, mountsim):
         super(RoboOperator, self).__init__()
         
         self.base_directory = base_directory
@@ -236,12 +240,13 @@ class RoboOperator(QtCore.QObject):
         self.schedule = schedule
         #self.viscam = viscam
         #self.ccd = ccd
-        self.camdict = camdict,
-        self.fwdict = fwdict,
+        self.camdict = camdict
+        self.fwdict = fwdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
         self.dometest = dometest
+        self.mountsim = mountsim
         
         # for now just trying to start leaving places in the code to swap between winter and summer
         self.camname = 'winter'
@@ -272,7 +277,7 @@ class RoboOperator(QtCore.QObject):
         # a flag to indicate we're in a daylight test mode which will spoof some observations and trigger
         ## off of schedule alt/az rather than ra/dec
         #NPL 1-12-21: making it so that if we are in dometest or sunsim mode that we turn on test_mode
-        if self.sunsim or self.dometest:
+        if self.sunsim or self.dometest or self.mountsim:
             self.test_mode = True
         else:
             self.test_mode = False
@@ -488,6 +493,9 @@ class RoboOperator(QtCore.QObject):
             
     
     def rotator_stop_and_reset(self):
+        if self.mountsim:
+            return
+        
         self.log(f'stopping rotator and resetting to home position')
         # if the rotator is on do this:
         if self.state['rotator_is_enabled']:
@@ -552,8 +560,17 @@ class RoboOperator(QtCore.QObject):
             self.camera = camera
             self.fw = fw
             self.camname = camname
+            msg = f"switched roboOperator's camera to {self.camname}"
+            
         except Exception as e:
-            self.log(f'could not switch camera to {camname}: {e}')
+            msg = f'could not switch camera to {camname}: {e}'
+        
+        self.log(msg)
+        print('\n\n\n\n')
+        print('######################################################')
+        print(msg)
+        print('######################################################')
+        print('\n\n\n\n')
             
     def restart_robo(self, arg = 'auto'):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
@@ -892,7 +909,7 @@ class RoboOperator(QtCore.QObject):
                     conn.close()
                 
                     ### if we were able to load and query the SQL db, check to make sure the schema are correct
-                    wintertoo.validate.validate_schedule_df(df)
+                    wintertoo_validate.validate_schedule_df(df)
                     self.log(f'obstime_mjd = {obstime_mjd}')
                     select_cols = df[['raDeg','decDeg', 'filter', 'progPI', 'priority', 'obsHistID', 'targName', 'observed','origin_filename']]
                     self.log(f'entries before making any cuts: df = \n{select_cols}')
@@ -1009,7 +1026,7 @@ class RoboOperator(QtCore.QObject):
                         
                     
                 
-                except wintertoo.validate.RequestValidationError as e:
+                except wintertoo_validate.RequestValidationError as e:
                     too_filename = os.path.basename(os.path.normpath(too_file))
                     #self.log(f'skipping TOO schedule {too_filename}, schema not valid: {e}')
                     self.log(traceback.format_exc())
@@ -1079,11 +1096,12 @@ class RoboOperator(QtCore.QObject):
         conds.append(self.state['mount_is_connected'] == True)
         conds.append(self.state['mount_alt_is_enabled'] == True)
         conds.append(self.state['mount_az_is_enabled'] == True)
-        conds.append(self.state['rotator_is_connected'] == True)
-        conds.append(self.state['rotator_is_enabled'] == True)
-        conds.append(self.state['rotator_wrap_check_enabled'] == True)
-        conds.append(self.state['focuser_is_connected'] == True)
-        conds.append(self.state['focuser_is_enabled'] == True)
+        if not self.mountsim:
+            conds.append(self.state['rotator_is_connected'] == True)
+            conds.append(self.state['rotator_is_enabled'] == True)
+            conds.append(self.state['rotator_wrap_check_enabled'] == True)
+            conds.append(self.state['focuser_is_connected'] == True)
+            conds.append(self.state['focuser_is_enabled'] == True)
         if not self.test_mode:
             conds.append(self.state['Mirror_Cover_State'] == 0)
         
@@ -1128,24 +1146,27 @@ class RoboOperator(QtCore.QObject):
         # don't worry about the alt
         #conds.append(np.abs(self.state['mount_alt_deg'] - self.config['telescope']['home_alt_degs']) < 45.0) # home is 45 deg, so this isn't really doing anything
         
-        delta_rot_angle = np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs'])
-        min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
-        conds.append( min_delta_rot_angle < 15.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
+        if not self.mountsim:
+            delta_rot_angle = np.abs(self.state['rotator_mech_position'] - self.config['telescope']['rotator_home_degs'])
+            min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
+            conds.append( min_delta_rot_angle < 15.0) #NPL 12-15-21 these days it sags to ~ -27 from -25
         # NPL 8-9-22 these days it is sagging to ~38 for whatever reason
         
         
         # make sure the motors are off
         conds.append(self.state['mount_alt_is_enabled'] == False)
         conds.append(self.state['mount_az_is_enabled'] == False)
-        conds.append(self.state['rotator_is_enabled'] == False)
-        conds.append(self.state['focuser_is_enabled'] == False)
+        if not self.mountsim:
+            conds.append(self.state['rotator_is_enabled'] == False)
+            conds.append(self.state['focuser_is_enabled'] == False)
         
         # make sure the mount is disconnected?
         # conds.append(self.state['mount_is_connected'] == False)
         
         ### MIRROR COVER ###
         # make sure the mirror cover is closed
-        conds.append(self.state['Mirror_Cover_State'] == 1)
+        if not self.mountsim:
+            conds.append(self.state['Mirror_Cover_State'] == 1)
         
         self.observatory_stowed = all(conds)
         
@@ -1369,12 +1390,14 @@ class RoboOperator(QtCore.QObject):
             self.do('mount_alt_on')
 
             # turn on the rotator
-            self.do('rotator_enable')
-            # home the rotator
-            self.do('rotator_home')
+            if not self.mountsim:
+                self.do('rotator_enable')
+                # home the rotator
+                self.do('rotator_home')
             
             # turn on the focuser
-            self.do('m2_focuser_enable')
+            if not self.mountsim:
+                self.do('m2_focuser_enable')
             
             # poing the mount to home
             self.do('mount_home')
@@ -1391,23 +1414,27 @@ class RoboOperator(QtCore.QObject):
         
         
         system = 'mirror cover'
-        msg = 'opening mirror covers'
-        self.announce(msg)
-        try:
-            # connect to the mirror cover
-            self.do('mirror_cover_connect')
+        if self.mountsim:
+            msg = 'would open mirror covers now, but skipping this since we are in simulated mount mode'
+            self.announce(msg)
+        else:
+            msg = 'opening mirror covers'
+            self.announce(msg)
+            try:
+                # connect to the mirror cover
+                self.do('mirror_cover_connect')
+                
+                # open the mirror cover
+                if not self.test_mode:
+                    self.do('mirror_cover_open')
             
-            # open the mirror cover
-            if not self.test_mode:
-                self.do('mirror_cover_open')
-        
-        except Exception as e:
-            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
+            except Exception as e:
+                msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                return
         
         self.announce(':greentick: mirror covers open!')
 
@@ -1472,15 +1499,16 @@ class RoboOperator(QtCore.QObject):
             # point the mount to home
             self.do('mount_home')
             
-            # turn off the focuser
-            self.do('m2_focuser_disable')
-            
-            # home the rotator
-            self.do('rotator_home')
-            
-            # turn off the rotator
-            self.do('rotator_disable')
-            
+            if not self.mountsim:
+                # turn off the focuser
+                self.do('m2_focuser_disable')
+                
+                # home the rotator
+                self.do('rotator_home')
+                
+                # turn off the rotator
+                self.do('rotator_disable')
+                
             # turn off the motors
             self.do('mount_az_off')
             self.do('mount_alt_off')
@@ -1499,24 +1527,24 @@ class RoboOperator(QtCore.QObject):
             return
         
         ### MIRROR COVER CLOSURE ###
-    
-        system = 'mirror cover'
-        msg = 'closing mirror covers'
-        self.announce(msg)
-        try:
-            # connect to the mirror cover
-            self.do('mirror_cover_connect')
+        if not self.mountsim:
+            system = 'mirror cover'
+            msg = 'closing mirror covers'
+            self.announce(msg)
+            try:
+                # connect to the mirror cover
+                self.do('mirror_cover_connect')
+                
+                # open the mirror cover
+                self.do('mirror_cover_close')
             
-            # open the mirror cover
-            self.do('mirror_cover_close')
-        
-        except Exception as e:
-            msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
-            self.log(msg)
-            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-            err = roboError(context, self.lastcmd, system, msg)
-            self.hardware_error.emit(err)
-            return
+            except Exception as e:
+                msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                return
         
         self.announce(':greentick: mirror covers closed!')
 
@@ -1906,20 +1934,21 @@ class RoboOperator(QtCore.QObject):
                 self.do(f'command_filter_wheel {filter_num}')
     
             """
-            system = 'rotator'
-            try:
-                self.do('rotator_stop')
-                self.do('rotator_home')
-            
-            except Exception as e:
-                msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                return
+            if not self.mountsim:
+                system = 'rotator'
+                try:
+                    self.do('rotator_stop')
+                    self.do('rotator_home')
                 
-            system = 'ccd'
+                except Exception as e:
+                    msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err)
+                    return
+                
+            system = 'camera'
             try:
                 self.do(f'ccd_set_exposure 30.0')
                 ndarks = 5
@@ -2570,12 +2599,12 @@ class RoboOperator(QtCore.QObject):
                     
                     # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
                     #if self.exptime == self.state['exptime']:
-                    if self.exptime == self.camera.exptime:
+                    if self.exptime == self.camera.state['exptime']:
                         self.log('requested exposure time matches current setting, no further action taken')
                         pass
                     else:
                         #self.log(f'current exptime = {self.state["exptime"]}, changing to {self.exptime}')
-                        self.log(f'current exptime = {self.camera.exptime}, changing to {self.exptime}')
+                        self.log(f'current exptime = {self.camera.state["exptime"]}, changing to {self.exptime}')
                         self.do(f'setExposure {self.exptime} --{self.camname}')
                     
                     #TODO: we are currently not changing the focus based on the filter! whoopsy. add that here NPL 8-12-22
@@ -2600,14 +2629,14 @@ class RoboOperator(QtCore.QObject):
                     """
                     # get filter number
                     for position in self.config['filter_wheels'][self.camname]['positions']:
-                        if self.config['filter_wheels'][self.camname]['positions'][position] == self.filter_scheduled:
+                        if self.config['filter_wheels'][self.camname]['positions'][position].lower() == self.filter_scheduled:
                             filter_num = position
                         else:
                             pass
-                    if filter_num == self.fw.position:
+                    if filter_num == self.fw.state['position']:
                         self.log('requested filter matches current, no further action taken')
                     else:
-                        self.log(f'current filter = {self.fw.position}, changing to {filter_num}')
+                        self.log(f'current filter = {self.fw.state["position"]}, changing to {filter_num}')
                         #self.do(f'command_filter_wheel {filter_num}')
                         self.do(f'fw_goto {filter_num} --{self.camname}')
 
@@ -3216,44 +3245,14 @@ class RoboOperator(QtCore.QObject):
             # turn on tracking
             if tracking:
                 self.do(f'mount_tracking_on')
-            """
-            #I SHOULDN'T HAVE TO WAIT FOR ALL THIS HERE!
-            ## Wait until end condition is satisfied, or timeout ##
-            timeout = 60
-            # wait for the telescope to stop moving before returning
-            # create a buffer list to hold several samples over which the stop condition must be true
-            n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-            stop_condition_buffer = [(False) for i in range(n_buffer_samples)]
-    
-            # get the current timestamp
-            start_timestamp = datetime.utcnow().timestamp()
-            while True:
-                #print('entering loop')
-                time.sleep(self.config['cmd_status_dt'])
-                timestamp = datetime.utcnow().timestamp()
-                dt = (timestamp - start_timestamp)
-                #print(f'wintercmd: wait time so far = {dt}')
-                if dt > timeout:
-                    raise TimeoutError(f'command timed out after {timeout} seconds before completing')
-                
-                stop_condition = (self.telescope.state["mount.is_slewing"] != True)
-                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-                # now replace the last element
-                stop_condition_buffer[-1] = stop_condition
-                print(f'stop conition = {stop_condition}')
-                if all(entry == True for entry in stop_condition_buffer):
-                    break 
-            
-            #time.sleep(3)
-            """
+
             # slew the rotator
-            self.do(f'rotator_goto_field {self.target_field_angle}')
-            # self.do(f'rotator_goto_mech {self.target_mech_angle}')
-            time.sleep(3)
-            # if(tracking):
-            #     self.do(f'mount_tracking_on')
-            
+            if not self.mountsim:
+                self.do(f'rotator_goto_field {self.target_field_angle}')
+                
+                #TODO: NPL 5/23/23 wtf is this 3 second sleep doing here??
+                #time.sleep(3)
+                
             self.current_mech_angle = self.target_mech_angle
             
         except Exception as e:
@@ -3294,10 +3293,9 @@ class RoboOperator(QtCore.QObject):
         
         
         # do the exposure and wrap with appropriate error handling
-        system = 'ccd'
-        self.logger.info(f'robo: telling ccd to take exposure!')
-        """try:
-            self.do(f'ccd_do_exposure')"""
+        system = 'camera'
+        self.logger.info(f'robo: telling camera to take exposure!')
+        
         # pass the correct options to the ccd daemon
         obstype_dict = dict({'FLAT'     : '-f',
                              'BIAS'     : '-b',
@@ -3310,7 +3308,7 @@ class RoboOperator(QtCore.QObject):
         obstype_option = obstype_dict.get(obstype, '')
         
         try:
-            self.do(f'ccd_do_exposure {obstype_option}')
+            self.do(f'doExposure {obstype_option} --{self.camname}')
             
             
         except Exception as e:
@@ -3326,8 +3324,9 @@ class RoboOperator(QtCore.QObject):
         # if we get to here then we have successfully saved the image
         self.log(f'exposure complete!')
         
-        # make a jpg of the last image and publish it to slack!
-        postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
+        if self.camname in ['summer']:
+            # make a jpg of the last image and publish it to slack!
+            postImage_process = subprocess.Popen(args = ['python','plotLastImg.py'])
         
         # the observation has been completed successfully :D
         self.observation_completed = True

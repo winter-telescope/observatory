@@ -122,7 +122,7 @@ def GetHeader(state, imageinfo):
 
     ### observed
     ### maxAirmass
-    header.append(('MXAIRMASS',    state.get('robo_maxAirmass',''),                   'scheduled max airmass'))
+    header.append(('MXAIRMAS',    state.get('robo_maxAirmass',''),                   'scheduled max airmass'))
 
     ### ditherNumber
     header.append(('NUMDITHS',     state.get('robo_ditherNumber', ''),                 'total number of dithers'))
@@ -200,11 +200,14 @@ def GetHeader(state, imageinfo):
     ###### WEATHER PARAMETERS ######
     #UT_WEATH
     try:
+        
         weather_datetime = datetime.fromtimestamp(state['dome_timestamp'])
         ut_weath = weather_datetime.strftime('%Y-%m-%d %H%M%S.%f')
     except Exception as e:
+        print(f'state["dome_timestamp"] = {state.get("dome_timestamp", "?")}')
         print(f'could not get dome time, {e}')
         ut_weath = ''
+        
     header.append(('UT_WEATH',     ut_weath, 'UT of weather data'))
     #TEMPTURE
     header.append(('TEMPTURE',     state.get('T_outside_pcs', ''),             'Outside air temperature (C)'))
@@ -259,8 +262,18 @@ def GetHeader(state, imageinfo):
     return header
 
 if __name__ == '__main__':
+    try:
+        ns = Pyro5.core.locate_ns('192.168.1.10')
+        uri = ns.lookup('state')
+        p = Pyro5.client.Proxy(uri)
+        state = p.GetStatus()
+    except Exception as e:
+        print(f'could not get WSP state: {e}')
+        state = {}
+        
     
-    header = GetHeader({}, {})
+        
+    header = GetHeader(state, {})
     
     #header = dict({"DICTKEY" : "DictValue"})
     

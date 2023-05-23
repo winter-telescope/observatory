@@ -155,7 +155,9 @@ class housekeeping():
             #self.housekeeping_poll_functions.append(self.viscam.update_state)
             #self.housekeeping_poll_functions.append(self.ccd.update_state)
             
-            self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
+            if self.mirror_cover is not None:
+                self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
+            
             #self.housekeeping_poll_functions.append(self.powerManager.update_state)
         
         # things that should happen in all modes

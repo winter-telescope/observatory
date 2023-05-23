@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "obsHistID": {"type": "integer"},
+    "raDeg": {"type": "number", "comment": "Degrees (decimal)"},
+    "decDeg": {"type": "number", "comment": "Degrees (decimal)"},
+    "filter": {"type": "string", "comment": "'u'/'g'/'r'/'i'/'Y'/'J'/'H'"},
+    "visitExpTime": {"type": "number", "comment": "Total observation time (seconds)", "default": 30.0},
+    "priority": {"type": "number", "comment": "Priority of observation"},
+    "progPI": {"type": "string", "comment": "PI of observation"},
+    "progID": {"type": "integer", "comment": "Between 0 and 4 (0-Calibration, 1-Survey, 2-MIT, 3-Caltech, 4-Engineering)"},
+    "progName": {"type": "string", "comment": "Program name e.g 2021A000"},
+    "validStart": {"type": "number", "comment": "Format: MJD"},
+    "validStop": {"type": "number", "comment": "Format: MJD"},
+    "observed": {"anyOf": [{"type":  "boolean", "default":  false}, {"type" : "integer", "minimum" : 0, "maximum" : 1}]},
+    "maxAirmass": {"type":  "number", "comment": "Maximum airmass for observation", "default":  2.0},
+    "ditherNumber": {"type": "integer", "default": 1},
+    "ditherStepSize": {"type": "number", "comment": "arcsec", "default": 15.0},
+    "fieldID": {"type": "integer", "default": 999999999},
+    "targName": {"type": "string", "comment": "Target name e.g. GW170817"}
+  },
+  "required": [
+    "obsHistID",
+    "raDeg",
+    "decDeg",
+    "filter",
+    "visitExpTime",
+    "priority",
+    "progID",
+    "validStart",
+    "validStop",
+    "observed",
+    "ditherNumber"
+  ],
+  "additionalProperties": true
+}

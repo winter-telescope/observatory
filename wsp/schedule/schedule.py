@@ -71,7 +71,7 @@ import pandas as pd
 import logging
 import subprocess
 
-import wintertoo.validate
+#import wintertoo.validate
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -81,7 +81,10 @@ sys.path.insert(1, wsp_path)
 from utils import utils
 from utils import logging_setup
 
-
+try:
+    import wintertoo_validate
+except:
+    from schedule import wintertoo_validate
 
 
 class Schedule(object):
@@ -144,7 +147,7 @@ class Schedule(object):
             
             ### NOW VALIDATE THE SCHEDULE FILE DATAFRAME ###
             # a bad schedule file will raise an exception here
-            wintertoo.validate.validate_schedule_df(df)
+            wintertoo_validate.validate_schedule_df(df)
 
             
             return True
@@ -265,7 +268,7 @@ class Schedule(object):
                 
                 ### NOW VALIDATE THE SCHEDULE FILE DATAFRAME ###
                 # a bad schedule file will raise an exception here
-                wintertoo.validate.validate_schedule_df(self.df)
+                wintertoo_validate.validate_schedule_df(self.df)
     
                 # we have now validatd the schedule and only selected observations whose validStop time haven't passed
                 # at this point make a note of the total number of remaining observable targets

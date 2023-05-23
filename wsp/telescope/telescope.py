@@ -54,7 +54,7 @@ class Telescope(pwi4_client.PWI4):
     """
     
     
-    def __init__(self, config, host="localhost", port=8220, logger = None):
+    def __init__(self, config, host="localhost", port=8220, mountsim = False, logger = None):
     
         super(Telescope, self).__init__(host = host, port = port)
     
@@ -64,6 +64,7 @@ class Telescope(pwi4_client.PWI4):
         self.signals = TelescopeSignals()
         self.wrap_check_enabled = True#False
         self.wrap_status = False
+        self.mountsim = mountsim
         self.logger = logger
         
         # put things in a safe position on startup
@@ -82,17 +83,19 @@ class Telescope(pwi4_client.PWI4):
             time.sleep(1)
         except Exception as e:
             self.log(f'could not turn mount tracking off! error: {e}')
-        try:
-            self.rotator_stop()
-            time.sleep(1)
-        except Exception as e:
-            self.log(f'could not stop rotator! error: {e}')
-        try:
-            self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
-            time.sleep(1)
-        except Exception as e:
-            self.log(f'could not send rotator to home position! error: {e}')
         
+        if not self.mountsim:
+            try:
+                self.rotator_stop()
+                time.sleep(1)
+            except Exception as e:
+                self.log(f'could not stop rotator! error: {e}')
+            try:
+                self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
+                time.sleep(1)
+            except Exception as e:
+                self.log(f'could not send rotator to home position! error: {e}')
+            
     def log(self, msg):
         msg = f'telescope: {msg}'
         if self.logger is None:

@@ -134,6 +134,7 @@ class control(QtCore.QObject):
         self.domesim = False
         self.sunsim = False
         self.dometest = False
+        self.mountsim = False
         
         for currentArgument, currentValue in opts:
             if currentArgument in ("-n", "--ns_host"):
@@ -151,6 +152,10 @@ class control(QtCore.QObject):
             # option to ignore whether the shutter is open, which let you test with the dome closed
             if currentArgument in ('--dometest'):
                 self.dometest = True
+            
+            # option to use the simulated telescope mount
+            if currentArgument in ('--mountsim'):
+                self.mountsim = True
 
         print(f'sysControl: ns_host = {self.ns_host}')
         print(f'sysControl: verbose = {self.verbose}')
@@ -322,16 +327,24 @@ class control(QtCore.QObject):
         self.counter =  test_daemon_local.local_counter(wsp_path, ns_host = self.ns_host)
 
         # init the telescope
+        if self.mountsim:
+            host = self.config['telescope']['simhost']
+        else:
+            host = self.config['telescope']['host']
         self.telescope = telescope.Telescope(config = self.config, 
-                                             host = self.config['telescope']['host'], 
+                                             host = host, 
                                              port = self.config['telescope']['port'],
+                                             mountsim = self.mountsim,
                                              logger = logger)
 
         # init the mirror cover 
-        self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
-                                                      port = self.config['telescope_shutter']['port'],
-                                                      config = self.config, logger = self.logger)
-        
+        if self.mountsim:
+            self.mirror_cover = None
+        else:
+            self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
+                                                          port = self.config['telescope_shutter']['port'],
+                                                          config = self.config, logger = self.logger)
+            
         # init the dome
         self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, 
                                     ns_host = self.ns_host, logger = self.logger)
@@ -497,6 +510,7 @@ class control(QtCore.QObject):
                                                               robostate = self.robostate,
                                                               sunsim = self.sunsim,
                                                               dometest = self.dometest,
+                                                              mountsim = self.mountsim
                                                               )
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)
