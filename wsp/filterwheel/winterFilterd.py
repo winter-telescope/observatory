@@ -52,40 +52,47 @@ class EZStepper(QtCore.QObject):
         self.connected = False
         self.command_pass = 0
         self.timestamp = datetime.utcnow().timestamp()
-        print('initing EZStepper object')
+        self.log('initing EZStepper object')
 
         # housekeeping attributes
         self.state = dict()
-
 
         # connect the update state signal
         self.updateStateSignal.connect(self.updateState)
         self.resetCommandPassSignal.connect(self.resetCommandPass)
 
-        # serial setup
+        # serial setup settings
         self.port = config['serial']['port']
         self.addr = config['serial']['address']
+        self.baud_rate = config['serial']['baud_rate']
 
-        # startupvalues
-        self.pos = -1.0
-        self.pos_goal = -1.0
-        self.is_moving = 1
+        # ezstepper settings
+        self.move_max_volt = config['stepper_config']['move_max_volt']
+        self.encoder_ratio = config['stepper_config']['encoder_ratio']
+        self.speed = config['stepper_config']['speed']
+        self.homing_steps = config['stepper_config']['homing_steps']
+        self.max_encoder_err = config['stepper_config']['max_encoder_err']
+        self.overload_timeout = config['stepper_config']['overload_timeout']
+        self.hold_current = config['stepper_config']['hold_current']
+
+        # startup values
+        self.filter_pos = -1
+        self.filter_goal = -1
+        self.pos = -1
+        self.pos_goal = -1
+        self.is_moving = 0
         self.homed = 0
-        self.encoder_pos = -1.0
+        self.encoder_pos = -1
         self.is_homing = 0
 
-
+        # timers
+        self.state_update_dt = config['state_update_dt']
+        self.reply_timeout = config['reply_timeout']
 
 
         ## Startup:
-
-        self.home()
-
-        self.pollStatus()
-
-
-
-
+        self.setupSerial()
+        self.home()  # this will populate the state
 
 
     # General Methods
@@ -102,7 +109,7 @@ class EZStepper(QtCore.QObject):
         # this can take and pass in any pyserial args
 
         self.ser = serial.Serial(port=self.port,
-                baudrate=9600,
+                baudrate=self.baud_rate,
                 timeout = 1,
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
@@ -116,29 +123,34 @@ class EZStepper(QtCore.QObject):
         for key in dict_to_add:
             self.state.update({key : dict_to_add[key]})
 
+
     def resetCommandPass(self, val):
         self.log(f'running resetCommandPass: {val}')
         # reset the command pass value to val (0 or 1), and update state
         self.command_pass = val
         self.state.update({'command_pass' : val})
 
+
     def pollStatus(self):
         """
         Get housekeeping status
 
         """
-        # put in the stuff to poll the ez steppers here
-
+        self.pos = self.getMicrostepLoc()
+        self.encoder_pos = self.getEncoderLoc()
         # now update the state dictionary
         self.update_state()
 
+
     def update_state(self):
-        self.state.update({ 'timestamp' : self.timestamp,
+        self.state.update({ 'timestamp' : datetime.utcnow().timestamp(),
                             'is_moving' : self.is_moving,
                             'position'  : self.pos,
                             'pos_goal'  : self.pos_goal,
                             'encoder_pos' : self.encoder_pos,
                             'encoder_pos_goal' : self.encoder_pos_goal,
+                            'filter_pos' : self.filter_pos,
+                            'filter_goal' : self.filter_goal,
                             'homed'     : self.homed,
                             'is_homing' : self.is_homing,
                             })
@@ -193,12 +205,16 @@ class EZStepper(QtCore.QObject):
         }
         bits = int(format(status, '08b'))
         ready = bits & (2**5) != 0  # Bit5 is the ready bit
-        error_code = int(format(bits, '08b')[-3:], 2)
+        error_code = int(format(bits, '08b')[-4:], 2)
         error_msg = error_dict[error_code]
-
+        if error_code in [1, 2, 3, 5, 7, 9, 11, 15]:
+            # problematic codes
+            self.log(f'An error was returned from the stepper. '
+                     f'Error code: {error_code}. Error: {error_msg}')
         return ready, error_code, error_msg
 
-    def parse_reply(self, reply):
+
+    def parse_reply(self, reply, verbose=False):
         # FIXME: clean this up. It should respond with the status and the parsed contents
         # e.g., a goto command's reply would be parsed into ()
         # print(f'raw reply = {reply}')
@@ -206,43 +222,55 @@ class EZStepper(QtCore.QObject):
         if len(reply) == 1:
             self.log('Only one thing in reply. Probably want to try this again, in a bit.')
             return
-
+        if verbose: self.log(f'raw reply is {reply}')
         reply_start_sequence = '/0'.encode('utf-8').hex()
         reply_end_sequence = '03'
 
-        end_list_index = reply.index(reply_end_sequence)
+        try:
+            end_list_index = reply.index(reply_end_sequence)
+        except ValueError:
+            self.log('We are not getting a response we expect from the stepper.'
+                     'We can try again, but we should consider power cycling.')
+            return
         replystr = ''.join(reply[:end_list_index])
         start_index = replystr.find(reply_start_sequence) + len(reply_start_sequence)
 
         reply_contents = replystr[start_index:]
-        status = reply_contents[:2]
+        status_code = reply_contents[:2]
+        ready, error_code, error_msg = self.parse_status(int(status_code))
+
         actual_reply = str(reply_contents[2:])
-        print(f'status = {status}')
-        print(f'{self.parse_status(int(status))}')
 
+        if verbose: self.log(f'status code = {error_code}')
+        if verbose: self.log(f'Ready status = {ready}')
+        if verbose: self.log(f'error message = {error_msg}')
 
-        print(f'actual reply = {actual_reply}')
+        if verbose: self.log(f'actual reply = {actual_reply}')
         contents_hex = [actual_reply[i:i+2] for i in range(0, len(actual_reply), 2)]
-        print(f'hex contents = {contents_hex}')
+        if verbose: self.log(f'hex contents = {contents_hex}')
         contents_parsed = [bytes.fromhex(hx).decode('utf-8') for hx in contents_hex]
-        print(f"parsed contents = {''.join(contents_parsed)}")
+        parsed = ''.join(contents_parsed)
+        if verbose: self.log(f"parsed contents = {parsed}")
+
+        return error_msg, parsed
 
 
-    def send(self, serial_command, reply_timeout=0.1):
+    def send(self, serial_command, verbose=False):
         assert self.ser, "No serial setup found"
         self.ser.flushInput()
         self.ser.write(bytes(f"/{self.addr}{serial_command}\r", 'utf-8'))
         reply = []
 
-        time.sleep(reply_timeout)
+        time.sleep(self.reply_timeout)
 
         for i in range(self.ser.in_waiting):
             newbyte = self.ser.read(1).hex()
             reply.append(newbyte)
 
-        return self.parse_reply(reply)
+        return self.parse_reply(reply, verbose=verbose)
 
 
+<<<<<<< HEAD
     def home(self, pos):
         # send homing command
         self.encoder_pos = 0.0
@@ -251,7 +279,186 @@ class EZStepper(QtCore.QObject):
         self.pos_goal = 0.0
         self.pos = 0.0
         self.homed = 1
+=======
+    def getEncoderLoc(self, verbose=False) -> int:
+        '''Get encoder tick reading.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Print additional info, by default False
+
+        Returns
+        -------
+        int
+            Encoder position
+        '''
+        status, enc_loc = self.send('?8', verbose=verbose)
+        self.encoder_pos = int(enc_loc)
+>>>>>>> 89b84651 (Add filter commands to daemon and to local filterwheel)
         self.update_state()
+        return self.encoder_pos
+
+
+    def getMicrostepLoc(self, verbose=False) -> int:
+        '''Get microstep location reading.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Print additional info, by default False
+
+        Returns
+        -------
+        int
+            Microstep position
+        '''
+        status, ustep_loc = self.send('?0', verbose=verbose)
+        self.ustep_loc = int(ustep_loc)
+        self.update_state()
+        return self.ustep_loc
+
+
+    def getInputStatus(self, verbose=False) -> int:
+        '''Get opto/switch status.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Print additional info, by default False
+
+        Returns
+        -------
+        dict (dict of str: int):
+            dict for switch1, switch2, opto1, opto2
+        '''
+        status, input_bitnum = self.send('?4', verbose=verbose)
+        bitword = format(int(input_bitnum), '04b')  # 4 bits, one for each input
+        input_status = {
+            'switch1': int(bitword[-1]),
+            'switch2': int(bitword[-2]),
+            'opto1': int(bitword[-3]),
+            'opto2': int(bitword[-4]),
+        }
+        return input_status
+
+
+    def home(self, verbose=False):
+        # perform homing
+        self.pos = -1.0
+        self.pos_goal = 0
+        self.encoder_pos_goal = 0
+        self.filter_goal = 0
+        self.homed = 0
+        self.is_homing = 1
+        self.is_moving = 1
+        self.update_state()
+
+        self.log(f'Beginning homing sequence')
+        # send homing command
+        cmd = (
+            f'm{self.move_max_volt}N1aE{self.encoder_ratio}'
+            f'V{self.speed}f1Z{self.homing_steps}aC{self.max_encoder_err}'
+            f'au{self.overload_timeout}h{self.hold_current}z0n72R'
+            )
+        status, response = self.send(cmd, verbose=verbose)
+
+        arrived = False
+        timed_out = False
+        start_time = time.time()
+        while not (arrived or timed_out):
+            time.sleep(self.state_update_dt)
+            self.encoder_pos = self.getEncoderLoc()
+            self.pos = self.getMicrostepLoc()
+            arrived = abs(self.encoder_pos) < self.max_encoder_err
+            timed_out = ((time.time() - start_time) >
+                         self.config['stepper_config']['timeout_secs'])
+
+        if timed_out:
+            self.log('Homing the filter timed out. Might want to power cycle.')
+            return -1
+
+        # opto check
+        input_status = self.getInputStatus()
+        actually_homed = input_status['opto1'] == 0
+
+        if actually_homed:
+            self.homed = 1
+            self.is_homing = 0
+            self.is_moving = 0
+            self.homed = 1
+            self.filter_pos = 0
+            self.update_state()
+            self.log('Homing complete')
+            return self.encoder_pos
+        else:
+            self.log("The stepper thinks we homed, but we actually didn't. "
+                     "Might want to power cycle, otherwise filter positions "
+                     "will likely be incorrect.")
+            return -1
+
+
+    def goToLocation(self, microstep_loc: int, verbose=False) -> int:
+        '''Tell motor to go to the specific microstep location.
+
+        Parameters
+        ----------
+        microstep_loc : int
+            Microstep location.
+
+        Returns
+        -------
+        int
+            Final encoder position, or -1 if error.
+        '''
+        self.pos_goal = microstep_loc
+        self.encoder_pos_goal = microstep_loc
+        status, response = self.send(f'A{microstep_loc}n72R', verbose=verbose)
+        self.is_moving = 1
+        self.update_state()
+
+        arrived = False
+        timed_out = False
+        start_time = time.time()
+        while not (arrived or timed_out):
+            time.sleep(self.state_update_dt)
+            self.encoder_pos = self.getEncoderLoc()
+            self.pos = self.getMicrostepLoc()
+            arrived = abs(microstep_loc - self.encoder_pos) < self.max_encoder_err
+            timed_out = ((time.time() - start_time) >
+                         self.config['stepper_config']['timeout_secs'])
+
+        if timed_out:
+            self.log(f'Moving the filter to position {microstep_loc} timed out. '
+                     'Might want to power cycle.')
+            return -1
+
+        self.is_moving = 0
+        self.update_state()
+        return self.encoder_pos
+
+
+    def goToFilter(self, filter_num: str, verbose=False) -> int:
+        '''Move filter tray to the requested filter.
+
+        Parameters
+        ----------
+        filter_num : int
+            Number of requested filter. Should be one of 1, 2, 3, 4.
+
+        Returns
+        -------
+        int
+            Final encoder position.
+        '''
+        assert filter_num in [1, 2, 3, 4], f"Filter {filter_num} not in [1, 2, 3, 4]"
+        self.filter_goal = filter_num
+        position = self.config['filters']['encoder_positions'][filter_num]
+        self.log(f'Moving to filter number {filter_num}, at position {position}.')
+        final_enc =  self.goToLocation(position, verbose=verbose)
+        self.log(f'Moved to filter number {filter_num}, at position {final_enc}.')
+        self.filter_pos = filter_num
+        return final_enc
 
 
     def goto(self, pos):
@@ -439,14 +646,44 @@ class WINTERfw(QtCore.QObject):
         #print(self.state)
         return self.state
 
+
     @Pyro5.server.expose
     def goto(self, pos):
         sigcmd = signalCmd('goto', pos)
         self.newCmdRequest.emit(sigcmd)
 
+
     @Pyro5.server.expose
     def home(self):
         sigcmd = signalCmd('home')
+        self.newCmdRequest.emit(sigcmd)
+
+
+    @Pyro5.server.expose
+    def getEncoderLoc(self, verbose=False):
+        sigcmd = signalCmd('getEncoderLoc')
+        self.newCmdRequest.emit(sigcmd)
+
+
+    @Pyro5.server.expose
+    def getMicrostepLoc(self, verbose=False):
+        sigcmd = signalCmd('getMicrostepLoc')
+        self.newCmdRequest.emit(sigcmd)
+
+
+    @Pyro5.server.expose
+    def getInputStatus(self, verbose=False):
+        sigcmd = signalCmd('getInputStatus')
+        self.newCmdRequest.emit(sigcmd)
+
+    @Pyro5.server.expose
+    def goToLocation(self, microstep_loc):
+        sigcmd = signalCmd('goToLocation', microstep_loc)
+        self.newCmdRequest.emit(sigcmd)
+
+    @Pyro5.server.expose
+    def goToFilter(self, filter_num):
+        sigcmd = signalCmd('goToFilter', filter_num)
         self.newCmdRequest.emit(sigcmd)
 
 
@@ -465,7 +702,7 @@ class PyroGUI(QtCore.QObject):
         self.logger = logger
         self.verbose = verbose
 
-        msg = f'(Thread {threading.get_ident()}: Starting up Sensor Daemon '
+        msg = f'(Thread {threading.get_ident()}: Starting up Filter Daemon '
         if logger is None:
             print(msg)
         else:
