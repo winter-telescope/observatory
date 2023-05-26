@@ -283,7 +283,7 @@ class control(QtCore.QObject):
             
             # set up filter wheels
             winterfwargs = ['-n', self.ns_host]
-            self.winterfwd = daemon_utils.PyDaemon(name = 'winterfw', filepath = f"{wsp_path}/filterwheel/winterFilterd.py", args = winterfwargs)
+            self.winterfwd = daemon_utils.PyDaemon(name = 'winterfw', filepath = f"{wsp_path}/filterwheel/winterFilterd_sim.py", args = winterfwargs)
             self.daemonlist.add_daemon(self.winterfwd)
             
         if mode in ['r']:

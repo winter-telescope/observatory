@@ -4048,39 +4048,39 @@ class Wintercmd(QtCore.QObject):
         
         pos = self.args.pos[0]
         
-        sigcmd = signalCmd('goto', pos)
+        sigcmd = signalCmd('goToFilter', pos)
         
         self.logger.info(f'wintercmd: sending {fw.daemonname} to positon {pos}')
+        # TODO uncomment
+        # fw.newCommand.emit(sigcmd)
         
-        fw.newCommand.emit(sigcmd)
-        
-        ## Wait until end condition is satisfied, or timeout ##
-        condition = True
-        timeout = 90
-        # create a buffer list to hold several samples over which the stop condition must be true
-        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
-        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+        # ## Wait until end condition is satisfied, or timeout ##
+        # condition = True
+        # timeout = 90
+        # # create a buffer list to hold several samples over which the stop condition must be true
+        # n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        # stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
 
-        # get the current timestamp
-        start_timestamp = datetime.utcnow().timestamp()
-        while True:
-            QtCore.QCoreApplication.processEvents()
-            time.sleep(self.config['cmd_status_dt'])
-            timestamp = datetime.utcnow().timestamp()
-            dt = (timestamp - start_timestamp)
-            #print(f'wintercmd: wait time so far = {dt}')
-            if dt > timeout:
-                raise TimeoutError(f'unable to move filter wheel: command timed out after {timeout} seconds before completing.')
+        # # get the current timestamp
+        # start_timestamp = datetime.utcnow().timestamp()
+        # while True:
+        #     QtCore.QCoreApplication.processEvents()
+        #     time.sleep(self.config['cmd_status_dt'])
+        #     timestamp = datetime.utcnow().timestamp()
+        #     dt = (timestamp - start_timestamp)
+        #     #print(f'wintercmd: wait time so far = {dt}')
+        #     if dt > timeout:
+        #         raise TimeoutError(f'unable to move filter wheel: command timed out after {timeout} seconds before completing.')
             
-            stop_condition = ( (self.state[f'{fwname}_fw_pos'] == pos) )
-            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-            # now replace the last element
-            stop_condition_buffer[-1] = stop_condition
+        #     stop_condition = ( (self.state[f'{fwname}_fw_filter_pos'] == pos) )
+        #     # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+        #     stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+        #     # now replace the last element
+        #     stop_condition_buffer[-1] = stop_condition
             
-            if all(entry == condition for entry in stop_condition_buffer):
-                self.logger.info(f'wintercmd: successfully completed filter wheel move')
-                break 
+        #     if all(entry == condition for entry in stop_condition_buffer):
+        #         self.logger.info(f'wintercmd: successfully completed filter wheel move')
+        #         break 
         
     
     

@@ -92,6 +92,9 @@ class EZStepper(QtCore.QObject):
 
         ## Startup:
         self.setupSerial()
+        
+        time.sleep(5)
+        
         self.home()  # this will populate the state
 
 
@@ -270,16 +273,6 @@ class EZStepper(QtCore.QObject):
         return self.parse_reply(reply, verbose=verbose)
 
 
-<<<<<<< HEAD
-    def home(self, pos):
-        # send homing command
-        self.encoder_pos = 0.0
-        self.encoder_pos_goal = 0.0
-        self.is_moving = 0
-        self.pos_goal = 0.0
-        self.pos = 0.0
-        self.homed = 1
-=======
     def getEncoderLoc(self, verbose=False) -> int:
         '''Get encoder tick reading.
 
@@ -295,7 +288,6 @@ class EZStepper(QtCore.QObject):
         '''
         status, enc_loc = self.send('?8', verbose=verbose)
         self.encoder_pos = int(enc_loc)
->>>>>>> 89b84651 (Add filter commands to daemon and to local filterwheel)
         self.update_state()
         return self.encoder_pos
 

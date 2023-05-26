@@ -132,10 +132,13 @@ if __name__ == '__main__':
     config_file = wsp_path + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
-    labjacks = local_labjackHandler(wsp_path, config)
+    labjacks = local_labjackHandler(wsp_path, config, ns_host = '192.168.1.10')
     
     #%%
     labjacks.update_state()
+    print(labjacks.state)
+    #%%
+    """
     #print(json.dumps(labjacks.state, indent = 3))
     field = "COUNT_LJ0_DIO0"
     print(f"{field} : {labjacks.state[field]}")
@@ -144,12 +147,11 @@ if __name__ == '__main__':
         try:
             labjacks.update_state()
             #print(json.dumps(labjacks.state, indent = 3))
-            field = "COUNT_LJ0_DIO0"
             print(f"{field} : {labjacks.state[field]}")
             time.sleep(30)
         except KeyboardInterrupt:
             break
     
-        
+    """  
         
      

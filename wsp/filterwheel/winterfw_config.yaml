@@ -18,7 +18,8 @@ filters:
 
 serial:
 
-    port: '/dev/tty.usbserial-AG0JG9J3'
+    #port: '/dev/tty.usbserial-AG0JG9J3'
+    port: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AG0JG9J3-if00-port0'
     address: 1
     baud_rate: 9600
 

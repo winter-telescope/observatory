@@ -288,7 +288,8 @@ class local_camera(QtCore.QObject):
         self.imname = imname
         
         if imdir is None:
-            imdir = os.path.join(os.getenv("HOME"), 'data', 'images', 'tmp')
+            #imdir = os.path.join(os.getenv("HOME"), 'data', 'images', 'tmp')
+            imdir = 'default'
         self.imdir = imdir
         
         if imtype is None:

@@ -116,8 +116,8 @@ class EZStepper(QtCore.QObject):
     def update_state(self):
         self.state.update({ 'timestamp' : self.timestamp,
                             'is_moving' : self.is_moving,
-                            'position'  : self.pos,
-                            'pos_goal'  : self.pos_goal,
+                            'filter_pos'  : self.pos,
+                            'filter_goal'  : self.pos_goal,
                             'encoder_pos' : self.encoder_pos,
                             'encoder_pos_goal' : self.encoder_pos_goal,
                             'homed'     : self.homed,
@@ -165,7 +165,7 @@ class EZStepper(QtCore.QObject):
         
     
     
-    def goto(self, pos):
+    def goToFilter(self, pos):
         try:
             self.pos_goal = pos
             self.encoder_pos_goal = self.config['filters']['encoder_positions'].get(pos, -1.0)
@@ -351,8 +351,8 @@ class WINTERfw(QtCore.QObject):
         return self.state
     
     @Pyro5.server.expose
-    def goto(self, pos):
-        sigcmd = signalCmd('goto', pos)
+    def goToFilter(self, pos):
+        sigcmd = signalCmd('goToFilter', pos)
         self.newCmdRequest.emit(sigcmd)
         
     @Pyro5.server.expose

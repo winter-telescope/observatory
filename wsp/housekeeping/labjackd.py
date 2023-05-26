@@ -128,51 +128,56 @@ class LabjackHandler(QtCore.QObject):
             # DIOX --> V_LJX_DIOX
             
             # Flowmeters: DIO0_EF_READ_A --> COUNT_LJX_DIOX
-            
-            for ch in self.ljs.labjacks[lj].config['FLOWMETERS']:
-                # try to make the flow by calculating the change in count since last poll
-                INPUT = self.ljs.labjacks[lj].config['FLOWMETERS'][ch]['input']
-                K_ppl  = self.ljs.labjacks[lj].config['FLOWMETERS'][ch]['K_ppl']
-                count = self.ljs.labjacks[lj].state[f'{INPUT}_EF_READ_A']
-                
-                try:
-                    dt_since_last_poll = self.poll_timestamp - self.state['last_poll_timestamp']
-                    delta_count_since_last_poll = count - self.state[f'COUNT_{lj}_{INPUT}']
-                    flow_lpm = (delta_count_since_last_poll/dt_since_last_poll) * (60.0/K_ppl)
-                    self.state.update({f'{lj}_{ch}' : flow_lpm})
-                except Exception as e:
-                    # this will fail on the first run through the loop before accumulating history
-                    # in general just eat this message to avoid lots of messages
-                    if self.verbose:
-                        self.log(f'could not calculate flow for {ch}: {e}')
-                    pass
-                # update the raw count for the input channel: eg, COUNT_LJ0_DIO1
-                self.state.update({f'COUNT_{lj}_{INPUT}' : count})
+            if 'FLOWMETERS' in self.ljs.labjacks[lj].config:
+                #print(f'parsing flowmeters for {lj}')
+                for ch in self.ljs.labjacks[lj].config['FLOWMETERS']:
+                    # try to make the flow by calculating the change in count since last poll
+                    INPUT = self.ljs.labjacks[lj].config['FLOWMETERS'][ch]['input']
+                    K_ppl  = self.ljs.labjacks[lj].config['FLOWMETERS'][ch]['K_ppl']
+                    count = self.ljs.labjacks[lj].state[f'{INPUT}_EF_READ_A']
+                    
+                    try:
+                        dt_since_last_poll = self.poll_timestamp - self.state['last_poll_timestamp']
+                        delta_count_since_last_poll = count - self.state[f'COUNT_{lj}_{INPUT}']
+                        flow_lpm = (delta_count_since_last_poll/dt_since_last_poll) * (60.0/K_ppl)
+                        self.state.update({f'{lj}_{ch}' : flow_lpm})
+                    except Exception as e:
+                        # this will fail on the first run through the loop before accumulating history
+                        # in general just eat this message to avoid lots of messages
+                        if self.verbose:
+                            self.log(f'could not calculate flow for {ch}: {e}')
+                        pass
+                    # update the raw count for the input channel: eg, COUNT_LJ0_DIO1
+                    self.state.update({f'COUNT_{lj}_{INPUT}' : count})
             
             # Thermometers: AINX --> TEMP_LJX_AINX
-            for ch in self.ljs.labjacks[lj].config['THERMOMETERS']:
-                try:
-                    INPUT = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['input']
-                    ftype = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['ftype']
-                    voltage = self.ljs.labjacks[lj].state[f'{INPUT}']
+            if 'THERMOMETERS' in self.ljs.labjacks[lj].config:
+                #print(f'parsing thermometers for {lj}')
+                for ch in self.ljs.labjacks[lj].config['THERMOMETERS']:
                     
-                    if ftype == 'linterp':
-                        LUT_file = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['LUT_file']
-                        temp = self.LUTs[LUT_file].linterp(voltage)
-                        self.state.update({f'TEMP_{lj}_{INPUT}' : temp})
-                    
-                    if ftype == 'lincom':
-                        slope = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['slope']
-                        intercept = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['intercept']
-                        temp = voltage*slope + intercept
-                        self.state.update({f'TEMP_{lj}_{INPUT}' : temp})
+
+                    try:
+                        INPUT = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['input']
+                        ftype = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['ftype']
+                        voltage = self.ljs.labjacks[lj].state[f'{INPUT}']
+                        
+                        if ftype == 'linterp':
+                            LUT_file = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['LUT_file']
+                            temp = self.LUTs[LUT_file].linterp(voltage)
+                            self.state.update({f'TEMP_{lj}_{INPUT}' : temp})
+                        
+                        if ftype == 'lincom':
+                            slope = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['slope']
+                            intercept = self.ljs.labjacks[lj].config['THERMOMETERS'][ch]['intercept']
+                            temp = voltage*slope + intercept
+                            self.state.update({f'TEMP_{lj}_{INPUT}' : temp})
 
             
-                except Exception as e:
-                    # this will fail on the first run through the loop before accumulating history
-                    # in general just eat this message to avoid lots of messages
-                    if self.verbose:
-                        self.log(f'could not calculate temperature for {ch}: {e}')   
+                    except Exception as e:
+                        # this will fail on the first run through the loop before accumulating history
+                        # in general just eat this message to avoid lots of messages
+                        if self.verbose:
+                            self.log(f'could not calculate temperature for {ch}: {e}')   
                         
             # Update the last poll timestamp
             self.state.update({'last_poll_timestamp' : self.poll_timestamp})
@@ -221,7 +226,7 @@ if __name__ == "__main__":
     # set the defaults
     verbose = False
     doLogging = True
-    ns_host = None
+    ns_host = '192.168.1.10'
     
     options = "vpn:"
     long_options = ["verbose", "print", "ns_host:"]

@@ -2627,16 +2627,17 @@ class RoboOperator(QtCore.QObject):
                             self.log(f'current filter = {self.state["Viscam_Filter_Wheel_Position"]}, changing to {filter_num}')
                             self.do(f'command_filter_wheel {filter_num}')
                     """
+                    
                     # get filter number
                     for position in self.config['filter_wheels'][self.camname]['positions']:
                         if self.config['filter_wheels'][self.camname]['positions'][position].lower() == self.filter_scheduled:
                             filter_num = position
                         else:
                             pass
-                    if filter_num == self.fw.state['position']:
+                    if filter_num == self.fw.state['filter_pos']:
                         self.log('requested filter matches current, no further action taken')
                     else:
-                        self.log(f'current filter = {self.fw.state["position"]}, changing to {filter_num}')
+                        self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
                         #self.do(f'command_filter_wheel {filter_num}')
                         self.do(f'fw_goto {filter_num} --{self.camname}')
 

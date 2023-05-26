@@ -688,6 +688,8 @@ default_value: -999
 labjacks:
     LJ0:
         config: 'labjack0_config.yaml'
+    LJ1:
+        config: 'labjack1_config.yaml'
 
 # define fields.
 # Note: each rate must have a corresponding "daq_rate" as given above
@@ -2356,6 +2358,42 @@ fields:
     #     rate: slow
     #     var: labjacks.labjacks['lj0'].state['FIO3']
     
+    # Rack Power Box Housekeeping and Control
+    T_rackpow_fpa_star:
+    #T_LJ1_AIN0:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+        var: labjacks.state['TEMP_LJ1_AIN0']
+    T_rackpow_12v_misc:
+    #T_LJ1_AIN1:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+        var: labjacks.state['TEMP_LJ1_AIN1']
+    
+    T_rackpow_fpa_port:
+    #T_LJ1_AIN2:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+        var: labjacks.state['TEMP_LJ1_AIN2']
+    T_rackpow_box:
+    #T_LJ1_AIN3:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: slow
+        var: labjacks.state['TEMP_LJ1_AIN3']
+    
+    
     # Viscam housekeeping
 
     ccd_tec_temp:
@@ -2555,9 +2593,16 @@ fields:
         ftype: raw
         label: 'time'
         units: 's'
-        dtype: int64
+        dtype: float64
         rate: hk
         var: fwdict['winter'].state['timestamp']
+    winter_fw_connected:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['is_connected']
     winter_fw_pos:
         ftype: raw
         label: 'pos'
@@ -2575,17 +2620,31 @@ fields:
     winter_fw_encoder_pos:
         ftype: raw
         label: 'pos'
-        units: 'inches'
-        dtype: float64
+        units: 'milliinches'
+        dtype: int64
         rate: hk
         var: fwdict['winter'].state['encoder_pos']
     winter_fw_encoder_pos_goal:
         ftype: raw
         label: 'pos'
-        units: 'inches'
-        dtype: float64
+        units: 'milliinches'
+        dtype: int64
         rate: hk
         var: fwdict['winter'].state['encoder_pos_goal']
+    winter_fw_filter_pos:
+        ftype: raw
+        label: 'num'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['filter_pos']
+    winter_fw_filter_goal:
+        ftype: raw
+        label: 'num'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['filter_goal']
     winter_fw_is_moving:
         ftype: raw
         label: 'Status'

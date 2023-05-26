@@ -192,7 +192,7 @@ if __name__ == '__main__':
     verbose = True
 
     fw = local_filterwheel(wsp_path, config, daemon_pyro_name = 'WINTERfw',
-                       ns_host = 'localhost', logger = logger, verbose = verbose)
+                       ns_host = '192.168.1.10', logger = logger, verbose = verbose)
 
     fw.print_state()
 
