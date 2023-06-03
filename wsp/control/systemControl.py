@@ -408,7 +408,8 @@ class control(QtCore.QObject):
             self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config, ns_host = self.ns_host)
 
         # init the labjacks        
-        self.labjacks = labjack_handler_local.local_labjackHandler(self.base_directory, self.config, self.ns_host, self.logger)
+        self.labjacks = labjack_handler_local.local_labjackHandler(base_directory = self.base_directory, config = self.config, 
+                                                                   ns_host = self.ns_host, logger = self.logger)
         
         
         ### SET UP THE HOUSEKEEPING ###

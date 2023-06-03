@@ -197,7 +197,7 @@ class labjack_set(object):
 
     it can be used to read the state of all the labjacks with one function
     """
-    def __init__(self, config, base_directory, logger = None, verbose = False):
+    def __init__(self, config, base_directory, logger = None, verbose = True):
         self.config = config
         self.base_directory = base_directory
         self.verbose = verbose
