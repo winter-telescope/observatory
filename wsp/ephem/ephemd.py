@@ -203,10 +203,10 @@ class EphemMon(object):
                 self.sun_rising = True
             else:
                 self.sun_rising = False
-            self.moonalt, self.moonaz = self.get_moon_altaz(obstime = self.time_utc, time_format = 'datetime')
+            #self.moonalt, self.moonaz = self.get_moon_altaz(obstime = self.time_utc, time_format = 'datetime')
             self.state.update({'sunalt' : self.sunalt})
-            self.state.update({'moonalt' : self.moonalt})
-            self.state.update({'moonaz' : self.moonaz})
+            #self.state.update({'moonalt' : self.moonalt})
+            #self.state.update({'moonaz' : self.moonaz})
             self.state.update({'sun_rising' : self.sun_rising})
             
             # is the sun  below the horizon?

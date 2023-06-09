@@ -75,9 +75,13 @@ pythonpath = "/home/winter/anaconda3/envs/wspV0/bin/python"
 args = [pythonpath, filepath, sky_config, night_config]
 scheduler_process = subprocess.Popen(args, shell = False)
 
-scheduler_process.wait() # wait to finish before return
+try:
+    scheduler_process.wait(timeout=7200) # wait to finish before return
+    print(f'COMPLETE!')
+    msg = f'saved nightly schedule to ~/data/{schedulefile_name}'
+    alertHandler.slack_log(msg)
+except:
+    print("Scheduler timeout")
+    msg = f'Nightly scheduler failed'
+    alertHandler.slack_log(msg, group='scheduler')
 
-
-print(f'COMPLETE!')
-msg = f'saved nightly schedule to ~/data/{schedulefile_name}'
-alertHandler.slack_log(msg)

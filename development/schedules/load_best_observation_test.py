@@ -44,13 +44,13 @@ schedulepaths = [#os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_s
                  #os.path.join(os.getenv("HOME"), 'data','schedules','ToO','timed_requests_08_12_2022_14_1660339301_.db'),
                  #os.path.join(os.getenv("HOME"), 'data', 'schedules', 'ToO', 'timed_requests_08_15_2022_15_1660601716_.db'),
                  #os.path.join(os.getenv("HOME"), 'data', 'schedules', 'ToO', '/home/winter/data/schedules/ToO/timed_requests_08_16_2022_13_1660680719_.db'),
-                 os.path.join(os.getenv("HOME"), 'data', 'schedules', 'ToO', '/home/winter/data/schedules/ToO/testcrab.db'),   
+                 os.path.join(os.getenv("HOME"), 'data', 'schedules', 'ToO', '/home/winter/data/schedules/ToO/timed_requests_10_30_2022_19_1667182830_.db'),   
                  ]
 
 #schedulepaths = [os.readlink(os.path.join(os.getenv("HOME"), 'data', 'nightly_schedule.lnk'))]
 
 for too_file in schedulepaths:
-    obstime_mjd = 59809.1
+    obstime_mjd = 59883.12
     
     log(f'validating too_file = {too_file}')
     engine = db.create_engine('sqlite:///'+too_file)
