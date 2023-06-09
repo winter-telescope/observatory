@@ -57,7 +57,7 @@ class local_counter(object):
             self.remote_object = Pyro5.client.Proxy(uri)
         
         except Exception as e:
-            self.log('connection with remote object failed', exc_info = True)
+            self.log('connection with remote object failed')
     
     def update_state(self):
         try:

@@ -135,6 +135,7 @@ class control(QtCore.QObject):
         self.sunsim = False
         self.dometest = False
         self.mountsim = False
+        self.nochiller = False
         
         for currentArgument, currentValue in opts:
             if currentArgument in ("-n", "--ns_host"):
@@ -156,6 +157,10 @@ class control(QtCore.QObject):
             # option to use the simulated telescope mount
             if currentArgument in ('--mountsim'):
                 self.mountsim = True
+            
+            # option to use the simulated telescope mount
+            if currentArgument in ('--nochiller'):
+                self.nochiller = True
 
         print(f'sysControl: ns_host = {self.ns_host}')
         print(f'sysControl: verbose = {self.verbose}')
@@ -198,12 +203,14 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.testd)
                     
             # chiller daemon
-            if '--smallchiller' in opts:
-                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py", args = ['-n', self.ns_host])
+            if not self.nochiller:
+                if '--smallchiller' in opts:
+                    self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py", args = ['-n', self.ns_host])
+                else:
+                    self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py", args = ['-n', self.ns_host])
+                self.daemonlist.add_daemon(self.chillerd)
             else:
-                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py", args = ['-n', self.ns_host])
-            self.daemonlist.add_daemon(self.chillerd)
-            pass
+                pass
         
             # housekeeping data logging daemon (hkd = housekeeping daemon)
             self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py", 
@@ -283,7 +290,7 @@ class control(QtCore.QObject):
             
             # set up filter wheels
             winterfwargs = ['-n', self.ns_host]
-            self.winterfwd = daemon_utils.PyDaemon(name = 'winterfw', filepath = f"{wsp_path}/filterwheel/winterFilterd_sim.py", args = winterfwargs)
+            self.winterfwd = daemon_utils.PyDaemon(name = 'winterfw', filepath = f"{wsp_path}/filterwheel/winterFilterd.py", args = winterfwargs)
             self.daemonlist.add_daemon(self.winterfwd)
             
         if mode in ['r']:

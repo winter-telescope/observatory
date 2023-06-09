@@ -61,6 +61,7 @@ class EZStepper(QtCore.QObject):
         self.updateStateSignal.connect(self.updateState)
         self.resetCommandPassSignal.connect(self.resetCommandPass)
 
+
         # serial setup settings
         self.port = config['serial']['port']
         self.addr = config['serial']['address']
@@ -93,9 +94,9 @@ class EZStepper(QtCore.QObject):
         ## Startup:
         self.setupSerial()
         
-        time.sleep(5)
+        time.sleep(.5)
         
-        self.home()  # this will populate the state
+        self.home(verbose=verbose)  # this will populate the state
 
 
     # General Methods
@@ -152,7 +153,7 @@ class EZStepper(QtCore.QObject):
                             'pos_goal'  : self.pos_goal,
                             'encoder_pos' : self.encoder_pos,
                             'encoder_pos_goal' : self.encoder_pos_goal,
-                            'filter_pos' : self.filter_pos,
+                            'filter_pos' : self.getFilterPosition(),
                             'filter_goal' : self.filter_goal,
                             'homed'     : self.homed,
                             'is_homing' : self.is_homing,
@@ -224,7 +225,7 @@ class EZStepper(QtCore.QObject):
 
         if len(reply) == 1:
             self.log('Only one thing in reply. Probably want to try this again, in a bit.')
-            return
+            return None, None
         if verbose: self.log(f'raw reply is {reply}')
         reply_start_sequence = '/0'.encode('utf-8').hex()
         reply_end_sequence = '03'
@@ -232,9 +233,9 @@ class EZStepper(QtCore.QObject):
         try:
             end_list_index = reply.index(reply_end_sequence)
         except ValueError:
-            self.log('We are not getting a response we expect from the stepper.'
+            self.log('We are not getting a response we expect from the stepper. '
                      'We can try again, but we should consider power cycling.')
-            return
+            return None, None
         replystr = ''.join(reply[:end_list_index])
         start_index = replystr.find(reply_start_sequence) + len(reply_start_sequence)
 
@@ -333,6 +334,33 @@ class EZStepper(QtCore.QObject):
             'opto2': int(bitword[-4]),
         }
         return input_status
+    
+    
+    def getFilterPosition(self, verbose=False) -> int:
+        '''Get filter position based on encoder position and known filter
+        encoder locations.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Verbosity. The default is False.
+
+        Returns
+        -------
+        int
+            Filter position. Int in [1, 2, 3, 4] if encoder position is 
+            within the allowed tolerance of a known filter position.
+            Returns -1 if not.
+        '''
+        enc_loc = self.encoder_pos
+        arrived = {filter: abs(enc_loc - goal) < self.max_encoder_err
+                  for filter, goal in self.config['filters']['encoder_positions'].items()}
+        assert sum(arrived.values()) <= 1, "We think we are at more than one filter position, something has gone very wrong"
+        filter_pos = sum([k*v for k, v in arrived.items()])
+        if filter_pos < 1:
+            return -1
+        else:
+            return filter_pos
 
 
     def home(self, verbose=False):
@@ -346,25 +374,34 @@ class EZStepper(QtCore.QObject):
         self.is_moving = 1
         self.update_state()
 
-        self.log(f'Beginning homing sequence')
+        self.log('Beginning homing sequence')
         # send homing command
+        cmd = 'n0R'  # reset n mode to the default zero before homing command
+        status, response = self.send(cmd, verbose=verbose)
+        # applying settings and moving homing_steps until we hit the opto
         cmd = (
             f'm{self.move_max_volt}N1aE{self.encoder_ratio}'
             f'V{self.speed}f1Z{self.homing_steps}aC{self.max_encoder_err}'
-            f'au{self.overload_timeout}h{self.hold_current}z0n72R'
+            f'au{self.overload_timeout}h{self.hold_current}z0R'
             )
         status, response = self.send(cmd, verbose=verbose)
 
         arrived = False
         timed_out = False
         start_time = time.time()
-        while not (arrived or timed_out):
-            time.sleep(self.state_update_dt)
-            self.encoder_pos = self.getEncoderLoc()
-            self.pos = self.getMicrostepLoc()
-            arrived = abs(self.encoder_pos) < self.max_encoder_err
-            timed_out = ((time.time() - start_time) >
-                         self.config['stepper_config']['timeout_secs'])
+        try:
+            while not (arrived or timed_out):
+                time.sleep(self.state_update_dt)
+                self.encoder_pos = self.getEncoderLoc()
+                if verbose: self.log(f'while homing: encoder pos is {self.encoder_pos}')
+                time.sleep(self.state_update_dt)
+                self.pos = self.getMicrostepLoc()
+                if verbose: self.log(f'while homing: microstep pos is {self.pos}')
+                arrived = abs(self.encoder_pos) < self.max_encoder_err
+                timed_out = ((time.time() - start_time) >
+                             self.config['stepper_config']['timeout_secs'])
+        except Exception as e:
+            self.log(f'We ran into an error: {e}')
 
         if timed_out:
             self.log('Homing the filter timed out. Might want to power cycle.')
@@ -379,8 +416,11 @@ class EZStepper(QtCore.QObject):
             self.is_homing = 0
             self.is_moving = 0
             self.homed = 1
-            self.filter_pos = 0
+            self.filter_pos = 1
             self.update_state()
+            # we have homed successfully, go back to the mode we like
+            cmd = 'n72R'
+            status, response = self.send(cmd, verbose=verbose)
             self.log('Homing complete')
             return self.encoder_pos
         else:
@@ -430,20 +470,26 @@ class EZStepper(QtCore.QObject):
         return self.encoder_pos
 
 
-    def goToFilter(self, filter_num: str, verbose=False) -> int:
+    def goToFilter(self, filter_num: str, force=False, verbose=False) -> int:
         '''Move filter tray to the requested filter.
 
         Parameters
         ----------
         filter_num : int
             Number of requested filter. Should be one of 1, 2, 3, 4.
-
+        force : bool, default
+            Force filter to move even if it isn't homed.
         Returns
         -------
         int
             Final encoder position.
         '''
         assert filter_num in [1, 2, 3, 4], f"Filter {filter_num} not in [1, 2, 3, 4]"
+        if not force: 
+            assert self.homed == 1, 'Filter is not homed, we are not doing this!'
+        else:
+            self.log('Filter is not homed but we are forcing it to move anyway. '
+                     'Behaviour will likely be weird.')
         self.filter_goal = filter_num
         position = self.config['filters']['encoder_positions'][filter_num]
         self.log(f'Moving to filter number {filter_num}, at position {position}.')
@@ -589,7 +635,7 @@ class WINTERfw(QtCore.QObject):
 
     def log(self, msg, level = logging.INFO):
 
-        msg = f'WINTERfw {self.addr}: {msg}'
+        msg = f'WINTERfw: {msg}'
 
         if self.logger is None:
             print(msg)
@@ -633,11 +679,12 @@ class WINTERfw(QtCore.QObject):
 
                             })
         except Exception as e:
-            #self.log(f'Could not run getStatus: {e}')
+            if self.verbose:
+                self.log(f'Could not run getStatus: {e}')
             pass
         #print(self.state)
         return self.state
-
+        #print(f'I dunno I tried I guess?')
 
     @Pyro5.server.expose
     def goto(self, pos):
@@ -649,33 +696,38 @@ class WINTERfw(QtCore.QObject):
     def home(self):
         sigcmd = signalCmd('home')
         self.newCmdRequest.emit(sigcmd)
+        
+    @Pyro5.server.expose    
+    def send(self, serial_command, verbose=False):
+        sigcmd = signalCmd('send', serial_command, verbose=verbose)
+        self.newCmdRequest.emit(sigcmd)
 
 
     @Pyro5.server.expose
     def getEncoderLoc(self, verbose=False):
-        sigcmd = signalCmd('getEncoderLoc')
+        sigcmd = signalCmd('getEncoderLoc', verbose=verbose)
         self.newCmdRequest.emit(sigcmd)
 
 
     @Pyro5.server.expose
     def getMicrostepLoc(self, verbose=False):
-        sigcmd = signalCmd('getMicrostepLoc')
+        sigcmd = signalCmd('getMicrostepLoc', verbose=verbose)
         self.newCmdRequest.emit(sigcmd)
 
 
     @Pyro5.server.expose
     def getInputStatus(self, verbose=False):
-        sigcmd = signalCmd('getInputStatus')
+        sigcmd = signalCmd('getInputStatus', verbose=verbose)
         self.newCmdRequest.emit(sigcmd)
 
     @Pyro5.server.expose
     def goToLocation(self, microstep_loc):
-        sigcmd = signalCmd('goToLocation', microstep_loc)
+        sigcmd = signalCmd('goToLocation', microstep_loc, verbose=verbose)
         self.newCmdRequest.emit(sigcmd)
 
     @Pyro5.server.expose
     def goToFilter(self, filter_num):
-        sigcmd = signalCmd('goToFilter', filter_num)
+        sigcmd = signalCmd('goToFilter', filter_num, verbose=verbose)
         self.newCmdRequest.emit(sigcmd)
 
 
@@ -741,8 +793,8 @@ if __name__ == '__main__':
     argumentList = sys.argv[1:]
 
     verbose = False
-    doLogging = True
-    ns_host = '192.168.1.10'
+    doLogging = False
+    ns_host = '192.168.1.20'
     # Options
     options = "vpn:a:"
 

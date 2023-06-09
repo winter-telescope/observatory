@@ -128,33 +128,34 @@ class local_filterwheel(QtCore.QObject):
         self.remote_object.goto(pos)
 
     def home(self):
-
         self.remote_object.home()
-
+        
+    def send(self, serial_command, verbose=False):
+        return self.remote_object.send(self, serial_command, verbose=False)
 
     def getEncoderLoc(self, verbose=False):
-        self.remote_object.getEncoderLoc(verbose=verbose)
+        return self.remote_object.getEncoderLoc(verbose=verbose)
 
 
     def getMicrostepLoc(self, verbose=False):
-        self.remote_object.getMicrostepLoc(verbose=verbose)
+        return self.remote_object.getMicrostepLoc(verbose=verbose)
 
 
     def getInputStatus(self, verbose=False):
-        self.remote_object.getInputStatus(verbose=verbose)
+        return self.remote_object.getInputStatus(verbose=verbose)
 
 
     def goToLocation(self, microstep_loc):
-        self.remote_object.goToLocation(microstep_loc)
+        return self.remote_object.goToLocation(microstep_loc)
 
     def goToFilter(self, filter_num):
-        self.remote_object.goToFilter(filter_num)
+        return self.remote_object.goToFilter(filter_num)
 
 
-    def print_state(self):
-        self.update_state()
-        #print(f'Local Object: {self.msg}')
-        print(f'state = {self.state}')
+    # def print_state(self):
+    #     self.update_state()
+    #     #print(f'Local Object: {self.msg}')
+    #     print(f'state = {self.state}')
 
     def doCommand(self, cmd_obj):
         """
@@ -192,18 +193,18 @@ if __name__ == '__main__':
     verbose = True
 
     fw = local_filterwheel(wsp_path, config, daemon_pyro_name = 'WINTERfw',
-                       ns_host = '192.168.1.10', logger = logger, verbose = verbose)
+                       ns_host = '192.168.1.20', logger = logger, verbose = verbose)
 
-    fw.print_state()
+    fw.printState()
 
-    fw.goToFilter(3)
+    # fw.goToFilter(3)
 
     fw.goToFilter(2)
 
     while True:
         try:
             #cam.update_state()
-            fw.print_state()
+            fw.printState()
             time.sleep(1)
 
         except KeyboardInterrupt:

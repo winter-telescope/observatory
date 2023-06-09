@@ -34,5 +34,5 @@ stepper_config:
     hold_current: 0
     timeout_secs: 80
 
-state_update_dt: 0.1
-reply_timeout: 0.1
+state_update_dt: 0.2
+reply_timeout: 0.2
