@@ -316,12 +316,25 @@ telescope:
     home_az_degs: 0
     min_alt: 30
     max_alt: 85.0
+    #TODO deprecate this and move to the port-specific values below...
+    # WINTER Values: 
     rotator_field_angle_zeropoint: 155.0 
-    rotator_home_degs: -25.0
-    #rotator_max_degs: 140.0
-    rotator_max_degs: 160.0
-    #rotator_min_degs: -70.0
-    rotator_min_degs: -210.0
+    rotator_home_degs: 65.5
+    rotator_max_degs: 120.0
+    rotator_min_degs: -50.0
+    rotator:
+        winter:
+            rotator_field_angle_zeropoint: 155.0 
+            rotator_home_degs: 65.5
+            rotator_max_degs: 120.0
+            rotator_min_degs: -50.0
+        summer:
+            rotator_field_angle_zeropoint: 155.0 
+            rotator_home_degs: -25.0
+            #rotator_max_degs: 140.0
+            rotator_max_degs: 160.0
+            #rotator_min_degs: -70.0
+            rotator_min_degs: -210.0
 
 # define telemetry servers
 telemetry_server:
@@ -2082,7 +2095,7 @@ fields:
         dtype: float64
         rate: hk
         var: labjacks.state['LJ0_Flow2']
-    Flow_LJ0_3:
+    Flow_LJ0_3: # Port C
         ftype: raw
         label: 'Flow'
         units: 'lpm'

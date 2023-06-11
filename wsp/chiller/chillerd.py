@@ -772,7 +772,7 @@ if __name__ == "__main__":
     # set the defaults
     verbose = False
     doLogging = True
-    ns_host = None
+    ns_host = '192.168.1.215'
     
     options = "vpn:"
     long_options = ["verbose", "print", "ns_host:"]

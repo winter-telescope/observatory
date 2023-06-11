@@ -155,8 +155,8 @@ class control(QtCore.QObject):
                 self.dometest = True
             
             # option to use the simulated telescope mount
-            if currentArgument in ('--mountsim'):
-                self.mountsim = True
+            #if currentArgument in ('--mountsim'):
+            #    self.mountsim = True
             
             # option to use the simulated telescope mount
             if currentArgument in ('--nochiller'):
@@ -167,6 +167,7 @@ class control(QtCore.QObject):
         print(f'sysControl: sunsim = {self.sunsim}')
         print(f'sysControl: domesim = {self.domesim}')
         print(f'sysControl: dometest = {self.dometest}')
+        print(f'sysControl: mountsim = {self.mountsim}')
 
         try:
             nameserverd = Pyro5.core.locate_ns(host = self.ns_host)

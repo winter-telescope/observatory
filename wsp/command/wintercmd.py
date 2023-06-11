@@ -221,9 +221,13 @@ class Wintercmd(QtCore.QObject):
         self.mirror_cover = mirror_cover
         self.ephem = ephem
         self.defineParser()
+        """
+        # NPL 6-9-23: commenting out all the wrap warning stuff while we're
+        # doing early installs
+        
         # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
         self.telescope.signals.wrapWarning.connect(self.raiseWrapError)
-        
+        """
         # connect the warning from the chiller to shut off the TEC to a handling function
         #self.chiller.TECshutoffCmd.connect(self.handle_chiller_alarm)
         

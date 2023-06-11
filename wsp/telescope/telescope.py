@@ -90,12 +90,16 @@ class Telescope(pwi4_client.PWI4):
                 time.sleep(1)
             except Exception as e:
                 self.log(f'could not stop rotator! error: {e}')
+            # DO NOT MOVE THE ROTATOR UNTIL WE FIGURE OUT HOW IT MOVES!!!!!!!
+            #TODO: remove when we've tested the telescope motion with winter
+            # NPL 6-9-23
+            """
             try:
                 self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
                 time.sleep(1)
             except Exception as e:
                 self.log(f'could not send rotator to home position! error: {e}')
-            
+            """
     def log(self, msg):
         msg = f'telescope: {msg}'
         if self.logger is None:
@@ -195,6 +199,10 @@ class Telescope(pwi4_client.PWI4):
         self.wrap_check_enabled = False
         
     def check_for_wrap(self):
+        #TODO: uncomment this to turn the rotator position wrap check back on
+        # NPL 6-9-23
+        pass
+        """
         angle = self.state['rotator.mech_position_degs']
         #print(f'rotator angle = {angle}')
         min_angle = self.config['telescope']['rotator_min_degs']
@@ -211,7 +219,7 @@ class Telescope(pwi4_client.PWI4):
                 self.signals.wrapWarning.emit(angle)
                 # set the flag to false so we don't send a billion signals
                 self.wrap_check_enabled = False
-                
+        """      
     def fans_on(self): 
         self.request_with_status("/fans/on")
         
