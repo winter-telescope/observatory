@@ -199,14 +199,13 @@ class Telescope(pwi4_client.PWI4):
         self.wrap_check_enabled = False
         
     def check_for_wrap(self):
-        #TODO: uncomment this to turn the rotator position wrap check back on
-        # NPL 6-9-23
-        pass
-        """
+        
         angle = self.state['rotator.mech_position_degs']
         #print(f'rotator angle = {angle}')
-        min_angle = self.config['telescope']['rotator_min_degs']
-        max_angle = self.config['telescope']['rotator_max_degs']
+        active_port = int(self.state['m3.port'])
+        camname = self.config['telescope']['port'][active_port]
+        min_angle = self.config['telescope']['rotator'][camname]['rotator_min_degs']
+        max_angle = self.config['telescope']['rotator'][camname]['rotator_max_degs']
         self.wrap_status = (angle <= min_angle) or (angle >= max_angle)
         #print(f'Wrap Check: Current Field Angle {angle} outside range ({min_angle}, {max_angle})? {self.wrap_status}')
         
@@ -219,7 +218,7 @@ class Telescope(pwi4_client.PWI4):
                 self.signals.wrapWarning.emit(angle)
                 # set the flag to false so we don't send a billion signals
                 self.wrap_check_enabled = False
-        """      
+              
     def fans_on(self): 
         self.request_with_status("/fans/on")
         
@@ -245,7 +244,7 @@ if __name__ == '__main__':
     config_file = wsp_path + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     host = 'thor'
-    host = '192.168.1.106'
+    #host = '192.168.1.106'
     telescope = Telescope(config, host, logger = None)
     print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
     #%%

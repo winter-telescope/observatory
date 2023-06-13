@@ -48,7 +48,7 @@ class local_camera(QtCore.QObject):
     
     imageSaved = QtCore.pyqtSignal()
     
-    def __init__(self, base_directory, config, daemon_pyro_name,
+    def __init__(self, base_directory, config, camname, daemon_pyro_name,
                  ns_host = None,
                  logger = None, verbose = False,
                  ):
@@ -57,6 +57,7 @@ class local_camera(QtCore.QObject):
         # Define attributes
         self.base_directory = base_directory
         self.config = config
+        self.camname = camname
         self.daemonname = daemon_pyro_name # the name that the camera daemon is registered under
         self.ns_host = ns_host # the ip address of the pyro name server, eg `192.168.1.10`
         self.state = dict()
@@ -226,7 +227,8 @@ class local_camera(QtCore.QObject):
             self.state.update({key : self.remote_state[key]})
     
         #self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
-        self.state.update({'is_connected' : self.connected,
+        self.state.update({'camname' : self.camname,
+                           'is_connected' : self.connected,
                            'imdir'        : self.imdir,
                            'imname'       : self.imname,
                            'imstarttime'  : self.imstarttime,
@@ -237,7 +239,7 @@ class local_camera(QtCore.QObject):
         #self.log(f'making default header')
         # make the baseline header
         try:
-            header = fitsheader.GetHeader(self.hk_state, self.state)
+            header = fitsheader.GetHeader(self.config, self.hk_state, self.state)
         except Exception as e:
             self.log(f'could not build default header: {e}')
             header = []
@@ -304,7 +306,14 @@ class local_camera(QtCore.QObject):
         
         self.log(f'updating state dictionaries')
         # make sure all the state dictionaries are up-to-date
+        # update the camera state by querying the camera daemon
         self.update_state()
+        # update the housekeeping state by grabbing it from the housekeeping server
+        self.update_hk_state()
+        
+        #print(f'hk_state = {self.hk_state}')
+        #print()
+        #print(f'state = {self.state}')
         
         # now make the fits header
         self.log(f'making FITS header')

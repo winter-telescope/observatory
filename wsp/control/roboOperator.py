@@ -27,8 +27,9 @@ import subprocess
 import pandas as pd
 import traceback
 import glob
+import json
 import pytz
-import pandas as pd
+#import pandas as pd
 import sqlalchemy as db
 
 #import wintertoo.validate
@@ -38,8 +39,8 @@ import sqlalchemy as db
 wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
 
-from utils import utils
-from schedule import schedule
+#from utils import utils
+#from schedule import schedule
 from schedule import ObsWriter
 from ephem import ephem_utils
 from telescope import pointingModelBuilder
@@ -309,6 +310,7 @@ class RoboOperator(QtCore.QObject):
         
         
         
+        
         # create exposure timer to wait for exposure to finish
         self.waiting_for_exposure = False
         self.exptimer = QtCore.QTimer()
@@ -336,13 +338,16 @@ class RoboOperator(QtCore.QObject):
         
         
         ### Some methods which will log things we pass to the fits header info
+        self.resetObsValues()
+
+        """
         self.operator = self.config.get('fits_header',{}).get('default_operator','')
         self.programPI = ''
         self.programID = 0
         self.qcomment = ''
         self.targtype = ''
         self.targname = ''
-        
+        """
         
         
         ### CONNECT SIGNALS AND SLOTS ###
@@ -448,7 +453,7 @@ class RoboOperator(QtCore.QObject):
             pass
     
     
-    def update_state(self):
+    def update_state(self, printstate = False):
         self.get_observatory_ready_status()
         self.get_observatory_stowed_status()
         fields = ['ok_to_observe', 
@@ -456,11 +461,9 @@ class RoboOperator(QtCore.QObject):
                   'target_az',
                   'target_ra_j2000_hours',
                   'target_dec_j2000_deg',
-                  #'lastSeen',
-                  'visitExpTime'
-                  'dithnum'
+                  'visitExpTime',
                   'obsHistID',
-                  'priority',
+                  'targetPriority',
                   'operator',
                   'obstype',     
                   'programPI',
@@ -470,9 +473,11 @@ class RoboOperator(QtCore.QObject):
                   'programName',
                   'qcomment',
                   'targtype',
-                  'targName',
+                  'targetName',
                   'maxAirmass',
-                  'ditherNumber',
+                  #'ditherNumber',
+                  'num_dithers',
+                  'dithnum',
                   'ditherStepSize',
                   'fieldID',
                   'observatory_stowed',
@@ -486,10 +491,12 @@ class RoboOperator(QtCore.QObject):
                 #    val = int(val)
                 self.robostate.update({field : val})
             except Exception as e:
-                #print(f'error: {e}')
+                if printstate:
+                    print(f'could not add {field} to robostate: {e}')
                 pass
-         
-        #print(json.dumps(self.robostate, indent = 2))
+        if printstate:
+                print(f'robostate = {json.dumps(self.robostate, indent = 3)}')
+
             
     
     def rotator_stop_and_reset(self):
@@ -1700,6 +1707,7 @@ class RoboOperator(QtCore.QObject):
                     # step through each filter to focus, and run a focus loop
                     # 1. change filter to filterID
                     system = 'filter wheel'
+                    """
                     if self.camname == 'summer':
                         # get filter number
                         for position in self.config['filter_wheels'][self.camname]['positions']:
@@ -1714,7 +1722,20 @@ class RoboOperator(QtCore.QObject):
                         else:
                             self.log(f'current filter = {self.state["Viscam_Filter_Wheel_Position"]}, changing to {filter_num}')
                             self.do(f'command_filter_wheel {filter_num}')
-            
+                    """
+                    # get filter number
+                    for position in self.config['filter_wheels'][self.camname]['positions']:
+                        if self.config['filter_wheels'][self.camname]['positions'][position].lower() == self.filter_scheduled:
+                            filter_num = position
+                        else:
+                            pass
+                    if filter_num == self.fw.state['filter_pos']:
+                        self.log('requested filter matches current, no further action taken')
+                    else:
+                        self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
+                        #self.do(f'command_filter_wheel {filter_num}')
+                        self.do(f'fw_goto {filter_num} --{self.camname}')
+                        
                     for i in range(nflats):
                         try:
                             self.log(f'setting up flat #{i + 1}')
@@ -1751,8 +1772,8 @@ class RoboOperator(QtCore.QObject):
                             else:
                                 self.log(f'setting exptime to estimated {flat_exptime} s')
                             
-                            system = 'ccd'
-                            self.do(f'ccd_set_exposure {flat_exptime:0.3f}')
+                            system = 'camera'
+                            self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
                             time.sleep(2)
                             
                             qcomment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
@@ -2455,7 +2476,35 @@ class RoboOperator(QtCore.QObject):
                 
                 return
                 
-            
+    def resetObsValues(self):
+        """
+        resets all the items which keep track of the schedule entries,
+        like obsHistID, fieldID, etc
+        this prevents them from dangling around and getting erroneously 
+        assigned to later images
+        """
+        self.obsHistID = -1
+        self.ra_deg_scheduled = -1
+        self.dec_deg_scheduled = -1
+        self.filter_scheduled = ''
+        self.visitExpTime = -1
+        self.targetPriority = -1
+        self.programPI = ''
+        self.programID = -1
+        self.programName = ''
+        self.validStart = -1
+        self.validStop = -1
+        # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
+        self.maxAirmass = 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)
+        self.num_dithers = -1
+        self.ditherStepSize = 0
+        self.fieldID = -1
+        self.targetName = ''
+        self.qcomment = ''
+        self.obstype = ''
+        self.num_dithers = -1
+        self.dithnum = -1
+        
     def do_currentObs(self, currentObs = 'default'):
         """
         do the observation of whatever is the current observation in self.schedule.currentObs
@@ -2527,6 +2576,7 @@ class RoboOperator(QtCore.QObject):
         self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
         self.targetName = str(currentObs.get('targName', ''))
         self.qcomment = str(currentObs.get('origin_filename', ''))
+        self.obstype = 'SCIENCE'
         # if num_dithers = 0, you'll get no images... so change it to 1
         if self.num_dithers == 0:
             self.num_dithers = 1
@@ -2563,10 +2613,15 @@ class RoboOperator(QtCore.QObject):
                 frame = astropy.coordinates.AltAz(obstime = obstime_utc, location = self.ephem.site)
                 j2000_coords = astropy.coordinates.SkyCoord(ra = self.j2000_ra_scheduled, dec = self.j2000_dec_scheduled, frame = 'icrs')
                 local_coords = j2000_coords.transform_to(frame)
-                self.local_alt_deg = local_coords.alt.deg
-                self.local_az_deg = local_coords.az.deg
+                self.target_alt = local_coords.alt.deg
+                self.target_az = local_coords.az.deg
                 
                 #msg = f'executing observation of obsHistID = {self.lastSeen} at (alt, az) = ({self.alt_scheduled:0.2f}, {self.az_scheduled:0.2f})'
+                
+                # force the state to update so it has all the observation parameters
+                self.update_state(printstate = True)
+                #print(f'after updating state (in do_currentObs), self.dithnum = {self.dithnum}')
+                # now go off and execute the observation
                 
                 # print out to the slack log a bunch of info (only once per target)
                 if dithnum == 0:
@@ -2576,7 +2631,7 @@ class RoboOperator(QtCore.QObject):
                     
                     self.announce(f'>> Target (RA, DEC) = ({self.j2000_ra_scheduled.hour} h, {self.j2000_dec_scheduled.deg} deg)')
                     
-                    self.announce(f'>> Target Current (ALT, AZ) = ({self.local_alt_deg} deg, {self.local_az_deg} deg)')
+                    self.announce(f'>> Target Current (ALT, AZ) = ({self.target_alt} deg, {self.target_az} deg)')
                 
                 self.announce(f'>> Executing Dither Number [{dithnum +1}/{self.num_dithers}]')
                 
@@ -2630,7 +2685,7 @@ class RoboOperator(QtCore.QObject):
                     
                     # get filter number
                     for position in self.config['filter_wheels'][self.camname]['positions']:
-                        if self.config['filter_wheels'][self.camname]['positions'][position].lower() == self.filter_scheduled:
+                        if self.config['filter_wheels'][self.camname]['positions'][position] == self.filter_scheduled:
                             filter_num = position
                         else:
                             pass
@@ -2644,7 +2699,7 @@ class RoboOperator(QtCore.QObject):
                     if dithnum == 0:
                         if self.test_mode:
                             self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
-                            self.do(f'robo_observe altaz {self.local_alt_deg} {self.local_az_deg} --test')
+                            self.do(f'robo_observe altaz {self.target_alt} {self.target_az} --test')
                         else:
                             
                             # now do the observation
@@ -2724,6 +2779,7 @@ class RoboOperator(QtCore.QObject):
 
             
         # if we got here, then we are out of the loop, either because we did all the dithers, or there was a problem
+        self.resetObsValues()
         self.checkWhatToDo()
     
     def log_observation_and_gotoNext(self, gotoNext = True, logObservation = True):
@@ -2843,6 +2899,10 @@ class RoboOperator(QtCore.QObject):
                              'FOCUS'    : '-foc'})
         
         obstype_option = obstype_dict.get(obstype, '')
+        self.log(f'updating self.obstype to {obstype}')
+        self.obstype = obstype
+        self.log(f'updating state')
+        self.update_state()
         
         try:
             """
@@ -2872,6 +2932,13 @@ class RoboOperator(QtCore.QObject):
         """
         # if we got here, the observation was complete
         self.observation_completed = True
+    
+    def is_rotator_mech_angle_possible(self, predicted_rotator_mechangle, rotator_min_degs,
+                                       rotator_max_degs):
+        return (predicted_rotator_mechangle > rotator_min_degs) and (
+                predicted_rotator_mechangle < rotator_max_degs)
+    
+    
     
     def do_observation(self, targtype, target = None, tracking = 'auto', field_angle = 'auto', obstype = 'TEST', comment = ''):
         """
@@ -2922,6 +2989,9 @@ class RoboOperator(QtCore.QObject):
         targtype = targtype.lower()
         # set the target type
         self.targtype = targtype
+        
+        # set the obstype
+        self.obstype = obstype
         
         # update the observation type: DO THIS THRU ROBO OPERATOR SO WE'RE SURE IT'S SET
         #self.doTry(f'robo_set_obstype {obstype}', context = context, system = '')
@@ -3046,8 +3116,10 @@ class RoboOperator(QtCore.QObject):
             # TODO
             self.log(f'handling object observations')
             # set the comment on the fits header 
-            self.log(f'setting qcomment to {target}')
-            self.qcomment = target
+            #self.log(f'setting qcomment to {target}')
+            #self.qcomment = target
+            self.log(f'setting targetName to {target}')
+            self.targetName = target
             # make sure it's a string
             if not (type(target) is str):
                 self.log(f'for object observation, target must be a string object name, got type = {type(target)}')
@@ -3097,7 +3169,67 @@ class RoboOperator(QtCore.QObject):
 
         ####### Check if field angle will violate cable wrap limits
         #                 and adjust as needed.
+        # Viraj's field rotation checker 6-11-23
+        # allows pointing to north up (preference) or north down
+        # handle the field angle
+        
+        lat = astropy.coordinates.Angle(self.config['site']['lat']).rad
+        dec = self.target_dec_j2000_deg * np.pi / 180.0
+        lst = obstime.sidereal_time('mean').rad
+        hour_angle = lst - ra_deg * np.pi / 180.0
+        if (hour_angle < -1 * np.pi):
+            hour_angle += 2 * np.pi
+        if (hour_angle > np.pi):
+            hour_angle -= 2 * np.pi
 
+        parallactic_angle = np.arctan2(np.sin(hour_angle), \
+                                       np.tan(lat) * np.cos(dec) - \
+                                       np.sin(dec) * np.cos(hour_angle)) * \
+                            180 / np.pi
+
+        
+
+
+        possible_target_field_angles = [self.target_field_angle,
+                                        self.target_field_angle - 360.0,
+                                        self.target_field_angle + 360.0,
+                                        self.target_field_angle - 180.0,
+                                        self.target_field_angle + 180.0]
+        
+        # NPL updated this formula, there was a bug here that's been around for a while.
+        # copied the formula from Kevin Ivarsen's (Planewave) predict_pw1000_rotator_mech.py
+        # script:
+            # mech_degs = target_field_angle_degs - status.mount.altitude_degs - status.mount.field_angle_at_target_degs
+
+        possible_target_mech_angles = [(target_field_angle - parallactic_angle -self.target_alt) 
+                                      for target_field_angle in possible_target_field_angles]
+        
+        messages = ["No rotator wrap predicted",
+                    "Rotator wrapping < min, adjusting by -360 deg.",
+                    "Rotator wrapping > max, adjusting by +360 deg.",
+                    "Rotator wrapping < min, adjusting by -180 deg.",
+                    "Rotator wrapping > max, adjusting by +180 deg.",
+                    ]
+
+        print("\n##########################################")
+        for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
+            if self.is_rotator_mech_angle_possible(
+                    predicted_rotator_mechangle=possible_target_mech_angle,
+                    rotator_min_degs=self.config['telescope']['rotator'][self.camname][
+                        'rotator_min_degs'],
+                    rotator_max_degs=self.config['telescope']['rotator'][self.camname][
+                        'rotator_max_degs']):
+                self.target_mech_angle = possible_target_mech_angle
+                self.target_field_angle = possible_target_field_angles[ind]
+                print(messages[ind])
+                print(f"Adjusted field angle --> {self.target_field_angle}")
+                print(f"New target mech angle = {self.target_mech_angle}")
+                break
+        print("##########################################")
+
+        
+        """
+        # Rob's original version based on Viraj's memo
         if (True):
             lat = astropy.coordinates.Angle(self.config['site']['lat']).rad
             dec = self.target_dec_j2000_deg*np.pi/180.0
@@ -3118,14 +3250,14 @@ class RoboOperator(QtCore.QObject):
             print("\n##########################################")
             print("Predicted rotator angle: {} degrees".format(predicted_rotator_mechangle))
             if (predicted_rotator_mechangle > \
-                self.config['telescope']['rotator_min_degs'] \
+                self.config['telescope']['rotator'][self.camname]['rotator_min_degs'] \
                 and predicted_rotator_mechangle < \
-                self.config['telescope']['rotator_max_degs']):
+                self.config['telescope']['rotator'][self.camname]['rotator_max_degs']):
                 print("No rotator wrap predicted")
                 self.target_mech_angle = predicted_rotator_mechangle
                 
             if (predicted_rotator_mechangle < \
-                self.config['telescope']['rotator_min_degs']):
+                self.config['telescope']['rotator'][self.camname]['rotator_min_degs']):
                 print("Rotator wrapping < min, adjusting")
                 self.target_field_angle -= 360.0
                 self.target_mech_angle = predicted_rotator_mechangle + 360.0
@@ -3133,7 +3265,7 @@ class RoboOperator(QtCore.QObject):
                 print(f"New target mech angle = {self.target_mech_angle}")
                 
             if (predicted_rotator_mechangle > \
-                self.config['telescope']['rotator_max_degs']):
+                self.config['telescope']['rotator'][self.camname]['rotator_max_degs']):
                 print("Rotator wrapping > max, adjusting")
                 # Changed line below from + to -= as a test...RAS
                 self.target_field_angle -= 360.0
@@ -3156,7 +3288,7 @@ class RoboOperator(QtCore.QObject):
             
             ###########################################
 
-
+        """
         
         #### Validate the observation ###
         # check if alt and az are in allowed ranges
@@ -3243,18 +3375,26 @@ class RoboOperator(QtCore.QObject):
                 self.logger.info(f'robo: mount_goto_ra_dec_j2000 running in thread {threading.get_ident()}')
                 self.do(f'mount_goto_ra_dec_j2000 {self.target_ra_j2000_hours} {self.target_dec_j2000_deg}')
             
-            # turn on tracking
-            if tracking:
-                self.do(f'mount_tracking_on')
+            #NPL 6-11-23 moved the tracking on call to after the rotator move
 
             # slew the rotator
             if not self.mountsim:
                 self.do(f'rotator_goto_field {self.target_field_angle}')
                 
+                #TODO: remove when we know how to run the winter rotator
+                # NPL 6-11-23
+                #rotator_home_pos = self.config['telescope']['rotator'][self.camname]['rotator_home_degs']
+                #self.do(f'rotator_goto_mech {rotator_home_pos}')
+                #self.do(f'rotator_goto_mech {self.target_mech_angle}')
+                
                 #TODO: NPL 5/23/23 wtf is this 3 second sleep doing here??
                 #time.sleep(3)
                 
             self.current_mech_angle = self.target_mech_angle
+            
+            # turn on tracking
+            if tracking:
+                self.do(f'mount_tracking_on')
             
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
@@ -3307,6 +3447,12 @@ class RoboOperator(QtCore.QObject):
                              'FOCUS'    : '-foc'})
         
         obstype_option = obstype_dict.get(obstype, '')
+        self.log(f'updating self.obstype to {obstype}')
+        self.obstype = obstype
+        self.log(f'updating state')
+        self.update_state()
+        
+
         
         try:
             self.do(f'doExposure {obstype_option} --{self.camname}')

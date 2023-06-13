@@ -310,7 +310,7 @@ robotic_manager_triggers:
 telescope:
     host: "thor"
     simhost: '192.168.1.106'
-    port: 8220
+    comm_port: 8220
     home_alt_degs: 45.0
     #home_az_degs: 349.0
     home_az_degs: 0
@@ -322,12 +322,15 @@ telescope:
     rotator_home_degs: 65.5
     rotator_max_degs: 120.0
     rotator_min_degs: -50.0
+    port:
+        1: 'winter'
+        2: 'summer'
     rotator:
         winter:
             rotator_field_angle_zeropoint: 155.0 
             rotator_home_degs: 65.5
             rotator_max_degs: 120.0
-            rotator_min_degs: -50.0
+            rotator_min_degs: -90.0
         summer:
             rotator_field_angle_zeropoint: 155.0 
             rotator_home_degs: -25.0
@@ -660,8 +663,8 @@ filter_wheels:
     winter:
         positions:
             1: 'dark'
-            2: 'Y'
-            3: 'J'
+            2: 'J'
+            3: 'Y'
             4: 'Hs'
 
 ########### POINTING MODEL PARAMETERS ###########
@@ -2035,21 +2038,21 @@ fields:
         ftype: raw
         label: 'ID'
         units: None
-        dtype: float64
+        dtype: int64
         rate: slow
         var: robostate["obsHistID"]
     robo_fieldID:
         ftype: raw
         label: 'ID'
         units: None
-        dtype: float64
+        dtype: int64
         rate: slow
         var: robostate["fieldID"]
     robo_programID:
         ftype: raw
         label: 'ID'
         units: None
-        dtype: float64
+        dtype: int64
         rate: slow
         var: robostate["programID"]
     robo_observatory_ready:
@@ -2066,13 +2069,6 @@ fields:
         dtype: int64
         rate: hk
         var: robostate["observatory_stowed"]  
-    robo_programPriority:
-        ftype: raw
-        label: 'Value'
-        units: None
-        dtype: float64
-        rate: hk
-        var: robostate["programPriority"]
     robo_targetPriority:
         ftype: raw
         label: 'Value'
@@ -2080,6 +2076,55 @@ fields:
         dtype: float64
         rate: hk
         var: robostate["targetPriority"]
+    robo_maxAirmass:
+        ftype: raw
+        label: 'X'
+        units: None
+        dtype: float64
+        rate: hk
+        var: robostate["maxAirmass"]
+    robo_validStart:
+        ftype: raw
+        label: 'MJD'
+        units: None
+        dtype: float64
+        rate: hk
+        var: robostate["validStart"]
+    robo_validStop:
+        ftype: raw
+        label: 'MJD'
+        units: None
+        dtype: float64
+        rate: hk
+        var: robostate["validStop"]
+    robo_dithnum:
+        ftype: raw
+        label: 'Value'
+        units: None
+        dtype: int64
+        rate: hk
+        var: robostate["dithnum"]
+    robo_num_dithers:
+        ftype: raw
+        label: 'Value'
+        units: None
+        dtype: int64
+        rate: hk
+        var: robostate["num_dithers"]
+    robo_ditherStepSize:
+        ftype: raw
+        label: 'Angle'
+        units: 'as'
+        dtype: float64
+        rate: hk
+        var: robostate["ditherStepSize"]
+    robo_visitExpTime:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: robostate["visitExpTime"]
     ### LABJACK STUFF###
     Flow_LJ0_1:
         ftype: raw
@@ -4428,8 +4473,10 @@ header_fields:
         var: robostate["programName"]
     qcomment:
         var: robostate["qcomment"]
-    targtype:
+    targetType:
         var: robostate["targtype"]
+    targetName:
+        var: robostate["targetName"]
     pwi4_version:
         var: telescope.state["pwi4.version"]
     mount_model_filename:

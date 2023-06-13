@@ -129,37 +129,40 @@ class control(QtCore.QObject):
         # first, figure out what nameserver address to use
         
         # set defaults:
-        self.ns_host = self.config['pyro5_ns_default_addr']
-        self.verbose = False
-        self.domesim = False
-        self.sunsim = False
-        self.dometest = False
-        self.mountsim = False
-        self.nochiller = False
+        self.ns_host    = self.config['pyro5_ns_default_addr']
+        self.verbose    = False
+        self.domesim    = False
+        self.sunsim     = False
+        self.dometest   = False
+        self.mountsim   = False
+        self.nochiller  = False
         
+        print('sysControl: Parsing opts...')
         for currentArgument, currentValue in opts:
-            if currentArgument in ("-n", "--ns_host"):
+            print(f'sysControl: currentArgument, currentValue = ({currentArgument}, {currentValue})')
+            
+            if currentArgument in ["-n", "--ns_host"]:
                 self.ns_host = currentValue
                 
-            if currentArgument in ("-v", "--verbose"):
+            if currentArgument in ["-v", "--verbose"]:
                 self.verbose = True
                 
-            if currentArgument in ("--domesim"):
+            if currentArgument in ["--domesim"]:
                 self.domesim = True
 
-            if currentArgument in ('--sunsim'):              
+            if currentArgument in ['--sunsim']:              
                 self.sunsim = True
 
             # option to ignore whether the shutter is open, which let you test with the dome closed
-            if currentArgument in ('--dometest'):
+            if currentArgument in ['--dometest']:
                 self.dometest = True
             
             # option to use the simulated telescope mount
-            #if currentArgument in ('--mountsim'):
-            #    self.mountsim = True
+            if currentArgument in ['--mountsim']:
+                self.mountsim = True
             
             # option to use the simulated telescope mount
-            if currentArgument in ('--nochiller'):
+            if currentArgument in ['--nochiller']:
                 self.nochiller = True
 
         print(f'sysControl: ns_host = {self.ns_host}')
@@ -168,6 +171,7 @@ class control(QtCore.QObject):
         print(f'sysControl: domesim = {self.domesim}')
         print(f'sysControl: dometest = {self.dometest}')
         print(f'sysControl: mountsim = {self.mountsim}')
+        print(f'sysControl: nochiller = {self.nochiller}')
 
         try:
             nameserverd = Pyro5.core.locate_ns(host = self.ns_host)
@@ -341,7 +345,7 @@ class control(QtCore.QObject):
             host = self.config['telescope']['host']
         self.telescope = telescope.Telescope(config = self.config, 
                                              host = host, 
-                                             port = self.config['telescope']['port'],
+                                             port = self.config['telescope']['comm_port'],
                                              mountsim = self.mountsim,
                                              logger = logger)
 
@@ -374,13 +378,13 @@ class control(QtCore.QObject):
         """
         # init the sumnmer camera interface
         self.summercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
-                                          daemon_pyro_name = 'SUMMERcamera', ns_host = self.ns_host,
-                                          logger = self.logger, verbose = self.verbose)
+                                                camname = 'summer', daemon_pyro_name = 'SUMMERcamera', 
+                                                ns_host = self.ns_host, logger = self.logger, verbose = self.verbose)
         
         # init the winter camera interface
         self.wintercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
-                                          daemon_pyro_name = 'WINTERcamera', ns_host = self.ns_host,
-                                          logger = self.logger, verbose = self.verbose)
+                                                camname = 'winter', daemon_pyro_name = 'WINTERcamera', 
+                                                ns_host = self.ns_host, logger = self.logger, verbose = self.verbose)
         
         # init the winter filterwheel interface
         self.winterfw = filterwheel.local_filterwheel(base_directory = self.base_directory, config = self.config,

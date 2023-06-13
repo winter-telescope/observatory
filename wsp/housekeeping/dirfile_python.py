@@ -186,7 +186,10 @@ class Dirfile(object):
             if self.entries[field].dtype == 'FLOAT64':
                 val = float(val)
             elif self.entries[field].dtype == 'INT64':
-                val = int(val)
+                try:
+                    val = int(val)
+                except Exception as e:
+                    print(f'error with field = {field}, val = {val}: {e}')
             self.entries[field].fp.write(struct.pack(self.entries[field].ctype,val))
         
         # clear the write buffer. if you don't do this you can't check the file

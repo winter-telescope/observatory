@@ -29,7 +29,15 @@ import astropy.io.fits as fits
 import pytz
 import numpy as np
 
-def GetHeader(state, imageinfo):
+
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, wsp_path)
+print(f'telescope: wsp_path = {wsp_path}')
+
+from utils import utils
+
+def GetHeader(config, state, imageinfo):
     
     
     # state is the WSP housekeeping state metadata
@@ -49,6 +57,7 @@ def GetHeader(state, imageinfo):
     header =list()
     
     # populate the header. this would be better done driven by a config file
+    camname = imageinfo.get('camname', '')
     
     ###### BASIC PARAMETERS ######
     header.append(('OBSTYPE',  imageinfo.get('imtype', ''),            'Observation Type'))
@@ -74,11 +83,14 @@ def GetHeader(state, imageinfo):
     ra_obj = astropy.coordinates.Angle(ra_hours * u.hour)
     # recasting to get rid of any numpy type objects for passing through the pyro server
     header.append(('RA',           str(ra_obj.to_string(unit = u.deg, sep = ':')),  'Requested right ascension (deg:m:s)'))
+    header.append(('RADEG',           ra_obj.deg,  'Requested right ascension (deg)'))
+
     # DEC
     dec_deg = state.get('mount_dec_j2000_deg', 0)
     dec_obj = astropy.coordinates.Angle(dec_deg * u.deg)
     header.append(('DEC',          str(dec_obj.to_string(unit = u.deg, sep = ':')), 'Requested declination (deg:m:s)'))
-    
+    header.append(('DECDEG',           dec_obj.deg,  'Requested declination (deg)'))
+
     header.append(('TELRA',        str(ra_obj.to_string(unit = u.deg, sep = ':')),  'Telescope right ascension (deg:m:s)'))
     header.append(('TELDEC',       str(dec_obj.to_string(unit = u.deg, sep = ':')), 'Telescope declination (deg:m:s)'))
     
@@ -110,11 +122,11 @@ def GetHeader(state, imageinfo):
     ###priority 
     # not implemented
     ### ProgPI
-    header.append(('PROGPI',       state.get('robo_programPI',''),                    'schedule program ID'))
+    header.append(('PROGPI',       state.get('programPI',''),                    'schedule program ID'))
     ### progID
     header.append(('PROGID',       state.get('robo_programID',''),                    'schedule program PI'))
     ### progName
-    header.append(('PROGNAME',     state.get('robo_programName',''),                  'schedule program name'))
+    header.append(('PROGNAME',     state.get('programName',''),                  'schedule program name'))
     ### validStart
     header.append(('VALSTART',     state.get('robo_validStart',''),                   'schedule valid start (MJD)'))
     ### validStop
@@ -125,13 +137,13 @@ def GetHeader(state, imageinfo):
     header.append(('MXAIRMAS',    state.get('robo_maxAirmass',''),                   'scheduled max airmass'))
 
     ### ditherNumber
-    header.append(('NUMDITHS',     state.get('robo_ditherNumber', ''),                 'total number of dithers'))
+    header.append(('NUMDITHS',     state.get('robo_num_dithers', ''),                 'total number of dithers'))
     header.append(('DITHNUM',      state.get('robo_dithnum', ''),                      'this dither number (eg 1 out of total of 5)'))
     header.append(('DITHSTEP',     state.get('robo_ditherStepSize',''),                'dither step size'))
     ### fieldID
     header.append(('FIELDID',      state.get('robo_fieldID',''),                       'Field ID number'))
     ### targName
-    header.append(('TARGNAME',     state.get('robo_targName',''),                      'target name'))
+    header.append(('TARGNAME',     state.get('targetName',''),                      'target name'))
 
     
     #header.append(('QCOMMENT',     state.get('qcomment',''),                       'Queue comment'))
@@ -153,10 +165,20 @@ def GetHeader(state, imageinfo):
 
     
     ###### FILTER PARAMETERS ######
-
-    filtername = state.get('filtername', '')
-    filterID = state.get('filterID', '')
-    filterpos = state.get('filterpos', '')
+    
+    #filtername = state.get('filtername', '')
+    #filterID = state.get('filterID', '')
+    #filterpos = state.get('filterpos', '')
+    
+    
+    filterpos = state.get(f'{camname}_fw_filter_pos', '') # eg 1
+    try:
+        filterID = config['filter_wheels'][camname]['positions'][filterpos] # eg. 'r'
+        filtername = config['filters'][camname][filterID]['name'] # eg. "SDSS r' (Chroma)"
+    except:
+        filterID = ''
+        filtername = ''
+        
     header.append(('FILTER',        filtername,        'Filter name'))
     header.append(('FILTERID',      filterID,          'Filter ID'))
     header.append(('FILPOS',        filterpos,         'Filter position'  ))
@@ -164,8 +186,7 @@ def GetHeader(state, imageinfo):
                     
 
     ###### CAMERA PARAMETERS #####
-    instrument = imageinfo.get('camname', '').upper()
-    header.append(('INSTRUME',     instrument,        'Instrument name'))
+    header.append(('INSTRUME',     camname,        'Instrument name'))
     header.append(('EXPTIME',      imageinfo.get('exptime', -1),                   'Requested exposure time (sec)'))
 
 
@@ -175,15 +196,19 @@ def GetHeader(state, imageinfo):
     try:
         # add the image acquisition timestamp to the fits header
         image_starttime_utc = imageinfo.get('imstarttime')
-        image_starttime_utc_object = Time(image_starttime_utc)
-        header.append(('UTC',          image_starttime_utc.strftime('%Y%m%d_%H%M%S.%f'),  'Time of observation '))
+        image_starttime_utc_datetime_object = datetime.strptime(image_starttime_utc, "%Y%m%d-%H%M%S-%f")
+        image_starttime_utc_object = Time(image_starttime_utc_datetime_object)
+    
+        header.append(('UTC',          image_starttime_utc_datetime_object.strftime('%Y%m%d_%H%M%S.%f'),  'Time of observation '))
         header.append(('UTCISO',       image_starttime_utc_object.iso,                    'Time of observation in ISO format'))
-        header.append(('UTCSHUT',      image_starttime_utc.strftime('%Y%m%d_%H%M%S.%f'),  'UTC time shutter open'))
-        header.append(('UTC-OBS',      image_starttime_utc.strftime('%Y%m%d %H%M%S.%f'),  'UTC time shutter open'))
-        header.append(('DATE-OBS',     image_starttime_utc.strftime('%Y%m%d %H%M%S.%f'),  'UTC date of observation (MM/DD/YY)'))
+        header.append(('UTCSHUT',      image_starttime_utc_datetime_object.strftime('%Y%m%d_%H%M%S.%f'),  'UTC time shutter open'))
+        header.append(('UTC-OBS',      image_starttime_utc_datetime_object.strftime('%Y%m%d %H%M%S.%f'),  'UTC time shutter open'))
+        header.append(('DATE-OBS',     image_starttime_utc_datetime_object.strftime('%Y%m%d %H%M%S.%f'),  'UTC date of observation (MM/DD/YY)'))
         header.append(('OBSJD',        image_starttime_utc_object.jd,                     'Julian day corresponds to UTC'))
         header.append(('OBSMJD',       image_starttime_utc_object.mjd,                    'MJD corresponds to UTC'))
-    except:
+        
+    except Exception as e:
+        print(f'could not make the time entries: {e}')
         header.append(('UTC',          '',  'Time of observation '))
         header.append(('UTCISO',       '',  'Time of observation in ISO format'))
         header.append(('UTCSHUT',      '',  'UTC time shutter open'))
@@ -218,7 +243,7 @@ def GetHeader(state, imageinfo):
     #DEWPOINT
     header.append(('DEWPOINT',     state.get('Tdp_outside_pcs', ''),           'Dewpoint (C)'))
     #WETNESS
-    header.append(('WETNESS',      state.get('dome_wetness_pcs', ''),          'Wetness sensor reading'))
+    header.append(('WETNESS',      state.get('dome_wetness_status', ''),          'Wetness sensor reading'))
     #HUMIDITY
     header.append(('HUMIDITY',     state.get('rh_outside_pcs', ''),            'Relative humidity (%)'))
     #PRESSURE
@@ -271,9 +296,12 @@ if __name__ == '__main__':
         print(f'could not get WSP state: {e}')
         state = {}
         
+    # load the config
+    config_file = wsp_path + '/config/config.yaml'
+    config = utils.loadconfig(config_file)
     
-        
-    header = GetHeader(state, {})
+    camstate = dict({'imname': 'WINTERcamera_20230612-001809-576', 'imstarttime': '20230612-001809-576', 'imtype': 'TEST'})
+    header = GetHeader(config, state, camstate)
     
     #header = dict({"DICTKEY" : "DictValue"})
     
@@ -285,9 +313,12 @@ if __name__ == '__main__':
     # or a list of  objects
     
     if type(header) is list:
-        for card in header:
+        for element in header:
+            
             try:
-                hdu.header.append(*card)
+                print(element)
+                card = fits.Card(*element)
+                hdu.header.append(card)
             except Exception as e:
                 print(f'could not add {card[0]} to header: {e}')
     elif type(header) is dict:
@@ -298,4 +329,5 @@ if __name__ == '__main__':
                 print(f'could not add {key} to header: {e}')
 
     hdu.writeto(os.path.join(os.getenv("HOME"), 'data','test.fits'), overwrite = True)
+    
     
