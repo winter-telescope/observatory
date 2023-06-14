@@ -794,6 +794,7 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # check if we need to focus the telescope
             #---------------------------------------------------------------------
+            """
             graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
             if self.test_mode == True:
                 self.log(f"not checking focus bc we're in test mode")
@@ -815,7 +816,7 @@ class RoboOperator(QtCore.QObject):
                         # now exit and rerun the check
                         self.checktimer.start()
                         return
-            
+            """
             # here we should check if the temperature has changed by some amount and nudge the focus if need be
             
             
@@ -1335,7 +1336,7 @@ class RoboOperator(QtCore.QObject):
         self.lastcmd = cmd
         self.wintercmd.parse(cmd)
     
-    def do_startup(self):
+    def do_startup(self, startup_cameras = False):
         """
         NPL 12-15-21: porting over the steps from Josh's total_startup to here
         for better error handling.
@@ -1444,6 +1445,32 @@ class RoboOperator(QtCore.QObject):
                 return
         
         self.announce(':greentick: mirror covers open!')
+
+        if startup_cameras:
+            system = 'camera'
+            
+            for camname in self.camdict:
+                try:
+                    msg = f'starting up {camname} camera!'
+                    self.announce(msg)
+                    # startup the camera
+                    self.do(f'startupCamera --{camname}')
+                    
+                    time.sleep(2) 
+                    
+                    
+                    #self.do(f'tecStart --{camname}')
+                    self.announce(':greentick: camera startup complete!')
+
+                except Exception as e:
+                    msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err)
+                    return
+            
+            
 
         # if we made it all the way to the bottom, say the startup is complete!
         self.startup_complete = True

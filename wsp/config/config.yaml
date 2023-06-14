@@ -162,6 +162,15 @@ robotic_manager_triggers:
             sundir: -1
             repeat_on_restart: False
             cmd: 'mount_fans_on'
+        chiller_on:
+            conds:
+                cond1:
+                    type: 'time'
+                    val: '14:00:0.0'
+                    cond: '>'
+            sundir: -1
+            repeat_on_restart: False
+            cmd: 'chiller_start'             
         startup:
             conds:
                 cond1:
@@ -170,7 +179,8 @@ robotic_manager_triggers:
                     cond: '<'
             sundir: 0
             repeat_on_restart: False
-            cmd: 'total_startup'
+            #cmd: 'total_startup --cameras'
+            cmd: 'do_startup --cameras'
         load_schedule:
             conds:
                 cond1:
@@ -211,25 +221,7 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'robo_do_calibration -f'
-        # don't do the test image if you're not doing the focusing
-        #test_image:
-        #    conds:
-        #        cond1:
-        #            type: 'sun'
-        #            val: -11.0
-        #            cond: '<'
-        #    repeat_on_restart: False
-        #    sundir: -1
-        #    cmd: 'robo_observe altaz 75 270'
-        #focus:
-        #    conds:
-        #        cond1:
-        #            type: 'sun'
-        #            val: -12.0
-        #            cond: '<'
-        #    sundir: 0
-        #    repeat_on_restart: False
-        #    cmd: 'doFocusLoop --roborun'
+
         start_obs:
             conds:
                cond1:
@@ -262,18 +254,8 @@ robotic_manager_triggers:
             nextmorning: True   
             repeat_on_restart: False          
             sundir: 1
-            cmd: 'robo_do_calibration -f -d -b'
+            cmd: 'robo_do_calibration -f -d'
         shutdown:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -4
-                    cond: '>'
-            nextmorning: True
-            repeat_on_restart: False
-            sundir: 1
-            cmd: 'stow_observatory'
-        fans_off:
             conds:
                 cond1:
                     type: 'sun'
@@ -282,7 +264,35 @@ robotic_manager_triggers:
             nextmorning: True
             repeat_on_restart: False
             sundir: 1
+            cmd: 'stow_observatory --cameras'
+        fans_off:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 1
+                    cond: '>'
+            nextmorning: True
+            repeat_on_restart: False
+            sundir: 1
             cmd: 'mount_fans_off'
+        chiller_stop:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 3
+                    cond: '>'
+                cond2:
+                    type: 'sun'
+                    val: 40
+                    cond: '>'
+                cond3:
+                    type: 'time'
+                    val: '6:00:00.0'
+                    cond: '>'
+            nextmorning: True
+            repeat_on_restart: False
+            sundir: 1
+            cmd: 'chiller_stop'
         kill:
             conds:
                 cond1:

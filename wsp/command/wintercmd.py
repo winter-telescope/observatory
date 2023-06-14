@@ -4617,10 +4617,25 @@ class Wintercmd(QtCore.QObject):
         df_2.to_sql('Fields', con=connection, if_exists='replace', index_label = "fieldID")
         print("Finished")
     @cmd
-    def total_startup(self):
-        
+    #def total_startup(self):
+    def do_startup(self):    
         # NPL 12-15-21: porting this over to roboOperator
-        sigcmd = signalCmd('do_startup')
+        
+        
+        self.defineCmdParser('start up the observatory and ready it for observations')
+        
+        # option to startup the cameras
+        self.cmdparser.add_argument('--cameras', '-c',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = "<startup_cameras?>")
+        
+        self.getargs()
+        print(f'wintercmd: args = {self.args}')
+        
+        startup_cameras = self.args.cameras
+        
+        sigcmd = signalCmd('do_startup', startup_cameras = startup_cameras)
         
         self.roboThread.newCommand.emit(sigcmd)
         
@@ -4680,61 +4695,7 @@ class Wintercmd(QtCore.QObject):
 
                 break 
         
-        """
-        if self.state['dome_control_status'] == 0:
-            try:
-                self.dome_takecontrol()
-            except Exception:
-                print('Could not take control of dome')
-        elif self.state['dome_control_status']:
-            print('Dome control is remote, skipping take control step')
-        try:
-            self.mount_connect()
-            if self.state['mount_is_tracking']:
-                self.mount_tracking_off()
-            self.mount_az_on()
-            self.mount_alt_on()
-            self.mount_home()
-            self.waitForCondition('mount_is_slewing', False)
-            print('Mount is connected and homed')
-        except Exception:
-            print('Could not home the mount')
-        if self.state['dome_tracking_status']:
-            self.dome_tracking_off()
-        try:
-            if self.state['rotator_is_enabled'] == 0:
-                self.rotator_enable()
-            self.rotator_home()
-            self.waitForCondition('rotator_is_slewing', 0)
-            print('Rotator is enabled and homed')
-        except Exception:
-            print('Could not home the rotator')
-        try:
-            self.mirror_cover_connect()
-            self.mirror_cover_open()
-            print('Mirror cover is connected and opened')
-        except Exception:
-            print('Could not connect and open mirror cover')
-        try:
-            self.m2_focuser_enable()
-            print('Focuser is enabled')
-        except Exception:
-            print('Could not enable the focuser')
-        if self.state['dome_home_status'] != 1:
-            try:
-                self.dome_go_home()
-                self.waitForCondition('dome_home_status', 1)
-                print("Dome is home")
-            except Exception:
-                print('Could not home the dome')
-        elif self.state['dome_home_status'] == 1:
-            print('Dome is already home')
-        try:
-            self.dome_open()
-            print('Opening dome')
-        except Exception:
-            print('Could not open dome')
-        """
+        
     
     @cmd
     def total_shutdown(self):
