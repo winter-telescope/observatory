@@ -7,12 +7,26 @@ pdus:
         ip: 192.168.1.14
         brand: 'Digital Loggers'
         outlets:
-            1: 'Router'
-            2: 'Switch'
-            3: 'Chiller'
-            4: 'Guider'
-            5: 'CCD'
-            6: 'computers'
-            7: 'dead'
-            8: 'SUMMERacc'
+            1: 'Empty'
+            2: 'Empty'
+            3: 'Empty'
+            4: 'Empty'
+            5: 'Switch'
+            6: 'Router'
+            7: 'Empty'
+            8: 'Empty'
+        startup: 11111111
+    pdu2:
+        pdu_number: 2
+        ip: 192.168.1.75
+        rand: 'Digital Loggers'
+        outlets:
+            1: 'FPA Power'
+            2: 'WINTER GenPurpose'
+            3: 'Empty'
+            4: 'Empty'
+            5: 'Odin'
+            6: 'SUMMER Acc'
+            7: 'Thor'
+            8: 'Freya'
         startup: 11111111

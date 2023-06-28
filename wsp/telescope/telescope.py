@@ -54,7 +54,7 @@ class Telescope(pwi4_client.PWI4):
     """
     
     
-    def __init__(self, config, host="localhost", port=8220, logger = None):
+    def __init__(self, config, host="localhost", port=8220, mountsim = False, logger = None):
     
         super(Telescope, self).__init__(host = host, port = port)
     
@@ -64,23 +64,42 @@ class Telescope(pwi4_client.PWI4):
         self.signals = TelescopeSignals()
         self.wrap_check_enabled = True#False
         self.wrap_status = False
+        self.mountsim = mountsim
         self.logger = logger
         
         # put things in a safe position on startup
         try:
             self.mount_connect()
             time.sleep(1)
+        except Exception as e:
+            self.log(f'could not connect to telescope! error: {e}')
+        try:
             self.mount_stop()
             time.sleep(1)
+        except Exception as e:
+            self.log(f'could not stop mount! error: {e}')
+        try:
             self.mount_tracking_off()
             time.sleep(1)
-            self.rotator_stop()
-            time.sleep(1)
-            self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
-            time.sleep(1)
         except Exception as e:
-            self.log(f'could not communicate with telescope! error: {e}')
+            self.log(f'could not turn mount tracking off! error: {e}')
         
+        if not self.mountsim:
+            try:
+                self.rotator_stop()
+                time.sleep(1)
+            except Exception as e:
+                self.log(f'could not stop rotator! error: {e}')
+            # DO NOT MOVE THE ROTATOR UNTIL WE FIGURE OUT HOW IT MOVES!!!!!!!
+            #TODO: remove when we've tested the telescope motion with winter
+            # NPL 6-9-23
+            """
+            try:
+                self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
+                time.sleep(1)
+            except Exception as e:
+                self.log(f'could not send rotator to home position! error: {e}')
+            """
     def log(self, msg):
         msg = f'telescope: {msg}'
         if self.logger is None:
@@ -180,10 +199,13 @@ class Telescope(pwi4_client.PWI4):
         self.wrap_check_enabled = False
         
     def check_for_wrap(self):
+        
         angle = self.state['rotator.mech_position_degs']
         #print(f'rotator angle = {angle}')
-        min_angle = self.config['telescope']['rotator_min_degs']
-        max_angle = self.config['telescope']['rotator_max_degs']
+        active_port = int(self.state['m3.port'])
+        camname = self.config['telescope']['port'][active_port]
+        min_angle = self.config['telescope']['rotator'][camname]['rotator_min_degs']
+        max_angle = self.config['telescope']['rotator'][camname]['rotator_max_degs']
         self.wrap_status = (angle <= min_angle) or (angle >= max_angle)
         #print(f'Wrap Check: Current Field Angle {angle} outside range ({min_angle}, {max_angle})? {self.wrap_status}')
         
@@ -196,7 +218,7 @@ class Telescope(pwi4_client.PWI4):
                 self.signals.wrapWarning.emit(angle)
                 # set the flag to false so we don't send a billion signals
                 self.wrap_check_enabled = False
-                
+              
     def fans_on(self): 
         self.request_with_status("/fans/on")
         
@@ -221,8 +243,9 @@ if __name__ == '__main__':
     # load the config
     config_file = wsp_path + '/config/config.yaml'
     config = utils.loadconfig(config_file)
-    
-    telescope = Telescope(config, 'thor', logger = None)
+    host = 'thor'
+    #host = '192.168.1.106'
+    telescope = Telescope(config, host, logger = None)
     print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
     #%%
     print(f'Getting Updated State from Telescope:')

@@ -49,7 +49,10 @@ HEADERSIZE = 10
 # This will print: [22        ] ie 22 and then 8 zeros
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind((socket.gethostname(),7000))
+hostname = socket.gethostname()
+host = socket.gethostbyname(hostname)
+#s.bind((socket.gethostname(),34633))
+s.bind((host, 34633))
 s.listen(5)
 
 # now make the message always this fixed length

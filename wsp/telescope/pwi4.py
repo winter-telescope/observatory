@@ -515,8 +515,9 @@ class PWI4HttpCommunicator:
 
 if __name__ == '__main__':
     
-    
-    telescope = PWI4('thor')
+    host = 'thor'
+    host = '192.168.1.106'
+    telescope = PWI4(host)
     print(f'site.lmst_hours = {telescope.state.site.lmst_hours}')
     print(f'mount.is_connected = {telescope.state.mount.is_connected}')
     print()

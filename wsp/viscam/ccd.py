@@ -45,7 +45,7 @@ class local_ccd(QtCore.QObject):
     
     imageSaved = QtCore.pyqtSignal()
     
-    def __init__(self, base_directory, config, logger):
+    def __init__(self, base_directory, config, logger, verbose = False):
         super(local_ccd, self).__init__()
         
         # Define attributes
@@ -58,6 +58,7 @@ class local_ccd(QtCore.QObject):
         self.hk_connected = False
         self.logger = logger
         self.default = self.config['default_value']
+        self.verbose = verbose
         
         # placeholders for getting the image parameters from ccd_daemon
         self.image_directory = 'UNKNOWN'
@@ -99,7 +100,8 @@ class local_ccd(QtCore.QObject):
                 self.hk_state = self.remote_hk_state_object.GetStatus()
                 
             except Exception as e:
-                self.logger.info(f'local ccd could not update remote housekeeping state: {e}')
+                if self.verbose:
+                    self.logger.info(f'local ccd could not update remote housekeeping state: {e}')
                 pass    
         
     ###    
@@ -158,8 +160,8 @@ class local_ccd(QtCore.QObject):
             except Exception as e:
                 self.image_directory = 'UNKNOWN'
                 self.image_filename = 'UNKNOWN'
-                
-                self.logger.error(f'ccd: could not get last image filename due to {e}')#', {tb.format_exc()}')
+                if self.verbose:
+                    self.logger.error(f'ccd: could not get last image filename due to {e}')#', {tb.format_exc()}')
     
     def getLastImagePath(self):
         

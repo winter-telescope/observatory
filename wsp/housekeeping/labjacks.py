@@ -20,6 +20,8 @@ import time
 import signal
 from labjack import ljm
 import matplotlib.pyplot as plt
+from datetime import datetime
+import logging
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.getcwd())
@@ -31,19 +33,32 @@ class labjack(object):
 
     def __init__(self,config_file):
         self.config = utils.loadconfig(config_file)
-        self.connect()
-        self.input_channels = []
-        self.setup_channels()
-        self.read_all()
+        self.state = dict()
+        self.dt_since_last_reconnect = 10000
+        self.reinitialize()
 
     def connect(self):
+        self.last_connection_attempt_timestamp = datetime.utcnow().timestamp()
+        self.dt_since_last_reconnect = datetime.utcnow().timestamp() - self.last_connection_attempt_timestamp
         self.lj_type = self.config['lj_type']
         self.conn_type = self.config['conn_type']
         self.address = self.config['address']
         try:
             self.handle = ljm.openS(self.lj_type, self.conn_type, self.address)
+            self.connected = True
         except Exception as e:
+            self.connected = False
             print(f'Could not connect to labjack [type = {self.lj_type}, conn_type = {self.conn_type}, addr = {self.address}] due to {type(e)}: {e}')
+    
+    def reinitialize(self):
+        
+        if self.dt_since_last_reconnect >= 10.0:
+            self.connect()
+        if self.connected:
+            self.input_channels = []
+            self.setup_channels()
+            self.read_all()
+    
     def setup_ain(self):
         """
         loop through all the AIN entries in the config file.
@@ -104,7 +119,31 @@ class labjack(object):
 
         # send the options to the labjack
         ljm.eWriteNames(self.handle, len(opts), opts.keys(), opts.values())
+    
+    def setup_counters(self):
+        # set up channels to work as pulse counters, eg for the flowmeters
+        channel_type = 'DIGITAL_COUNTERS'
+        digital_counters = self.config[channel_type]
+        """
+        loop through all the DIGITAL_COUNTERS entries in the config file.
+        each digital counter is an entry in the digital counter list. Set
+        all of these channels to be digital counters 
+        """
+        print("SETTING UP DIGITAL COUNTERS:")
+        #Enable clock0.  Default frequency is 80 MHz.
+        ljm.eWriteName(self.handle, "DIO_EF_CLOCK0_ENABLE", 1)
+        for ch in digital_counters:
+            # add the digital counters to the counter channel list
+            # note we're not just adding the channel name, we're adding the call to get the count!
+            # this is unlike the AIN or DIO reads where we just want the voltage at the input
+            self.input_channels.append(f'{ch}_EF_READ_A')
+            print(f'    > adding  {ch}')
+            ljm.eWriteName(self.handle, f"{ch}_EF_ENABLE", 0)
+            ljm.eWriteName(self.handle, f"{ch}_EF_INDEX", 8) # use 8 for counter, 3 for freq
+            ljm.eWriteName(self.handle, f"{ch}_EF_ENABLE",1)
+            print(f'    > added  {ch}')
 
+        
     def setup_dac(self):
         pass
 
@@ -113,7 +152,12 @@ class labjack(object):
             self.setup_ain()
         except Exception as e:
             pass
-
+        
+        try:
+            self.setup_counters()
+        except Exception as e:
+            #pass
+            print(f'error adding digital counters: {e}')
         try:
             self.setup_dio()
         except Exception as e:
@@ -131,7 +175,7 @@ class labjack(object):
     def dio_off(self):
         # turn off a dio channel
         pass
-
+    
     def read_all(self):
         # read all of the inputs
         #print(f'reading labjack at {self.address}')
@@ -153,13 +197,20 @@ class labjack_set(object):
 
     it can be used to read the state of all the labjacks with one function
     """
-    def __init__(self, config, base_directory):
-
-        self.labjacks = dict() # a dictionary of labjack objects
+    def __init__(self, config, base_directory, logger = None, verbose = True):
         self.config = config
         self.base_directory = base_directory
+        self.verbose = verbose
+        self.logger = logger
+        self.labjacks = dict() # a dictionary of labjack objects
         self.setup_labjacks()
-
+    
+    def log(self, msg, level = logging.INFO):
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)
+    
     def setup_labjacks(self):
         """
         takes in the winter configuration and the base directory,
@@ -169,7 +220,7 @@ class labjack_set(object):
         for lj_name in self.config['labjacks']:
                 try:
                     # create a new labjack object by loading the config for each labjack
-                    labjack_config_file = self.base_directory + '/config/' + self.config['labjacks'][lj_name]['config']
+                    labjack_config_file = os.path.join(self.base_directory, 'config', self.config['labjacks'][lj_name]['config'])
                     print(f'labjacks: trying to create new labjack object for labjack [{lj_name}] using config from {labjack_config_file}')
                     lj = labjack(labjack_config_file)
 
@@ -189,8 +240,16 @@ class labjack_set(object):
         input_channels for each labjack
         """
         for lj_name in self.labjacks.keys():
-            self.labjacks[lj_name].read_all()
-
+            try:
+                if self.labjacks[lj_name].connected:    
+                    self.labjacks[lj_name].read_all()
+                else:
+                    self.labjacks[lj_name].reinitialize()
+            except Exception as e:
+                if self.verbose:
+                    self.log(f'could not read labjack {lj_name}: {e}, attempting to reinitialize...')
+                self.labjacks[lj_name].reinitialize()
+                
 
     def print_all_labjack_states(self):
         for lj_name in self.labjacks.keys():
@@ -210,17 +269,45 @@ if __name__ == '__main__':
 
     lj = labjack_set(config, wsp_path)
 
-    ch = []
-
-    for i in range(10):
-        lj.read_all_labjacks()
-        v = lj.labjacks['lj0'].state['AIN1']
-        ch.append(v )
-        print(f'lj0: AIN1 = {v}')
-        time.sleep(0.5)
-
+    voltarr = []
+    flowarr = []
+    
+    oldtime = datetime.now().timestamp()
+    oldcount = ljm.eReadName(lj.labjacks['LJ0'].handle,"DIO0_EF_READ_A" )
+    
+    while True:
+    #for i in range(100):
+        try:
+            newtime = datetime.now().timestamp()
+            lj.read_all_labjacks()
+            #dt = ljm.eReadName(lj.labjacks['lj0'].handle,"DIO0_EF_READ_A_F" )
+            
+            #newcount = ljm.eReadName(lj.labjacks['lj0'].handle,"DIO0_EF_READ_A" )
+            """
+            delta_count = newcount - oldcount
+            dt = newtime - oldtime
+            
+            flow = delta_count/dt/1000*60.0
+            oldtime = newtime
+            oldcount = newcount
+            
+            #freq = dt
+            #freq = 1.0/dta
+            #flow = freq/1000.0*60.0 # LPM
+            #flow = dt
+            v = lj.labjacks['lj0'].state['AIN1']
+            
+            voltarr.append(v )
+            flowarr.append(flow)
+            print(f'lj0: AIN1 = {v}, Flow = {flow} LPM')
+            """
+            time.sleep(0.5)
+            
+        except KeyboardInterrupt:
+            break
+#%%
     plt.figure()
-    plt.plot(ch)
+    plt.plot(flowarr[1:])
     #%%
     """
     fioState = 1

@@ -32,10 +32,12 @@ import signal
 from datetime import datetime
 import threading
 import logging
-from pymodbus.client.sync import ModbusSerialClient
-import time
-from datetime import datetime
-import json
+import getopt
+try:
+    from pymodbus.client.sync import ModbusSerialClient
+except:
+    from pymodbus.client.serial import ModbusSerialClient
+
 
 
 # add the wsp directory to the PATH
@@ -44,7 +46,6 @@ sys.path.insert(1, wsp_path)
 print(f'wsp_path = {wsp_path}')
 
 
-from housekeeping import data_handler
 from daemon import daemon_utils
 from utils import utils
 from utils import logging_setup
@@ -193,7 +194,7 @@ class CommandHandler(QtCore.QObject):
             try:
                 # SEND THE COMMAND
                 
-                reply = self.sock.write_register(address = addr, value = value, unit = 1)
+                reply = self.sock.write_register(address = addr, value = value, slave = 1)
                 if not reply.isError():
                     self.log(f'CommandHandler: Command sent successfully! reply = {reply}')
                 else:
@@ -394,7 +395,7 @@ class StatusMonitor(QtCore.QObject):
                         try:
                             addr = self.config['registers'][reg]['addr'] + self.modbus_offset
                             
-                            reply = self.sock.read_holding_registers(address = addr, count = 1, unit = 1)
+                            reply = self.sock.read_holding_registers(address = addr, count = 1, slave = 1)
                             if not reply.isError():
                                     # get the raw value from the register list
                                     rawval = reply.registers[0]
@@ -505,7 +506,7 @@ class StatusThread(QtCore.QThread):
         
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.statusMonitor.pollStatus)
-        self.timer.start(self.update_dt)
+        self.timer.start(int(self.update_dt))
         self.exec_()
 
 
@@ -722,7 +723,7 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, config, logger = None, verbose = False, parent=None ):            
+    def __init__(self, config, ns_host, logger = None, verbose = False, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
 
         self.config = config
@@ -742,7 +743,7 @@ class PyroGUI(QtCore.QObject):
                                verbose = self.verbose)
         
               
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.chiller, name = 'chiller')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.chiller, name = 'chiller', ns_host = ns_host)
         self.pyro_thread.start()
         
 
@@ -766,50 +767,33 @@ if __name__ == "__main__":
     #### GET ANY COMMAND LINE ARGUMENTS #####
     
     args = sys.argv[1:]
-    
-    
-    modes = dict()
-    modes.update({'-v' : "Running in VERBOSE mode"})
-    modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
+    print(f'args = {args}')
     
     # set the defaults
     verbose = False
     doLogging = True
+    ns_host = '192.168.1.10'
     
-    # Debugging mode
-    #verbose = True
-    #doLogging = False
-    
-    #print(f'args = {args}')
-    
-    if len(args)<1:
-        pass
-    
-    else:
-        for arg in args:
-            
-            if arg in modes.keys():
-                
-                # remove the dash when passing the option
-                opt = arg.replace('-','')
-                if opt == 'v':
-                    print(modes[arg])
-                    verbose = True
-                    
-                elif opt == 'p':
-                    print(modes[arg])
-                    doLogging = False
-                
-                
-            else:
-                print(f'Invalid mode {arg}')
+    options = "vpn:"
+    long_options = ["verbose", "print", "ns_host:"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
     
 
-
-    
-    
-    
-    
     ##### RUN THE APP #####
     app = QtCore.QCoreApplication(sys.argv)
 
@@ -828,7 +812,7 @@ if __name__ == "__main__":
         logger = None
     
     # set up the main app. note that verbose is set above
-    main = PyroGUI(config = config, logger = logger, verbose = verbose)
+    main = PyroGUI(config = config, ns_host = ns_host, logger = logger, verbose = verbose)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)

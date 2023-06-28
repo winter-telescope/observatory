@@ -14,6 +14,7 @@ its own daemon
 import os
 import Pyro5.core
 import Pyro5.server
+import Pyro5.client
 #import time
 from PyQt5 import QtCore
 #from PyQt5, uic, QtGui, QtWidgets
@@ -29,6 +30,7 @@ import astropy.units as u
 from datetime import datetime
 import json
 import logging
+import getopt
 
 
 # add the wsp directory to the PATH
@@ -46,9 +48,10 @@ from utils import logging_setup
 
 
 class EphemMon(object):
-    def __init__(self, config, dt = 1000, name = 'ephemd', sunsim = False, verbose = False, logger = None):
+    def __init__(self, config, ns_host = None, dt = 1000, name = 'ephemd', sunsim = False, verbose = False, logger = None):
         
         self.config = config
+        self.ns_host = ns_host
         self.name = name
         self.logger = logger
         self.dt = dt
@@ -58,8 +61,10 @@ class EphemMon(object):
         self.sunsim = sunsim
         self.verbose = verbose
         self.state = dict()
+        self.sunsimState = dict()
         self.observatoryState = dict() # this will hold the current state of the FULL instrument
-        
+        self.connected = False
+        self.sunsim_connected = False
         # set up site
         lat = astropy.coordinates.Angle(self.config['site']['lat'])
         lon = astropy.coordinates.Angle(self.config['site']['lon'])
@@ -106,8 +111,12 @@ class EphemMon(object):
     # observatory state polling:
     def init_remote_object(self):
         # init the remote object
+        if self.verbose:
+            self.log(f'trying to re-init conn with state daemon, ns_host = {self.ns_host}')
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:state")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('state')
+            self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
         except Exception as e:
             self.connected = False
@@ -121,6 +130,11 @@ class EphemMon(object):
     def update_observatoryState(self):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
+        if self.verbose:
+            self.log(f'ephemd: telemetry connected = {self.connected}')
+            if self.sunsim:
+                self.log(f'ephemd: sunsim connected = {self.sunsim_connected}')
+        
         if not self.connected:
             self.init_remote_object()
         else:
@@ -128,6 +142,7 @@ class EphemMon(object):
                 self.observatoryState = self.remote_object.GetStatus()
                 
             except Exception as e:
+                self.connected = False
                 if self.verbose:
                     print(f'ephemd: could not update observatory state: {e}')
                 pass
@@ -138,6 +153,7 @@ class EphemMon(object):
                 try:
                     self.sunsimState = self.sunsim_remote_object.GetStatus()
                 except Exception as e:
+                    self.sunsim_connected = False
                     if True:#self.verbose:
                         self.logger.exception(f'ephemd: could not update sunsim state: {e}')
                     pass
@@ -147,8 +163,12 @@ class EphemMon(object):
         self.current_az = self.observatoryState.get('mount_az_deg', None)
     def init_sunsim_remote_object(self):
         # init the remote object
+        if self.verbose:
+            self.log(f'trying to re-init conn with sunsim daemon, ns_host = {self.ns_host}')
         try:
-            self.sunsim_remote_object = Pyro5.client.Proxy("PYRONAME:sunsim")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('sunsim')
+            self.sunsim_remote_object = Pyro5.client.Proxy(uri)
             self.sunsim_connected = True
         except Exception as e:
             self.sunsim_connected = False
@@ -203,7 +223,7 @@ class EphemMon(object):
                 self.sun_rising = True
             else:
                 self.sun_rising = False
-            self.moonalt, self.moonaz = self.get_moon_altaz(obstime = self.time_utc, time_format = 'datetime')
+            self.moonalt, self.moonaz, self.moonra, self.moondec = self.get_moon_altaz_radec(obstime = self.time_utc, time_format = 'datetime')
             self.state.update({'sunalt' : self.sunalt})
             self.state.update({'moonalt' : self.moonalt})
             self.state.update({'moonaz' : self.moonaz})
@@ -379,6 +399,8 @@ class EphemMon(object):
     
     @Pyro5.server.expose
     def getState(self):
+        if self.verbose:
+            print(self.state)
         return self.state
     
     def printState(self):
@@ -389,13 +411,14 @@ class EphemMon(object):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, config, sunsim = False, verbose = False, logger = None, parent=None ):            
+    def __init__(self, config, ns_host = None, sunsim = False, verbose = False, logger = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
-        self.ephem = EphemMon(config = config, dt = 200, name = 'ephem', sunsim = sunsim, verbose = verbose, logger = logger)
+        self.ephem = EphemMon(config = config, ns_host = ns_host, dt = 200, name = 'ephem', sunsim = sunsim, verbose = verbose, logger = logger)
                 
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.ephem, name = 'ephem')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.ephem, name = 'ephem',
+                                                   ns_host = ns_host)
         self.pyro_thread.start()
         
         """
@@ -418,42 +441,43 @@ def sigint_handler( *args):
 
 if __name__ == "__main__":
     
+    
+    #### GET ANY COMMAND LINE ARGUMENTS #####
+    
     args = sys.argv[1:]
-    
-    
-    modes = dict()
-    modes.update({'-v' : "Running in VERBOSE mode"})
-    modes.update({'--sunsim' : "Running in simulated sun mode"})
+    print(f'args = {args}')
     
     # set the defaults
     verbose = False
     doLogging = True
+    ns_host = '192.168.1.10'
     sunsim = False
-    #print(f'args = {args}')
     
-    if len(args)<1:
-        pass
-    
-    else:
-        for arg in args:
+    options = "vpn:s"
+    long_options = ["verbose", "print", "ns_host:","sunsim"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
             
-            if arg in modes.keys():
-                
-                # remove the dash when passing the option
-                opt = arg.replace('-','')
-                if opt == 'v':
-                    print(f'ephemd: {modes[arg]}')
-                    verbose = True
-                elif opt == 'p':
-                    print(f'ephemd: {modes[arg]}')
-                    doLogging = False
-                elif opt == 'sunsim':
-                    print(f'ephemd: {modes[arg]}')
-                    sunsim = True
-
-            else:
-                print(f'ephemd: Invalid mode {arg}')
-
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
+        
+        elif currentArgument in ("-s", "--sunsim"):
+            sunsim = True
+            
+    print(f'ephemd: launching with ns_host = {ns_host}, sunsim = {sunsim}')
+    
     ##### RUN THE APP #####
     app = QtCore.QCoreApplication(sys.argv)
 
@@ -470,7 +494,7 @@ if __name__ == "__main__":
     else:
         logger = None
     
-    main = PyroGUI(config, sunsim = sunsim, verbose = verbose, logger = logger)
+    main = PyroGUI(config, ns_host = ns_host, sunsim = sunsim, verbose = verbose, logger = logger)
 
     
     signal.signal(signal.SIGINT, sigint_handler)

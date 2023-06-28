@@ -22,7 +22,7 @@ from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import yaml
 import signal
 from pathlib import Path
-
+import getopt
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.abspath(__file__))
@@ -30,10 +30,10 @@ sys.path.insert(1, wsp_path)
 print(f'wsp: wsp_path = {wsp_path}')
 
 # winter modules
-from power import power
-from telescope import pwi4
+#from power import power
+#from telescope import pwi4
 #from telescope import telescope
-from command import commandServer_multiClient
+#from command import commandServer_multiClient
 #from housekeeping import easygetdata
 from control import systemControl
 from utils import utils
@@ -163,14 +163,46 @@ if __name__ == "__main__":
 
     # GET ANY COMMAND LINE ARGUMENTS
     args = sys.argv[1:]
+    print(f'wsp.py: args = {args}')
+
+    options = "rimvn:"
+    long_options = ["robo", "instrument", "manual", "verbose", "ns_host=", 
+                    "smallchiller", "nochiller",
+                    "sunsim", "domesim", "dometest", "mountsim"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'wsp.py: Parsing sys.argv...')
+    print(f'wsp.py: arguments = {arguments}')
+    print(f'wsp.py: values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-r", "--robo"):
+            mode = 'r'
+        
+        elif currentArgument in ("-i", "--instrument"):
+            mode = 'i'
+        
+        elif currentArgument in ("-m", "--manual"):
+            mode = 'm'
+            
+        
     modes = dict()
-    modes.update({'-r' : "Entering [R]obotic schedule file mode (will initiate observations!)"})
-    modes.update({'-i' : "Entering [I]nstrument mode: initializing instrument subsystems and waiting for commands"})
-    modes.update({'-m' : "Entering fully [M]anual mode: initializing all subsystems and waiting for commands"})
+    modes.update({'r' : "Entering [R]obotic schedule file mode (will initiate observations!)"})
+    modes.update({'i' : "Entering [I]nstrument mode: initializing instrument subsystems and waiting for commands"})
+    modes.update({'m' : "Entering fully [M]anual mode: initializing all subsystems and waiting for commands"})
     
+    opts = arguments
     
+    printlogo()
+    print()
+    for line in big_letter[mode]:
+        print('\t\t\t\t',line)
+    print('\033[32m >>>> ', modes[mode])
+    print()
+    print(linebreak)
+    print('\033[32m')
     
-    
+    '''
     #print(f'args = {args}')
     
     if len(args)<1:
@@ -202,7 +234,7 @@ if __name__ == "__main__":
         
     """else:
         print('Too many options specified.')"""
-    
+    '''
     # load the config
     config_file = wsp_path + '/config/config.yaml'
     config = utils.loadconfig(config_file)
@@ -213,8 +245,10 @@ if __name__ == "__main__":
     
     # If an option was specified from the command line, then use that
     if not mode is None:
+        #print(f'Starting WSP with mode = {mode}, opts = {opts}')
+        
         winter = systemControl.control(mode = mode, config = config, base_directory = wsp_path, logger = logger, opts = opts)
-
+    '''
     # If no option was specified, then start up the text user interface
     else:
         try:
@@ -253,4 +287,6 @@ if __name__ == "__main__":
     timer.start(500)
     timer.timeout.connect(lambda: None)
     """
+    '''
     sys.exit(app.exec_())
+    

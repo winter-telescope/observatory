@@ -8,18 +8,22 @@ Created on Fri Oct 23 16:21:03 2020
 
 #import sys
 #import numpy as np
-from pymodbus.client.sync import ModbusSerialClient
+try:
+    from pymodbus.client.sync import ModbusSerialClient
+except: 
+    from pymodbus.client.serial import ModbusSerialClient
 import time
 from datetime import datetime
 import json
 
 def read_register(client,regnum, unit = 1, modbus_offset = -1, verbose = False):
+
     count = 1
     regnum = regnum + modbus_offset
 
     if client.connect():  # Trying for connect to Modbus Server/Slave
         '''Reading from a holding register with the below content.'''
-        res = client.read_holding_registers(address=regnum, count=count, unit=unit)
+        res = client.read_holding_registers(address=regnum)#, count=count, unit=unit)
         
         '''Reading from a discrete register with the below content.'''
         # res = client.read_discrete_inputs(address=1, count=1, unit=1)
@@ -127,7 +131,7 @@ class Chiller(object):
             # Read the registers one by one
             for key in self.reg_dict.keys():
                 regnum = self.reg_dict[key] + self.modbus_offset
-                res = self.client.read_holding_registers(address = regnum, count = 1, unit = 1)
+                res = self.client.read_holding_registers(address = regnum)#, count = 1, unit = 1)
                 if not res.isError():
                         # get the value from the register list
                         reply = res.registers[0]
@@ -163,8 +167,8 @@ if __name__ == '__main__':
                  'alarm_sysfault_status'    : 8967,
                  'warn_general_status'      : 9004})
     
-    
-    chiller = Chiller('/dev/ttyUSB0', reg_dict = regs, modbus_query_dt = 0.50)
+    dev = '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AQ00T8I9-if00-port0'
+    chiller = Chiller(dev, reg_dict = regs, modbus_query_dt = 0.50)
     
     time.sleep(1)
     

@@ -17,10 +17,8 @@ ANALOG_INPUTS:
         NEGATIVE_CH: 199    # 199 is the default: single-ended measurement
         RANGE: 10       # the max voltage (ie sets the gain): can be 10, 1, 0.1, 0.01
         SETTLING_US: 0      # settling time in microseconds. 0 is automatic settling (recommended)
-    
     AIN1:
         RANGE: 10
-    
     AIN2:
         RANGE: 10
     AIN3:
@@ -48,29 +46,130 @@ ANALOG_INPUTS:
     AIN14:
     # this is the internal temperature sens
         RANGE: 10
-#    AIN44444:
-#        RANGE: 1
 
 
+DIGITAL_COUNTERS:
+# consult map for valid channels: https://labjack.com/pages/support?doc=/datasheets/t-series-datasheet/132-dio-extended-features-t-series-datasheet/#section-header-two-ej09s
+    - DIO0
+    - DIO1
+    - DIO2
+    - DIO3
+    - DIO6
+    - DIO7
 
 ### DIGITAL INPUTS/OUTPUTS ###
-DIGITAL_INPUTS:
-    - FIO0
-    - FIO1
-    - FIO2
-    - FIO3
+#DIGITAL_INPUTS:
+#    - FIO4
     
-DIGITAL_OUTPUTS:
-    # output is zero or one
-    FIO4:
-        OUTPUT: 0
-    FIO5:
-        OUTPUT: 0
-    FIO6:
-        OUTPUT: 0
+#DIGITAL_OUTPUTS:
+#    # output is zero or one
+#    FIO5:
+#        OUTPUT: 0
+
+### FLOWMETERS ###
+# note the test flowmeter is BV2000-250: 1000 ppl = 3785 ppg, the ones ordered for the full
+# thing are BV2000-075: K-factor = 4700 ppl = 17800 ppg
+# https://assets.omega.com/spec/dynasonics_product_summary_brochure_ttm-br-01388-en_2.pdf
+FLOWMETERS:
+    Flow1:
+        input: DIO0
+        K_ppl: 4700 # pulses per liter
+    Flow2:
+        input: DIO1
+        K_ppl: 4700
+    Flow3:
+        input: DIO2
+        K_ppl: 4700
+    Flow4:
+        input: DIO3
+        K_ppl: 4700
+    Flow5:
+        input: DIO6
+        K_ppl: 4700
+    Flow6:
+        input: DIO7
+        K_ppl: 4700
+      
+### THERMOMETERS ###
+# these can be either field type (following dirfile standards): linterp (provide a LUT_file),
+# or a linear combination (lincom) and provide "slope" and "intercept"
+
+THERMOMETERS:
+    Therm14: # internal therm on labjack
+        input: AIN14
+        ftype: lincom
+        slope: -92.6
+        intercept: 194.45
+    Therm0:
+        input: AIN0
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT' 
+    Therm1:
+        input: AIN1
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT' 
+    Therm2:
+        input: AIN2
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT' 
+    Therm3:
+        input: AIN3
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'         
+    Therm4:
+        input: AIN4
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'     
+    Therm5:
+        input: AIN5
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT' 
+    Therm6:
+        input: AIN6
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'     
+    Therm7:
+        input: AIN7
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT' 
+    Therm8:
+        input: AIN8
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'     
+    Therm9:
+        input: AIN9
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'     
+    Therm10:
+        input: AIN10
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'     
+    Therm11:
+        input: AIN11
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'     
+    Therm12:
+        input: AIN12
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'     
+    Therm13:
+        input: AIN13
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'     
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
         
-        
-    
-    

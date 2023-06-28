@@ -147,7 +147,7 @@ PROGRAM_IDS = list(PROGRAM_ID_TO_NAME.keys())
 PROGRAM_BLOCK_SEQUENCE = [1, 2, 1, 2, 3]
 LEN_BLOCK_SEQUENCE = len(PROGRAM_BLOCK_SEQUENCE)
 
-FILTER_NAME_TO_ID = {'y': 1, 'j': 2, 'h': 3, 'u': 4, 'g': 5, 'r': 6, 'i': 7}
+FILTER_NAME_TO_ID = {'Y': 1, 'J': 2, 'Hs': 3, 'u': 4, 'g': 5, 'r': 6, 'i': 7}
 SUMMER_FILTERS = [4,5,6,7]
 WINTER_FILTERS = [1,2,3]
 FILTER_NAMES = list(FILTER_NAME_TO_ID.keys())

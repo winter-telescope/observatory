@@ -25,6 +25,7 @@ import time
 import signal
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 import Pyro5.client
+import Pyro5.nameserver
 import yaml
 
 # add the wsp directory to the PATH
@@ -33,7 +34,7 @@ sys.path.insert(1, wsp_path)
 print(f'control: wsp_path = {wsp_path}')
 
 # winter modules
-from power import power
+#from power import power
 #from telescope import pwi4
 from telescope import telescope
 from telescope import mirror_cover 
@@ -58,9 +59,13 @@ from control import roboOperator
 from ephem import ephem
 from alerts import alert_handler
 #from viscam import web_request
-from viscam import viscam
-from viscam import ccd
+#from viscam import viscam
+#from viscam import ccd
 from power import powerManager
+from housekeeping import labjack_handler_local
+from camera import camera
+from filterwheel import filterwheel
+
 
 # Create the control class -- it inherets from QObject
 # this is basically the "main" for the console application
@@ -74,6 +79,7 @@ class control(QtCore.QObject):
         super(control, self).__init__(parent)
         
         print(f'control: base_directory = {base_directory}')
+        print(f'MODE = {mode}')
         self.opts = opts
     
         # pass in the config
@@ -83,13 +89,15 @@ class control(QtCore.QObject):
         # pass in the base directory
         self.base_directory = base_directory
         
+        print(f'\nsystemControl: running with opts = {opts}')
+        
         
         
         ### ADD HARDWARE DAEMONS TO THE DAEMON LAUNCHER ###
         # init the list of hardware daemons
         
         # Cleanup (kill any!) existing instances of the daemons running
-        daemons_to_kill = ['pyro5-ns', 
+        daemons_to_kill = [#'ns_daemon', 
                            'ccd_daemon.py' ,
                            'viscamd.py',
                            'domed.py', 
@@ -101,39 +109,144 @@ class control(QtCore.QObject):
                            'dirfiled.py',
                            'roboManagerd.py',
                            'sun_simulator.py',
-                           'powerd.py']
+                           'powerd.py',
+                           'labjackd.py',
+                           ]
         daemon_utils.cleanup(daemons_to_kill)
         
-        
+        # make the list that will hold all the daemon process we launch
         self.daemonlist = daemon_utils.daemon_list()
+
         
-        if mode in ['r','i','m']:
-            # ALL MODES
+        # clean out any found entries if the nameserver is still running
+        # ALL MODES
+        
+        ###### DAEMONS #####
+        # start the name server using subprocess
+        # Note: there are other ways to do this, but this enforces that the name server is a child process that will be killed if wsp dies
+        # check if the nameserver is already running. if so, don't add to daemon_list. if not, add it and launch.
+        
+        # first, figure out what nameserver address to use
+        
+        # set defaults:
+        self.ns_host    = self.config['pyro5_ns_default_addr']
+        self.verbose    = False
+        self.domesim    = False
+        self.sunsim     = False
+        self.dometest   = False
+        self.mountsim   = False
+        self.nochiller  = False
+        
+        print('sysControl: Parsing opts...')
+        for currentArgument, currentValue in opts:
+            print(f'sysControl: currentArgument, currentValue = ({currentArgument}, {currentValue})')
             
-            ###### DAEMONS #####
-            # start the name server using subprocess
-            # Note: there are other ways to do this, but this enforces that the name server is a child process that will be killed if wsp dies
-            # check if the nameserver is already running. if so, don't add to daemon_list. if not, add it and launch.
+            if currentArgument in ["-n", "--ns_host"]:
+                self.ns_host = currentValue
+                
+            if currentArgument in ["-v", "--verbose"]:
+                self.verbose = True
+                
+            if currentArgument in ["--domesim"]:
+                self.domesim = True
+
+            if currentArgument in ['--sunsim']:              
+                self.sunsim = True
+
+            # option to ignore whether the shutter is open, which let you test with the dome closed
+            if currentArgument in ['--dometest']:
+                self.dometest = True
+            
+            # option to use the simulated telescope mount
+            if currentArgument in ['--mountsim']:
+                self.mountsim = True
+            
+            # option to use the simulated telescope mount
+            if currentArgument in ['--nochiller']:
+                self.nochiller = True
+
+        print(f'sysControl: ns_host = {self.ns_host}')
+        print(f'sysControl: verbose = {self.verbose}')
+        print(f'sysControl: sunsim = {self.sunsim}')
+        print(f'sysControl: domesim = {self.domesim}')
+        print(f'sysControl: dometest = {self.dometest}')
+        print(f'sysControl: mountsim = {self.mountsim}')
+        print(f'sysControl: nochiller = {self.nochiller}')
+
+        try:
+            nameserverd = Pyro5.core.locate_ns(host = self.ns_host)
+            '''
+            # Don't think I need to do this...
             try:
-                nameserverd = Pyro5.core.locate_ns()
-            
-            except:
-                # the nameserver is not running
-                print(f'control: nameserver not already running. starting from wsp')
-                nameserverd = daemon_utils.PyDaemon(name = 'pyro_ns', filepath = "pyro5-ns", python = False)
-                self.daemonlist.add_daemon(nameserverd)
-            
+                # unregister all the entries
+                entrylist = list(nameserverd.list().keys())[1:]
+                print(f'entries in pyro5 nameserver: {entrylist}')
+                for name in entrylist:
+                    print(f'removing {name}...')
+                    nameserverd.remove(name)
+                    
+                entrylist = list(nameserverd.list().keys())[1:]
+                print(f'entries in pyro5 nameserver: {entrylist}')
+            except Exception as e:
+                print(f'could not cleanup nameserver entries: {e}')
+            '''
+        except:
+            # the nameserver is not running
+            print('control: nameserver not already running. starting from wsp')
+            nameserverd = daemon_utils.PyDaemon(name = 'ns_daemon', filepath = f"{wsp_path}/daemon/ns_launcherd.py",
+                                                args = ['-n', self.ns_host], 
+                                                python = True)
+            # self.daemonlist.add_daemon(nameserverd)
+            # We have to actually launch the nameserver!
+            print(f'Launching Nameserver at ns_host = {self.ns_host}')
+            nameserverd.launch()
+            #Pyro5.nameserver.start_ns_loop(host = self.ns_host) # this will hang here.
+        
+        if mode in ['r', 'i', 'm']:
             # test daemon
             self.testd = daemon_utils.PyDaemon(name = 'test', filepath = f"{wsp_path}/daemon/test_daemon.py")
             self.daemonlist.add_daemon(self.testd)
-            
+                    
             # chiller daemon
-            if '--smallchiller' in opts:
-                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py")#, args = ['-v'])
+            if not self.nochiller:
+                if '--smallchiller' in opts:
+                    self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/small_chillerd.py", args = ['-n', self.ns_host])
+                else:
+                    self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py", args = ['-n', self.ns_host])
+                self.daemonlist.add_daemon(self.chillerd)
             else:
-                self.chillerd = daemon_utils.PyDaemon(name = 'chiller', filepath = f"{wsp_path}/chiller/chillerd.py")#, args = ['-v'])
-            self.daemonlist.add_daemon(self.chillerd)
+                pass
+        
+            # housekeeping data logging daemon (hkd = housekeeping daemon)
+            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py", 
+                                             args = ['-n', self.ns_host]) #change to dirfiled.py if you want to use the version that uses easygetdata
+            self.daemonlist.add_daemon(self.hkd)
             
+            # power (PDU/NPS) daemon
+            """
+            #TODO: 5/19/23 need to add this back in
+            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
+            self.daemonlist.add_daemon(self.powerd)
+            """
+            
+            # labjack daemon
+            self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])
+            self.daemonlist.add_daemon(self.labjackd)
+            
+            
+        if mode in ['i']:
+            
+            pass
+            
+            
+            
+            
+            
+            
+        if mode in ['r','m']:
+            
+            
+            """
             # SUMMER accesories (eg viscam)
             self.viscamd = daemon_utils.PyDaemon(name = 'viscam', filepath = f"{wsp_path}/viscam/viscamd.py")
             self.daemonlist.add_daemon(self.viscamd)
@@ -141,38 +254,29 @@ class control(QtCore.QObject):
             # ccd daemon
             self.ccdd= daemon_utils.PyDaemon(name = 'ccd', filepath = f"{wsp_path}/viscam/ccd_daemon.py")#, args = ['-v'])
             self.daemonlist.add_daemon(self.ccdd)
+            """
+            pass
             
-            # housekeeping data logging daemon (hkd = housekeeping daemon)
-            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py") #change to dirfiled.py if you want to use the version that uses easygetdata
-            self.daemonlist.add_daemon(self.hkd)
             
-            # power (PDU/NPS) daemon
-            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
-            self.daemonlist.add_daemon(self.powerd)
         
-        if '--sunsim' in opts:              
-            self.sunsim = True
-        else:
-            self.sunsim = False
-            
-        # option to ignore whether the shutter is open, which let you test with the dome closed
-        if '--dometest' in opts:
-            self.dometest = True
-        else:
-            self.dometest = False
+        
         
         if mode in ['r','m']:
             # OBSERVATORY MODES (eg all but instrument)
             
             ###### DAEMONS #####
             # Dome Daemon
-            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py", args = opts)
+            domeargs = ['-n', self.ns_host]
+            if self.domesim:
+                domeargs.append('--domesim')
+            self.domed = daemon_utils.PyDaemon(name = 'dome', filepath = f"{wsp_path}/dome/domed.py", args = domeargs)
+
             self.daemonlist.add_daemon(self.domed)
             
-            if '--domesim' in opts:
+            if self.domesim:
                 # start up the fake dome as a daemon
-                self.domesim = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
-                self.daemonlist.add_daemon(self.domesim)
+                self.domesimd = daemon_utils.PyDaemon(name = 'dome_simulator', filepath = f"{wsp_path}/dome/dome_simulator_gui.py")
+                self.daemonlist.add_daemon(self.domesimd)
                 
             if self.sunsim:
                 # start up the fake sun_simulator
@@ -182,20 +286,35 @@ class control(QtCore.QObject):
         
             # ephemeris daemon
             #TODO: pass opts? ignore for now. don't need it running in verbose mode
-            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py", args = opts)
+            ephemargs = ['-n', self.ns_host]
+            if self.sunsim:
+                ephemargs.append('--sunsim')
+            self.ephemd = daemon_utils.PyDaemon(name = 'ephem', filepath = f"{wsp_path}/ephem/ephemd.py", args = ephemargs)
             self.daemonlist.add_daemon(self.ephemd)
-        
+            
+            
+            # set up filter wheels
+            winterfwargs = ['-n', self.ns_host]
+            self.winterfwd = daemon_utils.PyDaemon(name = 'winterfw', filepath = f"{wsp_path}/filterwheel/winterFilterd.py", args = winterfwargs)
+            self.daemonlist.add_daemon(self.winterfwd)
+            
         if mode in ['r']:
             # ROBOTIC OPERATION MODE!
             # ROBO MANAGER DAEMON
-            self.roboManagerd = daemon_utils.PyDaemon(name = 'robomanager', filepath = f"{wsp_path}/control/roboManagerd.py", args = opts)
+            roboargs = ['-n', self.ns_host]
+            self.roboManagerd = daemon_utils.PyDaemon(name = 'robomanager', filepath = f"{wsp_path}/control/roboManagerd.py", args = roboargs)
             self.daemonlist.add_daemon(self.roboManagerd)
             
             
-        
+                
         # Launch all hardware daemons
         self.daemonlist.launch_all()
-        
+        # now add the nameserver. we already started it, so we'll add it only 
+        # after starting the rest. this will still let us shut them all down together?
+        # might want to nix this altogether. 
+        #self.daemonlist.add_daemon(nameserverd)
+
+                
         
         
         ### SET UP THE HARDWARE ###
@@ -217,47 +336,80 @@ class control(QtCore.QObject):
         self.powerManager = powerManager.local_PowerManager(self.base_directory)
         
         # init the test object (goes with the test_daemon)
-        self.counter =  test_daemon_local.local_counter(wsp_path)
+        self.counter =  test_daemon_local.local_counter(wsp_path, ns_host = self.ns_host)
 
         # init the telescope
+        if self.mountsim:
+            host = self.config['telescope']['simhost']
+        else:
+            host = self.config['telescope']['host']
         self.telescope = telescope.Telescope(config = self.config, 
-                                             host = self.config['telescope']['host'], 
-                                             port = self.config['telescope']['port'],
+                                             host = host, 
+                                             port = self.config['telescope']['comm_port'],
+                                             mountsim = self.mountsim,
                                              logger = logger)
 
         # init the mirror cover 
-        self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
-                                                      port = self.config['telescope_shutter']['port'],
-                                                      config = self.config, logger = self.logger)
-        
+        if self.mountsim:
+            self.mirror_cover = None
+        else:
+            self.mirror_cover = mirror_cover.MirrorCovers(addr = self.config['telescope_shutter']['addr'],
+                                                          port = self.config['telescope_shutter']['port'],
+                                                          config = self.config, logger = self.logger)
+            
         # init the dome
-        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, logger = self.logger)
+        self.dome = dome.local_dome(base_directory = self.base_directory, config = self.config, telescope = self.telescope, 
+                                    ns_host = self.ns_host, logger = self.logger)
         
         # init the ephemeris
-        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, logger = self.logger)
-        
-        # init the weather by creating a local object that interfaces with the remote object from the weather daemon
-        
-        #self.weather = local_weather.Weather(self.base_directory, config = self.config, logger = self.logger)
-        self.weather = 'placeholder'
+        self.ephem = ephem.local_ephem(base_directory = self.base_directory, config = self.config, ns_host = self.ns_host, logger = self.logger)
         
         # init the schedule. put it here so it can be passed into housekeeping
         self.schedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
         
+        """
         # init the viscam shutter, filter wheel, and raspberry pi
-        #self.viscam = web_request.Viscam(URL = self.config['viscam_url'], logger = self.logger)
         self.viscam = viscam.local_viscam(base_directory = self.base_directory)
         
+        #TODO: deprecate this
         # init the viscam ccd
         self.ccd = ccd.local_ccd(base_directory = self.base_directory, config = self.config, logger = self.logger)
-
+        
+        """
+        # init the sumnmer camera interface
+        self.summercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
+                                                camname = 'summer', daemon_pyro_name = 'SUMMERcamera', 
+                                                ns_host = self.ns_host, logger = self.logger, verbose = self.verbose)
+        
+        # init the winter camera interface
+        self.wintercamera = camera.local_camera(base_directory = self.base_directory, config = self.config, 
+                                                camname = 'winter', daemon_pyro_name = 'WINTERcamera', 
+                                                ns_host = self.ns_host, logger = self.logger, verbose = self.verbose)
+        
+        # init the winter filterwheel interface
+        self.winterfw = filterwheel.local_filterwheel(base_directory = self.base_directory, config = self.config,
+                                                      daemon_pyro_name = 'WINTERfw', ns_host = self.ns_host,
+                                                      logger = self.logger, verbose = self.verbose)
+        
+        # init the camera dictionary to hold all the cameras we have access to
+        self.camdict = dict({'winter' : self.wintercamera,
+                             #'summer' : self.summercamera,
+                             })
+        
+        # init the filter wheels and the fwdict filter wheel dictionary
+        self.fwdict = dict({'winter' : self.winterfw,
+                            #'summer' : self.summerfw,
+                            })
+        
+        
         # init the alert handler
         auth_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['auth_config_file'] )) , Loader = yaml.FullLoader)
         user_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['user_config_file'] )) , Loader = yaml.FullLoader)
         alert_config = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['alert_config_file'])) , Loader = yaml.FullLoader)
 
         self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
-        if mode == 'r':
+        if mode == 'r':        
+
             # send a signal that we've started up wsp!
             self.alertHandler.slack_log(f':futurama-bender-robot::telescope: *Starting WSP in Robotic Mode!*')
         
@@ -265,10 +417,13 @@ class control(QtCore.QObject):
         if '--smallchiller' in opts:
             self.chiller = small_chiller.local_chiller(base_directory = self.base_directory, config = self.config, alertHandler = self.alertHandler)
         else:
-            self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config)
+            self.chiller = chiller.local_chiller(base_directory = self.base_directory, config = self.config, ns_host = self.ns_host)
 
+        # init the labjacks        
+        self.labjacks = labjack_handler_local.local_labjackHandler(base_directory = self.base_directory, config = self.config, 
+                                                                   ns_host = self.ns_host, logger = self.logger)
         
-
+        
         ### SET UP THE HOUSEKEEPING ###
             
             
@@ -281,26 +436,31 @@ class control(QtCore.QObject):
                                                 schedule = self.schedule,
                                                 telescope = self.telescope,
                                                 dome = self.dome,
-                                                weather = self.weather,
                                                 chiller = self.chiller,
+                                                labjacks = self.labjacks,
                                                 powerManager = self.powerManager,
                                                 counter = self.counter,
                                                 ephem = self.ephem,
-                                                viscam = self.viscam, 
-                                                ccd = self.ccd, 
+                                                #viscam = self.viscam, 
+                                                #ccd = self.ccd, 
+                                                #summercamera = self.summercamera,
+                                                #wintercamera = self.wintercamera,
+                                                camdict = self.camdict,
+                                                fwdict = self.fwdict,
                                                 mirror_cover = self.mirror_cover,
                                                 robostate = self.robostate,
                                                 sunsim = self.sunsim,
+                                                ns_host = self.ns_host,
                                                 logger = self.logger
                                                 )
         
         
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.hk, name = 'state')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.hk, name = 'state', ns_host = self.ns_host)
         self.pyro_thread.start()
         
-        '''
+        """
         In this section we set up the appropriate command interface and executors for the chosen mode
-        '''
+        """
         ### SET UP THE COMMAND LINE INTERFACE
         self.wintercmd = wintercmd.Wintercmd(self.base_directory, 
                                              self.config, 
@@ -312,8 +472,12 @@ class control(QtCore.QObject):
                                              chiller = self.chiller, 
                                              powerManager = self.powerManager, 
                                              logger = self.logger, 
-                                             viscam = self.viscam, 
-                                             ccd = self.ccd, 
+                                             #viscam = self.viscam, 
+                                             #ccd = self.ccd, 
+                                             #summercamera = self.summercamera,
+                                             #wintercamera = self.wintercamera,
+                                             camdict = self.camdict,
+                                             fwdict = self.fwdict,
                                              mirror_cover = self.mirror_cover,
                                              ephem = self.ephem)
         
@@ -351,12 +515,15 @@ class control(QtCore.QObject):
                                                               dome = self.dome, 
                                                               chiller = self.chiller, 
                                                               ephem = self.ephem, 
-                                                              viscam=self.viscam, 
-                                                              ccd = self.ccd, 
+                                                              #viscam=self.viscam, 
+                                                              #ccd = self.ccd, 
+                                                              camdict = self.camdict,
+                                                              fwdict = self.fwdict,
                                                               mirror_cover = self.mirror_cover,
                                                               robostate = self.robostate,
                                                               sunsim = self.sunsim,
                                                               dometest = self.dometest,
+                                                              mountsim = self.mountsim
                                                               )
         # set up the command server which listens for command requests of the network
         self.commandServer = commandServer.server_thread(self.config['wintercmd_server_addr'], self.config['wintercmd_server_port'], self.logger, self.config)

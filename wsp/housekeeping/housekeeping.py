@@ -35,17 +35,38 @@ sys.path.insert(1, wsp_path)
 print(f'housekeeping: wsp_path = {wsp_path}')
 
 # winter modules
-from housekeeping import easygetdata as egd
+#from housekeeping import easygetdata as egd
 from housekeeping import data_handler
 from housekeeping import labjacks
 from daemon import daemon_utils
+#from housekeeping import dirfile_python
 
 # the main housekeeping class, it lives in the namespace of the control class
 
 
 
 class housekeeping():                     
-    def __init__(self, config, base_directory, mode = None, schedule = None, telescope = None, mirror_cover=None, dome = None, weather = None, chiller = None, powerManager = None, counter = None, ephem = None, viscam = None, ccd = None, robostate = None, sunsim = False, logger = None):
+    def __init__(self, config, base_directory, mode = None, 
+                 schedule = None, 
+                 telescope = None, 
+                 mirror_cover=None, 
+                 dome = None, 
+                 chiller = None, 
+                 labjacks = None,
+                 powerManager = None, 
+                 counter = None, 
+                 ephem = None, 
+                 #viscam = None, 
+                 #ccd = None, 
+                 #summercamera = None,
+                 #wintercamera = None,
+                 camdict = None,
+                 fwdict = None,
+                 robostate = None, 
+                 sunsim = False, 
+                 ns_host = None, 
+                 logger = None,
+                 ):
         
         
         # store the config
@@ -59,16 +80,21 @@ class housekeeping():
         self.schedule = schedule
         self.telescope = telescope
         self.dome = dome
-        self.weather = weather
         self.chiller = chiller
+        self.labjacks = labjacks
         self.powerManager = powerManager
         self.counter = counter
         self.ephem = ephem
-        self.viscam = viscam
-        self.ccd = ccd
+        #self.viscam = viscam
+        #self.ccd = ccd
+        #self.summercamera = summercamera
+        #self.wintercamera = wintercamera
+        self.camdict = camdict
+        self.fwdict = fwdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
+        self.ns_host = ns_host
         self.logger = logger
         # setup any labjacks that are in the config
         '''
@@ -77,7 +103,7 @@ class housekeeping():
             lj0:
                 config: 'labjack0_config.yaml'
         '''
-        self.labjacks = labjacks.labjack_set(self.config, self.base_directory)
+        #self.labjacks = labjacks.labjack_set(self.config, self.base_directory)
         #print(f"\nHOUSEKEEPING: lj0[AINO] = {self.labjacks.labjacks['lj0'].state['AIN0']}")
         
         #self.labjacks.read_all_labjacks()
@@ -109,7 +135,12 @@ class housekeeping():
         # create the housekeeping poll list
         self.housekeeping_poll_functions = list()
         
-        
+        if mode.lower() in ['i']:
+            #TODO: this should also run in 'm' and 'r' mode eventually...
+            #self.housekeeping_poll_functions.append(self.labjacks.update_state)
+            #self.housekeeping_poll_functions.append(self.summercamera.update_state)
+            #self.housekeeping_poll_functions.append(self.wintercamera.update_state)
+            pass
         # define the DAQ loops
         if mode.lower() in ['m','r']:
             self.daq_telescope = data_handler.daq_loop(func = self.telescope.update_state, 
@@ -120,13 +151,32 @@ class housekeeping():
             # add NON INSTRUMENT status polls to housekeeping
             self.housekeeping_poll_functions.append(self.dome.update_state)
             self.housekeeping_poll_functions.append(self.ephem.update_state)
+            
+            #self.housekeeping_poll_functions.append(self.viscam.update_state)
+            #self.housekeeping_poll_functions.append(self.ccd.update_state)
+            
+            if self.mirror_cover is not None:
+                self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
+            
+            #self.housekeeping_poll_functions.append(self.powerManager.update_state)
         
+        # things that should happen in all modes
+        self.housekeeping_poll_functions.append(self.labjacks.update_state)
+        self.housekeeping_poll_functions.append(self.powerManager.update_state)
+
+        for cam in self.camdict:
+            self.housekeeping_poll_functions.append(self.camdict[cam].update_state)
+        
+        for fw in self.fwdict:
+            self.housekeeping_poll_functions.append(self.fwdict[fw].update_state)
+        
+        """
         self.daq_labjacks = data_handler.daq_loop(func = self.labjacks.read_all_labjacks,
                                                   dt = self.config['daq_dt']['hk'],
                                                   name = 'labjack_daqloop'
                                                   )
                                                   #rate = 'very_slow')
-        
+        """
         # write the current state to a file
         
         
@@ -137,28 +187,29 @@ class housekeeping():
         # add status polls that we CALL NO MATTER WHAT MODE to the housekeeping poll list
         self.housekeeping_poll_functions.append(self.counter.update_state)
         self.housekeeping_poll_functions.append(self.chiller.update_state)
-        self.housekeeping_poll_functions.append(self.viscam.update_state)
-        self.housekeeping_poll_functions.append(self.ccd.update_state)
-        self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
-        self.housekeeping_poll_functions.append(self.powerManager.update_state)
+        
 
         self.hk_loop = data_handler.hk_loop(config = self.config, 
                                                state = self.state, 
                                                curframe = self.curframe,
                                                schedule = self.schedule,
                                                telescope = self.telescope,
-                                               weather = self.weather,
                                                labjacks = self.labjacks,
                                                counter = self.counter,
                                                dome = self.dome,
                                                chiller = self.chiller,
                                                powerManager = self.powerManager,
                                                ephem = self.ephem,
-                                               viscam = self.viscam,
-                                               ccd = self.ccd,
+                                               #viscam = self.viscam,
+                                               #ccd = self.ccd,
+                                               #summercamera = self.summercamera,
+                                               #wintercamera = self.wintercamera,
+                                               camdict = self.camdict,
+                                               fwdict = self.fwdict,
                                                mirror_cover = self.mirror_cover,
                                                robostate = self.robostate,
                                                sunsim = self.sunsim,
+                                               ns_host = self.ns_host, 
                                                logger = self.logger)
 
         
@@ -186,81 +237,16 @@ class housekeeping():
         #print(f'housekeeping: {self.robostate}')
         for func in self.housekeeping_poll_functions:
             # do the function
+            #print(func)
             func()
             
     def start_housekeeping_poll_loop(self):
         self.timer = QtCore.QTimer()
-        self.timer.setInterval(self.config['daq_dt']['hk'])
+        hk_poll_dt = int(np.round(self.config['daq_dt']['hk'], 0))
+        self.timer.setInterval(hk_poll_dt)
         self.timer.timeout.connect(self.poll_housekeeping)
         self.timer.start()
-                
-    def create_dirfile(self):
-        """
-        Create the dirfile to hold the data from the DAQ loops
-        All the fields from the config file will be added automatically
-        """
-        # create the dirfile directory
-        hk_dir = os.getenv("HOME") + '/' + self.config['housekeeping_data_directory']
-        
-        now = datetime.utcnow() # or can use now for local time
-        #now = str(int(now.timestamp())) # give the name the current ctime
-        now_str = now.strftime('%Y%m%d_%H%M%S') # give the name a more readable date format
-        self.dirname = now_str + '.dm'
-        self.dirpath = hk_dir + '/' + self.dirname
-        
-        # create the directory and filenames for the data storage
-        hk_link_dir = os.getenv("HOME") + '/' + self.config['housekeeping_data_link_directory']
-        hk_link_name = self.config['housekeeping_data_link_name']
-        hk_linkpath = hk_link_dir + '/' + hk_link_name
-        
-        # create the data directory if it doesn't exist already
-        pathlib.Path(hk_dir).mkdir(parents = True, exist_ok = True)
-        print(f'housekeeping: making directory: {hk_dir}')
-                
-        # create the data link directory if it doesn't exist already
-        pathlib.Path(hk_link_dir).mkdir(parents = True, exist_ok = True)
-        print(f'housekeeping: making directory: {hk_link_dir}')
-        
-        # create the dirfile database
-        self.df = egd.EasyGetData(self.dirpath, "w")
-        print(f'housekeeping; creating dirfile at {self.dirpath}')
-        #/* make a link to the current dirfile - kst can read this to make life easy... */
-        print(f'housekeeping: trying to create link at {hk_linkpath}')
-        
-        try:
-            os.symlink(self.dirpath, hk_linkpath)
-        except FileExistsError:
-            print('housekeeping: deleting existing symbolic link')
-            os.remove(hk_linkpath)
-            os.symlink(self.dirpath, hk_linkpath)
-        
-        # add the fields from the config file to the dirfile
-        for field in self.config['fields']:
-            # add handling for the various field types ('ftype') allowed by the dirfile standards as they come up
-            
-
-            self.df.add_raw_entry(field = field, 
-                                  spf = self.spf[self.config['fields'][field]['rate']],
-                                  dtype = np.dtype(self.config['fields'][field]['dtype']),
-                                  units = self.config['fields'][field]['units'],
-                                  label = self.config['fields'][field]['label'])
-        
-        # add in any derived fields
-        for field in self.config['derived_fields']:
-            ftype = self.config['derived_fields'][field]['ftype'].lower()
-            if ftype == 'lincom':
-                self.df.add_lincom_entry(field = field, 
-                                        input_field = self.config['derived_fields'][field]['input_field'], 
-                                        slope = self.config['derived_fields'][field]['slope'], 
-                                        intercept = self.config['derived_fields'][field]['intercept'],
-                                        units = self.config['derived_fields'][field]['units'],
-                                        label = self.config['derived_fields'][field]['label'])
-            elif ftype == 'linterp':
-                self.df.add_linterp_entry(field, 
-                                          input_field = self.config['derived_fields'][field]['input_field'], 
-                                          LUT_file = self.base_directory + '/' + self.config['derived_fields'][field]['LUT_file'],
-                                          units = self.config['derived_fields'][field]['units'],
-                                          label = self.config['derived_fields'][field]['label'])
+    
     def build_dicts(self):
         """
         gets the fields and daq rates from the config file

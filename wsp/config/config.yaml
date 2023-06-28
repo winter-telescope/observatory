@@ -16,8 +16,11 @@ site:
 usb_serial_dev:
     chiller: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AQ00T8I9-if00-port0'
     steppers: '/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AG0JG9J3-if00-port0'
-    
-    
+
+########## DAEMONS ##########
+# pyro5 nameserver default location
+pyro5_ns_default_addr: 192.168.1.10
+
 ########## FITS IMAGE DIRECTORY ##########
 image_directory: 'data/images'
 #image_prefix: 'viscam_'
@@ -39,6 +42,7 @@ wintercmd_trusted_hosts:
     -127.0.1.1
     -192.168.1.10
     -192.168.1.11
+    -192.168.1.20
     
 ############# VISCAM RASPI ###########################
 # add Raspberry Pi URL to communicate with the VISCAM
@@ -129,7 +133,7 @@ log_link_name: 'winter.log'
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
-max_sun_alt_for_observing: -12
+max_sun_alt_for_observing: -3
 
 
 robotic_manager_triggers:
@@ -158,6 +162,15 @@ robotic_manager_triggers:
             sundir: -1
             repeat_on_restart: False
             cmd: 'mount_fans_on'
+        chiller_on:
+            conds:
+                cond1:
+                    type: 'time'
+                    val: '14:00:0.0'
+                    cond: '>'
+            sundir: -1
+            repeat_on_restart: False
+            cmd: 'chiller_start'             
         startup:
             conds:
                 cond1:
@@ -166,7 +179,8 @@ robotic_manager_triggers:
                     cond: '<'
             sundir: 0
             repeat_on_restart: False
-            cmd: 'total_startup'
+            #cmd: 'total_startup --cameras'
+            cmd: 'do_startup --cameras'
         load_schedule:
             conds:
                 cond1:
@@ -207,25 +221,7 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'robo_do_calibration -f'
-        # don't do the test image if you're not doing the focusing
-        #test_image:
-        #    conds:
-        #        cond1:
-        #            type: 'sun'
-        #            val: -11.0
-        #            cond: '<'
-        #    repeat_on_restart: False
-        #    sundir: -1
-        #    cmd: 'robo_observe altaz 75 270'
-        #focus:
-        #    conds:
-        #        cond1:
-        #            type: 'sun'
-        #            val: -12.0
-        #            cond: '<'
-        #    sundir: 0
-        #    repeat_on_restart: False
-        #    cmd: 'doFocusLoop --roborun'
+
         start_obs:
             conds:
                cond1:
@@ -258,18 +254,8 @@ robotic_manager_triggers:
             nextmorning: True   
             repeat_on_restart: False          
             sundir: 1
-            cmd: 'robo_do_calibration -f -d -b'
+            cmd: 'robo_do_calibration -f -d'
         shutdown:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -4
-                    cond: '>'
-            nextmorning: True
-            repeat_on_restart: False
-            sundir: 1
-            cmd: 'stow_observatory'
-        fans_off:
             conds:
                 cond1:
                     type: 'sun'
@@ -278,7 +264,35 @@ robotic_manager_triggers:
             nextmorning: True
             repeat_on_restart: False
             sundir: 1
+            cmd: 'stow_observatory --cameras'
+        fans_off:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 1
+                    cond: '>'
+            nextmorning: True
+            repeat_on_restart: False
+            sundir: 1
             cmd: 'mount_fans_off'
+        chiller_stop:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 3
+                    cond: '>'
+                cond2:
+                    type: 'sun'
+                    val: 40
+                    cond: '>'
+                cond3:
+                    type: 'time'
+                    val: '6:00:00.0'
+                    cond: '>'
+            nextmorning: True
+            repeat_on_restart: False
+            sundir: 1
+            cmd: 'chiller_stop'
         kill:
             conds:
                 cond1:
@@ -305,18 +319,35 @@ robotic_manager_triggers:
 ########### TELESCOPE SET UP ##########
 telescope:
     host: "thor"
-    port: 8220
+    simhost: '192.168.1.106'
+    comm_port: 8220
     home_alt_degs: 45.0
     #home_az_degs: 349.0
     home_az_degs: 0
     min_alt: 30
     max_alt: 85.0
+    #TODO deprecate this and move to the port-specific values below...
+    # WINTER Values: 
     rotator_field_angle_zeropoint: 155.0 
-    rotator_home_degs: -25.0
-    #rotator_max_degs: 140.0
-    rotator_max_degs: 160.0
-    #rotator_min_degs: -70.0
-    rotator_min_degs: -210.0
+    rotator_home_degs: 65.5
+    rotator_max_degs: 120.0
+    rotator_min_degs: -50.0
+    port:
+        1: 'winter'
+        2: 'summer'
+    rotator:
+        winter:
+            rotator_field_angle_zeropoint: 65.0 
+            rotator_home_degs: 65.5
+            rotator_max_degs: 120.0
+            rotator_min_degs: -90.0
+        summer:
+            rotator_field_angle_zeropoint: 155.0 
+            rotator_home_degs: -25.0
+            #rotator_max_degs: 140.0
+            rotator_max_degs: 160.0
+            #rotator_min_degs: -70.0
+            rotator_min_degs: -210.0
 
 # define telemetry servers
 telemetry_server:
@@ -622,6 +653,11 @@ filters:
             nominal_focus: 10000
             active: False
             focus_exptime: 30
+        dark:
+            name: "Dark Mirror"
+            nominal_focus: 10000
+            active: False
+            focus_exptime: 30
         
 
 filter_wheels:
@@ -636,10 +672,10 @@ filter_wheels:
             7: 'empty'
     winter:
         positions:
-            1: 'Y'
+            1: 'dark'
             2: 'J'
-            3: 'Hs'
-            4: 'dark'
+            3: 'Y'
+            4: 'Hs'
 
 ########### POINTING MODEL PARAMETERS ###########
 # Construct a grid of 3 x 6 = 18 Alt-Az points
@@ -676,8 +712,10 @@ default_value: -999
 
 ### Labjack Definitions ###
 labjacks:
-    lj0:
+    LJ0:
         config: 'labjack0_config.yaml'
+    LJ1:
+        config: 'labjack1_config.yaml'
 
 # define fields.
 # Note: each rate must have a corresponding "daq_rate" as given above
@@ -2010,21 +2048,21 @@ fields:
         ftype: raw
         label: 'ID'
         units: None
-        dtype: float64
+        dtype: int64
         rate: slow
         var: robostate["obsHistID"]
     robo_fieldID:
         ftype: raw
         label: 'ID'
         units: None
-        dtype: float64
+        dtype: int64
         rate: slow
         var: robostate["fieldID"]
     robo_programID:
         ftype: raw
         label: 'ID'
         units: None
-        dtype: float64
+        dtype: int64
         rate: slow
         var: robostate["programID"]
     robo_observatory_ready:
@@ -2041,13 +2079,6 @@ fields:
         dtype: int64
         rate: hk
         var: robostate["observatory_stowed"]  
-    robo_programPriority:
-        ftype: raw
-        label: 'Value'
-        units: None
-        dtype: float64
-        rate: hk
-        var: robostate["programPriority"]
     robo_targetPriority:
         ftype: raw
         label: 'Value'
@@ -2055,140 +2086,381 @@ fields:
         dtype: float64
         rate: hk
         var: robostate["targetPriority"]
+    robo_maxAirmass:
+        ftype: raw
+        label: 'X'
+        units: None
+        dtype: float64
+        rate: hk
+        var: robostate["maxAirmass"]
+    robo_validStart:
+        ftype: raw
+        label: 'MJD'
+        units: None
+        dtype: float64
+        rate: hk
+        var: robostate["validStart"]
+    robo_validStop:
+        ftype: raw
+        label: 'MJD'
+        units: None
+        dtype: float64
+        rate: hk
+        var: robostate["validStop"]
+    robo_dithnum:
+        ftype: raw
+        label: 'Value'
+        units: None
+        dtype: int64
+        rate: hk
+        var: robostate["dithnum"]
+    robo_num_dithers:
+        ftype: raw
+        label: 'Value'
+        units: None
+        dtype: int64
+        rate: hk
+        var: robostate["num_dithers"]
+    robo_ditherStepSize:
+        ftype: raw
+        label: 'Angle'
+        units: 'as'
+        dtype: float64
+        rate: hk
+        var: robostate["ditherStepSize"]
+    robo_visitExpTime:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: robostate["visitExpTime"]
     ### LABJACK STUFF###
-    V_LJ0_AIN0:
+    Flow_LJ0_1:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow1']
+    Flow_LJ0_2:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow2']
+    Flow_LJ0_3: # Port C
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow3']
+    Flow_LJ0_4:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow4']
+    Flow_LJ0_5:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow5']
+    Flow_LJ0_6:
+        ftype: raw
+        label: 'Flow'
+        units: 'lpm'
+        dtype: float64
+        rate: hk
+        var: labjacks.state['LJ0_Flow6']
+    #T_LJ0_AIN0:
+    T_misc_powerbox:
+        ftype: raw
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN0']
-    V_LJ0_AIN1:
+        var: labjacks.state['TEMP_LJ0_AIN0']
+    #T_LJ0_AIN1:
+    T_powerbox_star:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN1']
-    V_LJ0_AIN2:
+        var: labjacks.state['TEMP_LJ0_AIN1']
+    T_powerbox_port:
+    #T_LJ0_AIN2:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN2']
-    V_LJ0_AIN3:
+        var: labjacks.state['TEMP_LJ0_AIN2']
+    T_ob_star:
+    #T_LJ0_AIN3:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN3']
-    V_LJ0_AIN4:
+        var: labjacks.state['TEMP_LJ0_AIN3']
+    T_ob_center:
+    #T_LJ0_AIN4:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN4']
-    V_LJ0_AIN5:
+        var: labjacks.state['TEMP_LJ0_AIN4']
+    T_hx_sc:
+    #T_LJ0_AIN5:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN5']
-    V_LJ0_AIN6:
+        var: labjacks.state['TEMP_LJ0_AIN5']
+    T_heatsink_sc:
+    #T_LJ0_AIN6:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN6']
-    V_LJ0_AIN7:
+        var: labjacks.state['TEMP_LJ0_AIN6']
+    T_heatsink_sb:
+    #T_LJ0_AIN7:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN7']
-    V_LJ0_AIN8:
+        var: labjacks.state['TEMP_LJ0_AIN7']
+    T_heatsink_sa:
+    #T_LJ0_AIN8:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN8']
-    V_LJ0_AIN9:
+        var: labjacks.state['TEMP_LJ0_AIN8']
+    T_fpga_sb:
+    #T_LJ0_AIN9:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN9']
-    V_LJ0_AIN10:
+        var: labjacks.state['TEMP_LJ0_AIN9']
+    T_ob_port:
+    #T_LJ0_AIN10:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN10']
-    V_LJ0_AIN11:
+        var: labjacks.state['TEMP_LJ0_AIN10']
+    T_heatsink_pc:
+    #T_LJ0_AIN11:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN11']
-    V_LJ0_AIN12:
+        var: labjacks.state['TEMP_LJ0_AIN11']
+    T_heatsink_pb:
+    #T_LJ0_AIN12:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN12']
-    V_LJ0_AIN13:
+        var: labjacks.state['TEMP_LJ0_AIN12']
+    T_heatsink_pa:
+    #T_LJ0_AIN13:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN13']
-    V_LJ0_AIN14:
+        var: labjacks.state['TEMP_LJ0_AIN13']
+    T_LJ0_internal:
+    #T_LJ0_AIN14:
         ftype: raw
-        label: 'Voltage'
-        units: 'V'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['AIN14']
-    LJ0_FIO0:
+        var: labjacks.state['TEMP_LJ0_AIN14']
+    
+    # V_LJ0_AIN1:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN1']
+    # V_LJ0_AIN2:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN2']
+    # V_LJ0_AIN3:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN3']
+    # V_LJ0_AIN4:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN4']
+    # V_LJ0_AIN5:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN5']
+    # V_LJ0_AIN6:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN6']
+    # V_LJ0_AIN7:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN7']
+    # V_LJ0_AIN8:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN8']
+    # V_LJ0_AIN9:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN9']
+    # V_LJ0_AIN10:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN10']
+    # V_LJ0_AIN11:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN11']
+    # V_LJ0_AIN12:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN12']
+    # V_LJ0_AIN13:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN13']
+    # V_LJ0_AIN14:
+    #     ftype: raw
+    #     label: 'Voltage'
+    #     units: 'V'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['AIN14']
+    # LJ0_FIO0:
+    #     ftype: raw
+    #     label: 'State'
+    #     units: '-'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['FIO0']
+    # LJ0_FIO1:
+    #     ftype: raw
+    #     label: 'State'
+    #     units: '-'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['FIO1']
+    # LJ0_FIO2:
+    #     ftype: raw
+    #     label: 'State'
+    #     units: '-'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['FIO2']
+    # LJ0_FIO3:
+    #     ftype: raw
+    #     label: 'State'
+    #     units: '-'
+    #     dtype: float64
+    #     rate: slow
+    #     var: labjacks.labjacks['lj0'].state['FIO3']
+    
+    # Rack Power Box Housekeeping and Control
+    T_rackpow_fpa_star:
+    #T_LJ1_AIN0:
         ftype: raw
-        label: 'State'
-        units: '-'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['FIO0']
-    LJ0_FIO1:
+        var: labjacks.state['TEMP_LJ1_AIN0']
+    T_rackpow_12v_misc:
+    #T_LJ1_AIN1:
         ftype: raw
-        label: 'State'
-        units: '-'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['FIO1']
-    LJ0_FIO2:
+        var: labjacks.state['TEMP_LJ1_AIN1']
+    
+    T_rackpow_fpa_port:
+    #T_LJ1_AIN2:
         ftype: raw
-        label: 'State'
-        units: '-'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['FIO2']
-    LJ0_FIO3:
+        var: labjacks.state['TEMP_LJ1_AIN2']
+    T_rackpow_box:
+    #T_LJ1_AIN3:
         ftype: raw
-        label: 'State'
-        units: '-'
+        label: 'T'
+        units: 'C'
         dtype: float64
         rate: slow
-        var: labjacks.labjacks['lj0'].state['FIO3']
+        var: labjacks.state['TEMP_LJ1_AIN3']
+    
     
     # Viscam housekeeping
 
@@ -2384,7 +2656,1821 @@ fields:
         dtype: float64
         rate: hk
         var: chiller.state['max_dt_since_last_update']
+########### FILTER WHEEL API FIELDS ###########
+    winter_fw_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: fwdict['winter'].state['timestamp']
+    winter_fw_connected:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['is_connected']
+    winter_fw_pos:
+        ftype: raw
+        label: 'pos'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['position']
+    winter_fw_pos_goal:
+        ftype: raw
+        label: 'pos'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['pos_goal']
+    winter_fw_encoder_pos:
+        ftype: raw
+        label: 'pos'
+        units: 'milliinches'
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['encoder_pos']
+    winter_fw_encoder_pos_goal:
+        ftype: raw
+        label: 'pos'
+        units: 'milliinches'
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['encoder_pos_goal']
+    winter_fw_filter_pos:
+        ftype: raw
+        label: 'num'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['filter_pos']
+    winter_fw_filter_goal:
+        ftype: raw
+        label: 'num'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['filter_goal']
+    winter_fw_is_moving:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['is_moving']
+    winter_fw_is_homing:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['is_homing']
+    winter_fw_is_homed:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['winter'].state['homed']
+    
 
+
+
+        
+########### CAMERA API FIELDS ##########
+    winter_camera_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['timestamp']
+    winter_camera_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['command_pass']
+    winter_camera_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['command_active']
+    winter_camera_exptime:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['exptime']
+    winter_camera_doing_exposure:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['doing_exposure']
+    winter_camera_command_timeout:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['command_timeout']
+    winter_camera_command_sent_timestamp:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['command_sent_timestamp']
+    winter_camera_command_elapsed_dt:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['command_elapsed_dt']
+        
+########### HOUSEKEEPING WINTER SENSORS ##########
+# Bench Sensor        
+    bench_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_timestamp']
+    bench_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_fpa']
+    bench_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_roic']    
+    bench_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_sb']
+    bench_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_pb']
+    bench_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_p5v']
+    bench_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_n3v']
+    bench_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_tec']
+    bench_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_I_tec']
+    bench_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_FPGA_power_flag']   
+    bench_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_FPGA_tecdisable_flag']   
+    bench_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_FPGA_watchdog_flag']           
+    bench_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_p5v_flag']     
+    bench_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_n3v_flag']    
+    bench_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_fpa_flag']    
+    bench_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_roic_flag']    
+    bench_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_pb_flag']    
+    bench_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_sb_flag']            
+    bench_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_tec_flag']    
+    bench_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_I_tec_flag']  
+    bench_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_tec_sp']
+    bench_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_fpa_sp']    
+    bench_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_tec_setpoint']  
+    bench_T_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_T_pid']   
+    bench_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_tec_status']  
+    bench_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_exptime']
+    bench_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_connected']
+    bench_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_new_img_flag']   
+    bench_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_fpa']
+    bench_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_roic']
+    bench_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_pb']
+    bench_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_V_sb']
+    bench_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_command_active']
+    bench_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_command_pass']
+# StarA Sensor        
+    sa_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_timestamp']
+    sa_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_fpa']
+    sa_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_roic']    
+    sa_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_sb']
+    sa_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_pb']
+    sa_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_p5v']
+    sa_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_n3v']
+    sa_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_tec']
+    sa_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_I_tec']
+    sa_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_FPGA_power_flag']   
+    sa_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_FPGA_tecdisable_flag']   
+    sa_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_FPGA_watchdog_flag']           
+    sa_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_p5v_flag']     
+    sa_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_n3v_flag']    
+    sa_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_fpa_flag']    
+    sa_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_roic_flag']    
+    sa_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_pb_flag']    
+    sa_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_sb_flag']            
+    sa_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_tec_flag']    
+    sa_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_I_tec_flag']  
+    sa_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_tec_sp']
+    sa_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_fpa_sp']    
+    sa_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_tec_setpoint']  
+    sa_T_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_T_pid']   
+    sa_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_tec_status']  
+    sa_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_exptime']
+    sa_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_connected']
+    sa_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_new_img_flag']   
+    sa_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_fpa']
+    sa_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_roic']
+    sa_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_pb']
+    sa_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_V_sb']
+    sa_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_command_active']
+    sa_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_command_pass']
+# StarB Sensor        
+    sb_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_timestamp']
+    sb_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_fpa']
+    sb_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_roic']    
+    sb_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_sb']
+    sb_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_pb']
+    sb_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_p5v']
+    sb_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_n3v']
+    sb_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_tec']
+    sb_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_I_tec']
+    sb_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_FPGA_power_flag']   
+    sb_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_FPGA_tecdisable_flag']   
+    sb_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_FPGA_watchdog_flag']           
+    sb_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_p5v_flag']     
+    sb_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_n3v_flag']    
+    sb_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_fpa_flag']    
+    sb_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_roic_flag']    
+    sb_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_pb_flag']    
+    sb_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_sb_flag']            
+    sb_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_tec_flag']    
+    sb_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_I_tec_flag']  
+    sb_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_tec_sp']
+    sb_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_fpa_sp']    
+    sb_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_tec_setpoint']  
+    sb_T_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_T_pid']   
+    sb_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_tec_status']  
+    sb_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_exptime']
+    sb_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_connected']
+    sb_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_new_img_flag']   
+    sb_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_fpa']
+    sb_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_roic']
+    sb_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_pb']
+    sb_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_V_sb']
+    sb_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_command_active']
+    sb_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_command_pass']
+# StarC Sensor        
+    sc_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_timestamp']
+    sc_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_fpa']
+    sc_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_roic']    
+    sc_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_sb']
+    sc_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_pb']
+    sc_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_p5v']
+    sc_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_n3v']
+    sc_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_tec']
+    sc_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_I_tec']
+    sc_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_FPGA_power_flag']   
+    sc_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_FPGA_tecdisable_flag']   
+    sc_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_FPGA_watchdog_flag']           
+    sc_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_p5v_flag']     
+    sc_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_n3v_flag']    
+    sc_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_fpa_flag']    
+    sc_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_roic_flag']    
+    sc_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_pb_flag']    
+    sc_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_sb_flag']            
+    sc_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_tec_flag']    
+    sc_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_I_tec_flag']  
+    sc_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_tec_sp']
+    sc_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_fpa_sp']    
+    sc_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_tec_setpoint']  
+    sc_T_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_T_pid']   
+    sc_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_tec_status']  
+    sc_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_exptime']
+    sc_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_connected']
+    sc_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_new_img_flag']   
+    sc_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_fpa']
+    sc_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_roic']
+    sc_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_pb']
+    sc_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_V_sb'] 
+    sc_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_command_active']
+    sc_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_command_pass']       
+# PortA Sensor        
+    pa_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_timestamp']
+    pa_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_fpa']
+    pa_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_roic']    
+    pa_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_sb']
+    pa_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_pb']
+    pa_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_p5v']
+    pa_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_n3v']
+    pa_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_tec']
+    pa_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_I_tec']
+    pa_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_FPGA_power_flag']   
+    pa_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_FPGA_tecdisable_flag']   
+    pa_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_FPGA_watchdog_flag']           
+    pa_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_p5v_flag']     
+    pa_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_n3v_flag']    
+    pa_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_fpa_flag']    
+    pa_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_roic_flag']    
+    pa_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_pb_flag']    
+    pa_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_sb_flag']            
+    pa_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_tec_flag']    
+    pa_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_I_tec_flag']  
+    pa_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_tec_sp']
+    pa_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_fpa_sp']    
+    pa_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_tec_setpoint']  
+    pa_T_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_T_pid']   
+    pa_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_tec_status']  
+    pa_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_exptime']
+    pa_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_connected']
+    pa_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_new_img_flag']     
+    pa_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_fpa']
+    pa_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_roic']
+    pa_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_pb']
+    pa_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_V_sb']
+    pa_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_command_active']
+    pa_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_command_pass']
+# PortB Sensor        
+    pb_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_timestamp']
+    pb_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_fpa']
+    pb_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_roic']    
+    pb_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_sb']
+    pb_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_pb']
+    pb_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_p5v']
+    pb_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_n3v']
+    pb_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_tec']
+    pb_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_I_tec']
+    pb_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_FPGA_power_flag']   
+    pb_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_FPGA_tecdisable_flag']   
+    pb_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_FPGA_watchdog_flag']           
+    pb_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_p5v_flag']     
+    pb_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_n3v_flag']    
+    pb_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_fpa_flag']    
+    pb_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_roic_flag']    
+    pb_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_pb_flag']    
+    pb_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_sb_flag']            
+    pb_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_tec_flag']    
+    pb_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_I_tec_flag']  
+    pb_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_tec_sp']
+    pb_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_fpa_sp']    
+    pb_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_tec_setpoint']  
+    pb_T_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_T_pid']   
+    pb_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_tec_status']  
+    pb_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_exptime']
+    pb_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_connected']
+    pb_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_new_img_flag']   
+    pb_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_fpa']
+    pb_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_roic']
+    pb_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_pb']
+    pb_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_V_sb']
+    pb_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_command_active']
+    pb_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_command_pass']
+# PortC Sensor        
+    pc_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_timestamp']
+    pc_T_fpa:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_fpa']
+    pc_T_roic:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_roic']    
+    pc_T_sb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_sb']
+    pc_T_pb:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_pb']
+    pc_V_p5v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_p5v']
+    pc_V_n3v:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_n3v']
+    pc_V_tec:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_tec']
+    pc_I_tec:
+        ftype: raw
+        label: 'Current'
+        units: 'I'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_I_tec']
+    pc_FPGA_power_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_FPGA_power_flag']   
+    pc_FPGA_tecdisable_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_FPGA_tecdisable_flag']   
+    pc_FPGA_watchdog_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_FPGA_watchdog_flag']           
+    pc_V_p5v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_p5v_flag']     
+    pc_V_n3v_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_n3v_flag']    
+    pc_T_fpa_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_fpa_flag']    
+    pc_T_roic_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_roic_flag']    
+    pc_T_pb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_pb_flag']    
+    pc_T_sb_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_sb_flag']            
+    pc_V_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_tec_flag']    
+    pc_I_tec_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_I_tec_flag']  
+    pc_V_tec_sp:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_tec_sp']
+    pc_T_fpa_sp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_fpa_sp']    
+    pc_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_tec_setpoint']  
+    pc_T_pid:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_T_pid']   
+    pc_V_tec_status:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_tec_status']  
+    pc_exptime:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_exptime']
+    pc_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_connected']
+    pc_new_img_flag:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_new_img_flag']   
+    pc_V_fpa:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_fpa']
+    pc_V_roic:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_roic']
+    pc_V_pb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_pb']
+    pc_V_sb:
+        ftype: raw
+        label: 'Voltage'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_V_sb']
+    pc_command_active:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_command_active']
+    pc_command_pass:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_command_pass']
 #### FITS HEADER STUFF. THESE ARE STRINGS! WILL NOT BE LOGGED TO THE DIRFILE
 header_fields:
     operator_name:
@@ -2397,47 +4483,13 @@ header_fields:
         var: robostate["programName"]
     qcomment:
         var: robostate["qcomment"]
-    targtype:
+    targetType:
         var: robostate["targtype"]
+    targetName:
+        var: robostate["targetName"]
     pwi4_version:
         var: telescope.state["pwi4.version"]
     mount_model_filename:
         var: telescope.state["mount.model.filename"]
     
-    
-
-derived_fields:
-    # note the base directory for the LUT is the wsp directory
-    T_LJ0:
-        ftype: lincom
-        input_field: 'V_LJ0_AIN14'
-        slope: -92.6
-        intercept: 194.45
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN0:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN0'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN1:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN1'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN2:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN2'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-    T_LJ0_AIN3:
-        ftype: linterp
-        input_field: 'V_LJ0_AIN3'
-        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'
-        label: 'T'
-        units: 'C'
-        
-
+   

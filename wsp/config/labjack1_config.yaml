@@ -1,0 +1,74 @@
+# Labjack setup config
+
+
+### DEVICE INFORMATION ###
+lj_type: "T4"
+conn_type: 'ETHERNET'
+address: "192.168.1.165"
+
+
+
+
+### ANALOG INPUTS ###
+# Can set for AIN0-14
+ANALOG_INPUTS:
+    AIN0:
+        RANGE: 10       # the max voltage (ie sets the gain): can be 10, 1, 0.1, 0.01
+    AIN1:
+        RANGE: 10
+    AIN2:
+        RANGE: 10
+    AIN3:
+        RANGE: 10
+    AIN4:
+        RANGE: 10
+    
+
+
+### DIGITAL INPUTS/OUTPUTS ###
+#DIGITAL_INPUTS:
+#    - FIO4
+    
+#DIGITAL_OUTPUTS:
+#    # output is zero or one
+#    FIO5:
+#        OUTPUT: 0
+
+
+
+THERMOMETERS:
+
+    Therm0:
+        input: AIN0
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT' 
+    Therm1:
+        input: AIN1
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT' 
+    Therm2:
+        input: AIN2
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT' 
+    Therm3:
+        input: AIN3
+        ftype: linterp
+        LUT_file: 'config/Thermistor_10k_2p5v_beta3984_V_to_T.LUT'         
+  
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+        

@@ -27,9 +27,10 @@ from utils import utils
 
 class local_ephem(object):
     
-    def __init__(self, base_directory, config, logger = None):
+    def __init__(self, base_directory, config, ns_host = None, logger = None):
         self.base_directory = base_directory
         self.config = config
+        self.ns_host = ns_host
         self.logger = logger
         
         # default value for bad query
@@ -63,7 +64,9 @@ class local_ephem(object):
     def init_remote_object(self):
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:ephem")
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('ephem')
+            self.remote_object = Pyro5.client.Proxy(uri)
         
         except Exception as e:
             
@@ -77,7 +80,7 @@ class local_ephem(object):
 
         except Exception as e:
             self.log(f'Could not update remote status: {e}', level = logging.ERROR)
-
+            self.init_remote_object()
     def parse_state(self):
         # get the timestamp of the last update from the ephem daemon
         self.state.update({'timestamp' : self.remote_state.get('timestamp', self.default_timestamp)})
@@ -117,11 +120,17 @@ class local_ephem(object):
 # Try it out
 if __name__ == '__main__':
     
+    ns_host = '192.168.1.10'
+    logger = None
+    
     config = utils.loadconfig(wsp_path + '/config/config.yaml')
+
+    ephem = local_ephem(wsp_path, config, ns_host = ns_host, logger = logger)
+
 
     while True:
         try:
-            ephem = local_ephem(wsp_path, config)
+            ephem.update_state()
             #counter.get_remote_status()
             #counter.print_status()
             print(f'sunalt = {ephem.state["sunalt"]}')

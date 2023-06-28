@@ -23,10 +23,11 @@ Replies to commands from the dome are logged.
 """
 
 
-
+import getopt
 import os
 import Pyro5.core
 import Pyro5.server
+import Pyro5.client
 import time
 #from PyQt5 import uic, QtGui, QtWidgets
 from PyQt5 import QtCore
@@ -53,7 +54,7 @@ print(f'wsp_path = {wsp_path}')
 from daemon import daemon_utils
 from utils import utils
 from utils import logging_setup
-from watchdog import watchdog
+#from watchdog import watchdog
 from alerts import alert_handler
 
 
@@ -542,7 +543,8 @@ class Dome(QtCore.QObject):
         
         # shut down the wsp watchdog
         self.log('Shutting down any runing instance of the WSP watchdog...')
-        watchdog.shutdown_watchdog()
+        #TODO Turn this back on!!
+        #watchdog.shutdown_watchdog()
         
         
         # after the watchdog is stopped, kill wsp
@@ -642,10 +644,11 @@ class PyroGUI(QtCore.QObject):
     and has a dedicated QThread which handles all the Pyro stuff (the PyroDaemon object)
     """
                   
-    def __init__(self, config, logger = None, verbose = False, parent=None, domesim = False):            
+    def __init__(self, config, ns_host = None, logger = None, verbose = False, parent=None, domesim = False):            
         super(PyroGUI, self).__init__(parent)   
 
         self.config = config
+        self.ns_host = ns_host
         self.logger = logger
         self.verbose = verbose
         
@@ -685,7 +688,7 @@ class PyroGUI(QtCore.QObject):
                          alertHandler = self.alertHandler,
                          verbose = self.verbose)        
         
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.dome, name = 'dome')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.dome, name = 'dome', ns_host = ns_host)
         self.pyro_thread.start()
         
 
@@ -711,45 +714,35 @@ if __name__ == "__main__":
     #### GET ANY COMMAND LINE ARGUMENTS #####
     
     args = sys.argv[1:]
-    
-    
-    modes = dict()
-    modes.update({'-v' : "Running in VERBOSE mode"})
-    modes.update({'-p' : "Running in PRINT mode (instead of log mode)."})
-    modes.update({'--domesim' : "Running in SIMULATED DOME mode" })
+    print(f'args = {args}')
     
     # set the defaults
-    verbose = True
+    verbose = False
     doLogging = True
+    ns_host = '192.168.1.215'
     domesim = False
-    #domesim = True
     
-    #print(f'args = {args}')
-    
-    if len(args)<1:
-        pass
-    
-    else:
-        for arg in args:
-            
-            if arg in modes.keys():
-                
-                # remove the dash when passing the option
-                opt = arg.replace('-','')
-                if opt == 'v':
-                    print(modes[arg])
-                    verbose = True
-                    
-                elif opt == 'p':
-                    print(modes[arg])
-                    doLogging = False
-                
-                elif opt == 'domesim':
-                    print(modes[arg])
-                    domesim = True
-            else:
-                print(f'Invalid mode {arg}')
-    
+    options = "vpn:s"
+    long_options = ["verbose", "print", "ns_host:","domesim"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
+        
+        elif currentArgument in ("-s", "--domesim"):
+            domesim = True
 
     
     
@@ -775,7 +768,7 @@ if __name__ == "__main__":
         logger = None
     
     # set up the main app. note that verbose is set above
-    main = PyroGUI(config = config, logger = logger, verbose = verbose, domesim = domesim)
+    main = PyroGUI(config = config, ns_host = ns_host, logger = logger, verbose = verbose, domesim = domesim)
 
     # handle the sigint with above code
     signal.signal(signal.SIGINT, sigint_handler)

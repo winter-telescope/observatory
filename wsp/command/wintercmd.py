@@ -185,8 +185,12 @@ class Wintercmd(QtCore.QObject):
                  chiller, 
                  powerManager, 
                  logger, 
-                 viscam, 
-                 ccd,
+                 #viscam, 
+                 #ccd,
+                 #summercamera,
+                 #wintercamera,
+                 camdict,
+                 fwdict,
                  ephem):
         # init the parent class
         #super().__init__()
@@ -208,16 +212,21 @@ class Wintercmd(QtCore.QObject):
         self.base_directory = base_directory
         self.config = config
         self.logger = logger
-        self.viscam = viscam
-        self.ccd = ccd
+        #self.viscam = viscam
+        #self.ccd = ccd
+        #self.summercamera = summercamera
+        #self.wintercamera = wintercamera
+        self.camdict = camdict
+        self.fwdict = fwdict
         self.mirror_cover = mirror_cover
         self.ephem = ephem
         self.defineParser()
+        
         # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
         self.telescope.signals.wrapWarning.connect(self.raiseWrapError)
         
         # connect the warning from the chiller to shut off the TEC to a handling function
-        self.chiller.TECshutoffCmd.connect(self.handle_chiller_alarm)
+        #self.chiller.TECshutoffCmd.connect(self.handle_chiller_alarm)
         
         # wait QTimer to try to keep responsive instead of 
         
@@ -1071,7 +1080,8 @@ class Wintercmd(QtCore.QObject):
         if goal_alt < 35:
             threshold_arcsec = 5.0 # 1.0 #NPL 8-16-22: increased this to handle times where there is more rms pointing jitter, noticed this when pointing ~20 deg alt
         else:
-            threshold_arcsec = 1.0
+            #threshold_arcsec = 1.0
+            threshold_arcsec = 5.0 # 1.0 #NPL 6-27-23: increased to work with larger dithers (eg 600")
         # wait for the dist to target to be low and the ra/dec near what they're meant to be
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -3545,21 +3555,15 @@ class Wintercmd(QtCore.QObject):
             self.promptThread.stop()
             self.execThread.stop()
         
+        """
+        #NPL 5-19-23 commenting out
         # try to shut down the ccd camera client
         try:
             self.parse('ccd_shutdown_client')
             time.sleep(1)
         except Exception as e:
             print(f'could not shut down ccd camera client. {type(e)}: {e}')
-        
-        # try to shut down the ccd camera server
-        """try:
-            self.parse('ccd_killServer')
-            time.sleep(1)
-        except Exception as e:
-            print(f'could not shut down ccd camera huaso server. {type(e)}: {e}')"""
-        
-        #sys.exit()#sigint_handler()
+        """
         
         # try to kill the ccd huaso_server
         # we don't have a path from loacl to remote for this yet.
@@ -3574,6 +3578,7 @@ class Wintercmd(QtCore.QObject):
             os.kill(pid, signal.SIGKILL)
         
         # kill the program
+        print(f'Now trying to kill the QCoreApplication...')
         QtCore.QCoreApplication.quit()
 
 ##### Mirror cover commands ####
@@ -3987,7 +3992,590 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('shut down the huaso server')
         sigcmd = signalCmd('killServer')
         self.ccd.newCommand.emit(sigcmd)
+    
+    ##### FILTER WHEEL API METHODS #####
+    
+    @cmd
+    def fw_home(self):
+        self.defineCmdParser('home the filterwheel')
+
         
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'fw_goto: args = {self.args}')
+        
+        if self.args.winter:
+            fwname = 'winter'
+        elif self.args.summer:
+            fwname = 'summer'
+        
+        fw = self.fwdict[fwname]
+                
+        sigcmd = signalCmd('home')
+        
+        self.logger.info(f'wintercmd: homing {fw.daemonname}')
+        
+        fw.newCommand.emit(sigcmd)
+    
+    @cmd
+    def fw_goto(self):
+        self.defineCmdParser('send filterwheel to specified position')
+        
+        self.cmdparser.add_argument('pos',
+                                    nargs = 1,
+                                    action = None,
+                                    type = int,
+                                    help = '<position_number>')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'fw_goto: args = {self.args}')
+        
+        if self.args.winter:
+            fwname = 'winter'
+        elif self.args.summer:
+            fwname = 'summer'
+        
+        fw = self.fwdict[fwname]
+        
+        pos = self.args.pos[0]
+        
+        sigcmd = signalCmd('goToFilter', pos)
+        
+        self.logger.info(f'wintercmd: sending {fw.daemonname} to positon {pos}')
+
+        fw.newCommand.emit(sigcmd)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 90
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'unable to move filter wheel: command timed out after {timeout} seconds before completing.')
+            
+            stop_condition = ( (self.state[f'{fwname}_fw_filter_pos'] == pos) )
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: successfully completed filter wheel move')
+                break 
+        
+    
+    
+    ##### CAMERA API METHODS #####
+    @cmd
+    def startupCamera(self):
+        
+        self.defineCmdParser('startup the camera')
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'startupCamera: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+        
+        sigcmd = signalCmd('startupCamera')
+        
+        self.logger.info(f'wintercmd: starting up {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def shutdownCamera(self):
+        
+        self.defineCmdParser('shutdown the camera')
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'startupCamera: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+        
+        sigcmd = signalCmd('shutdownCamera')
+        
+        self.logger.info(f'wintercmd: starting up {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def doExposure(self):
+        
+        self.defineCmdParser('take an exposure with the camera')
+        # argument to hold the camera 
+        camgroup = self.cmdparser.add_mutually_exclusive_group()
+        camgroup.add_argument('-w',    '--winter',      action = 'store_true', default = False)
+        camgroup.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        # argument to hold the observation type
+        imtypegroup = self.cmdparser.add_mutually_exclusive_group()
+        imtypegroup.add_argument('-s',    '--science',   action = 'store_true', default = False)
+        imtypegroup.add_argument('-d',    '--dark',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
+        imtypegroup.add_argument('-t',    '--test',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-b',    '--bias',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
+        
+        # also add a mode argument
+        self.cmdparser.add_argument('--mode',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    default = '',
+                                    help = '<image_mode>')
+        
+        # add ability to pass in image directory
+        self.cmdparser.add_argument('--imdir',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    default = '',
+                                    help = '<image_directory>')
+        
+        # add ability to pass in sensor addresses
+        self.cmdparser.add_argument('--addrs',
+                                    nargs = 1,
+                                    action = None,
+                                    type = list,
+                                    default = [],
+                                    help = '<camera_address_list>')
+        
+        # add ability to pass in sensor addresses
+        self.cmdparser.add_argument('--imname',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    default = '',
+                                    help = '<image_name>')
+        
+        self.getargs()
+        
+        ###### Handle the image TYPE ######
+        if self.args.science:
+            imtype = 'SCIENCE'
+        elif self.args.dark:
+            imtype = 'DARK'
+        elif self.args.flat:
+            imtype = 'FLAT'
+        elif self.args.focus:
+            imtype = 'FOCUS'
+        elif self.args.bias:
+            imtype = 'BIAS'
+        elif self.args.test:
+            imtype = 'TEST'
+        elif self.args.pointing:
+            imtype = 'POINTING'
+        else:
+            # SET THE DEFAULT
+            imtype = 'TEST'
+        
+        ###### Handle the image MODE ######
+        if type(self.args.mode) is list:
+            mode = self.args.mode[0] 
+        else:
+            mode = self.args.mode
+        # Set default image mode
+        if mode == '':
+            mode = None
+        
+        ###### Handle the image DIRECTORY ######
+        if type(self.args.imdir) is list:
+            imdir = self.args.imdir[0]
+        else:
+            imdir = self.args.imdir
+        # set default imdir
+        if imdir == '':
+            imdir = None
+            
+        ###### Handle the image DIRECTORY ######
+        if type(self.args.imname) is list:
+            imname = self.args.imname[0]
+        else:
+            imname = self.args.imname
+        # set default imdir
+        if imname == '':
+            imname = None
+        
+        ###### Handle the imager ADDRESSES ######
+        addrs = self.args.addrs
+        # Set default image mode
+        if addrs == []:
+            addrs = None
+        
+        self.logger.info(f'wintercmd: doExposure: args = {self.args}')
+        self.logger.info(f'wintercmd: imtype = {imtype}, mode = {mode}, imdir = {imdir}, addrs = {addrs}')
+
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        else:
+            camname = 'winter'
+        
+        camera = self.camdict[camname]
+        
+        # local_camera expects this:
+            #doExposure(self, imdir=None, imname = None, imtype = 'test', addrs = None):
+
+        sigcmd = signalCmd('doExposure', imdir = imdir, imname = imname, imtype = imtype, mode = mode, addrs = addrs)
+        
+        self.logger.info(f'wintercmd: doing exposure on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+        
+        
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        #timeout = self.state[f'{camname}_camera_command_timeout']
+        timeout = self.state[f'{camname}_camera_exptime'] + 10.0
+        # create a buffer list to hold several samples over which the stop condition must be true
+        
+        
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        ## Change this to trigger on 1 True sample, since the flag is on for a short time and may get skipped
+        #n_buffer_samples = 1
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(f'doExposure command timed out after {timeout} seconds before completing')
+            
+            stop_condition = ( (self.state[f'{camname}_camera_doing_exposure'] == False) & 
+                              (self.state[f'{camname}_camera_command_pass'] == 1))
+           
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                self.logger.info(f'wintercmd: finished the doExposure method without timing out :)')
+                break 
+        
+        
+        
+    @cmd
+    def tecSetSetpoint(self):
+        
+        self.defineCmdParser('set the TEC setpoint')
+        
+        self.cmdparser.add_argument('temp',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<temperature_celsius>')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'tecSetSetpoint: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+        
+        temp = self.args.temp[0]
+        
+        sigcmd = signalCmd('tecSetSetpoint', temp)
+        
+        self.logger.info(f'wintercmd: setting TEC setpoint on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def tecSetVolt(self):
+        
+        self.defineCmdParser('set the TEC voltage')
+        
+        self.cmdparser.add_argument('voltage',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<tec_voltage>')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'tecSetVolt: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+        
+        voltage = self.args.voltage[0]
+        
+        sigcmd = signalCmd('tecSetVolt', voltage)
+        
+        self.logger.info(f'wintercmd: setting TEC voltage on {camera.daemonname} to {voltage} V')
+        
+        camera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def setExposure(self):
+        
+        self.defineCmdParser('set the exposure time')
+        
+        self.cmdparser.add_argument('exptime',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<exptime_seconds>')
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'setExposure: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+        
+        exptime = self.args.exptime[0]
+        
+        sigcmd = signalCmd('setExposure', exptime)
+        
+        self.logger.info(f'wintercmd: setting exposure time on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 10
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config['cmd_status_dt'])
+            timestamp = datetime.utcnow().timestamp()
+            dt = (timestamp - start_timestamp)
+            #print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                self.logger.info(f'command timed out after {timeout} seconds before completing. Requested exptime = {exptime}, but it is {self.state["ccd_exptime"]}')
+                break
+            
+            stop_condition = ( (self.state[f'{camname}_camera_exptime'] == exptime) & 
+                              (self.state[f'{camname}_camera_command_pass'] == 1))
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+            
+            if all(entry == condition for entry in stop_condition_buffer):
+                
+                self.logger.info(f'wintercmd: {camname} camera exptime set successfully.')
+                try_again = False
+                break 
+            try_again = True
+        
+        if try_again:
+            pass
+            
+    
+    @cmd
+    def tecStart(self):
+        
+        self.defineCmdParser('start the TEC')
+        """
+        self.cmdparser.add_argument('coeffs',
+                                    nargs = 1,
+                                    action = None,
+                                    type = list,
+                                    default = [],
+                                    help = '<exptime_seconds>')
+        """
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        
+        self.getargs()
+
+        self.logger.info(f'tecStart: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+            
+        
+                
+        sigcmd = signalCmd('tecStart')
+        
+        self.logger.info(f'wintercmd: starting TEC on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def tecStop(self):
+            
+        self.defineCmdParser('stop the TEC')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'tecStop: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+                
+        sigcmd = signalCmd('tecStop')
+        
+        self.logger.info(f'wintercmd: stopping TEC on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def setPIDp(self):
+        """
+        Convenience function for tuning the WINTER sensor PID parameters
+        """
+        self.defineCmdParser('set camera PID proportional coefficient')
+        
+        self.cmdparser.add_argument('coeff',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<PID_coefficient>')
+        
+        self.getargs()
+        coeff = self.args.coeff[0]
+        
+        sigcmd = signalCmd('setPIDp', coeff)
+        self.logger.info(f'wintercmd: sending update to WINTER TEC PID kp = {coeff}')
+        self.wintercamera.newCommand.emit(sigcmd)
+    
+    @cmd
+    def setPIDi(self):
+        """
+        Convenience function for tuning the WINTER sensor PID parameters
+        """
+        self.defineCmdParser('set camera PID integral coefficient')
+        
+        self.cmdparser.add_argument('coeff',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<PID_coefficient>')
+        
+        self.getargs()
+        coeff = self.args.coeff[0]
+        
+        sigcmd = signalCmd('setPIDi', coeff)
+        self.logger.info(f'wintercmd: sending update to WINTER TEC PID ki = {coeff}')
+        self.wintercamera.newCommand.emit(sigcmd)
+        
+    @cmd
+    def setPIDd(self):
+        """
+        Convenience function for tuning the WINTER sensor PID parameters
+        """
+        self.defineCmdParser('set camera PID derivative coefficient')
+        
+        self.cmdparser.add_argument('coeff',
+                                    nargs = 1,
+                                    action = None,
+                                    type = float,
+                                    help = '<PID_coefficient>')
+        
+        self.getargs()
+        coeff = self.args.coeff[0]
+        
+        sigcmd = signalCmd('setPIDd', coeff)
+        self.logger.info(f'wintercmd: sending update to WINTER TEC PID kd = {coeff}')
+        self.wintercamera.newCommand.emit(sigcmd)
+    
+    
+    ####### End Camera API Methods #######
+    
     @cmd
     def generate_supernovae_db(self):
         self.defineCmdParser('Generate supernovae observation schedule')
@@ -4030,10 +4618,25 @@ class Wintercmd(QtCore.QObject):
         df_2.to_sql('Fields', con=connection, if_exists='replace', index_label = "fieldID")
         print("Finished")
     @cmd
-    def total_startup(self):
-        
+    #def total_startup(self):
+    def do_startup(self):    
         # NPL 12-15-21: porting this over to roboOperator
-        sigcmd = signalCmd('do_startup')
+        
+        
+        self.defineCmdParser('start up the observatory and ready it for observations')
+        
+        # option to startup the cameras
+        self.cmdparser.add_argument('--cameras', '-c',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = "<startup_cameras?>")
+        
+        self.getargs()
+        print(f'wintercmd: args = {self.args}')
+        
+        startup_cameras = self.args.cameras
+        
+        sigcmd = signalCmd('do_startup', startup_cameras = startup_cameras)
         
         self.roboThread.newCommand.emit(sigcmd)
         
@@ -4093,61 +4696,7 @@ class Wintercmd(QtCore.QObject):
 
                 break 
         
-        """
-        if self.state['dome_control_status'] == 0:
-            try:
-                self.dome_takecontrol()
-            except Exception:
-                print('Could not take control of dome')
-        elif self.state['dome_control_status']:
-            print('Dome control is remote, skipping take control step')
-        try:
-            self.mount_connect()
-            if self.state['mount_is_tracking']:
-                self.mount_tracking_off()
-            self.mount_az_on()
-            self.mount_alt_on()
-            self.mount_home()
-            self.waitForCondition('mount_is_slewing', False)
-            print('Mount is connected and homed')
-        except Exception:
-            print('Could not home the mount')
-        if self.state['dome_tracking_status']:
-            self.dome_tracking_off()
-        try:
-            if self.state['rotator_is_enabled'] == 0:
-                self.rotator_enable()
-            self.rotator_home()
-            self.waitForCondition('rotator_is_slewing', 0)
-            print('Rotator is enabled and homed')
-        except Exception:
-            print('Could not home the rotator')
-        try:
-            self.mirror_cover_connect()
-            self.mirror_cover_open()
-            print('Mirror cover is connected and opened')
-        except Exception:
-            print('Could not connect and open mirror cover')
-        try:
-            self.m2_focuser_enable()
-            print('Focuser is enabled')
-        except Exception:
-            print('Could not enable the focuser')
-        if self.state['dome_home_status'] != 1:
-            try:
-                self.dome_go_home()
-                self.waitForCondition('dome_home_status', 1)
-                print("Dome is home")
-            except Exception:
-                print('Could not home the dome')
-        elif self.state['dome_home_status'] == 1:
-            print('Dome is already home')
-        try:
-            self.dome_open()
-            print('Opening dome')
-        except Exception:
-            print('Could not open dome')
-        """
+        
     
     @cmd
     def total_shutdown(self):

@@ -32,7 +32,7 @@ import signal
 #import threading
 from datetime import datetime
 import pathlib
-
+import getopt
 
 
 
@@ -74,13 +74,14 @@ class DirfileWriter(QtCore.QObject):
     """
     
     
-    def __init__(self, base_directory, config, logger, verbose = False):
+    def __init__(self, base_directory, config, logger, ns_host = None, verbose = False):
         super(DirfileWriter, self).__init__()
         
         self.base_directory = base_directory
         self.config = config
         self.logger = logger
         self.verbose = verbose
+        self.ns_host = ns_host
         
         # define the housekeeping data dictionaries
         # samples per frame for each daq loop
@@ -88,7 +89,7 @@ class DirfileWriter(QtCore.QObject):
         #dt = 0.25
         
         self.spf = self.config['dirfile_spf']#10
-        self.dt = self.config['dirfile_write_dt']/self.spf
+        self.dt = int(self.config['dirfile_write_dt']/self.spf)
         
         # current state values
         self.state = dict()
@@ -113,15 +114,21 @@ class DirfileWriter(QtCore.QObject):
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(False)
         self.timer.timeout.connect(self.update_state)
-        self.timer.start(self.dt)
+        self.timer.start(int(self.dt))
         
         
     def init_remote_object(self):
         # init the remote object
         try:
-            self.remote_object = Pyro5.client.Proxy("PYRONAME:state")
+            if self.verbose:
+                print(f'trying to reconnect to remote object "state" at ns_host = {self.ns_host}')
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup('state')
+            self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
-        except:
+        except Exception as e:
+            if self.verbose:
+                print(f'Could not init remote object: {e}')
             self.connected = False
             pass
         '''
@@ -131,6 +138,8 @@ class DirfileWriter(QtCore.QObject):
     def update_state(self):
         # poll the state, if we're not connected try to reconnect
         # this should reconnect down the line if we get disconnected
+        if self.verbose:
+            print(f'dirfiled: updating state')
         if not self.connected:
             self.init_remote_object()
             
@@ -146,6 +155,7 @@ class DirfileWriter(QtCore.QObject):
             except Exception as e:
                 if self.verbose:
                     print(f'dirfiled: could not update remote state: {e}')
+                self.connected = False
                 pass
         
         self.samples_in_curframe += 1
@@ -244,36 +254,38 @@ class DirfileWriter(QtCore.QObject):
             os.symlink(self.dirpath, hk_linkpath)
         
         # add the fields from the config file to the dirfile
-        for field in self.config['fields']:
-            # add handling for the various field types ('ftype') allowed by the dirfile standards as they come up
-            
-
-            self.df.add_raw_entry(field = field, 
-                                  #spf = self.spf[self.config['fields'][field]['rate']],
-                                  spf = self.spf,
-                                  # now that we're not using easygetdata we don't need a dtype object, just a string name
-                                  #dtype = np.dtype(self.config['fields'][field]['dtype']),
-                                  dtype = self.config['fields'][field]['dtype'],
-                                  units = self.config['fields'][field]['units'],
-                                  label = self.config['fields'][field]['label'])
-        
-        # add in any derived fields
-        for field in self.config['derived_fields']:
-            ftype = self.config['derived_fields'][field]['ftype'].lower()
-            if ftype == 'lincom':
-                self.df.add_lincom_entry(field = field, 
-                                        input_field = self.config['derived_fields'][field]['input_field'], 
-                                        slope = self.config['derived_fields'][field]['slope'], 
-                                        intercept = self.config['derived_fields'][field]['intercept'],
-                                        units = self.config['derived_fields'][field]['units'],
-                                        label = self.config['derived_fields'][field]['label'])
-            elif ftype == 'linterp':
-                self.df.add_linterp_entry(field, 
-                                          input_field = self.config['derived_fields'][field]['input_field'], 
-                                          LUT_file = self.base_directory + '/' + self.config['derived_fields'][field]['LUT_file'],
-                                          units = self.config['derived_fields'][field]['units'],
-                                          label = self.config['derived_fields'][field]['label'])
+        if 'fields' in self.config:
+            for field in self.config['fields']:
+                # add handling for the various field types ('ftype') allowed by the dirfile standards as they come up
+                
     
+                self.df.add_raw_entry(field = field, 
+                                      #spf = self.spf[self.config['fields'][field]['rate']],
+                                      spf = self.spf,
+                                      # now that we're not using easygetdata we don't need a dtype object, just a string name
+                                      #dtype = np.dtype(self.config['fields'][field]['dtype']),
+                                      dtype = self.config['fields'][field]['dtype'],
+                                      units = self.config['fields'][field]['units'],
+                                      label = self.config['fields'][field]['label'])
+            
+        # add in any derived fields
+        if 'derived_fields' in self.config:
+            for field in self.config['derived_fields']:
+                ftype = self.config['derived_fields'][field]['ftype'].lower()
+                if ftype == 'lincom':
+                    self.df.add_lincom_entry(field = field, 
+                                            input_field = self.config['derived_fields'][field]['input_field'], 
+                                            slope = self.config['derived_fields'][field]['slope'], 
+                                            intercept = self.config['derived_fields'][field]['intercept'],
+                                            units = self.config['derived_fields'][field]['units'],
+                                            label = self.config['derived_fields'][field]['label'])
+                elif ftype == 'linterp':
+                    self.df.add_linterp_entry(field, 
+                                              input_field = self.config['derived_fields'][field]['input_field'], 
+                                              LUT_file = self.base_directory + '/' + self.config['derived_fields'][field]['LUT_file'],
+                                              units = self.config['derived_fields'][field]['units'],
+                                              label = self.config['derived_fields'][field]['label'])
+        
     
     
     
@@ -316,10 +328,10 @@ class DirfileWriter(QtCore.QObject):
             
 class Main(QtCore.QObject):
     ## Initialize Class ##
-    def __init__(self, base_directory, config, logger, opts = None,parent = None):
+    def __init__(self, base_directory, config, logger, ns_host = None, opts = None, verbose = False, parent = None):
         super(Main, self).__init__(parent)
 
-        self.dirfileWriter = DirfileWriter(base_directory, config, logger)
+        self.dirfileWriter = DirfileWriter(base_directory, config, logger, ns_host, verbose = verbose)
         
     
             
@@ -333,6 +345,42 @@ def sigint_handler( *args):
     QtCore.QCoreApplication.quit()
 
 if __name__ == "__main__":
+    
+    ##### GET ANY COMMAND LINE ARGUMENTS #####
+    
+    args = sys.argv[1:]
+    print(f'args = {args}')
+    
+    # set the defaults
+    verbose = False
+    doLogging = True
+    ns_host = None
+    #ns_host = '192.168.1.10'
+    
+    options = "vpn:"
+    long_options = ["verbose", "print", "ns_host:"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
+    
+    ##### RUN THE APP #####
+    
+    
+    
+    
     app = QtCore.QCoreApplication(sys.argv)
     
     # set the wsp path as the base directory
@@ -342,15 +390,18 @@ if __name__ == "__main__":
     config_file = base_directory + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
-    doLogging = True
+    
     
     # set up the logger
     if doLogging:
         logger = logging_setup.setup_logger(base_directory, config)    
     else:
         logger = None
-
-    main = Main(base_directory = wsp_path, config = config, logger = logger)
+    
+    
+    
+    print(f'dirfiled: connecting with ns_host = {ns_host}')
+    main = Main(base_directory = wsp_path, config = config, logger = logger, ns_host = ns_host, verbose = verbose)
 
     
     signal.signal(signal.SIGINT, sigint_handler)
