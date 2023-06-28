@@ -133,7 +133,7 @@ log_link_name: 'winter.log'
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
-max_sun_alt_for_observing: -12
+max_sun_alt_for_observing: -3
 
 
 robotic_manager_triggers:
@@ -337,7 +337,7 @@ telescope:
         2: 'summer'
     rotator:
         winter:
-            rotator_field_angle_zeropoint: 155.0 
+            rotator_field_angle_zeropoint: 65.0 
             rotator_home_degs: 65.5
             rotator_max_degs: 120.0
             rotator_min_degs: -90.0

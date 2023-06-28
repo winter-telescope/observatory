@@ -1080,7 +1080,8 @@ class Wintercmd(QtCore.QObject):
         if goal_alt < 35:
             threshold_arcsec = 5.0 # 1.0 #NPL 8-16-22: increased this to handle times where there is more rms pointing jitter, noticed this when pointing ~20 deg alt
         else:
-            threshold_arcsec = 1.0
+            #threshold_arcsec = 1.0
+            threshold_arcsec = 5.0 # 1.0 #NPL 6-27-23: increased to work with larger dithers (eg 600")
         # wait for the dist to target to be low and the ra/dec near what they're meant to be
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
