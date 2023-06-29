@@ -82,6 +82,12 @@ class local_dome(QtCore.QObject):
         self.az_goal = self.home_az
         self.az_error = 0.0
         
+        # init the last timestamp since dome was ok to open
+        default_timestr = '1970-01-01 00:00:00.00' # last query timestamp
+        utc_datetime_obj = datetime.strptime(default_timestr, '%Y-%m-%d %H:%M:%S.%f')        # last query time string
+        timestamp = utc_datetime_obj.timestamp()
+        self.last_ok_to_open_timestamp = timestamp
+        
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)
         self.moveDome.connect(self.GoTo)
@@ -210,6 +216,14 @@ class local_dome(QtCore.QObject):
         
         self.ok_to_open = self.dome_ok & self.weather_ok & self.faults_ok 
         self.state.update({'ok_to_open' : self.ok_to_open})
+        
+        # update the last time the dome was okay to open
+        if self.ok_to_open:
+            self.last_ok_to_open_timestamp = timestamp
+        # update the dt in seconds since the last time it was ok to open
+        self.dt_since_last_ok_to_open = timestamp - self.last_ok_to_open_timestam
+        self.state.update({'dt_since_last_ok_to_open' : self.dt_since_last_ok_to_open})
+        
         
         # record the azimuth goal of the dome
         self.state.update({'az_goal' : self.az_goal})

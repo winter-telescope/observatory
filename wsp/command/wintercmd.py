@@ -3105,7 +3105,35 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def robo_do_darks(self):
         self.defineCmdParser('do the dark exposure series')
-        sigcmd = signalCmd('do_darks')
+        self.cmdparser.add_argument('-n', '--nimgs',
+                                    nargs = 1,
+                                    type = int,
+                                    default = -1,
+                                    action = None,
+                                    help = "<number_of_images>")
+        self.cmdparser.add_argument('-e', '--exptimes',
+                                    nargs = 1,
+                                    type = list,
+                                    default = [],
+                                    action = None,
+                                    help = "<exposure_time_list>")
+        self.getargs()
+        
+        
+        if type(self.args.nimgs) is int:
+            nimgs = self.args.nimgs
+        else:
+            nimgs = self.args.nimgs[0]
+        
+        if nimgs == -1:
+            nimgs = None
+            
+        exptimes = self.args.exptimes
+        # Set default image mode
+        if exptimes == []:
+            exptimes = None
+        
+        sigcmd = signalCmd('do_darks', n = nimgs, exptimes = exptimes)
         
         self.roboThread.newCommand.emit(sigcmd)
     

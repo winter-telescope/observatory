@@ -611,7 +611,24 @@ class RoboOperator(QtCore.QObject):
         
                 
         # make a note of why we're going ahead with opening the dome
-        if self.dome.ok_to_open:
+        
+        
+        
+        """
+        # Check that the dome is okay to open
+        want ot make sure the dome is okay. instead of just checking weather it 
+        is okay NOW, check how long it has been since it was okay. this will
+        effectively smooth out some issues where the dome reports back a single
+        bad value. now that timeout (self.dome.dt_since_last_ok_to_open) will
+        get reset to zero every time its okay.
+        
+        now it will continue to be happy as long until the dome has been reporting
+        back that it is in a bad state for longer than dome_badness_timeout sec.
+        """
+        dome_badness_timeout = 5.0
+        #if self.dome.ok_to_open & (self.dome.dt_since_last_ok_to_open < 5.0):
+        if (self.dome.dt_since_last_ok_to_open < dome_badness_timeout):
+
             #self.logger.info(f'robo: the dome says it is okay to open.')# sending open command.')
             return True
         elif self.dome_override:
@@ -1938,7 +1955,7 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
         
-    def do_darks(self):
+    def do_darks(self, n = None, exptimes = None):
         """
         do a series of dark exposures in all active filteres
         

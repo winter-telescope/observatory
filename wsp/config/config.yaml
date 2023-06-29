@@ -129,11 +129,12 @@ log_directory: 'data/log'
 log_link_directory: 'data'
 log_link_name: 'winter.log'
 
+
 ########### ROBO MANAGER ###########
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
-max_sun_alt_for_observing: -3
+max_sun_alt_for_observing: -12
 
 
 robotic_manager_triggers:
@@ -530,6 +531,29 @@ ephem:
         saturn: 5
 
 
+########### CALIBRATION DEFAULTS ###########
+cal_params:
+    winter:
+        dark:
+            n_imgs: 5
+            exptimes:
+                - 1
+                - 10
+                - 30
+                - 120
+        bias:
+            n_imgs: 0
+    summer:
+        dark:
+            n_imgs: 5
+            exptimes:
+                - 30
+        bias:
+            n_imgs: 5
+
+            
+
+
         
 ########### FOCUSER LOOP PARAM ###########
 focus_loop_param:
@@ -569,7 +593,9 @@ focus_loop_param:
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
     #file_type: '\*fits'
-    pixscale: 0.466
+    pixscale: # arcseconds
+        summer: 0.466
+        winter: 1.11
     #current_filter: 'rband'
     #save_dir: '/home/winter/data/images/focusing/'
     image_log_path: '/home/winter/data/plots_focuser/img_logs/'
