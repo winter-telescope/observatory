@@ -269,7 +269,7 @@ class local_camera(QtCore.QObject):
         
     #### CAMERA API METHODS ####
     def setExposure(self, exptime, addrs = None):
-        self.remote_object.setExposure(exptime)
+        self.remote_object.setExposure(exptime, addrs = addrs)
                 
     def doExposure(self, imdir=None, imname = None, imtype = None, mode = None, addrs = None):
         
@@ -328,6 +328,9 @@ class local_camera(QtCore.QObject):
     def tecSetSetpoint(self, temp, addrs = None):
         self.remote_object.tecSetSetpoint(temp, addrs = addrs)
     
+    def tecSetCoeffs(self, Kp, Ki, Kd, addrs = None):
+        self.remote_object.tecSetCoeffs(Kp, Ki, Kd, addrs = addrs)
+    
     def tecSetVolt(self, volt, addrs = None):
         self.remote_object.tecSetVolt(volt, addrs = addrs)
     
@@ -367,12 +370,13 @@ if __name__ == '__main__':
                  logger = None, verbose = False,
                  ):
     """
-    cam = local_camera(wsp_path, config, daemon_pyro_name = 'WINTERcamera',
-                       ns_host = '192.168.1.10', logger = logger, verbose = verbose)
+    cam = local_camera(wsp_path, config, camname = 'winter',
+                       daemon_pyro_name = 'WINTERcamera',
+                       ns_host = '192.168.1.20', logger = logger, verbose = verbose)
     
     cam.print_state()
     
-    
+    """
     while True:
         try:
             #cam.update_state()
@@ -381,4 +385,4 @@ if __name__ == '__main__':
             
         except KeyboardInterrupt:
             break
-    
+    """
