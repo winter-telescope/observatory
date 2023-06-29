@@ -1955,12 +1955,24 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
         
-    def do_darks(self, n = None, exptimes = None):
+    def do_darks(self, n_imgs = None, exptimes = None):
         """
         do a series of dark exposures in all active filteres
         
         """
         context = 'do_darks'
+        self.log(f'starting dark sequence')
+        
+        # How many images do you want to take at each exposure time?
+        if n_imgs is None:
+            n_imgs = self.config['cal_params'][self.camname]['dark']['n_imgs']
+        # What exposure times should we take darks at?
+        if (exptimes is None) or (exptimes == []):
+            exptimes = self.config['cal_params'][self.camname]['dark']['exptimes']
+            
+        
+        
+        
         # stow the rotator
         self.rotator_stop_and_reset()
         try:
@@ -1980,25 +1992,34 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
         #cycle through all the active filters:for filterID in 
-        filterIDs = self.focusTracker.getActiveFilters()
+        #filterIDs = self.focusTracker.getActiveFilters()
+        
+        
         # just pick the first of the active filters to do the darks in
         try:
-            self.announce(f'doing darks sequence')
-            """
-            # step through each filter to focus, and run a focus loop
-            # 1. change filter to filterID
+            self.announce(f'doing auto darks sequence with ndarks per exposure = {n_imgs}, exptimes = {exptimes}')
+
+
+            
+            # send the filter to the specified position from the config file
+            filterID = self.config['cal_params'][self.camname]['dark']['filterID']
+            # get filter number
+            for position in self.config['filter_wheels'][self.camname]['positions']:
+                if self.config['filter_wheels'][self.camname]['positions'][position] == filterID:
+                    filter_num = position
+                else:
+                    pass
             system = 'filter wheel'
-            if self.camname == 'summer':
-                # get filter number
-                for position in self.config['filter_wheels'][self.camname]['positions']:
-                    if self.config['filter_wheels'][self.camname]['positions'][position] == filterID:
-                        filter_num = position
-                    else:
-                        pass
-                    
-                self.do(f'command_filter_wheel {filter_num}')
-    
-            """
+            try:
+                self.do(f'fw_goto {filter_num} --{self.camname}')
+            except Exception as e:
+                msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err)
+                return
+            
             if not self.mountsim:
                 system = 'rotator'
                 try:
@@ -2014,21 +2035,29 @@ class RoboOperator(QtCore.QObject):
                     return
                 
             system = 'camera'
-            try:
-                self.do(f'ccd_set_exposure 30.0')
-                ndarks = 5
-                for i in range(ndarks):
-                    self.announce(f'Executing Auto Darks {i+1}/5')
-                    qcomment = f"Auto Darks {i+1}/{ndarks}"
-        
-                    self.do(f'robo_do_exposure -d --comment "{qcomment}"')
-            except Exception as e:
-                msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                return
+            # step through the specified exposure times:
+            for exptime in exptimes:
+                try:
+                    # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
+                    if exptime == self.camera.state['exptime']:
+                        self.log('requested exposure time matches current setting, no further action taken')
+                        pass
+                    else:
+                        self.log(f'current exptime = {self.camera.state["exptime"]}, changing to {exptime}')
+                        self.do(f'setExposure {exptime} --{self.camname}')
+                    
+                    for i in range(n_imgs):
+                        self.announce(f'Executing Auto Darks {i+1}/{n_imgs} at exptime = {exptime} s')
+                        qcomment = f"Auto Darks {i+1}/{n_imgs}"
+            
+                        self.do(f'robo_do_exposure -d')
+                except Exception as e:
+                    msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err)
+                    return
             
         except Exception as e:
             msg = f'roboOperator: could not complete darks for  due to error with {system}: due to {e.__class__.__name__}, {e}'
@@ -2036,10 +2065,10 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-                #return
+            return
             
 
-        self.announce('darks sequence completed successfully!')
+        self.announce(':greentick: auto darks sequence completed successfully!')
     
     def do_focusLoop(self, nom_focus = 'model', total_throw = 'default', nsteps = 'default', updateFocusTracker = True, focusType = 'Vcurve'):
         """

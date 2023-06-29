@@ -3112,13 +3112,16 @@ class Wintercmd(QtCore.QObject):
                                     action = None,
                                     help = "<number_of_images>")
         self.cmdparser.add_argument('-e', '--exptimes',
-                                    nargs = 1,
-                                    type = list,
+                                    nargs = '+',
+                                    type = int,
                                     default = [],
                                     action = None,
                                     help = "<exposure_time_list>")
         self.getargs()
         
+        # You call this function like this:
+            # robo_do_darks -n 3 -e 1 5 10
+
         
         if type(self.args.nimgs) is int:
             nimgs = self.args.nimgs
@@ -3133,7 +3136,7 @@ class Wintercmd(QtCore.QObject):
         if exptimes == []:
             exptimes = None
         
-        sigcmd = signalCmd('do_darks', n = nimgs, exptimes = exptimes)
+        sigcmd = signalCmd('do_darks', n_imgs = nimgs, exptimes = exptimes)
         
         self.roboThread.newCommand.emit(sigcmd)
     

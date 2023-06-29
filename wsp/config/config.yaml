@@ -541,20 +541,30 @@ cal_params:
                 - 10
                 - 30
                 - 120
+            filterID: 'dark'
         bias:
             n_imgs: 0
+            filterID: 'dark'
+        flats:
+            n_imgs: 2
+            filterIDs:
+                - 'J'
     summer:
         dark:
             n_imgs: 5
             exptimes:
                 - 30
+            filterID: 'r'
         bias:
             n_imgs: 5
-
-            
-
-
-        
+            filterID: 'r'
+        flats:
+            n_imgs: 2
+            filterIDs:
+                - 'u'
+                - 'g'
+                - 'r'
+                - 'i'
 ########### FOCUSER LOOP PARAM ###########
 focus_loop_param:
     sweep_param:
@@ -1726,6 +1736,20 @@ fields:
         dtype: int64
         rate: slow
         var: 'dome.state["Wetness_Status_Num"]'
+    dome_dt_since_last_ok_to_open:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: 'dome.state["dt_since_last_ok_to_open"]'
+    dome_ok_to_open:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: 'dome.state["ok_to_open"]'
     # things from dome_local
     dome_tracking_status:
         ftype: raw
