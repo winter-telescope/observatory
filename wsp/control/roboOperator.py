@@ -2292,7 +2292,14 @@ class RoboOperator(QtCore.QObject):
                             
                     
                 else:
-                    system = 'ccd'
+                    # any observation besides the first
+                    # do a dither:
+                    system = 'telescope'
+                    dithersize = 5*60
+                    self.do(f'mount_random_dither_arcsec {dithersize}')
+                    
+                    
+                    system = 'camera'
                     #self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
                     self.do(f'robo_do_exposure -foc ')
                 
