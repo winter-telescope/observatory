@@ -3017,6 +3017,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['bench_T_pid']   
+    bench_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_Kp'] 
+    bench_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_Ki']  
+    bench_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_Kd'] 
+    bench_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_max_dacV'] 
     bench_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3256,6 +3284,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sa_T_pid']   
+    sa_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_Kp'] 
+    sa_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_Ki']  
+    sa_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_Kd'] 
+    sa_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_max_dacV'] 
     sa_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3495,6 +3551,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sb_T_pid']   
+    sb_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_Kp'] 
+    sb_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_Ki']  
+    sb_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_Kd'] 
+    sb_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_max_dacV'] 
     sb_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3734,6 +3818,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sc_T_pid']   
+    sc_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_Kp'] 
+    sc_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_Ki']  
+    sc_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_Kd'] 
+    sc_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_max_dacV'] 
     sc_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3972,7 +4084,35 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pa_T_pid']   
+        var: camdict['winter'].state['pa_T_pid'] 
+    pa_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_Kp'] 
+    pa_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_Ki']  
+    pa_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_Kd'] 
+    pa_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_max_dacV'] 
     pa_V_tec_status:
         ftype: raw
         label: 'status'
@@ -4211,7 +4351,35 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pb_T_pid']   
+        var: camdict['winter'].state['pb_T_pid'] 
+    pb_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_Kp'] 
+    pb_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_Ki']  
+    pb_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_Kd'] 
+    pb_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_max_dacV']   
     pb_V_tec_status:
         ftype: raw
         label: 'status'
@@ -4451,6 +4619,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pc_T_pid']   
+    pc_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_Kp'] 
+    pc_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_Ki']  
+    pc_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_Kd'] 
+    pc_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_max_dacV'] 
     pc_V_tec_status:
         ftype: raw
         label: 'status'
