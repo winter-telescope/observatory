@@ -2418,13 +2418,15 @@ class RoboOperator(QtCore.QObject):
                 #image_directory, image_filename = self.ccd.getLastImagePath()
                 best_focus_image_filepath = os.path.join(image_directory, image_filename)
                 
+                #NPL 6-30-23 commenting out
+                """
                 loop.analyze_best_focus_image(best_focus_image_filepath)
                 
                 # save the data
                 loop.save_focus_data()
                 
                 loop.plot_focus_curve(timestamp_utc = obstime_timestamp_utc)
-
+                """
                 
                 if updateFocusTracker:
                     
