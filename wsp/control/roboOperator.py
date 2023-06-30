@@ -2406,8 +2406,8 @@ class RoboOperator(QtCore.QObject):
                 #self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
                 self.do(f'robo_do_exposure -foc ')
 
-            
-                image_directory, image_filename = self.ccd.getLastImagePath()
+                image_directory, image_filename  = '', ''
+                #image_directory, image_filename = self.ccd.getLastImagePath()
                 best_focus_image_filepath = os.path.join(image_directory, image_filename)
                 
                 loop.analyze_best_focus_image(best_focus_image_filepath)
