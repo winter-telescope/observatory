@@ -581,6 +581,9 @@ focus_loop_param:
         winter:
             - 'J'
     targets:
+        targ0:
+            target_type: object
+            target: 'm39'
         targ1:
             target_type: altaz
             target: '79 10'
