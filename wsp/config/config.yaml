@@ -677,22 +677,22 @@ filters:
         J:
             name: "MKO J-band (Asahi)"
             nominal_focus: 10000
-            active: False
+            active: True
             focus_exptime: 30
         Y:  
             name: "MKO Y-band (Asahi)"
             nominal_focus: 10000
-            active: False
+            active: True
             focus_exptime: 30
         Hs: 
             name: "MKO Hs-band (Asahi)"
             nominal_focus: 10000
-            active: False
+            active: True
             focus_exptime: 30
         dark:
             name: "Dark Mirror"
             nominal_focus: 10000
-            active: False
+            active: True
             focus_exptime: 30
         
 

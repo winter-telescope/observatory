@@ -2099,16 +2099,11 @@ class RoboOperator(QtCore.QObject):
         self.announce('running focus loop!')
         context = 'do_focusLoop'
         # get the current filter
-        #TODO: make this flexible to handle winter or summer. eg, if cam == 'summer': ... elif cam == 'winter': ...
-        
-        
-        
+
         try:
-            if self.camname == 'summer':
-                
-                filterpos = self.state['Viscam_Filter_Wheel_Position'] # eg. 3
-                pixscale = self.config['viscam_platescale_as']
-                
+           
+            filterpos = self.fw.state['filter_pos']
+            pixscale = self.config['focus_loop_param']['pixscale'][self.camname]
                 
             
             filterID = self.config['filter_wheels'][self.camname]['positions'][filterpos] # eg. 'r'
@@ -2212,16 +2207,18 @@ class RoboOperator(QtCore.QObject):
                 self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
                 
                 # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
-                if self.exptime == self.state['ccd_exptime']:
+                #if self.exptime == self.state['exptime']:
+                if self.exptime == self.camera.state['exptime']:
                     self.log('requested exposure time matches current setting, no further action taken')
                     pass
                 else:
-                    self.log(f'current exptime = {self.state["ccd_exptime"]}, changing to {self.exptime}')
-                    self.do(f'ccd_set_exposure {self.exptime}')
+                    #self.log(f'current exptime = {self.state["exptime"]}, changing to {self.exptime}')
+                    self.log(f'current exptime = {self.camera.state["exptime"]}, changing to {self.exptime}')
+                    self.do(f'setExposure {self.exptime} --{self.camname}')
                 
                 
                 # take an image
-                system = 'ccd'
+                system = 'camera'
                 #self.do(f'robo_do_exposure -foc')
                 
                 qcomment = f"Focus Loop Image {i+1}/{nsteps} Focus Position = {dist:.0f} um"
@@ -2296,14 +2293,15 @@ class RoboOperator(QtCore.QObject):
                     
                 else:
                     system = 'ccd'
-                    self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
-
+                    #self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
+                    self.do(f'robo_do_exposure -foc ')
                 
                 
                 
                 
                 
-                image_directory, image_filename = self.ccd.getLastImagePath()
+                #image_directory, image_filename = self.ccd.getLastImagePath()
+                image_directory, image_filename  = '', ''
                 image_filepath = os.path.join(image_directory, image_filename)
                 
                 # add the filter position and image path to the list to analyze
@@ -2370,7 +2368,11 @@ class RoboOperator(QtCore.QObject):
                 obstime_timestamp_utc = datetime.now(tz = pytz.UTC).timestamp()
             
             # now analyze the data (rate the images and load the observed filterpositions)
-            x0_fit = loop.analyzeData(focuser_pos, images)
+            
+            #TODO: this is where the focus is fit this will need to be updated
+            #x0_fit = loop.analyzeData(focuser_pos, images)
+            # for now just return 12000
+            x0_fit = 12000.0
             
             
             
@@ -2400,8 +2402,9 @@ class RoboOperator(QtCore.QObject):
                 
                 # note the path of the image and pass this to analyzer
                 
-                system = 'ccd'
-                self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
+                system = 'camera'
+                #self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
+                self.do(f'robo_do_exposure -foc ')
 
             
                 image_directory, image_filename = self.ccd.getLastImagePath()
@@ -2447,6 +2450,8 @@ class RoboOperator(QtCore.QObject):
             msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
             self.log(msg)
         """
+        self.announce(':greentick: completed focus loop. for now not doing any analysis and returning best focus = {x0_fit}')
+        
         return x0_fit
     
     
