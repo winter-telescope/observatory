@@ -2317,12 +2317,13 @@ class RoboOperator(QtCore.QObject):
                 self.log("focus image added to list")            
                 
             except Exception as e:
-                msg = f'roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}'
+                msg = f'roboOperator: error while running focus loop with {system} due to {e.__class__.__name__}, {e}'
                 self.log(msg)
                 self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
-                return
+                #return
+                # NPL 6-30-23 got rid of this return so it will keep trying if there's a problem with any given image
             # increase the image number counter
             i += 1
         # print out the files and positions to the terminal
