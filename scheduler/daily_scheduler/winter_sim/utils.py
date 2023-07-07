@@ -11,6 +11,8 @@ from datetime import datetime
 from .constants import BASE_DIR, P48_loc, W_loc, W_Observer, TIME_BLOCK_SIZE 
 from .constants import Site
 
+which_twilight = -6.*u.deg
+
 site = Site()
 
 def vega_to_AB(mag_vega, filter_id=1):
@@ -98,6 +100,24 @@ def RA_to_HA(ra, time):
 
     return ha
 
+def previous_evening_twilight(time):
+    return W_Observer.sun_set_time(time, which='previous', horizon=which_twilight)
+
+def next_evening_twilight(time):
+    # return P48_Observer.twilight_evening_nautical(time, which='next')
+
+    # When more than 1 day in simulation, jumps ahead to 12 deg twilight
+    # so this function is unable to find the next twilight b/c it has already
+    # passed. If I temporarily go back in time 2 minutes, this works again.
+    # temp_time = time - 2*u.min
+    temp_time = time
+    return W_Observer.sun_set_time(temp_time, which='next', horizon=which_twilight)
+
+def previous_morning_twilight(time):
+    return W_Observer.sun_rise_time(time, which='previous', horizon=which_twilight)
+
+def next_morning_twilight(time):
+    return W_Observer.sun_rise_time(time, which='next', horizon=which_twilight)
 
 def previous_12deg_evening_twilight(time):
     return W_Observer.twilight_evening_nautical(time, which='previous')
@@ -164,7 +184,7 @@ def seeing_at_pointing(altitude):
 
 
 def approx_hours_of_darkness(time, axis=coord.Angle(23.44 * u.degree),
-                             latitude=W_loc.lat, twilight=coord.Angle(12. * u.degree)):
+                             latitude=W_loc.lat, twilight=coord.Angle(which_twilight)):
     """Compute the hours of darkness (greater than t degrees twilight)
 
     The main approximation is a casual treatment of the time since the solstice"""
@@ -270,12 +290,12 @@ def block_index_to_time(block, time_year, where='mid',
 def nightly_blocks(time, time_block_size=TIME_BLOCK_SIZE):
     """Return block numbers and midpoint times for a given night."""
 
-    evening_twilight = next_12deg_evening_twilight(time)
-    morning_twilight = next_12deg_morning_twilight(time)
+    evening_twilight = next_evening_twilight(time)
+    morning_twilight = next_morning_twilight(time)
 
     if (evening_twilight > morning_twilight) or (evening_twilight.value < 0):
         # the night has already started, find previous twilight
-        evening_twilight = previous_12deg_evening_twilight(time)
+        evening_twilight = previous_evening_twilight(time)
     block_start = block_index(evening_twilight,
                               time_block_size=time_block_size)
     block_end = block_index(morning_twilight,

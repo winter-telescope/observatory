@@ -4193,6 +4193,42 @@ class Wintercmd(QtCore.QObject):
         camera.newCommand.emit(sigcmd)
     
     @cmd
+    def restartSensorDaemon(self):
+        
+        self.defineCmdParser('restart the sensor daemon')
+        
+        self.cmdparser.add_argument('-n', '--addrs',
+                                    nargs = '+',
+                                    type = str,
+                                    default = None,
+                                    action = None,
+                                    help = "<sensor_address>")
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'startupCamera: args = {self.args}')
+        
+        addrs = self.args.addrs
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+        
+        sigcmd = signalCmd('restartSensorDaemon', addrs = addrs)
+        
+        self.logger.info(f'wintercmd: starting up {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
+    
+    @cmd
     def doExposure(self):
         
         self.defineCmdParser('take an exposure with the camera')
@@ -4630,7 +4666,7 @@ class Wintercmd(QtCore.QObject):
                                     nargs = 3,
                                     action = None,
                                     default = None, 
-                                    required = False,
+                                    #required = False,
                                     type = float,
                                     help = '<PID_coeffs_Kp_Ki_Kd>')
         

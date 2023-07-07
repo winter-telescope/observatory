@@ -191,3 +191,4 @@ conf = loadconfig(config_file)
 
 MAX_AIRMASS = altitude_to_airmass(conf['telescope']['min_alt'])
 MIN_AIRMASS = altitude_to_airmass(conf['telescope']['max_alt'])
+

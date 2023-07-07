@@ -346,7 +346,7 @@ class local_camera(QtCore.QObject):
     def shutdownCamera(self, addrs = None):
         self.remote_object.shutdownCamera(addrs = addrs)
         
-    def restartCameraDaemon(self, addrs = None):
+    def restartSensorDaemon(self, addrs = None):
         self.remote_object.restartCameraDaemon(addrs = addrs)
         #self.remote_object.reconnect()
         
@@ -372,7 +372,7 @@ if __name__ == '__main__':
     """
     cam = local_camera(wsp_path, config, camname = 'winter',
                        daemon_pyro_name = 'WINTERcamera',
-                       ns_host = '192.168.1.20', logger = logger, verbose = verbose)
+                       ns_host = '192.168.1.10', logger = logger, verbose = verbose)
     
     cam.print_state()
     

@@ -811,13 +811,15 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------
             # check if we need to focus the telescope
             #---------------------------------------------------------------------
-            """
+            
             graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
             if self.test_mode == True:
                 self.log(f"not checking focus bc we're in test mode")
                 pass
             else:
-                filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, graceperiod_hours = graceperiod_hours)
+                filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, 
+                                                                         graceperiod_hours = graceperiod_hours,
+                                                                         cam = self.camname)
                 
                 # here is a good place to insert a good check on temperature change,
                 # or even better a check on FWHM of previous images
@@ -833,7 +835,7 @@ class RoboOperator(QtCore.QObject):
                         # now exit and rerun the check
                         self.checktimer.start()
                         return
-            """
+            
             # here we should check if the temperature has changed by some amount and nudge the focus if need be
             
             
@@ -1127,6 +1129,10 @@ class RoboOperator(QtCore.QObject):
             conds.append(self.state['rotator_wrap_check_enabled'] == True)
             conds.append(self.state['focuser_is_connected'] == True)
             conds.append(self.state['focuser_is_enabled'] == True)
+        
+        #TODO: UNCOMMENT
+        #NPL: commenting out so that we can observe even though mirror cover is stuck open
+        # 7-3-23
         if not self.test_mode:
             conds.append(self.state['Mirror_Cover_State'] == 0)
         
@@ -1190,6 +1196,9 @@ class RoboOperator(QtCore.QObject):
         
         ### MIRROR COVER ###
         # make sure the mirror cover is closed
+        #TODO: UNCOMMENT
+        #NPL: commenting out so that we can observe even though mirror cover is stuck open
+        # 7-3-23
         if not self.mountsim:
             conds.append(self.state['Mirror_Cover_State'] == 1)
         
@@ -2134,10 +2143,10 @@ class RoboOperator(QtCore.QObject):
             
             if total_throw == 'default':
                 #total_throw = self.config['focus_loop_param']['total_throw']
-                total_throw = self.config['focus_loop_param']['sweep_param']['narrow']['total_throw']
+                total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
             if nsteps == 'default':
                 #nsteps = self.config['focus_loop_param']['nsteps']
-                nsteps = self.config['focus_loop_param']['sweep_param']['narrow']['nsteps']
+                nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
                 
             # init a focus loop object on the current filter
             #    config, nom_focus, total_throw, nsteps, pixscale
@@ -2204,7 +2213,7 @@ class RoboOperator(QtCore.QObject):
                 self.do(f'm2_focuser_goto {dist}')
                 
                 self.exptime = self.config['filters'][self.camname][filterID]['focus_exptime']
-                self.logger.info(f'robo: making sure exposure time on ccd to is set to {self.exptime}')
+                self.logger.info(f'robo: making sure exposure time on camera to is set to {self.exptime}')
                 
                 # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
                 #if self.exptime == self.state['exptime']:
@@ -2380,7 +2389,7 @@ class RoboOperator(QtCore.QObject):
             #TODO: this is where the focus is fit this will need to be updated
             #x0_fit = loop.analyzeData(focuser_pos, images)
             # for now just return 12000
-            x0_fit = 12000.0
+            x0_fit = 11820.0
             
             
             
@@ -2460,7 +2469,7 @@ class RoboOperator(QtCore.QObject):
             msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
             self.log(msg)
         """
-        self.announce(':greentick: completed focus loop. for now not doing any analysis and returning best focus = {x0_fit}')
+        self.announce(f':greentick: completed focus loop. for now not doing any analysis and returning best focus = {x0_fit}')
         
         return x0_fit
     
@@ -2485,7 +2494,7 @@ class RoboOperator(QtCore.QObject):
             #filterIDs = self.config['focus_loop_param']['filters'][self.camname]
             filterIDs = self.focusTracker.getFocusFilters(self.camname)
             
-        self.announce(f'running focus loops for filters: {filterIDs}')
+        self.announce(f'running focus loops for {self.camname}, focus filters = {filterIDs}')
         
         for filterID in filterIDs:
             self.announce(f'executing focus loop for filter: {filterID}')
@@ -2493,15 +2502,18 @@ class RoboOperator(QtCore.QObject):
                 # step through each filter to focus, and run a focus loop
                 # 1. change filter to filterID
                 system = 'filter wheel'
-                if self.camname == 'summer':
-                    # get filter number
-                    for position in self.config['filter_wheels'][self.camname]['positions']:
-                        if self.config['filter_wheels'][self.camname]['positions'][position] == filterID:
-                            filter_num = position
-                        else:
-                            pass
-                        
-                    self.do(f'command_filter_wheel {filter_num}')
+                # get filter number
+                for position in self.config['filter_wheels'][self.camname]['positions']:
+                    if self.config['filter_wheels'][self.camname]['positions'][position] == filterID:
+                        filter_num = position
+                    else:
+                        pass
+                if filter_num == self.fw.state['filter_pos']:
+                    self.log('requested filter matches current, no further action taken')
+                else:
+                    self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
+                    #self.do(f'command_filter_wheel {filter_num}')
+                    self.do(f'fw_goto {filter_num} --{self.camname}')
                     
                 # 2. do a focus loop!!
                 system = 'focus_loop'
@@ -2509,19 +2521,20 @@ class RoboOperator(QtCore.QObject):
                 # handle the loop parameters depending on what attempt this is:
                 """
                 if self.focus_attempt_number == 0:
-                    total_throw = self.config['focus_loop_param']['sweep_param']['narrow']['total_throw']
-                    nsteps = self.config['focus_loop_param']['sweep_param']['narrow']['nsteps']
+                    total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
+                    nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
                     nom_focus = 'last'
                     if focusType == 'default':    
                         focusType = 'Parabola'
                 """
                 #elif self.focus_attempt_number == 1:
                 #if self.focus_attempt_number < self.config['focus_loop_param']['max_focus_attempts']:
-                total_throw = self.config['focus_loop_param']['sweep_param']['narrow']['total_throw']
-                nsteps = self.config['focus_loop_param']['sweep_param']['narrow']['nsteps']
+                total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
+                nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
                 #nom_focus = 'default'
                 #nom_focus = 'last'
-                nom_focus = 'model'
+                #nom_focus = 'model'
+                nom_focus = 12000 #NPL 7-1-23 using this for now
                 focusType = 'Vcurve'
                 """
                 else:

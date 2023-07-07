@@ -23,7 +23,7 @@ parser.add_argument('simulation_configuration',
         help="Path to simulation configuration file")
 parser.add_argument('-o', '--output', default=data_dir,
         help="Directory to write simulation to.")
-parser.add_argument('-t', '--time-limit', default=960., type=float,
+parser.add_argument('-t', '--time-limit', default=960.*2, type=float,
         help="Number of seconds to allow Gurobi optimizer to run")
 
 args = parser.parse_args()

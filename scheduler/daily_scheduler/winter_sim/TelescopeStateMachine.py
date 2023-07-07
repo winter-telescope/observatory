@@ -93,7 +93,7 @@ class TelescopeStateMachine(Machine):
         if coord.get_sun(self.current_time).transform_to(
                 coord.AltAz(obstime=self.current_time,
                             location=P48_loc)).alt.is_within_bounds(
-                upper=-12. * u.deg):
+                upper=which_twilight):
             if self.historical_observability_year is None:
                 # don't use weather, just use 12 degree twilight
                 return True
@@ -113,7 +113,7 @@ class TelescopeStateMachine(Machine):
         else:
             # daytime
             # optimization: fast-forward to sunset
-            next_twilight = next_12deg_evening_twilight(self.current_time)
+            next_twilight = next_evening_twilight(self.current_time)
             self.logger.info('Fast forwarding to 12 deg twilight: {}'.format(
                 next_twilight.iso))
             self.current_time = next_twilight

@@ -181,7 +181,8 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: False
             #cmd: 'total_startup --cameras'
-            cmd: 'do_startup --cameras'
+            #cmd: 'do_startup --cameras'
+            cmd: 'do_startup'
         load_schedule:
             conds:
                 cond1:
@@ -189,7 +190,7 @@ robotic_manager_triggers:
                     val: 1.0
                     cond: '<'
             sundir: 0
-            repeat_on_restart: False
+            repeat_on_restart: True
             cmd: 'load_nightly_schedule'
         evening_darks_bias:
             conds:
@@ -199,7 +200,8 @@ robotic_manager_triggers:
                     cond: '<'
             sundir: 0
             repeat_on_restart: False
-            cmd: 'robo_do_calibration -d -b'
+            #cmd: 'robo_do_calibration -d -b'
+            cmd: 'robo_do_darks'
         open_dome:
             conds:
                 cond1:
@@ -209,19 +211,19 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'dome_open'
-        evening_flats:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -5.0
-                    cond: '<'
-                cond2:
-                    type: 'sun'
-                    val: -7.0
-                    cond: '>'
-            repeat_on_restart: False
-            sundir: -1
-            cmd: 'robo_do_calibration -f'
+        # evening_flats:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: -5.0
+        #             cond: '<'
+        #         cond2:
+        #             type: 'sun'
+        #             val: -7.0
+        #             cond: '>'
+        #     repeat_on_restart: False
+        #     sundir: -1
+        #     cmd: 'robo_do_calibration -f'
 
         start_obs:
             conds:
@@ -255,7 +257,8 @@ robotic_manager_triggers:
             nextmorning: True   
             repeat_on_restart: False          
             sundir: 1
-            cmd: 'robo_do_calibration -f -d'
+            #cmd: 'robo_do_calibration -f -d'
+            cmd: 'robo_do_darks'
         shutdown:
             conds:
                 cond1:
@@ -265,7 +268,7 @@ robotic_manager_triggers:
             nextmorning: True
             repeat_on_restart: False
             sundir: 1
-            cmd: 'stow_observatory --cameras'
+            cmd: 'stow_observatory'#' --cameras'
         fans_off:
             conds:
                 cond1:
@@ -276,24 +279,24 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: 1
             cmd: 'mount_fans_off'
-        chiller_stop:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: 3
-                    cond: '>'
-                cond2:
-                    type: 'sun'
-                    val: 40
-                    cond: '>'
-                cond3:
-                    type: 'time'
-                    val: '6:00:00.0'
-                    cond: '>'
-            nextmorning: True
-            repeat_on_restart: False
-            sundir: 1
-            cmd: 'chiller_stop'
+        # chiller_stop:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 3
+        #             cond: '>'
+        #         cond2:
+        #             type: 'sun'
+        #             val: 40
+        #             cond: '>'
+        #         cond3:
+        #             type: 'time'
+        #             val: '6:00:00.0'
+        #             cond: '>'
+        #     nextmorning: True
+        #     repeat_on_restart: False
+        #     sundir: 1
+        #     cmd: 'chiller_stop'
         kill:
             conds:
                 cond1:

@@ -492,7 +492,8 @@ class Dome(QtCore.QObject):
         self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
         
         # if the status thread gets the signbal that we've entered hand mode then enter hand mode
-        self.statusThread.enableHandMode.connect(self.handleHandMode)
+        #NPL uncomment this if you want it to kill wsp every time hand mode is enabled
+        #self.statusThread.enableHandMode.connect(self.handleHandMode)
         
         self.statusThread.newStatus.connect(self.updateStatus)
         self.commandRequest.connect(self.commandThread.HandleCommand)
