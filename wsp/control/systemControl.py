@@ -302,6 +302,8 @@ class control(QtCore.QObject):
             # ROBOTIC OPERATION MODE!
             # ROBO MANAGER DAEMON
             roboargs = ['-n', self.ns_host]
+            if self.sunsim:
+                roboargs.append('--sunsim')
             self.roboManagerd = daemon_utils.PyDaemon(name = 'robomanager', filepath = f"{wsp_path}/control/roboManagerd.py", args = roboargs)
             self.daemonlist.add_daemon(self.roboManagerd)
             

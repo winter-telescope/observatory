@@ -505,7 +505,10 @@ class RoboOperator(QtCore.QObject):
         
         self.log(f'stopping rotator and resetting to home position')
         # if the rotator is on do this:
+        self.log(f'rotator_is_enabled = {self.state["rotator_is_enabled"]}')
         if self.state['rotator_is_enabled']:
+            # stop the rotator
+            self.doTry('rotator_stop')
             # turn off tracking
             self.doTry('mount_tracking_off')
             self.doTry('rotator_home')
@@ -1133,8 +1136,8 @@ class RoboOperator(QtCore.QObject):
         #TODO: UNCOMMENT
         #NPL: commenting out so that we can observe even though mirror cover is stuck open
         # 7-3-23
-        if not self.test_mode:
-            conds.append(self.state['Mirror_Cover_State'] == 0)
+        #if not self.test_mode:
+        #    conds.append(self.state['Mirror_Cover_State'] == 0)
         
         #TODO: add something about the focus here
         
@@ -1199,8 +1202,8 @@ class RoboOperator(QtCore.QObject):
         #TODO: UNCOMMENT
         #NPL: commenting out so that we can observe even though mirror cover is stuck open
         # 7-3-23
-        if not self.mountsim:
-            conds.append(self.state['Mirror_Cover_State'] == 1)
+        #if not self.mountsim:
+        #    conds.append(self.state['Mirror_Cover_State'] == 1)
         
         self.observatory_stowed = all(conds)
         
@@ -2029,19 +2032,7 @@ class RoboOperator(QtCore.QObject):
                 self.hardware_error.emit(err)
                 return
             
-            if not self.mountsim:
-                system = 'rotator'
-                try:
-                    self.do('rotator_stop')
-                    self.do('rotator_home')
-                
-                except Exception as e:
-                    msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
-                    self.log(msg)
-                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                    err = roboError(context, self.lastcmd, system, msg)
-                    self.hardware_error.emit(err)
-                    return
+           
                 
             system = 'camera'
             # step through the specified exposure times:

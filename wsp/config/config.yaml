@@ -153,7 +153,6 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: True
             cmd: xyzzy
-                
         fans_on:
             conds:
                 cond1:
@@ -232,6 +231,45 @@ robotic_manager_triggers:
                    val: -12.0
                    cond: '<'
             repeat_on_restart: True
+            sundir: 0
+            cmd: 'robo_run'
+        pause_obs:
+            conds:
+               cond1:
+                   type: 'time'
+                   val: '0:0:0.0'
+                   cond: '>'
+               cond1:
+                   type: 'time'
+                   val: '0:15:0.0'
+                   cond: '<'
+            repeat_on_restart: False
+            nextmorning: True
+            sundir: 0
+            cmd: 'robo_stop'
+        do_night_darks:
+            conds:
+               cond1:
+                   type: 'time'
+                   val: '0:05:0.0'
+                   cond: '>'
+               cond1:
+                   type: 'time'
+                   val: '0:20:0.0'
+                   cond: '<'
+            repeat_on_restart: False
+            nextmorning: True
+            sundir: 0
+            cmd: 'robo_do_darks'
+        restart_obs:
+            conds:
+               cond1:
+                   type: 'time'
+                   val: '0:20:0.0'
+                   cond: '>'
+               
+            repeat_on_restart: False
+            nextmorning: True
             sundir: 0
             cmd: 'robo_run'
         stop_obs:
@@ -540,10 +578,9 @@ cal_params:
         dark:
             n_imgs: 5
             exptimes:
-                - 1
-                - 10
-                - 30
                 - 120
+                - 30
+                - 10
             filterID: 'dark'
         bias:
             n_imgs: 0
@@ -682,7 +719,7 @@ filters:
     winter:
         J:
             name: "MKO J-band (Asahi)"
-            nominal_focus: 10000
+            nominal_focus: 11820
             active: True
             focus_exptime: 30
         Y:  

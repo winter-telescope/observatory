@@ -4403,7 +4403,7 @@ class Wintercmd(QtCore.QObject):
                                     action = None,
                                     default = None, 
                                     type = float,
-                                    required = False,
+                                    #required = False,
                                     help = '<temperature_celsius>')
         
         self.cmdparser.add_argument('-n', '--addrs',
