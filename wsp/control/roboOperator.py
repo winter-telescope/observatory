@@ -2380,7 +2380,7 @@ class RoboOperator(QtCore.QObject):
             #TODO: this is where the focus is fit this will need to be updated
             #x0_fit = loop.analyzeData(focuser_pos, images)
             # for now just return 12000
-            x0_fit = 11820.0
+            x0_fit = 11797.657
             
             
             
