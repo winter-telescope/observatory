@@ -211,10 +211,7 @@ class local_camera(QtCore.QObject):
     
     def getLastImagePath(self):
         
-        image_directory = self.image_directory
-        image_filename = self.image_filename
-        
-        return image_directory, image_filename
+        return self.imdir, self.imname
             
     def parse_state(self):
         '''
@@ -291,7 +288,8 @@ class local_camera(QtCore.QObject):
         
         if imdir is None:
             #imdir = os.path.join(os.getenv("HOME"), 'data', 'images', 'tmp')
-            imdir = 'default'
+            #imdir = 'default'
+            imdir = self.remote_object.getDefaultImageDirectory()
         self.imdir = imdir
         
         if imtype is None:
@@ -324,7 +322,7 @@ class local_camera(QtCore.QObject):
             self.remote_object.doExposure(imdir = self.imdir, imname = self.imname, imtype = self.imtype, mode = self.mode, metadata = header, addrs = addrs)
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
-        
+    
     def tecSetSetpoint(self, temp, addrs = None):
         self.remote_object.tecSetSetpoint(temp, addrs = addrs)
     

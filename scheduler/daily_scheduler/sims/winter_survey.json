@@ -3,6 +3,7 @@
 	"queue_name": "default",
         "queue_description": "WINTER Overhead Survey",
         "queue_manager": "gurobi",
+        "block_programs": false,
 	"observing_programs": [
 		{"program_name": "Survey",
 		 "subprogram_name": "nearby_galaxy",

@@ -3320,6 +3320,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sa_tec_setpoint']  
+    sa_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_tec_interim_setpoint']
     sa_T_pid:
         ftype: raw
         label: 'T'
@@ -3586,7 +3593,14 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sb_tec_setpoint']  
+        var: camdict['winter'].state['sb_tec_setpoint'] 
+    sb_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_tec_interim_setpoint'] 
     sb_T_pid:
         ftype: raw
         label: 'T'
@@ -3854,6 +3868,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sc_tec_setpoint']  
+    sc_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_tec_interim_setpoint']
     sc_T_pid:
         ftype: raw
         label: 'T'
@@ -4121,6 +4142,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pa_tec_setpoint']  
+    pa_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_tec_interim_setpoint']
     pa_T_pid:
         ftype: raw
         label: 'T'
@@ -4388,6 +4416,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pb_tec_setpoint']  
+    pb_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_tec_interim_setpoint']
     pb_T_pid:
         ftype: raw
         label: 'T'
@@ -4655,6 +4690,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pc_tec_setpoint']  
+    pc_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_tec_interim_setpoint']
     pc_T_pid:
         ftype: raw
         label: 'T'

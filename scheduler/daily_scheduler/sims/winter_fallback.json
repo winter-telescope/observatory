@@ -4,7 +4,7 @@
 	"queue_manager": "greedy",
 	"observing_programs": [
 		{"program_name": "Engineering",
-		 "subprogram_name": "reference_building_winter",
+		 "subprogram_name": "reference_building_winter_fallback",
 		 "program_pi": "Lourie",
          "program_observing_fraction": 1.0,
          "subprogram_fraction": 1.0,

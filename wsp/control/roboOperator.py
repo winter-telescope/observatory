@@ -2307,8 +2307,7 @@ class RoboOperator(QtCore.QObject):
                 
                 
                 
-                #image_directory, image_filename = self.ccd.getLastImagePath()
-                image_directory, image_filename  = '', ''
+                image_directory, image_filename = self.camera.getLastImagePath()
                 image_filepath = os.path.join(image_directory, image_filename)
                 
                 # add the filter position and image path to the list to analyze
@@ -2333,14 +2332,24 @@ class RoboOperator(QtCore.QObject):
         
         # handle what to do in test mode
         if self.test_mode:
-            focuser_pos = [9761.414819232772, 9861.414819232772, 9961.414819232772, 10061.414819232772, 10161.414819232772]
-            images = ['/home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits',
-                      '/home/winter/data/images/20220119/SUMMER_20220119_221444_Camera0.fits',
-                      '/home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits',
-                      '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
-                      '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
-        
-        
+            #focuser_pos = [9761.414819232772, 9861.414819232772, 9961.414819232772, 10061.414819232772, 10161.414819232772]
+            #images = ['/home/winter/data/images/20220119/SUMMER_20220119_221347_Camera0.fits',
+            #          '/home/winter/data/images/20220119/SUMMER_20220119_221444_Camera0.fits',
+            #          '/home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits',
+            #          '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
+            #          '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
+            
+            imnames = ['WINTERcamera_20230711-051746-285',
+                       'WINTERcamera_20230711-051825-746',
+                       'WINTERcamera_20230711-051905-364',
+                       'WINTERcamera_20230711-051944-958',
+                       'WINTERcamera_20230711-052025-470',
+                       'WINTERcamera_20230711-052104-426',
+                       'WINTERcamera_20230711-052143-925']
+            
+            images = ['/home/winter/data/images/20230710/' + imname + '_mef.fits' for imname in imnames]
+            
+        """
         # save the data to a csv for later access
         try:
             data = {'images': images, 'focuser_pos' : list(focuser_pos)}
@@ -2350,6 +2359,7 @@ class RoboOperator(QtCore.QObject):
         except Exception as e:
             msg = f'Unable to save files to focus csv due to {e.__class__.__name__}, {e}'
             self.log(msg)
+        """
         
         
         system = 'focuser'

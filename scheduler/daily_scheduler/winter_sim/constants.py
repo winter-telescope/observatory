@@ -132,7 +132,7 @@ EXPOSURE_TIME = 150. * u.second
 #READOUT_TIME = [0* u.second , 40 * u.second]  # [WINTER, SUMMER]
 READOUT_TIME = 40 * u.second # [WINTER, SUMMER]
 #FILTER_CHANGE_TIME = 135. * u.second ZTF
-FILTER_CHANGE_TIME = 10. * u.second # [10. * u.second, 5. * u.second ]# W [WINTER, SUMMER] 
+FILTER_CHANGE_TIME = 25. * u.second # [10. * u.second, 5. * u.second ]# W [WINTER, SUMMER] 
 MIRROR_CHANGE_TIME = 300 * u.second # big penalty for switching between winter and summer 
 SETTLE_TIME = 1. * u.second
 
@@ -158,7 +158,7 @@ FILTER_IDS = list(FILTER_ID_TO_NAME.keys())
 PIXEL_SCALE = [0.46,  0.26 ]# [WINTER, SUMMER] arcsec/pixel W, from proposal, double check
 
 #VALIDITY_WINDOW_MINUTES = 2.0
-VALIDITY_WINDOW_MINUTES = 3.0 * (EXPOSURE_TIME.value/60) # EXPOSURE_TIME is in seconds. this ensures that there's overlap in entries
+VALIDITY_WINDOW_MINUTES = 20.0 * (EXPOSURE_TIME.value/60) # EXPOSURE_TIME is in seconds. this ensures that there's overlap in entries
 VALIDITY_WINDOW_MJD = VALIDITY_WINDOW_MINUTES / (24*60) # 24*60 minutes per day
 
 DITHER = ['Y', 'Y'] # [WINTER, SUMMER]
@@ -190,5 +190,7 @@ def loadconfig(config_file):
 conf = loadconfig(config_file)
 
 MAX_AIRMASS = altitude_to_airmass(conf['telescope']['min_alt'])
-MIN_AIRMASS = altitude_to_airmass(conf['telescope']['max_alt'])
-
+buffer = 2
+MIN_AIRMASS = altitude_to_airmass(conf['telescope']['max_alt']-buffer)
+MAX_MOON_DIST = 20
+MAX_ALTITUDE = conf['telescope']['max_alt']

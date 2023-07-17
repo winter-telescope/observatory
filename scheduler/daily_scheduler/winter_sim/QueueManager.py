@@ -19,6 +19,7 @@ from .constants import W_loc, P48_loc, PROGRAM_IDS, FILTER_IDS, TIME_BLOCK_SIZE
 from .constants import EXPOSURE_TIME, FILTER_CHANGE_TIME, MIRROR_CHANGE_TIME, slew_time
 from .constants import PROGRAM_BLOCK_SEQUENCE, LEN_BLOCK_SEQUENCE, MAX_AIRMASS, MIN_AIRMASS
 from .constants import BASE_DIR, WINTER_FILTERS, SUMMER_FILTERS, FILTER_NAME_TO_ID
+from .constants import MAX_MOON_DIST, MAX_ALTITUDE
 from .utils import approx_hours_of_darkness
 from .utils import skycoord_to_altaz, seeing_at_pointing
 from .utils import altitude_to_airmass, airmass_to_altitude, RA_to_HA, HA_to_RA
@@ -457,25 +458,29 @@ class QueueManager(object):
 
         # assign a very bright limiting mag to the fields within 20 degrees of
         # the moon 
-        wmoon = df['moon_dist'] < 20
+        wmoon = df['moon_dist'] < MAX_MOON_DIST
         df.loc[wmoon, 'limiting_mag'] = -99
+        
+        # assign a very bright limiting mag to the fields above max altitude
+        #walt = df['altitude'] > MAX_ALTITUDE
+        #df.loc[walt, 'limiting_mag'] = -99
 
         # need to check the Hour Angle at both the start and the end of the
         # block, since we don't know the exact time it will be observed
 
         # time is provided at the block midpoint
 
-        ha_vals = RA_to_HA(df['ra'].values*u.degree, 
-                time - TIME_BLOCK_SIZE/2.)
-        # for limits below, need ha-180-180
-        ha_vals = ha_vals.wrap_at(180.*u.degree)
-        ha = pd.Series(ha_vals.to(u.degree), index=df.index, name='ha')
+        # ha_vals = RA_to_HA(df['ra'].values*u.degree, 
+        #         time - TIME_BLOCK_SIZE/2.)
+        # # for limits below, need ha-180-180
+        # ha_vals = ha_vals.wrap_at(180.*u.degree)
+        # ha = pd.Series(ha_vals.to(u.degree), index=df.index, name='ha')
 
-        ha_vals_end = RA_to_HA(df['ra'].values*u.degree, 
-                time + TIME_BLOCK_SIZE/2.)
-        # for limits below, need ha-180-180
-        ha_vals_end = ha_vals_end.wrap_at(180.*u.degree)
-        ha_end = pd.Series(ha_vals_end.to(u.degree), index=df.index, name='ha')
+        # ha_vals_end = RA_to_HA(df['ra'].values*u.degree, 
+        #         time + TIME_BLOCK_SIZE/2.)
+        # # for limits below, need ha-180-180
+        # ha_vals_end = ha_vals_end.wrap_at(180.*u.degree)
+        # ha_end = pd.Series(ha_vals_end.to(u.degree), index=df.index, name='ha')
 
         # lock out TCS limits
         
