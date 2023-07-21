@@ -134,7 +134,7 @@ log_link_name: 'winter.log'
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
-max_sun_alt_for_observing: -12
+max_sun_alt_for_observing: -7
 
 
 robotic_manager_triggers:
@@ -180,8 +180,8 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: False
             #cmd: 'total_startup --cameras'
-            #cmd: 'do_startup --cameras'
-            cmd: 'do_startup'
+            cmd: 'do_startup --cameras'
+            #cmd: 'do_startup'
         load_schedule:
             conds:
                 cond1:
@@ -228,7 +228,7 @@ robotic_manager_triggers:
             conds:
                cond1:
                    type: 'sun'
-                   val: -12.0
+                   val: -7.0
                    cond: '<'
             repeat_on_restart: True
             sundir: 0
@@ -306,7 +306,7 @@ robotic_manager_triggers:
             nextmorning: True
             repeat_on_restart: False
             sundir: 1
-            cmd: 'stow_observatory'#' --cameras'
+            cmd: 'stow_observatory --cameras'
         fans_off:
             conds:
                 cond1:
@@ -317,24 +317,24 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: 1
             cmd: 'mount_fans_off'
-        # chiller_stop:
-        #     conds:
-        #         cond1:
-        #             type: 'sun'
-        #             val: 3
-        #             cond: '>'
-        #         cond2:
-        #             type: 'sun'
-        #             val: 40
-        #             cond: '>'
-        #         cond3:
-        #             type: 'time'
-        #             val: '6:00:00.0'
-        #             cond: '>'
-        #     nextmorning: True
-        #     repeat_on_restart: False
-        #     sundir: 1
-        #     cmd: 'chiller_stop'
+        winter_camera_shutdown:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 3
+                    cond: '>'
+                cond2:
+                    type: 'sun'
+                    val: 40
+                    cond: '>'
+                cond3:
+                    type: 'time'
+                    val: '7:30:00.0'
+                    cond: '>'
+            nextmorning: True
+            repeat_on_restart: False
+            sundir: 1
+            cmd: 'shutdownCamera --winter'
         kill:
             conds:
                 cond1:

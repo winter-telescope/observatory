@@ -194,7 +194,8 @@ class QueueManager(object):
                 obs_log, block_programs=self.block_programs)
             for rs in request_sets:
                 self.rp.add_request_sets(rs['program_id'], 
-                            rs['subprogram_name'], rs['program_pi'],
+                            rs['subprogram_name'], rs['subprogram_title'], 
+                            rs['program_pi'],
                             rs['field_ids'], rs['filter_ids'], 
                             rs['intranight_gap'],
                             rs['exposure_time'],
@@ -568,6 +569,7 @@ class GurobiQueueManager(QueueManager):
             'target_filter_id': filter_id,
             'target_program_id': int(row['program_id']),
             'target_subprogram_name': row['subprogram_name'],
+            'target_subprogram_title': row['subprogram_title'],
             'target_program_pi': row['program_pi'],
             'target_exposure_time': row['exposure_time'] * u.second,
             'target_sky_brightness': 
@@ -994,6 +996,7 @@ class GreedyQueueManager(QueueManager):
             'target_filter_id': row['filter_id'],
             'target_program_id': row['program_id'],
             'target_subprogram_name': row['subprogram_name'],
+            'target_subprogram_title': row['subprogram_title'],
             'target_program_pi': row['program_pi'],
             'target_exposure_time': row['exposure_time'] * u.second,
             'target_sky_brightness': row['sky_brightness'],
@@ -1201,7 +1204,7 @@ class ListQueueManager(QueueManager):
 
         # check that major columns are included
         required_columns = ['field_id','program_id', 'subprogram_name',
-                'filter_id', 'program_pi']
+                'subprogram_title', 'filter_id', 'program_pi']
 
         for col in required_columns:
             if col not in df.columns:
@@ -1290,6 +1293,7 @@ class ListQueueManager(QueueManager):
             'target_filter_id': self.queue.iloc[idx].filter_id,
             'target_program_id': int(self.queue.iloc[idx].program_id),
             'target_subprogram_name': self.queue.iloc[idx].subprogram_name,
+            'target_subprogram_title': self.queue.iloc[idx].subprogram_title,
             'target_program_pi': self.queue.iloc[idx].program_pi,
             'target_exposure_time': self.queue.iloc[idx].exposure_time * u.second,
             'target_sky_brightness': 0.,
@@ -1325,7 +1329,7 @@ class RequestPool(object):
         self.pool = pd.DataFrame()
         pass
 
-    def add_request_sets(self, program_id, subprogram_name, program_pi,
+    def add_request_sets(self, program_id, subprogram_name, subprogram_title, program_pi,
                 field_ids, filter_ids, intranight_gap, exposure_time, 
                 total_requests_tonight, priority=1):
         """program_ids must be scalar"""
@@ -1348,6 +1352,7 @@ class RequestPool(object):
             request_sets.append({
                 'program_id': program_id,
                 'subprogram_name': subprogram_name,
+                'subprogram_title': subprogram_title,
                 'program_pi': program_pi,
                 'field_id': field_id,
                 'filter_ids': filter_ids.copy(),

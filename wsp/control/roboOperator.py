@@ -29,6 +29,8 @@ import traceback
 import glob
 import json
 import pytz
+import Pyro5.client
+import Pyro5.core
 #import pandas as pd
 import sqlalchemy as db
 
@@ -1210,7 +1212,7 @@ class RoboOperator(QtCore.QObject):
         return self.observatory_stowed
         
     
-    def stow_observatory(self, force = False):
+    def stow_observatory(self, shutdown_cameras = False, force = False):
         """
         This is a method which checks to see if the observatory is stowed,
         and if not stows everything safely.
@@ -1235,7 +1237,7 @@ class RoboOperator(QtCore.QObject):
         # if the observatory is in the ready state, then just shut down
         elif self.get_observatory_ready_status():
             self.announce(f'shutting down observatory from ready state:')
-            self.do_shutdown()
+            self.do_shutdown(shutdown_cameras = shutdown_cameras)
             
             
         else:
@@ -1244,7 +1246,7 @@ class RoboOperator(QtCore.QObject):
             # this may require turning things on to move them and shutdown. so we start up and then shut down
             self.do_startup()
             
-            self.do_shutdown()
+            self.do_shutdown(shutdown_cameras = shutdown_cameras)
    
         
     
@@ -1480,15 +1482,16 @@ class RoboOperator(QtCore.QObject):
             
             for camname in self.camdict:
                 try:
-                    msg = f'starting up {camname} camera!'
-                    self.announce(msg)
+                    #msg = f'starting up {camname} camera!'
+                    #self.announce(msg)
                     # startup the camera
-                    self.do(f'startupCamera --{camname}')
+                    #self.do(f'startupCamera --{camname}')
                     
                     time.sleep(2) 
                     
-                    
-                    #self.do(f'tecStart --{camname}')
+                    msg = f':cold_face: starting up the {camname} TECs!'
+                    self.announce(msg)
+                    self.do(f'tecStart --{camname}')
                     self.announce(':greentick: camera startup complete!')
 
                 except Exception as e:
@@ -1507,7 +1510,7 @@ class RoboOperator(QtCore.QObject):
         self.announce(':greentick: startup complete!')
         print(f'robo: do_startup complete')
         
-    def do_shutdown(self):
+    def do_shutdown(self, shutdown_cameras = False):
         """
         This is the counterpart to do_startup. It supercedes the old "total_shutdown"
         script, replicating its essential functions but with better communications
@@ -1610,7 +1613,32 @@ class RoboOperator(QtCore.QObject):
                 return
         
         self.announce(':greentick: mirror covers closed!')
+        
+        if shutdown_cameras:
+            system = 'camera'
+            
+            for camname in self.camdict:
+                try:
+                    #msg = f'shuttidn down {camname} camera!'
+                    #self.announce(msg)
+                    # shutdown the camera
+                    #self.do(f'shutdownCamera --{camname}')
+                    
+                    time.sleep(2) 
+                    
+                    msg = f':hot_garbage: warming TEC to 15C !'
+                    self.announce(msg)
+                    self.do(f'tecSetSetpoint 15 --{camname}')
+                    self.announce(':greentick: camera startup complete!')
 
+                except Exception as e:
+                    msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err)
+                    return
+        
         # if we made it all the way to the bottom, say the startup is complete!
         self.shutdown_complete = True
             
@@ -2309,6 +2337,8 @@ class RoboOperator(QtCore.QObject):
                 
                 image_directory, image_filename = self.camera.getLastImagePath()
                 image_filepath = os.path.join(image_directory, image_filename)
+                if self.camname == 'winter':
+                    image_filepath = image_filepath+'_mef.fits'
                 
                 # add the filter position and image path to the list to analyze
                 focuser_pos.append(dist)
@@ -2328,7 +2358,7 @@ class RoboOperator(QtCore.QObject):
         # print out the files and positions to the terminal
         print("FOCUS LOOP DATA:")
         for i in range(len(focuser_pos)):
-            print(f'     [{i+1}] Focuser Pos: {focuser_pos[i]}, {images[i]}')
+            print(f'     [{i+1}] Focuser Pos: {focuser_pos[i]:.1f}, {images[i]}')
         
         # handle what to do in test mode
         if self.test_mode:
@@ -2349,6 +2379,8 @@ class RoboOperator(QtCore.QObject):
             
             images = ['/home/winter/data/images/20230710/' + imname + '_mef.fits' for imname in imnames]
             
+        
+            
         """
         # save the data to a csv for later access
         try:
@@ -2361,7 +2393,8 @@ class RoboOperator(QtCore.QObject):
             self.log(msg)
         """
         
-        
+       
+                
         system = 'focuser'
         # fit the data and find the best focus
         try:
@@ -2390,17 +2423,35 @@ class RoboOperator(QtCore.QObject):
             #TODO: this is where the focus is fit this will need to be updated
             #x0_fit = loop.analyzeData(focuser_pos, images)
             # for now just return 12000
-            x0_fit = 11797.657
+            if self.camname == 'winter':
+                # make this better and less specific if possible...
+                try:
+                    ns = Pyro5.core.locate_ns(host = '192.168.1.10')
+                    uri = ns.lookup('WINTERimage')
+                    self.image_daemon = Pyro5.client.Proxy(uri)
+                    image_daemon_connected = True
+                except Exception as e:
+                    image_daemon_connected = False
+                    self.log(f'could not connect to WINTER image daemon', exc_info = True)
+                    
+                if image_daemon_connected:
+                    x0_fit = self.image_daemon.get_focus_from_imgpathlist(images)
+                    self.announce(f'Ran the focus script on Freya and got best focus = {x0_fit:.1f}')
+                    fit_successful = True
+                else:
+                    fit_successful = False
+                    #x0_fit = 11797.657
             
             
-            
+            else:
+                fit_successful = False
             #print(f'x0_fit = {x0_fit}, type(x0_fit) = {type(x0_fit)}')
             #print(f'x0_err = {x0_err}, type(x0_err) = {type(x0_err)}')
             
             #self.announce(f'Fit Results: x0 = [{x0_fit:.0f} +/- {x0_err:.0f}] microns ({(x0_err/x0_fit*100):.0f}%)')
             
             # validate that the fit was good enough
-            if False: #x0_err > self.config['focus_loop_param']['focus_error_max']:
+            if not fit_successful:#False: #x0_err > self.config['focus_loop_param']['focus_error_max']:
                 self.announce(f'FIT IS TOO BAD. Returning to nominal focus')
                 self.do(f'm2_focuser_goto {nom_focus}')
                 self.focus_attempt_number +=1 
@@ -2470,7 +2521,7 @@ class RoboOperator(QtCore.QObject):
             msg = f'wintercmd: Unable to post focus graph to slack due to {e.__class__.__name__}, {e}'
             self.log(msg)
         """
-        self.announce(f':greentick: completed focus loop. for now not doing any analysis and returning best focus = {x0_fit}')
+        self.announce(f':greentick: completed focus loop. going to best focus = {x0_fit}')
         
         return x0_fit
     

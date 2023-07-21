@@ -126,6 +126,7 @@ class QueueConfiguration(Configuration):
                 prog['exposure_time'] = prog['exposure_time'] * u.second
             OP = ObservingProgram(PROGRAM_NAME_TO_ID[prog['program_name']],
                                   prog['subprogram_name'], 
+                                  prog['subprogram_title'],
                                   prog['program_pi'], 
                                   prog['program_observing_fraction'],
                                   prog['subprogram_fraction'],

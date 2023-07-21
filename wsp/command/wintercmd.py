@@ -4918,8 +4918,24 @@ class Wintercmd(QtCore.QObject):
         this is a smarter version of total_shutdown which figures out what to
         do depending on whether the observatory state is already stowed/ready/etc
         """
+        self.defineCmdParser('shut down the observatory and stow it safely')
+        
+        # option to startup the cameras
+        self.cmdparser.add_argument('--cameras', '-c',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = "<shutdown_cameras?>")
+        
+        self.getargs()
+        print(f'wintercmd: args = {self.args}')
+        
+        
+        
+        shutdown_cameras = self.args.cameras
+        
+        
         self.defineCmdParser('stow the observatory')
-        sigcmd = signalCmd('stow_observatory')
+        sigcmd = signalCmd('stow_observatory', shutdown_cameras = shutdown_cameras)
         
         self.roboThread.newCommand.emit(sigcmd)
     

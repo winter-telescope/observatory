@@ -8,7 +8,8 @@ import numpy as np
 import pathlib
 import yaml
 import sys
-
+import psycopg
+import  pandas as pd
 import matplotlib.pyplot as plt
 from astropy.coordinates import SkyCoord
 
@@ -30,24 +31,43 @@ alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config
 ############# The historical log ###############
 #### (Plot survey history with blue dots) #######
 
-filenm = '/home/winter/data/WINTER_ObsLog.db'
-engine = db.create_engine('sqlite:///'+filenm)
-conn = engine.connect()
-metadata = db.MetaData()
-summary = db.Table('Observation',metadata,autoload=True,autoload_with=engine)
+#filenm = '/home/winter/data/WINTER_ObsLog.db'
+#engine = db.create_engine('sqlite:///'+filenm)
+#conn = engine.connect()
+#metadata = db.MetaData()
+#summary = db.Table('Observation',metadata,autoload=True,autoload_with=engine)
+
+
+
 mjdnow = Time(datetime.utcnow()).mjd+2
 
 try:
-    result = conn.execute(summary.select().where(summary.c.expMJD <= mjdnow))
+    conn = psycopg.connect('dbname=winter user='+str(auth_config['drp']['USERNAME'])+' password='+str(auth_config['drp']['PASSWORD'])+
+                       ' host='+str(auth_config['drp']['HOSTNAME']))
+    
+    cur = conn.cursor()
+
+    command = '''SELECT exposures.puid, exposures.fieldid, exposures.ra, exposures.dec,
+                    exposures.fid, exposures."expMJD", exposures."ExpTime",exposures.airmass,
+                    programs.progid, programs.progname FROM exposures INNER JOIN programs ON
+                    programs.puid=exposures.puid; '''
+
+    cur.execute(command)
+
+    res = cur.fetchall()
+
+    history = pd.DataFrame(res, columns=['puid', 'fieldid', 'ra', 'dec', 'fid', 'expMJD',
+                                    'ExpTime', 'airmass', 'progid', 'progname'])
 except:
     print("Failed")
 
-qresult = np.array(result.fetchall())
 
-ra  = np.array(qresult[:,27],dtype=np.float32)
+#ra  = np.array(qresult[:,27],dtype=np.float32)
+ra = np.array(history['ra'], dtype=np.float32)
 ra = ra / 24.0 * 360.0 * np.pi/180.0
 ra[ra > np.pi] -= 2*np.pi
-dec = np.array(qresult[:,28],dtype=np.float32)
+dec = np.array(history['dec'], dtype=np.float32)
+#dec = np.array(qresult[:,28],dtype=np.float32)
 dec = dec * np.pi / 180.0
 
 plt.figure()

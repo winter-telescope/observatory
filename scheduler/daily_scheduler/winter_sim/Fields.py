@@ -156,7 +156,7 @@ class Fields(object):
         df_altaz = self.alt_az(current_state['current_time'], cuts=cuts)
         df = fields.join(df_altaz)
         
-        print("CURRENT ", current_state, df, df_altaz )
+        #print("CURRENT ", current_state, df, df_altaz )
 
         slews_by_axis = {'readout': READOUT_TIME}
         for axis in ['dome', 'az', 'alt']:
