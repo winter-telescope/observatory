@@ -19,6 +19,7 @@ import getopt
 import threading
 from datetime import datetime
 import yaml
+import logging
 
 from winter_utils import focusloop_winter as foc
 from winter_utils.paths import astrom_sex, astrom_param, astrom_filter, astrom_nnw, MASK_DIR, MASTERDARK_DIR, MASTERFLAT_DIR, DEFAULT_OUTPUT_DIR
@@ -31,21 +32,20 @@ wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 print(f'wsp_path = {wsp_path}')
 
-
-#from housekeeping import data_handler
 from daemon import daemon_utils
 from alerts import alert_handler
-
+from utils import utils
+from utils import logging_setup
 
 class ImageHandler(QtCore.QObject):
 
-    def __init__ (self):
+    def __init__ (self, logger = None):
         super(ImageHandler, self).__init__()
         # Path to the winterutils conda environment
         self.python_path = "/home/winter/anaconda3/envs/winterutils/bin/python"
         # Path to the focusloop_winter.py script
         self.code_path = "/home/winter/GIT/winter_utils/winter_utils/focusloop_winter.py"
-        
+        self.logger = logger
         # init the state dictionary
         self.state = dict()
         
@@ -56,6 +56,19 @@ class ImageHandler(QtCore.QObject):
         self.pollTimer.setSingleShot(False)
         self.pollTimer.timeout.connect(self.update_state)
         self.pollTimer.start(1000)
+        
+        # print a startup message
+        self.log('starting up image daemon!')
+        
+    # General Methods
+    def log(self, msg, level = logging.INFO):
+        
+        msg = f'WINTERImageDaemon {msg}'
+        
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)
     
     def update_state(self):
         # update some useful entries in the state dictionary and make sure
@@ -136,7 +149,7 @@ class ImageHandler(QtCore.QObject):
             try:
                 foc.plot_all_detectors_focus(DEFAULT_OUTPUT_DIR)
             except Exception as e:
-                print(f'could not plot all detectors: {e}')
+                self.log(f'could not plot all detectors: {e}')
                 
         self.post_results_to_slack()
         return best_focus
@@ -150,7 +163,7 @@ class ImageHandler(QtCore.QObject):
         # first make the directory
         # create the data link directory if it doesn't exist already
         pathlib.Path(dirpath).mkdir(parents = True, exist_ok = True)
-        print(f'focuserd: making directory: {dirpath}')
+        self.log(f'focuserd: making directory: {dirpath}')
         
         # now make the symbolic links
         for imgpath in imgpathlist:
@@ -162,7 +175,7 @@ class ImageHandler(QtCore.QObject):
             try:
                 os.symlink(imgpath, linkpath)
             except FileExistsError:
-                print('imagedaemon: deleting existing symbolic link')
+                self.log('imagedaemon: deleting existing symbolic link')
                 os.remove(linkpath)
                 os.symlink(imgpath, linkpath)
         
@@ -170,7 +183,7 @@ class ImageHandler(QtCore.QObject):
     
     @Pyro5.server.expose
     def get_focus_from_imgpathlist(self, imgpathlist, dirpath = None):
-        print(f'running focus analysis of these images: {imgpathlist}')
+        self.log(f'running focus analysis of these images: {imgpathlist}')
 
         if dirpath is None:
             # if not specified, the directory will be a new one timestamped in
@@ -183,14 +196,19 @@ class ImageHandler(QtCore.QObject):
         # first make the directory of symlinks
         self.make_dir_with_symlinks_from_imgpathlist(dirpath, imgpathlist)
         
-        print(f'analyzing focus images in this directory of symbolic links: {dirpath}')
+        self.log(f'analyzing focus images in this directory of symbolic links: {dirpath}')
 
         # now run the focus script on the directory
         best_focus = self.get_focus_in_dir(dirpath)
         
-        print(f'found best focus to be: {best_focus} um')
+        self.log(f'found best focus to be: {best_focus} um')
         return best_focus
+    
+    @Pyro5.server.expose
+    def killImageDaemon(self):
 
+        self.log('KILLING QAPPLICATION')
+        QtCore.QCoreApplication.quit()
 
 
 
@@ -205,11 +223,11 @@ class ImageHandler(QtCore.QObject):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, ns_host, parent=None ):            
+    def __init__(self, ns_host, logger = None, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
-        self.imageHandler = ImageHandler()
+        self.imageHandler = ImageHandler(logger = logger)
                 
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.imageHandler, name = 'WINTERimage', ns_host = ns_host)
         self.pyro_thread.start()
@@ -261,7 +279,19 @@ if __name__ == "__main__":
     app = QtCore.QCoreApplication(sys.argv)
     
     
-    main = PyroGUI(ns_host = ns_host)
+    # set the wsp path as the base directory
+    base_directory = wsp_path
+
+    # load the config
+    config_file = base_directory + '/config/config.yaml'
+    config = utils.loadconfig(config_file)
+    # set up the logger
+    if doLogging:
+        logger = logging_setup.setup_logger(base_directory, config)    
+    else:
+        logger = None
+    
+    main = PyroGUI(ns_host = ns_host, logger = logger)
 
     
     signal.signal(signal.SIGINT, sigint_handler)
