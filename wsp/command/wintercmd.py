@@ -4446,6 +4446,60 @@ class Wintercmd(QtCore.QObject):
         
         camera.newCommand.emit(sigcmd)
         
+        
+    @cmd
+    def setDetbias(self):
+        
+        self.defineCmdParser('set the detector bias')
+        
+        self.cmdparser.add_argument('detbias',
+                                    nargs = 1,
+                                    action = None,
+                                    default = None, 
+                                    type = float,
+                                    #required = False,
+                                    help = '<voltage>')
+        
+        self.cmdparser.add_argument('-n', '--addrs',
+                                    nargs = '+',
+                                    type = str,
+                                    default = None,
+                                    action = None,
+                                    help = "<sensor_address>")
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'setDetbias: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+        
+        if self.args.detbias is None:
+            detbias = None
+        else:
+            detbias = self.args.detbias[0]
+        addrs = self.args.addrs
+        
+        sigcmd = signalCmd('setDetbias', detbias, addrs = addrs)
+        
+        msg = f'wintercmd: setting DETBIAS on {camera.daemonname}'
+        if addrs is not None:
+            msg+=f' on addrs = {addrs}'
+        else:
+            msg+=f' on all addrs'
+        self.logger.info(msg)
+        
+        camera.newCommand.emit(sigcmd)
+        
     @cmd
     def tecSetVolt(self):
         
@@ -4714,7 +4768,36 @@ class Wintercmd(QtCore.QObject):
         
         camera.newCommand.emit(sigcmd)
     
-    
+    @cmd
+    def killCameraDaemon(self):
+            
+        self.defineCmdParser('kill the camera daemon')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        
+        
+        self.getargs()
+
+        self.logger.info(f'Kill camera daemon: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+           
+        
+        sigcmd = signalCmd('killCameraDaemon')
+        
+        self.logger.info(f'wintercmd: killCameraDaemon on {camera.daemonname}')
+        
+        camera.newCommand.emit(sigcmd)
     
     
     ####### End Camera API Methods #######

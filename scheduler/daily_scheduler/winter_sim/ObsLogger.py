@@ -63,31 +63,36 @@ class ObsLogger(object):
         #self.historyengine = create_engine('sqlite:///'+output_path+f'WINTER_ObsLog.db') #NPL did this change on 2-16-21
         #self.history = pd.read_sql('Observation', self.historyengine)
         
-        # Get history from Caltech database 
-        conn = psycopg.connect('dbname=winter user='+str(auth_config['drp']['USERNAME'])+' password='+str(auth_config['drp']['PASSWORD'])+
-                       ' host='+str(auth_config['drp']['HOSTNAME']))
+        try:
+            # Get history from Caltech database 
+            conn = psycopg.connect('dbname=winter user='+str(auth_config['drp']['USERNAME'])+' password='+str(auth_config['drp']['PASSWORD'])+
+                           ' host='+str(auth_config['drp']['HOSTNAME']))
 
-        cur = conn.cursor()
+            cur = conn.cursor()
 
-        command = '''SELECT exposures.puid, exposures.fieldid, exposures.ra, exposures.dec, 
+            command = '''SELECT exposures.progname, exposures.fieldid, exposures.ra, exposures.dec,
                     exposures.fid, exposures."expMJD", exposures."ExpTime",exposures.airmass,
-                    programs.progid, programs.progname FROM exposures INNER JOIN programs ON 
-                    programs.puid=exposures.puid; '''
+                    programs.progid, programs.progname, programs.progtitle FROM exposures INNER JOIN programs ON
+                    programs.progname=exposures.progname; '''
 
-        cur.execute(command)
+            cur.execute(command)
 
-        res = cur.fetchall()
-
-        self.history = pd.DataFrame(res, columns=['puid', 'fieldid', 'ra', 'dec', 'fid', 'expMJD',
-                                    'ExpTime', 'airmass', 'progid', 'progname'])
-
+            res = cur.fetchall()
+    
+            self.history = pd.DataFrame(res, columns=['puid', 'fieldid', 'ra', 'dec', 'fid', 'expMJD',
+                                        'ExpTime', 'airmass', 'progid', 'progname'])
+        except Exception as e:
+            print("Failed to grab history because of:", e)
+            self.history = pd.DataFrame( columns=['puid', 'fieldid', 'ra', 'dec', 'fid', 'expMJD',
+                                        'ExpTime', 'airmass', 'progid', 'progname'])
+        print("History:", self.history)
         # rename progID to propID for scheduler
-        if 'puid' in self.history.columns:
-            self.history.rename(columns = {'puid':'propID'}, inplace = True)
-         # rename progName to subprogram 
+        if 'progid' in self.history.columns:
+            self.history.rename(columns = {'progid':'propID'}, inplace = True)
+        # rename progName to subprogram 
         if 'progname' in self.history.columns:
             self.history.rename(columns = {'progname':'subprogram'}, inplace = True)
-         # rename ra and dec keywords from history as needed
+        # rename ra and dec keywords from history as needed
         if 'ra' in self.history.columns:
             self.history.rename(columns = {'ra':'fieldRA'}, inplace = True)
         if 'dec' in self.history.columns:

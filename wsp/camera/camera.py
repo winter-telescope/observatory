@@ -325,6 +325,9 @@ class local_camera(QtCore.QObject):
     
     def tecSetSetpoint(self, temp, addrs = None):
         self.remote_object.tecSetSetpoint(temp, addrs = addrs)
+        
+    def setDetbias(self, detbias, addrs = None):
+        self.remote_object.setDetbias(detbias, addrs = addrs)
     
     def tecSetCoeffs(self, Kp, Ki, Kd, addrs = None):
         self.remote_object.tecSetCoeffs(Kp, Ki, Kd, addrs = addrs)
