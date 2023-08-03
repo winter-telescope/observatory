@@ -9,7 +9,7 @@ from .utils import approx_hours_of_darkness
 
 class ObservingProgram(object):
 
-    def __init__(self, program_id, subprogram_name, program_pi,
+    def __init__(self, program_id, subprogram_name, subprogram_title, program_pi,
                  program_observing_time_fraction, subprogram_fraction,
                  field_ids, filter_ids, internight_gap, 
                  intranight_gap, n_visits_per_night,
@@ -21,6 +21,7 @@ class ObservingProgram(object):
 
         self.program_id = program_id
         self.subprogram_name = subprogram_name
+        self.subprogram_title = subprogram_title
         self.program_pi = program_pi
         self.program_observing_time_fraction = program_observing_time_fraction
         self.subprogram_fraction = subprogram_fraction
@@ -166,6 +167,7 @@ class ObservingProgram(object):
         request_set.append(
             {'program_id': self.program_id,
              'subprogram_name': self.subprogram_name,
+             'subprogram_title': self.subprogram_title, 
              'program_pi': self.program_pi,
              'field_ids': request_fields.index.values,
              'filter_ids': filter_sequence,

@@ -9,7 +9,9 @@ just a wrapper to rerun the daily scheduler
 @author: winter
 """
 
-
+import pandas as pd
+import sqlalchemy
+import numpy as np
 import os
 import sys
 import yaml
@@ -80,4 +82,26 @@ scheduler_process.wait() # wait to finish before return
 
 print(f'COMPLETE!')
 msg = f'saved nightly schedule to ~/data/{schedulefile_name}'
+alertHandler.slack_log(msg)
+
+file = f'/home/winter/data/schedules/{schedulefile_name}'
+dbEngine=sqlalchemy.create_engine('sqlite:///'+file)
+df = pd.read_sql('select * from Summary',dbEngine)
+
+
+n_obs = len(df['obsHistID'])
+duration_s = np.sum(df['visitTime'])
+duration_hours = duration_s/(60*60)
+
+msg = f'Scheduler output: \n Tonight {n_obs} observations are scheduled for a total of {duration_hours:.2f} hours of observing time. \n'
+alertHandler.slack_log(msg)
+
+#df2 = df.groupby("progID").apply(lambda my_df: my_df["visitTime"]  / df["visitTime"].sum())
+#for prog in np.unique(df2.index.get_level_values(0)):
+#    print("Program ID ", prog, "is allocated", df2.loc[df2.index.get_level_values(0) == prog].sum(), "percent of tonight's observations")
+
+df3 = df.groupby("progTitle").apply(lambda my_df: my_df["visitTime"]  / df["visitTime"].sum())
+msg = ''
+for prog in np.unique(df3.index.get_level_values(0)):
+    msg += f'Program name {prog} is allocated {df3.loc[df3.index.get_level_values(0) == prog].sum()*100:.2f} percent of tonight\'s observations \n'
 alertHandler.slack_log(msg)

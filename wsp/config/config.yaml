@@ -134,7 +134,7 @@ log_link_name: 'winter.log'
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
-max_sun_alt_for_observing: -12
+max_sun_alt_for_observing: -7
 
 
 robotic_manager_triggers:
@@ -153,7 +153,6 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: True
             cmd: xyzzy
-                
         fans_on:
             conds:
                 cond1:
@@ -182,6 +181,7 @@ robotic_manager_triggers:
             repeat_on_restart: False
             #cmd: 'total_startup --cameras'
             cmd: 'do_startup --cameras'
+            #cmd: 'do_startup'
         load_schedule:
             conds:
                 cond1:
@@ -189,7 +189,7 @@ robotic_manager_triggers:
                     val: 1.0
                     cond: '<'
             sundir: 0
-            repeat_on_restart: False
+            repeat_on_restart: True
             cmd: 'load_nightly_schedule'
         evening_darks_bias:
             conds:
@@ -199,7 +199,8 @@ robotic_manager_triggers:
                     cond: '<'
             sundir: 0
             repeat_on_restart: False
-            cmd: 'robo_do_calibration -d -b'
+            #cmd: 'robo_do_calibration -d -b'
+            cmd: 'robo_do_darks'
         open_dome:
             conds:
                 cond1:
@@ -209,27 +210,66 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'dome_open'
-        evening_flats:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -5.0
-                    cond: '<'
-                cond2:
-                    type: 'sun'
-                    val: -7.0
-                    cond: '>'
-            repeat_on_restart: False
-            sundir: -1
-            cmd: 'robo_do_calibration -f'
+        # evening_flats:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: -5.0
+        #             cond: '<'
+        #         cond2:
+        #             type: 'sun'
+        #             val: -7.0
+        #             cond: '>'
+        #     repeat_on_restart: False
+        #     sundir: -1
+        #     cmd: 'robo_do_calibration -f'
 
         start_obs:
             conds:
                cond1:
                    type: 'sun'
-                   val: -12.0
+                   val: -7.0
                    cond: '<'
             repeat_on_restart: True
+            sundir: 0
+            cmd: 'robo_run'
+        pause_obs:
+            conds:
+               cond1:
+                   type: 'time'
+                   val: '0:0:0.0'
+                   cond: '>'
+               cond1:
+                   type: 'time'
+                   val: '0:15:0.0'
+                   cond: '<'
+            repeat_on_restart: False
+            nextmorning: True
+            sundir: 0
+            cmd: 'robo_stop'
+        do_night_darks:
+            conds:
+               cond1:
+                   type: 'time'
+                   val: '0:05:0.0'
+                   cond: '>'
+               cond1:
+                   type: 'time'
+                   val: '0:20:0.0'
+                   cond: '<'
+            repeat_on_restart: False
+            nextmorning: True
+            sundir: 0
+            cmd: 'robo_do_darks'
+        restart_obs:
+            conds:
+               cond1:
+                   type: 'time'
+                   val: '0:20:0.0'
+                   cond: '>'
+               
+            repeat_on_restart: False
+            nextmorning: True
             sundir: 0
             cmd: 'robo_run'
         stop_obs:
@@ -255,7 +295,8 @@ robotic_manager_triggers:
             nextmorning: True   
             repeat_on_restart: False          
             sundir: 1
-            cmd: 'robo_do_calibration -f -d'
+            #cmd: 'robo_do_calibration -f -d'
+            cmd: 'robo_do_darks'
         shutdown:
             conds:
                 cond1:
@@ -276,7 +317,7 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: 1
             cmd: 'mount_fans_off'
-        chiller_stop:
+        winter_camera_shutdown:
             conds:
                 cond1:
                     type: 'sun'
@@ -288,12 +329,12 @@ robotic_manager_triggers:
                     cond: '>'
                 cond3:
                     type: 'time'
-                    val: '6:00:00.0'
+                    val: '7:30:00.0'
                     cond: '>'
             nextmorning: True
             repeat_on_restart: False
             sundir: 1
-            cmd: 'chiller_stop'
+            cmd: 'shutdownCamera --winter'
         kill:
             conds:
                 cond1:
@@ -537,10 +578,9 @@ cal_params:
         dark:
             n_imgs: 5
             exptimes:
-                - 1
-                - 10
-                - 30
                 - 120
+                - 30
+                - 10
             filterID: 'dark'
         bias:
             n_imgs: 0
@@ -581,6 +621,9 @@ focus_loop_param:
         winter:
             - 'J'
     targets:
+        #targ0:
+        #    target_type: object
+        #    target: 'm39'
         targ1:
             target_type: altaz
             target: '79 10'
@@ -676,23 +719,23 @@ filters:
     winter:
         J:
             name: "MKO J-band (Asahi)"
-            nominal_focus: 10000
-            active: False
+            nominal_focus: 11820
+            active: True
             focus_exptime: 30
         Y:  
             name: "MKO Y-band (Asahi)"
             nominal_focus: 10000
-            active: False
+            active: True
             focus_exptime: 30
         Hs: 
             name: "MKO Hs-band (Asahi)"
             nominal_focus: 10000
-            active: False
+            active: True
             focus_exptime: 30
         dark:
             name: "Dark Mirror"
             nominal_focus: 10000
-            active: False
+            active: True
             focus_exptime: 30
         
 
@@ -3017,6 +3060,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['bench_T_pid']   
+    bench_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_Kp'] 
+    bench_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_Ki']  
+    bench_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_Kd'] 
+    bench_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_max_dacV'] 
     bench_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3249,6 +3320,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sa_tec_setpoint']  
+    sa_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_tec_interim_setpoint']
     sa_T_pid:
         ftype: raw
         label: 'T'
@@ -3256,6 +3334,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sa_T_pid']   
+    sa_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_Kp'] 
+    sa_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_Ki']  
+    sa_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_Kd'] 
+    sa_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_max_dacV'] 
     sa_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3487,7 +3593,14 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sb_tec_setpoint']  
+        var: camdict['winter'].state['sb_tec_setpoint'] 
+    sb_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_tec_interim_setpoint'] 
     sb_T_pid:
         ftype: raw
         label: 'T'
@@ -3495,6 +3608,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sb_T_pid']   
+    sb_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_Kp'] 
+    sb_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_Ki']  
+    sb_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_Kd'] 
+    sb_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_max_dacV'] 
     sb_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3727,6 +3868,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sc_tec_setpoint']  
+    sc_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_tec_interim_setpoint']
     sc_T_pid:
         ftype: raw
         label: 'T'
@@ -3734,6 +3882,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sc_T_pid']   
+    sc_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_Kp'] 
+    sc_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_Ki']  
+    sc_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_Kd'] 
+    sc_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_max_dacV'] 
     sc_V_tec_status:
         ftype: raw
         label: 'status'
@@ -3966,13 +4142,48 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pa_tec_setpoint']  
+    pa_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_tec_interim_setpoint']
     pa_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pa_T_pid']   
+        var: camdict['winter'].state['pa_T_pid'] 
+    pa_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_Kp'] 
+    pa_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_Ki']  
+    pa_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_Kd'] 
+    pa_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_max_dacV'] 
     pa_V_tec_status:
         ftype: raw
         label: 'status'
@@ -4205,13 +4416,48 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pb_tec_setpoint']  
+    pb_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_tec_interim_setpoint']
     pb_T_pid:
         ftype: raw
         label: 'T'
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pb_T_pid']   
+        var: camdict['winter'].state['pb_T_pid'] 
+    pb_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_Kp'] 
+    pb_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_Ki']  
+    pb_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_Kd'] 
+    pb_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_max_dacV']   
     pb_V_tec_status:
         ftype: raw
         label: 'status'
@@ -4444,6 +4690,13 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pc_tec_setpoint']  
+    pc_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_tec_interim_setpoint']
     pc_T_pid:
         ftype: raw
         label: 'T'
@@ -4451,6 +4704,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pc_T_pid']   
+    pc_Kp:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_Kp'] 
+    pc_Ki:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_Ki']  
+    pc_Kd:
+        ftype: raw
+        label: 'Coeff'
+        units: None
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_Kd'] 
+    pc_max_dacV:
+        ftype: raw
+        label: 'Volt'
+        units: 'V'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_max_dacV'] 
     pc_V_tec_status:
         ftype: raw
         label: 'status'

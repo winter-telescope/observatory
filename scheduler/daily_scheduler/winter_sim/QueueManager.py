@@ -19,6 +19,7 @@ from .constants import W_loc, P48_loc, PROGRAM_IDS, FILTER_IDS, TIME_BLOCK_SIZE
 from .constants import EXPOSURE_TIME, FILTER_CHANGE_TIME, MIRROR_CHANGE_TIME, slew_time
 from .constants import PROGRAM_BLOCK_SEQUENCE, LEN_BLOCK_SEQUENCE, MAX_AIRMASS, MIN_AIRMASS
 from .constants import BASE_DIR, WINTER_FILTERS, SUMMER_FILTERS, FILTER_NAME_TO_ID
+from .constants import MAX_MOON_DIST, MAX_ALTITUDE
 from .utils import approx_hours_of_darkness
 from .utils import skycoord_to_altaz, seeing_at_pointing
 from .utils import altitude_to_airmass, airmass_to_altitude, RA_to_HA, HA_to_RA
@@ -193,7 +194,8 @@ class QueueManager(object):
                 obs_log, block_programs=self.block_programs)
             for rs in request_sets:
                 self.rp.add_request_sets(rs['program_id'], 
-                            rs['subprogram_name'], rs['program_pi'],
+                            rs['subprogram_name'], rs['subprogram_title'], 
+                            rs['program_pi'],
                             rs['field_ids'], rs['filter_ids'], 
                             rs['intranight_gap'],
                             rs['exposure_time'],
@@ -394,8 +396,8 @@ class QueueManager(object):
         df.loc[:, 'sunalt'] = sun_altaz.alt.to(u.deg).value
 
         # check if the sun is up anywhere and break things if it isn't
-        if np.sum(df['sunalt'] > -6) != 0:
-            raise ValueError('Some pointings outside six-degree twilight!')
+        if np.sum(df['sunalt'] > -3) != 0:
+            raise ValueError('Some pointings outside three-degree twilight!')
 
         # compute sky brightness
         # only have values for reasonable altitudes (set by R20_absorbed...)
@@ -457,25 +459,29 @@ class QueueManager(object):
 
         # assign a very bright limiting mag to the fields within 20 degrees of
         # the moon 
-        wmoon = df['moon_dist'] < 20
+        wmoon = df['moon_dist'] < MAX_MOON_DIST
         df.loc[wmoon, 'limiting_mag'] = -99
+        
+        # assign a very bright limiting mag to the fields above max altitude
+        #walt = df['altitude'] > MAX_ALTITUDE
+        #df.loc[walt, 'limiting_mag'] = -99
 
         # need to check the Hour Angle at both the start and the end of the
         # block, since we don't know the exact time it will be observed
 
         # time is provided at the block midpoint
 
-        ha_vals = RA_to_HA(df['ra'].values*u.degree, 
-                time - TIME_BLOCK_SIZE/2.)
-        # for limits below, need ha-180-180
-        ha_vals = ha_vals.wrap_at(180.*u.degree)
-        ha = pd.Series(ha_vals.to(u.degree), index=df.index, name='ha')
+        # ha_vals = RA_to_HA(df['ra'].values*u.degree, 
+        #         time - TIME_BLOCK_SIZE/2.)
+        # # for limits below, need ha-180-180
+        # ha_vals = ha_vals.wrap_at(180.*u.degree)
+        # ha = pd.Series(ha_vals.to(u.degree), index=df.index, name='ha')
 
-        ha_vals_end = RA_to_HA(df['ra'].values*u.degree, 
-                time + TIME_BLOCK_SIZE/2.)
-        # for limits below, need ha-180-180
-        ha_vals_end = ha_vals_end.wrap_at(180.*u.degree)
-        ha_end = pd.Series(ha_vals_end.to(u.degree), index=df.index, name='ha')
+        # ha_vals_end = RA_to_HA(df['ra'].values*u.degree, 
+        #         time + TIME_BLOCK_SIZE/2.)
+        # # for limits below, need ha-180-180
+        # ha_vals_end = ha_vals_end.wrap_at(180.*u.degree)
+        # ha_end = pd.Series(ha_vals_end.to(u.degree), index=df.index, name='ha')
 
         # lock out TCS limits
         
@@ -532,7 +538,7 @@ class GurobiQueueManager(QueueManager):
         self._assign_slots(current_state, time_limit = time_limit, 
                 block_use = block_use)
 
-    def _next_obs(self, current_state, obs_log, time_limit = 30.*u.second):
+    def _next_obs(self, current_state, obs_log, time_limit = 300.*u.second):
         """Select the highest value request."""
 
         # do the slot assignment at the beginning of the night 
@@ -540,6 +546,7 @@ class GurobiQueueManager(QueueManager):
 
         # if we've entered a new block, solve the TSP to sequence the requests
         if (block_index(current_state['current_time'])[0] != self.queue_slot):
+            #print("attempitng to sequence Gurobi blocks")
             self._sequence_requests_in_block(current_state, time_limit = time_limit)
 
         if (len(self.queue_order) == 0):
@@ -562,6 +569,7 @@ class GurobiQueueManager(QueueManager):
             'target_filter_id': filter_id,
             'target_program_id': int(row['program_id']),
             'target_subprogram_name': row['subprogram_name'],
+            'target_subprogram_title': row['subprogram_title'],
             'target_program_pi': row['program_pi'],
             'target_exposure_time': row['exposure_time'] * u.second,
             'target_sky_brightness': 
@@ -626,7 +634,7 @@ class GurobiQueueManager(QueueManager):
             cut_times = block_index_to_time(cut_blocks, 
                     current_state['current_time'], where='mid')
             blocks, times = cut_blocks, cut_times
-
+        #print("getting sky brightnesses")
         lim_mags = {}
         sky_brightnesses = {}
         for bi, ti in zip(blocks, times):
@@ -681,13 +689,13 @@ class GurobiQueueManager(QueueManager):
 #            self.block_slot_metric.loc[self.request_sets_tonight], 
 #            df.loc[self.request_sets_tonight], self.requests_allowed,
 #            time_limit = time_limit)
-
+        #print("trying to optimize")
         self.request_sets_tonight, df_slots, dft = night_optimize(
             self.block_slot_metric, df, self.requests_allowed,
             time_limit = time_limit, block_use = block_use)
-
+        #print("optimized")
         grp = df_slots.groupby('slot')
-        print('grp', grp.head())
+        #print('grp', grp.head())
         
         # W 
         self.queued_requests_by_slot = grp.apply(np.array)
@@ -751,16 +759,19 @@ class GurobiQueueManager(QueueManager):
         # if before_noon_utc or (not os.path.exists(solution_outfile)):
             # dft.drop(columns=['Yrtf']).to_csv(solution_outfile)
 
-    def _sequence_requests_in_block(self, current_state, time_limit = 30.*u.second):
+    def _sequence_requests_in_block(self, current_state, time_limit = 300.*u.second):
         """Solve the TSP for requests in this slot"""
-
+        
+        #print("In sequence requests")
         self.queue_slot = block_index(current_state['current_time'])[0]
 
         # raise an error if there are missing blocks--potentially due to
         # excluded blocks
         if self.queue_slot not in self.queued_requests_by_slot.index:
+            #print("In sequence requests 0.5")
             raise QueueEmptyError(f"Current block {self.queue_slot} is not stored")
-
+            
+        #print("In sequence requests 2")    
         # retrieve requests to be observed in this block
         req_list = self.queued_requests_by_slot.loc[self.queue_slot]
         # W
@@ -768,10 +779,10 @@ class GurobiQueueManager(QueueManager):
         
         # request_set ids should be unique per block
         # assert( (len(set(req_list)) == len(req_list) ) )
-
+        #print("In sequence requests 3")
         if np.all(np.isnan(req_df['filter_id'].tolist())):
             raise QueueEmptyError("No requests assigned to this block")
-
+        #print("In sequence requests 4")
         # W
         idx = req_df['field_id'].tolist()
         filter_list = req_df['filter_id'].tolist()
@@ -786,7 +797,7 @@ class GurobiQueueManager(QueueManager):
         df.index.name = 'req_id'
         df.reset_index(inplace=True)
         df = df.join(req_df, rsuffix='_req_id')
-
+        #print("In sequence requests 5")
         # now prepend the CALSTOW positoin so we can minimize slew from
         # filter exchanges 
         # Need to use current HA=0
@@ -797,7 +808,7 @@ class GurobiQueueManager(QueueManager):
         df_fakestart = pd.concat([df_blockstart,df],sort=True)
 
         # compute overhead time between all request pairs
-        
+        #print("computing overheads")
         # compute pairwise slew times by axis for all pointings
         slews_by_axis = {}
         def coord_to_slewtime(coord, axis=None):
@@ -829,7 +840,7 @@ class GurobiQueueManager(QueueManager):
                             new_arr.append(FILTER_CHANGE_TIME.value+ MIRROR_CHANGE_TIME.value)
                 time_arr.append(new_arr)   
             return time_arr
-
+       # print("do slews")
         slews_by_axis['dome'] = coord_to_slewtime(
             df_fakestart['azimuth'], axis='dome')
         slews_by_axis['alt'] = coord_to_slewtime(
@@ -852,6 +863,7 @@ class GurobiQueueManager(QueueManager):
         # W
         slew_overhead = np.maximum(maxslews, READOUT_TIME)
         overhead_time = slew_overhead + filter_overhead
+       # print("try tsp")
         tsp_order, tsp_overhead_time = tsp_optimize(overhead_time.value,
                                                     time_limit = time_limit)
 
@@ -863,6 +875,7 @@ class GurobiQueueManager(QueueManager):
 
         # tsp_order is 0-indexed from overhead time, so I need to
         # reconstruct the request_id
+        #print("attempting to assign queue order")
         self.queue_order = df_fakestart.index.values[tsp_order]
          # W
         self.req_queue_order = df_fakestart.req_id.values[tsp_order]
@@ -938,7 +951,7 @@ class GreedyQueueManager(QueueManager):
         if self.time_of_last_filter_change is None:
             self.time_of_last_filter_change = current_state['current_time']
 
-    def _next_obs(self, current_state, obs_log, time_limit = 30.*u.second):
+    def _next_obs(self, current_state, obs_log, time_limit = 300.*u.second):
         """Select the highest value request."""
 
         # since this is a greedy queue, we update the queue after each obs
@@ -983,6 +996,7 @@ class GreedyQueueManager(QueueManager):
             'target_filter_id': row['filter_id'],
             'target_program_id': row['program_id'],
             'target_subprogram_name': row['subprogram_name'],
+            'target_subprogram_title': row['subprogram_title'],
             'target_program_pi': row['program_pi'],
             'target_exposure_time': row['exposure_time'] * u.second,
             'target_sky_brightness': row['sky_brightness'],
@@ -1190,7 +1204,7 @@ class ListQueueManager(QueueManager):
 
         # check that major columns are included
         required_columns = ['field_id','program_id', 'subprogram_name',
-                'filter_id', 'program_pi']
+                'subprogram_title', 'filter_id', 'program_pi']
 
         for col in required_columns:
             if col not in df.columns:
@@ -1250,25 +1264,25 @@ class ListQueueManager(QueueManager):
                 continue
             # Reed limits |HA| to < 5.95 hours (most relevant for circumpolar
             # fields not hit by the airmass cut)
-            if np.abs(ha) >= (5.95 * u.hourangle).to(u.degree).value:
-                idx += 1
-                continue
-            # 1) HA < -17.6 deg && Dec < -22 deg is rejected for both track & stow because of interference with FFI.
-            if (ha <= -17.6) & (dec <= -22):
-                idx += 1
-                continue
-             # West of HA -17.6 deg, Dec < -45 deg is rejected for tracking because of the service platform in the south.
-            if (ha >= -17.6) & (dec <= -45):
-                idx += 1
-                continue
-             # fabs(HA) > 3 deg is rejected for Dec < -46 to protect the shutter "ears".
-            if (np.abs(ha) >= 3.) & (dec <= -46):
-                idx += 1
-                continue
-             # dec > 87.5 is rejected
-            if (dec > 87.5):
-                idx += 1
-                continue
+            # if np.abs(ha) >= (5.95 * u.hourangle).to(u.degree).value:
+            #     idx += 1
+            #     continue
+            # # 1) HA < -17.6 deg && Dec < -22 deg is rejected for both track & stow because of interference with FFI.
+            # if (ha <= -17.6) & (dec <= -22):
+            #     idx += 1
+            #     continue
+            #  # West of HA -17.6 deg, Dec < -45 deg is rejected for tracking because of the service platform in the south.
+            # if (ha >= -17.6) & (dec <= -45):
+            #     idx += 1
+            #     continue
+            #  # fabs(HA) > 3 deg is rejected for Dec < -46 to protect the shutter "ears".
+            # if (np.abs(ha) >= 3.) & (dec <= -46):
+            #     idx += 1
+            #     continue
+            #  # dec > 87.5 is rejected
+            # if (dec > 87.5):
+            #     idx += 1
+            #     continue
 
             break
 
@@ -1279,6 +1293,7 @@ class ListQueueManager(QueueManager):
             'target_filter_id': self.queue.iloc[idx].filter_id,
             'target_program_id': int(self.queue.iloc[idx].program_id),
             'target_subprogram_name': self.queue.iloc[idx].subprogram_name,
+            'target_subprogram_title': self.queue.iloc[idx].subprogram_title,
             'target_program_pi': self.queue.iloc[idx].program_pi,
             'target_exposure_time': self.queue.iloc[idx].exposure_time * u.second,
             'target_sky_brightness': 0.,
@@ -1314,7 +1329,7 @@ class RequestPool(object):
         self.pool = pd.DataFrame()
         pass
 
-    def add_request_sets(self, program_id, subprogram_name, program_pi,
+    def add_request_sets(self, program_id, subprogram_name, subprogram_title, program_pi,
                 field_ids, filter_ids, intranight_gap, exposure_time, 
                 total_requests_tonight, priority=1):
         """program_ids must be scalar"""
@@ -1337,6 +1352,7 @@ class RequestPool(object):
             request_sets.append({
                 'program_id': program_id,
                 'subprogram_name': subprogram_name,
+                'subprogram_title': subprogram_title,
                 'program_pi': program_pi,
                 'field_id': field_id,
                 'filter_ids': filter_ids.copy(),

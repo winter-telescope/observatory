@@ -4,16 +4,18 @@
 	"queue_manager": "greedy",
 	"observing_programs": [
 		{"program_name": "Engineering",
-		 "subprogram_name": "reference_building_winter",
+		 "subprogram_name": "2023A009",
+		 "subprogram_title": "reference_fallback",
 		 "program_pi": "Lourie",
          "program_observing_fraction": 1.0,
          "subprogram_fraction": 1.0,
-		 "field_selections":{"dec_range":[10,20]},
+		 "field_selections":{"dec_range":[60,90]},
 		 "filter_choice": "sequence",
-		 "filter_ids": [1],
+		 "filter_ids": [2],
+		 "exposure_time": 600, 
 		 "internight_gap_days": 1,
 		 "n_visits_per_night": 1,
-		 "dither": 1,
+		 "dither": 5,
 		 "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":10},
 		 "active_months": "all"}
 	]

@@ -13,11 +13,19 @@ from astropy.time import Time
 from datetime import datetime
 import astropy.units as u
 import astroplan.moon
+import psycopg
+import os
+import yaml
 from .Fields import Fields
 from .utils import *
 from .constants import VALIDITY_WINDOW_MJD, DITHER, BASE_DIR, FILTER_ID_TO_NAME, EXPOSURE_TIME, READOUT_TIME
 from .constants import WINTER_FILTERS
 from .configuration import SchedulerConfiguration, QueueConfiguration
+
+wsp_path  = os.path.join(os.getenv("HOME"), 'WINTER_GIT', 'observatory', 'wsp')
+
+auth_config_file  = wsp_path + '/credentials/authentication.yaml'
+auth_config  = yaml.load(open(auth_config_file) , Loader = yaml.FullLoader)
 
 class ObsLogger(object):
 
@@ -50,22 +58,53 @@ class ObsLogger(object):
         # W
         #history_path = '../../wsp/demoRelational.db'
         #self.historyengine = create_engine('sqlite:///'+os.path.join(history_path))
-        #self.historyengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
-        print("HISTORY FILE: {}".format(output_path))
-        self.historyengine = create_engine('sqlite:///'+output_path+f'WINTER_ObsLog.db') #NPL did this change on 2-16-21
-        self.history = pd.read_sql('Observation', self.historyengine)
+        #self.ihistoryengine = create_engine('sqlite:///'+output_path,f'WINTER_ObsLog.db')
+        #print("HISTORY FILE: {}".format(output_path))
+        #self.historyengine = create_engine('sqlite:///'+output_path+f'WINTER_ObsLog.db') #NPL did this change on 2-16-21
+        #self.history = pd.read_sql('Observation', self.historyengine)
         
+        try:
+            # Get history from Caltech database 
+            conn = psycopg.connect('dbname=winter user='+str(auth_config['drp']['USERNAME'])+' password='+str(auth_config['drp']['PASSWORD'])+
+                           ' host='+str(auth_config['drp']['HOSTNAME']))
+
+            cur = conn.cursor()
+
+            command = '''SELECT exposures.progname, exposures.fieldid, exposures.ra, exposures.dec,
+                    exposures.fid, exposures."expMJD", exposures."ExpTime",exposures.airmass,
+                    programs.progid, programs.progname, programs.progtitle FROM exposures INNER JOIN programs ON
+                    programs.progname=exposures.progname; '''
+
+            cur.execute(command)
+
+            res = cur.fetchall()
+    
+            self.history = pd.DataFrame(res, columns=['puid', 'fieldid', 'ra', 'dec', 'fid', 'expMJD',
+                                        'ExpTime', 'airmass', 'progid', 'progname'])
+        except Exception as e:
+            print("Failed to grab history because of:", e)
+            self.history = pd.DataFrame( columns=['puid', 'fieldid', 'ra', 'dec', 'fid', 'expMJD',
+                                        'ExpTime', 'airmass', 'progid', 'progname'])
+        print("History:", self.history)
         # rename progID to propID for scheduler
-        if 'progID' in self.history.columns:
-            self.history.rename(columns = {'progID':'propID'}, inplace = True)
-         # rename progName to subprogram 
-        if 'progName' in self.history.columns:
-            self.history.rename(columns = {'progName':'subprogram'}, inplace = True)
-         # rename ra and dec keywords from history as needed
-        if 'raDeg' in self.history.columns:
-            self.history.rename(columns = {'raDeg':'fieldRA'}, inplace = True)
-        if 'decDeg' in self.history.columns:
-            self.history.rename(columns = {'decDeg':'fieldDec'}, inplace = True)
+        if 'progid' in self.history.columns:
+            self.history.rename(columns = {'progid':'propID'}, inplace = True)
+        # rename progName to subprogram 
+        if 'progname' in self.history.columns:
+            self.history.rename(columns = {'progname':'subprogram'}, inplace = True)
+        # rename ra and dec keywords from history as needed
+        if 'ra' in self.history.columns:
+            self.history.rename(columns = {'ra':'fieldRA'}, inplace = True)
+        if 'dec' in self.history.columns:
+            self.history.rename(columns = {'dec':'fieldDec'}, inplace = True)
+        # rename other keywords
+        if 'fieldid' in self.history.columns:
+            self.history.rename(columns = {'fieldid':'fieldID'}, inplace = True)
+        if 'fid' in self.history.columns:
+            self.history.rename(columns = {'fid':'filter'}, inplace = True)
+        if 'ExpTime' in self.history.columns:
+            self.history.rename(columns = {'ExpTime':'visitExpTime'}, inplace = True)
+    
             
         
         self.log_tonight = pd.read_sql('Summary', self.engine)
@@ -147,6 +186,7 @@ class ObsLogger(object):
             requestID          INTEGER,
             progID             INTEGER,
             progName           TEXT,
+            progTitle          TEXT,
             fieldID            INTEGER,
             raDeg              REAL,
             decDeg             REAL,
@@ -201,6 +241,7 @@ class ObsLogger(object):
                 if program.subprogram_name == request['target_subprogram_name']:
                     pi = program.program_pi
                     record['progPI'] = program.program_pi
+                    record['progTitle'] = program.subprogram_title
                     record['ditherNumber'] = program.dither
         
         record['fieldID'] = request['target_field_id']

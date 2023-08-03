@@ -11,7 +11,7 @@ from .ObsLogger import ObsLogger
 from .configuration import SchedulerConfiguration
 from .constants import BASE_DIR, PROGRAM_IDS, EXPOSURE_TIME, READOUT_TIME
 from .utils import block_index, block_use_fraction
-from .utils import next_12deg_evening_twilight, next_12deg_morning_twilight
+from .utils import next_evening_twilight, next_morning_twilight
 
 
 
@@ -89,8 +89,8 @@ class Scheduler(object):
         block_use = defaultdict(float)
 
         # compute fraction of twilight blocks not available
-        evening_twilight = next_12deg_evening_twilight(today)
-        morning_twilight = next_12deg_morning_twilight(today)
+        evening_twilight = next_evening_twilight(today)
+        morning_twilight = next_morning_twilight(today)
 
         evening_twilight_block = block_index(evening_twilight)[0]
         frac_evening_twilight = block_use_fraction(

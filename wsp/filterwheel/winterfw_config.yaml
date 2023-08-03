@@ -29,7 +29,7 @@ stepper_config:
     encoder_ratio: 140056
     speed: 1000
     homing_steps: 100000
-    max_encoder_err: 50
+    max_encoder_err: 100
     overload_timeout: 100
     hold_current: 0
     timeout_secs: 80

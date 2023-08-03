@@ -492,6 +492,7 @@ class Dome(QtCore.QObject):
         self.statusThread.doReconnect.connect(self.commandThread.DoReconnect)
         
         # if the status thread gets the signbal that we've entered hand mode then enter hand mode
+        #NPL uncomment this if you want it to kill wsp every time hand mode is enabled
         self.statusThread.enableHandMode.connect(self.handleHandMode)
         
         self.statusThread.newStatus.connect(self.updateStatus)
@@ -719,7 +720,7 @@ if __name__ == "__main__":
     # set the defaults
     verbose = False
     doLogging = True
-    ns_host = '192.168.1.215'
+    ns_host = '192.168.1.20'
     domesim = False
     
     options = "vpn:s"
