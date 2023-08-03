@@ -1,0 +1,13 @@
+[Unit]
+Description=watchdog for winter camera daemon
+After=multi-user.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/home/winter/GIT/observatory/development/watchdog/freya_watchdog.sh
+User=winter
+
+[Install]
+WantedBy=multi-user.target
+
