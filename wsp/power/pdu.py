@@ -21,7 +21,6 @@ import sys
 import os
 import numpy as np
 import requests
-from configobj import ConfigObj
 import traceback as tb
 from bs4 import BeautifulSoup
 import logging

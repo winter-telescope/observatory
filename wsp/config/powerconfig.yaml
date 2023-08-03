@@ -22,7 +22,7 @@ pdus:
     pdu2:
         pdu_number: 2
         ip: 192.168.1.75
-        rand: 'Digital Loggers'
+        brand: 'Digital Loggers'
         outlets:
             1: 'Camera12V'
             2: 'FPAS'
