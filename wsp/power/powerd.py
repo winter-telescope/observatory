@@ -21,6 +21,7 @@ import signal
 import threading
 import time
 import logging
+import getopt
 import json
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -112,7 +113,7 @@ class PowerManager(QtCore.QObject):
 class PyroGUI(QtCore.QObject):   
 
                   
-    def __init__(self, pdu_config, auth_config, logger, verbose, parent=None ):            
+    def __init__(self, pdu_config, auth_config, ns_host, logger, verbose, parent=None ):            
         super(PyroGUI, self).__init__(parent)   
         print(f'main: running in thread {threading.get_ident()}')
         
@@ -120,7 +121,8 @@ class PyroGUI(QtCore.QObject):
 
         self.powerManager = PowerManager(pdu_config, auth_config, dt = 5000, name = 'power', verbose = verbose, logger = logger)
                 
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.powerManager, name = 'power')
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.powerManager, name = 'power',
+                                                   ns_host = ns_host)
         self.pyro_thread.start()
         
         """
@@ -144,46 +146,42 @@ def sigint_handler( *args):
 if __name__ == "__main__":
     
     
-    app = QtCore.QCoreApplication(sys.argv)
+    #### GET ANY COMMAND LINE ARGUMENTS #####
     
     args = sys.argv[1:]
-    
-    
-    modes = dict()
-    modes.update({'-v' : "Running in VERBOSE mode"})
-    modes.update({'--sunsim' : "Running in simulated sun mode"})
+    print(f'args = {args}')
     
     # set the defaults
     verbose = False
     doLogging = True
-    sunsim = False
-    #print(f'args = {args}')
+    ns_host = '192.168.1.10'
     
-    if len(args)<1:
-        pass
-    
-    else:
-        for arg in args:
+    options = "vpn:s"
+    long_options = ["verbose", "print", "ns_host:"]
+    arguments, values = getopt.getopt(args, options, long_options)
+    # checking each argument
+    print()
+    print(f'Parsing sys.argv...')
+    print(f'arguments = {arguments}')
+    print(f'values = {values}')
+    for currentArgument, currentValue in arguments:
+        if currentArgument in ("-v", "--verbose"):
+            verbose = True
+            print("Running in VERBOSE mode")
+        
+        elif currentArgument in ("-p", "--print"):
+            doLogging = False
+            print("Running in PRINT mode (instead of log mode).")
             
-            if arg in modes.keys():
-                
-                # remove the dash when passing the option
-                opt = arg.replace('-','')
-                if opt == 'v':
-                    print(f'ephemd: {modes[arg]}')
-                    verbose = True
-                elif opt == 'p':
-                    print(f'ephemd: {modes[arg]}')
-                    doLogging = False
-                elif opt == 'sunsim':
-                    print(f'ephemd: {modes[arg]}')
-                    sunsim = True
+        elif currentArgument in ("-n", "--ns_host"):
+            ns_host = currentValue
+        
+            
+    print(f'powerd: launching with ns_host = {ns_host}')
+    
+    ##### RUN THE APP #####
+    app = QtCore.QCoreApplication(sys.argv)
 
-            else:
-                print(f'ephemd: Invalid mode {arg}')
-    
-    
-    
     # set the wsp path as the base directory
     base_directory = wsp_path
 
@@ -197,15 +195,11 @@ if __name__ == "__main__":
     else:
         logger = None
     
-    
-    
     pdu_config = utils.loadconfig(os.path.join(wsp_path, 'config', 'powerconfig.yaml'))
     auth_config = utils.loadconfig(os.path.join(wsp_path, 'credentials', 'authentication.yaml'))
     
     
-    main = PyroGUI(pdu_config, auth_config, logger, verbose)
-
-
+    main = PyroGUI(pdu_config, auth_config, ns_host, logger, verbose)
     
     signal.signal(signal.SIGINT, sigint_handler)
 
@@ -215,4 +209,11 @@ if __name__ == "__main__":
     timer.timeout.connect(lambda: None) 
 
     sys.exit(app.exec_())
+
+
+
+
+
+
+    
 

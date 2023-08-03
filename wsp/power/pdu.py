@@ -202,22 +202,53 @@ class PDU(object):
         
     def cycle(self,outlet):
         if self.brand.lower() == 'digital loggers':
+            if outlet in np.arange(1, self.num_outlets+1, 1):
+                outletnum = outlet
+            elif type(outlet) is str:
+                #if it's a name look it up in the reverse dict
+                outletnum = self.outletnames2nums.get(outlet, None)
+            else:
+                outletnum = None
+            if outletnum is None:
+                self.log(f'bad outlet {outlet} specified. returning.')
+                return
+                
             command  = 'outlet?' + str(outlet) + '=CCL'
             #TODO add this to the log
-            self.log(f"Sending CYCLE Command to Outlet # {outlet}")
+            self.log(f"Sending CYCLE Command to Outlet # {outletnum}")
             self.send(command)
             self.getStatus()
             
     def on(self,outlet):
         if self.brand.lower() == 'digital loggers':
+            if outlet in np.arange(1, self.num_outlets+1, 1):
+                outletnum = outlet
+            elif type(outlet) is str:
+                #if it's a name look it up in the reverse dict
+                outletnum = self.outletnames2nums.get(outlet, None)
+            else:
+                outletnum = None
+            if outletnum is None:
+                self.log(f'bad outlet {outlet} specified. returning.')
+                return
             command  = 'outlet?' + str(outlet) + '=ON'
             #TODO add this to the log
-            self.log(f"Sending ON Command to  Outlet # {outlet}")
+            self.log(f"Sending ON Command to  Outlet # {outletnum}")
             self.send(command)
             self.getStatus()
             
     def off(self,outlet):
         if self.brand.lower() == 'digital loggers':
+            if outlet in np.arange(1, self.num_outlets+1, 1):
+                outletnum = outlet
+            elif type(outlet) is str:
+                #if it's a name look it up in the reverse dict
+                outletnum = self.outletnames2nums.get(outlet, None)
+            else:
+                outletnum = None
+            if outletnum is None:
+                self.log(f'bad outlet {outlet} specified. returning.')
+                return
             command  = 'outlet?' + str(outlet) + '=OFF'
             #TODO add this to the log
             self.log(f"Sending OFF Command to Outlet # {outlet}")
@@ -248,6 +279,12 @@ class PDU(object):
                 elif status_arr[i] == 1:
                     # if it's supposed to be on, turn it on!
                     self.on(i + 1)
+                elif status_arr[i] == 2:
+                    # if it's not 1 or 0, do nothing!
+                    pass
+                else:
+                    pass
+                    
         # Wait a few seconds and then query the status again
         #   if you don't wait long enough the status doesn't update properly
         time.sleep(5)

@@ -223,11 +223,10 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.hkd)
             
             # power (PDU/NPS) daemon
-            """
-            #TODO: 5/19/23 need to add this back in
-            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
+            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py",
+                                            args = ['-n', self.ns_host])
             self.daemonlist.add_daemon(self.powerd)
-            """
+            
             
             # labjack daemon
             self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])

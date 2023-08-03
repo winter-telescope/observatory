@@ -2869,12 +2869,14 @@ class Wintercmd(QtCore.QObject):
         chan_num = self.args.channel[1]
         
         # send the on command
-        if pdu_num == 1:
-            #self.powerManager.pdu_on('pdu1', chan_num)
-            sigcmd = signalCmd('pdu_on', pduname = 'pdu1', outlet = chan_num)
+        active_pdus = [1,2]
+        if pdu_num in active_pdus:
+            pduname = f'pdu{pdu_num}'
+            
+            sigcmd = signalCmd('pdu_on', pduname = pduname, outlet = chan_num)
             self.powerManager.newCommand.emit(sigcmd)
         else:
-            self.logger.info(f'right now PDU numbers are hardcoded, and only 1 is active')
+            self.logger.info(f'right now PDU numbers are hardcoded, and only {active_pdus} are active')
             
     @cmd
     def pdu_off(self):
@@ -2898,12 +2900,14 @@ class Wintercmd(QtCore.QObject):
         chan_num = self.args.channel[1]
         
         # send the off command
-        if pdu_num == 1:
-            #self.powerManager.pdu_off('pdu1', chan_num)
-            sigcmd = signalCmd('pdu_off', pduname = 'pdu1', outlet = chan_num)
+        active_pdus = [1,2]
+        if pdu_num in active_pdus:
+            pduname = f'pdu{pdu_num}'
+            
+            sigcmd = signalCmd('pdu_off', pduname = pduname, outlet = chan_num)
             self.powerManager.newCommand.emit(sigcmd)
         else:
-            self.logger.info(f'right now PDU numbers are hardcoded, and only 1 is active')
+            self.logger.info(f'right now PDU numbers are hardcoded, and only {active_pdus} are active')
              
     @cmd
     def pdu_cycle(self):
@@ -2927,12 +2931,14 @@ class Wintercmd(QtCore.QObject):
         chan_num = self.args.channel[1]
         
         # send the off command
-        if pdu_num == 1:
-            #self.powerManager.pdu_off('pdu1', chan_num)
-            sigcmd = signalCmd('pdu_cycle', pduname = 'pdu1', outlet = chan_num)
+        active_pdus = [1,2]
+        if pdu_num in active_pdus:
+            pduname = f'pdu{pdu_num}'
+            
+            sigcmd = signalCmd('pdu_cycle', pduname = pduname, outlet = chan_num)
             self.powerManager.newCommand.emit(sigcmd)
         else:
-            self.logger.info(f'right now PDU numbers are hardcoded, and only 1 is active')
+            self.logger.info(f'right now PDU numbers are hardcoded, and only {active_pdus} are active')
     
     @cmd
     def do_routine(self):
