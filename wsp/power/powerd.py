@@ -70,7 +70,8 @@ class PowerManager(QtCore.QObject):
         
         # make a dictionary of all the pdus
         for pduname in pdu_config['pdus']:
-            pduObj = pdu.PDU(pduname, self.pdu_config, self.auth_config, autostart = True, logger = logger)
+            pduObj = pdu.PDU(pduname, self.pdu_config, self.auth_config, 
+                             autostart = False, logger = logger)
             
             self.pdu_dict.update({pduname : pduObj})
             

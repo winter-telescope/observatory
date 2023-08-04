@@ -35,10 +35,11 @@ wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 print(f'wsp_path = {wsp_path}')
 
-class local_PowerManager(object):
+class local_PowerManager(QtCore.QObject):
         newCommand = QtCore.pyqtSignal(object)
 
         def __init__(self, base_directory, ns_host = None, logger = None, verbose = False):
+            super(local_PowerManager, self).__init__()
             self.base_directory = base_directory
             self.ns_host = ns_host
             self.logger = logger

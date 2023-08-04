@@ -32,4 +32,4 @@ pdus:
             6: 'SUMMER'
             7: 'Thor'
             8: 'Freya'
-        startup: 12111111
+        startup: 00111111

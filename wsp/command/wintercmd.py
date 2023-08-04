@@ -2892,11 +2892,11 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser('turn off specified outlet on specified pdu')
         self.cmdparser.add_argument('channel',
                                     nargs = 2,
-                                    type = int,
+                                    #type = int,
                                     action = None,
                                     help = "<pdu_num> <chan_num>")
         self.getargs()
-        pdu_num = self.args.channel[0]
+        pdu_num = int(self.args.channel[0])
         chan_num = self.args.channel[1]
         
         # send the off command

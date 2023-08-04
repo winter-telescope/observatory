@@ -56,11 +56,15 @@ class PDU(object):
         self.status = [-1, -1, -1, -1, -1, -1, -1, -1]
         
         # read what the current outlet names are
-        self.getOutletNames()
-
+        try:
+            self.getOutletNames()
+        except Exception as e:
+            self.log(f'could not get outlet names: {e}')
         # now set the outlet names to match the config file
-        self.initOutletNames()
-        
+        try:
+            self.initOutletNames()
+        except Exception as e:
+            self.log(f'could not set outlet names: {e}')
         # get the current outlet status
         self.getStatus()
         
@@ -84,6 +88,7 @@ class PDU(object):
         password = self.auth_config['pdu'][self.name]['PASSWORD']
         url = 'http://' + self.ip + '/' + command
         try:
+            #self.log(f'sending http request: {url}')
             response = requests.get(url, auth = (username,password),timeout = 10)
             # added timeout so that if there's nothing to connect to it moves on
         except:
@@ -116,7 +121,8 @@ class PDU(object):
                 # status = [outlet1,outlet2,outlet3,outlet4,outlet5,outlet6,outlet7,outlet8]
                 
             except Exception as e:
-                    print('ERROR getting PDU status')
+                status = [-1, -1, -1, -1, -1, -1, -1, -1]
+                self.log(f'ERROR getting PDU status: {e}')
                     #print(tb.format_exc())
                     #TODO add an entry to the log
                     #sys.exit()
@@ -201,8 +207,11 @@ class PDU(object):
         
     def cycle(self,outlet):
         if self.brand.lower() == 'digital loggers':
-            if outlet in np.arange(1, self.num_outlets+1, 1):
-                outletnum = outlet
+            if type(outlet) is int:
+                if outlet in np.arange(1, self.num_outlets+1, 1):
+                    outletnum = outlet
+                else:
+                    outletnum = None
             elif type(outlet) is str:
                 #if it's a name look it up in the reverse dict
                 outletnum = self.outletnames2nums.get(outlet, None)
@@ -212,7 +221,7 @@ class PDU(object):
                 self.log(f'bad outlet {outlet} specified. returning.')
                 return
                 
-            command  = 'outlet?' + str(outlet) + '=CCL'
+            command  = 'outlet?' + str(outletnum) + '=CCL'
             #TODO add this to the log
             self.log(f"Sending CYCLE Command to Outlet # {outletnum}")
             self.send(command)
@@ -220,8 +229,11 @@ class PDU(object):
             
     def on(self,outlet):
         if self.brand.lower() == 'digital loggers':
-            if outlet in np.arange(1, self.num_outlets+1, 1):
-                outletnum = outlet
+            if type(outlet) is int:
+                if outlet in np.arange(1, self.num_outlets+1, 1):
+                    outletnum = outlet
+                else:
+                    outletnum = None
             elif type(outlet) is str:
                 #if it's a name look it up in the reverse dict
                 outletnum = self.outletnames2nums.get(outlet, None)
@@ -230,7 +242,7 @@ class PDU(object):
             if outletnum is None:
                 self.log(f'bad outlet {outlet} specified. returning.')
                 return
-            command  = 'outlet?' + str(outlet) + '=ON'
+            command  = 'outlet?' + str(outletnum) + '=ON'
             #TODO add this to the log
             self.log(f"Sending ON Command to  Outlet # {outletnum}")
             self.send(command)
@@ -238,21 +250,24 @@ class PDU(object):
             
     def off(self,outlet):
         if self.brand.lower() == 'digital loggers':
-            if outlet in np.arange(1, self.num_outlets+1, 1):
-                outletnum = outlet
-            elif type(outlet) is str:
-                #if it's a name look it up in the reverse dict
-                outletnum = self.outletnames2nums.get(outlet, None)
-            else:
-                outletnum = None
-            if outletnum is None:
-                self.log(f'bad outlet {outlet} specified. returning.')
-                return
-            command  = 'outlet?' + str(outlet) + '=OFF'
-            #TODO add this to the log
-            self.log(f"Sending OFF Command to Outlet # {outlet}")
-            self.send(command)
-            self.getStatus()
+           if type(outlet) is int:
+               if outlet in np.arange(1, self.num_outlets+1, 1):
+                   outletnum = outlet
+               else:
+                   outletnum = None
+           elif type(outlet) is str:
+               #if it's a name look it up in the reverse dict
+               outletnum = self.outletnames2nums.get(outlet, None)
+           else:
+               outletnum = None
+           if outletnum is None:
+               self.log(f'bad outlet {outlet} specified. returning.')
+               return
+           command  = 'outlet?' + str(outletnum) + '=OFF'
+           #TODO add this to the log
+           self.log(f"Sending OFF Command to Outlet # {outletnum}")
+           self.send(command)
+           self.getStatus()
             
     def sendStatus(self,status_arr):
         # Send the PDU status as an boolean array/list
@@ -298,9 +313,9 @@ if __name__ == '__main__':
     auth_config = utils.loadconfig(os.path.join(wsp_path, 'credentials', 'authentication.yaml'))
     
     pdu1 = PDU('pdu1', pdu_config, auth_config, autostart = False)
-    
-    print(f'initial status = {pdu1.status}')
-        
+    pdu2 = PDU('pdu2', pdu_config, auth_config, autostart = False)
+    print(f'pdu1 initial status = {pdu1.status}')
+    print(f'pdu2 initial status = {pdu2.status}')    
         #print('initial status = ',pdu1.status)
         #new_status = [1,1,1,1,1,1,1,1]
         #pdu1.sendStatus(new_status)
