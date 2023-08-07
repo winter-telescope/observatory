@@ -93,9 +93,9 @@ class EZStepper(QtCore.QObject):
 
         ## Startup:
         self.setupSerial()
-        
+
         time.sleep(.5)
-        
+
         self.home(verbose=verbose)  # this will populate the state
 
 
@@ -214,7 +214,9 @@ class EZStepper(QtCore.QObject):
         if error_code in [1, 2, 3, 5, 7, 9, 11, 15]:
             # problematic codes
             self.log(f'An error was returned from the stepper. '
+                     'Setting homed to zero. '
                      f'Error code: {error_code}. Error: {error_msg}')
+            self.homed = 0
         return ready, error_code, error_msg
 
 
@@ -234,7 +236,9 @@ class EZStepper(QtCore.QObject):
             end_list_index = reply.index(reply_end_sequence)
         except ValueError:
             self.log('We are not getting a response we expect from the stepper. '
-                     'We can try again, but we should consider power cycling.')
+                     'We can try again, but we should consider power cycling. '
+                     'Setting homed to zero.')
+            self.homed = 0
             return None, None
         replystr = ''.join(reply[:end_list_index])
         start_index = replystr.find(reply_start_sequence) + len(reply_start_sequence)
@@ -334,8 +338,8 @@ class EZStepper(QtCore.QObject):
             'opto2': int(bitword[-4]),
         }
         return input_status
-    
-    
+
+
     def getFilterPosition(self, verbose=False) -> int:
         '''Get filter position based on encoder position and known filter
         encoder locations.
@@ -348,7 +352,7 @@ class EZStepper(QtCore.QObject):
         Returns
         -------
         int
-            Filter position. Int in [1, 2, 3, 4] if encoder position is 
+            Filter position. Int in [1, 2, 3, 4] if encoder position is
             within the allowed tolerance of a known filter position.
             Returns -1 if not.
         '''
@@ -443,6 +447,11 @@ class EZStepper(QtCore.QObject):
         int
             Final encoder position, or -1 if error.
         '''
+        if self.homed == 0:
+            self.log(f'Motor is not homed. Homing before '
+                     f'moving to microstep location {microstep_loc}.')
+            self.home()
+
         self.pos_goal = microstep_loc
         self.encoder_pos_goal = microstep_loc
         status, response = self.send(f'A{microstep_loc}n72R', verbose=verbose)
@@ -485,7 +494,7 @@ class EZStepper(QtCore.QObject):
             Final encoder position.
         '''
         assert filter_num in [1, 2, 3, 4], f"Filter {filter_num} not in [1, 2, 3, 4]"
-        if not force: 
+        if not force:
             assert self.homed == 1, 'Filter is not homed, we are not doing this!'
         else:
             self.log('Filter is not homed but we are forcing it to move anyway. '
@@ -696,8 +705,8 @@ class WINTERfw(QtCore.QObject):
     def home(self):
         sigcmd = signalCmd('home')
         self.newCmdRequest.emit(sigcmd)
-        
-    @Pyro5.server.expose    
+
+    @Pyro5.server.expose
     def send(self, serial_command, verbose=False):
         sigcmd = signalCmd('send', serial_command, verbose=verbose)
         self.newCmdRequest.emit(sigcmd)
