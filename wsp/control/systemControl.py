@@ -334,7 +334,8 @@ class control(QtCore.QObject):
         except Exception as e:
             self.logger.warning(f"control: could not init NPS at pdu1, {type(e)}: {e}")
         """
-        self.powerManager = powerManager.local_PowerManager(self.base_directory)
+        self.powerManager = powerManager.local_PowerManager(self.base_directory, ns_host = self.ns_host,
+                                                            logger = logger, verbose = self.verbose)
         
         # init the test object (goes with the test_daemon)
         self.counter =  test_daemon_local.local_counter(wsp_path, ns_host = self.ns_host)
@@ -471,6 +472,7 @@ class control(QtCore.QObject):
                                              telescope = self.telescope, 
                                              dome = self.dome, 
                                              chiller = self.chiller, 
+                                             labjacks = self.labjacks,
                                              powerManager = self.powerManager, 
                                              logger = self.logger, 
                                              #viscam = self.viscam, 

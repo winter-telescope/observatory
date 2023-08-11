@@ -829,56 +829,112 @@ fields:
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][0]'
+        var: 'powerManager.state[1]["status"][0]'
     pdu1_2:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][1]'
+        var: 'powerManager.state[1]["status"][1]'
     pdu1_3:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][2]'
+        var: 'powerManager.state[1]["status"][2]'
     pdu1_4:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][3]'
+        var: 'powerManager.state[1]["status"][3]'
     pdu1_5:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][4]'
+        var: 'powerManager.state[1]["status"][4]'
     pdu1_6:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][5]'
+        var: 'powerManager.state[1]["status"][5]'
     pdu1_7:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][6]'
+        var: 'powerManager.state[1]["status"][6]'
     pdu1_8:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][7]'
+        var: 'powerManager.state[1]["status"][7]'
+    pdu2_1:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][0]'
+    pdu2_2:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][1]'
+    pdu2_3:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][2]'
+    pdu2_4:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][3]'
+    pdu2_5:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][4]'
+    pdu2_6:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][5]'
+    pdu2_7:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][6]'
+    pdu2_8:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][7]'
 # site
     site_latitude_degs:
         ftype: raw

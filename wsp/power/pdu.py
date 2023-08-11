@@ -47,7 +47,7 @@ class PDU(object):
         
         self.brand = self.config['pdus'][self.name]['brand']
         self.ip = self.config['pdus'][self.name]['ip']
-        self.startup_config = [int(state) for state in list(str(self.config['pdus']['pdu1']['startup']))]
+        self.startup_config = [int(state) for state in list(str(self.config['pdus'][self.name]['startup']))]
         self.num_outlets = 8
         self.outletstate = dict()
         self.outletnames2nums = dict()
@@ -280,8 +280,8 @@ class PDU(object):
         
         # check to make sure all the states are acceptable values
         for state in status_arr:
-            if state not in [1,0]:
-                raise IOError("Outlet States must be 1 or 0!")
+            if state not in [1,0,2]:
+                raise IOError("Outlet States must be 1 (on) or 0 (off) or 2 (do nothing)!")
         
         # now toggle all the states NOTE THIS HAPPENS SEQUENTIALLY
         for i in range(len(status_arr)):

@@ -46,6 +46,10 @@ class local_PowerManager(QtCore.QObject):
             self.verbose = verbose
             self.state = dict()
             
+            # connect the signals and slots
+            self.newCommand.connect(self.doCommand)
+            
+            # startup the pdus
             self.init_remote_object()
             
             
@@ -87,6 +91,16 @@ class local_PowerManager(QtCore.QObject):
             for key in self.remote_state:
                 self.state.update({key : self.remote_state[key]})
         
+        def pdu_do(self, action, outlet_specifier):
+            try:
+                self.log(f'sending {action} command to outlet specified by {outlet_specifier}')
+                self.remote_object.pdu_do(action, outlet_specifier)
+                
+            except Exception as e:
+                self.log(f'could not send {action} command to outlet specified by {outlet_specifier}: {e}')
+                pass
+                    
+        
         def pdu_off(self, pduname, outlet):
             try:
                 self.log(f'sending OFF command to {pduname}, outlet {outlet}')
@@ -127,11 +141,12 @@ class local_PowerManager(QtCore.QObject):
             using this as a reference: (source: https://stackoverflow.com/questions/6321940/how-to-launch-getattr-function-in-python-with-additional-parameters)     
             
             """
-            #print(f'dome: caught doCommand signal: {cmd_obj.cmd}')
             cmd = cmd_obj.cmd
             args = cmd_obj.args
             kwargs = cmd_obj.kwargs
-            
+            if self.verbose:
+                self.log(f'powerManager: caught doCommand signal: {cmd_obj.cmd}, args = {args}, kwargs = {kwargs}')
+
             try:
                 getattr(self, cmd)(*args, **kwargs)
             except:

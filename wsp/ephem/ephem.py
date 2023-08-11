@@ -27,11 +27,12 @@ from utils import utils
 
 class local_ephem(object):
     
-    def __init__(self, base_directory, config, ns_host = None, logger = None):
+    def __init__(self, base_directory, config, ns_host = None, logger = None, verbose = False):
         self.base_directory = base_directory
         self.config = config
         self.ns_host = ns_host
         self.logger = logger
+        self.verbose = verbose
         
         # default value for bad query
         self.default = -888
@@ -69,9 +70,9 @@ class local_ephem(object):
             self.remote_object = Pyro5.client.Proxy(uri)
         
         except Exception as e:
+            if self.verbose:
+                self.log(f'connection with remote object failed: {e}', level = logging.ERROR)#, exc_info = True)
             
-            self.log(f'connection with remote object failed: {e}', level = logging.ERROR)#, exc_info = True)
-    
     def update_state(self):
         try:
 
@@ -79,7 +80,8 @@ class local_ephem(object):
             self.parse_state()  
 
         except Exception as e:
-            self.log(f'Could not update remote status: {e}', level = logging.ERROR)
+            if self.verbose:
+                self.log(f'Could not update remote status: {e}', level = logging.ERROR)
             self.init_remote_object()
     def parse_state(self):
         # get the timestamp of the last update from the ephem daemon

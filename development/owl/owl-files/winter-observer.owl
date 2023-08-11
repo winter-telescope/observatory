@@ -416,8 +416,8 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 106,
-            "geometryWidth": 256,
+            "geometryHeight": 105,
+            "geometryWidth": 255,
             "geometryX": 615,
             "geometryY": 330
         },
@@ -527,6 +527,8 @@
                             "_id": "2126777107"
                         },
                         "_map": {
+                            "-888": "NOT CONNECTED[style=Important (P564751211)]",
+                            "-999": "][style=No style (P258035071)][style=No style (P258035071)][style=greyed (P1521393217)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)]",
                             "0": "No[style=high (P1913941534)]",
                             "1": "Yes[style=low (P2017040817)]"
                         }
@@ -574,6 +576,18 @@
                     "_extrema": false,
                     "_format": "",
                     "_source": "",
+                    "type": "PNDI"
+                },
+                {
+                    "PObject": {
+                        "_id": "1514585663"
+                    },
+                    "_caption": "Dewpoint",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_extrema": false,
+                    "_format": "%.1f C",
+                    "_source": "Tdp_outside_pcs",
                     "type": "PNDI"
                 },
                 {
@@ -1063,8 +1077,8 @@
                     "type": "PMDI"
                 }
             ],
-            "geometryHeight": 106,
-            "geometryWidth": 121,
+            "geometryHeight": 105,
+            "geometryWidth": 120,
             "geometryX": 615,
             "geometryY": 210
         },
@@ -1354,7 +1368,7 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 106,
+            "geometryHeight": 105,
             "geometryWidth": 120,
             "geometryX": 120,
             "geometryY": 315
@@ -1449,7 +1463,7 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 106,
+            "geometryHeight": 105,
             "geometryWidth": 105,
             "geometryX": 15,
             "geometryY": 315
@@ -1538,8 +1552,8 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 106,
-            "geometryWidth": 106,
+            "geometryHeight": 105,
+            "geometryWidth": 105,
             "geometryX": 240,
             "geometryY": 315
         },
@@ -1883,12 +1897,15 @@
                             "_id": "1168516444"
                         },
                         "_map": {
+                            "-999": "N/C[style=greyed (P1521393217)]",
+                            "0": "][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=Important (P564751211)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)][style=No style (P258035071)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
                         "_id": "1773914662"
                     },
-                    "_caption": "1. Cal Lamp                   ",
+                    "_caption": "1. Empty           ",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_1",
@@ -1900,6 +1917,8 @@
                             "_id": "1708757953"
                         },
                         "_map": {
+                            "0": "OFF[style=No style (P258035071)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -1907,7 +1926,7 @@
                     },
                     "_caption": "2. Empty",
                     "_captionStyle": "noStyle",
-                    "_defaultStyle": "noStyle",
+                    "_defaultStyle": "(P607577040)",
                     "_source": "pdu1_2",
                     "type": "PMDI"
                 },
@@ -1917,6 +1936,8 @@
                             "_id": "729063006"
                         },
                         "_map": {
+                            "0": "OFF",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -1934,6 +1955,8 @@
                             "_id": "1823222663"
                         },
                         "_map": {
+                            "0": "OFF[style=No style (P258035071)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -1951,12 +1974,14 @@
                             "_id": "1889020722"
                         },
                         "_map": {
+                            "0": "OFF",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
                         "_id": "1150607455"
                     },
-                    "_caption": "5. Eth Switch       ",
+                    "_caption": "5. Switch",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_5",
@@ -1968,6 +1993,8 @@
                             "_id": "1954360947"
                         },
                         "_map": {
+                            "0": "OFF",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -1985,6 +2012,8 @@
                             "_id": "926921707"
                         },
                         "_map": {
+                            "0": "OFF[style=No style (P258035071)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -2002,6 +2031,8 @@
                             "_id": "980344340"
                         },
                         "_map": {
+                            "0": "OFF[style=No style (P258035071)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -2036,12 +2067,14 @@
                             "_id": "25123688"
                         },
                         "_map": {
+                            "0": "OFF[style=Important (P564751211)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
                         "_id": "1864297722"
                     },
-                    "_caption": "1. Camera 12V     ",
+                    "_caption": "1. Camera12V    ",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_1",
@@ -2053,12 +2086,14 @@
                             "_id": "1353806724"
                         },
                         "_map": {
+                            "0": "OFF[style=Important (P564751211)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
                         "_id": "998681671"
                     },
-                    "_caption": "2. FPAS / Camera 24 V   ",
+                    "_caption": "2. FPAS",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_2",
@@ -2070,6 +2105,8 @@
                             "_id": "385785086"
                         },
                         "_map": {
+                            "0": "OFF[style=No style (P258035071)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -2087,6 +2124,8 @@
                             "_id": "1388770537"
                         },
                         "_map": {
+                            "0": "OFF[style=No style (P258035071)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -2104,6 +2143,8 @@
                             "_id": "1755180213"
                         },
                         "_map": {
+                            "0": "OFF[style=Important (P564751211)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -2121,12 +2162,14 @@
                             "_id": "2132553618"
                         },
                         "_map": {
+                            "0": "OFF[style=No style (P258035071)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
                         "_id": "738108475"
                     },
-                    "_caption": "6. SUMMER Acc",
+                    "_caption": "6. SUMMER",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_6",
@@ -2138,12 +2181,14 @@
                             "_id": "659053207"
                         },
                         "_map": {
+                            "0": "OFF[style=Important (P564751211)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
                         "_id": "2123459590"
                     },
-                    "_caption": "7. Thor (Telescope PC)",
+                    "_caption": "7. Thor",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_7",
@@ -2155,6 +2200,8 @@
                             "_id": "282519457"
                         },
                         "_map": {
+                            "0": "OFF[style=Important (P564751211)]",
+                            "1": "ON[style=No style (P258035071)]"
                         }
                     },
                     "PObject": {
@@ -2208,8 +2255,8 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 106,
-            "geometryWidth": 121,
+            "geometryHeight": 105,
+            "geometryWidth": 120,
             "geometryX": 750,
             "geometryY": 210
         }
@@ -2505,7 +2552,7 @@
             "_shigh": "(P1913941534)",
             "_slow": "NO STYLE",
             "_sxhigh": "(P564751211)",
-            "_sxlow": "(P949614266)",
+            "_sxlow": "(P1521393217)",
             "_xhigh": 20,
             "_xlow": -100
         },
@@ -2533,7 +2580,7 @@
             "_shigh": "(P1913941534)",
             "_slow": "NO STYLE",
             "_sxhigh": "(P564751211)",
-            "_sxlow": "(P949614266)",
+            "_sxlow": "(P1521393217)",
             "_xhigh": 20,
             "_xlow": -100
         },
@@ -2547,7 +2594,7 @@
             "_shigh": "(P1913941534)",
             "_slow": "NO STYLE",
             "_sxhigh": "(P564751211)",
-            "_sxlow": "(P949614266)",
+            "_sxlow": "(P1521393217)",
             "_xhigh": 60,
             "_xlow": 0
         },
@@ -2561,7 +2608,7 @@
             "_shigh": "(P1913941534)",
             "_slow": "NO STYLE",
             "_sxhigh": "(P564751211)",
-            "_sxlow": "(P1913941534)",
+            "_sxlow": "(P1521393217)",
             "_xhigh": 100,
             "_xlow": -800
         },
@@ -2575,7 +2622,7 @@
             "_shigh": "(P564751211)",
             "_slow": "NO STYLE",
             "_sxhigh": "(P564751211)",
-            "_sxlow": "(P1913941534)",
+            "_sxlow": "(P1521393217)",
             "_xhigh": 100,
             "_xlow": -800
         }
@@ -2600,7 +2647,7 @@
             "geometryHeight": 105,
             "geometryWidth": 75,
             "geometryX": 195,
-            "geometryY": -15
+            "geometryY": 0
         }
     ],
     "styles": [
@@ -2900,6 +2947,17 @@
             "_italic": false,
             "_linked": true,
             "_name": "Rotator"
+        },
+        {
+            "PObject": {
+                "_id": "607577040"
+            },
+            "_bg": "#ffffff",
+            "_bold": false,
+            "_fg": "#000000",
+            "_italic": false,
+            "_linked": true,
+            "_name": "on_good"
         }
     ],
     "webPort": "\u0000",

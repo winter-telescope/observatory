@@ -1,5 +1,6 @@
 # Labjack setup config
-
+location: 'rack powerbox'
+lj_num: 1
 
 ### DEVICE INFORMATION ###
 lj_type: "T4"
@@ -20,8 +21,7 @@ ANALOG_INPUTS:
         RANGE: 10
     AIN3:
         RANGE: 10
-    AIN4:
-        RANGE: 10
+
     
 
 
@@ -29,10 +29,16 @@ ANALOG_INPUTS:
 #DIGITAL_INPUTS:
 #    - FIO4
     
-#DIGITAL_OUTPUTS:
-#    # output is zero or one
-#    FIO5:
-#        OUTPUT: 0
+DIGITAL_OUTPUTS:
+    # output is zero or one
+    FIO4:
+        NAME: fpa_star
+        STARTUP_OUTPUT: 0
+    FIO5:
+        NAME: fpa_port
+        STARTUP_OUTPUT: 0
+    
+
 
 
 

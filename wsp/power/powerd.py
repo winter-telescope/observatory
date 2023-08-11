@@ -49,12 +49,15 @@ class PowerManager(QtCore.QObject):
         self.auth_config = auth_config
         self.name = name
         self.dt = dt
+        self.logger = logger
         
         self.state = dict()
-        self.teststate = dict({'fart' : 'blarg'})
+        self.teststate = dict({'thing' : 'blarg'})
         self.pdu_dict = dict()
         self.setup_pdu_dict()
-                
+        
+        self.log('finished init, starting monitoring loop')
+        
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
         self.timer.timeout.connect(self.update)
@@ -66,14 +69,24 @@ class PowerManager(QtCore.QObject):
             self.daqloop = data_handler.daq_loop(self.update, dt = self.dt, name = self.name)
         """
     
+    def log(self, msg, level = logging.INFO):
+        
+        msg = f'powerd: {msg}'
+        
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)
+    
     def setup_pdu_dict(self):
         
         # make a dictionary of all the pdus
-        for pduname in pdu_config['pdus']:
+        for pduname in self.pdu_config['pdus']:
             pduObj = pdu.PDU(pduname, self.pdu_config, self.auth_config, 
-                             autostart = False, logger = logger)
-            
-            self.pdu_dict.update({pduname : pduObj})
+                             autostart = True, logger = logger)
+            pdunumber = pdu_config['pdus'][pduname]['pdu_number']
+            index = pdunumber
+            self.pdu_dict.update({index : pduObj})
             
         
     def update(self):
@@ -85,20 +98,122 @@ class PowerManager(QtCore.QObject):
             self.state.update({pduname : pdustate})
             #print(pdustate['status'][7])
 
+    def lookup_channel(self, chanargs):
+        """ takes in args that should define channel. outputs the pdu
+        and the channel number. If there's one arg, it will try to treat it
+        as a string and do a lookup by outlet label.
         
+        if there are two args it will treat them as ints and do a lookup
+        by args = [pdu#, outlet#]
+                   
+        if there are more than two args it will log an error and return
+        """
+        try:
+            if chanargs is None:
+                raise ValueError('you gave me chanargs = None, cannot look that up')
+            
+            if type(chanargs) is list:
+                if len(chanargs) == 1:
+                    # if we only got one item in the list, assume it's the name
+                    name_lookup = True
+                    chan = str(chanargs[0])
+                    
+                elif len(chanargs) == 2:
+                    pduaddr = int(chanargs[0])
+                    outletnum = int(chanargs[1])
+                    assert pduaddr in self.pdu_dict.keys(), f"pdu address {pduaddr} not found in pdu dictionary"
+                    assert outletnum in self.pdu_dict[pduaddr].outletnums2names, f"outlet number {outletnum} not found in outlet list for pdu {pduaddr}"
+                    
+                    return pduaddr, outletnum
+                else:
+                    raise ValueError(f'unexpected number of channel arguments when looking up pdu outlet = {chanargs}')    
+            
+            else: # treat the input like a string
+                # if we just got a single thing not a list, assume it's a name
+                name_lookup = True
+                chan = str(chanargs)
+                
+            if name_lookup == True:
+                # init a list to hold the (pdu_addr, chan_num) tuple that
+                # corresponds to the chan specified
+                chanaddr = []
+                # now look up the str channel
+                for pduaddr in self.pdu_dict:
+                    for outletnum in self.pdu_dict[pduaddr].outletnums2names:
+                        outletname = self.pdu_dict[pduaddr].outletnums2names[outletnum]
+                        # check if the outlet name is the same as the requested one
+                        # note that this is being forced to be CASE INSENSITVE
+                        if outletname.lower() == chan.lower():
+                            chanaddr.append((pduaddr, outletnum))
+                self.log(f'(pduaddr, outletnum) matching chan = {chan}: {chanaddr}')
+                # what it there is degeneracy in outlet names?
+                if len(chanaddr) > 1:
+                    raise ValueError(f'there are {len(chanaddr)} outlets named {chan}, not sure which to use!')
+                elif len(chanaddr) == 0:
+                    raise ValueError(f'found no outlets named {chan}!')
+                else:
+                    pduaddr, outletnum = chanaddr[0]
+                    return pduaddr, outletnum
+                
+            
+
+                
+        except Exception as e:
+            self.log(f'error doing name lookup of PDU outlet names: {e}')
+            return None, None
+    
     @Pyro5.server.expose
-    def pdu_off(self, pduname, outlet):
-        self.pdu_dict[pduname].off(outlet)
+    def pdu_do(self, action, outlet_specifier):
+        """
+        execute a generic action on the power distribution units
+        this will execute action (one of [on, off, cycle]) on the PDU
+        on the specified outlet. the outlet specifier can either be a tuple
+        descritbing the pdu number and the outlet number, eg (1,3) for pdu #1,
+        outlet #3, or it can be a string which corresponds to the name given to
+        the outlet number. it will use self.lookup_channel to find the pdu
+        address and outlet number and do nothing if the outlet name/specifier
+        is invalid or not unique.
+        """
+        action = action.lower()
+        
+        
+        if action not in ['on', 'off', 'cycle']:
+            self.log(f"action {action} not in allowed actions of [on, off, cycle]")
+            return
+        
+        # now get the pdu address (in the pdu_dict) and the outlet number
+        pdu_addr, outletnum = self.lookup_channel(outlet_specifier)
+        
+        if any([item is None for item in [pdu_addr, outletnum] ]):
+            self.log('bad outlet lookup. no action executed.')
+            return
+        # now do the action
+        func = getattr(self, f'pdu_{action}')
+        func(pdu_addr, outletnum)
+        
+    
+    @Pyro5.server.expose
+    def pdu_off(self, addr, outlet):
+        # protect odin!
+        # TODO: make this less hard coded
+        
+        if ((addr == 2) and (outlet == 5)):
+            self.log('got command to turn off Odin. This is not allowed! Ignoring.')
+            return
+        self.log(f'sending OFF command to pdu {addr}, outlet {outlet}')
+        self.pdu_dict[addr].off(outlet)
         self.update()
     
     @Pyro5.server.expose
-    def pdu_on(self, pduname, outlet):
-        self.pdu_dict[pduname].on(outlet)
+    def pdu_on(self, addr, outlet):
+        self.log(f'sending ON command to pdu {addr}, outlet {outlet}')
+        self.pdu_dict[addr].on(outlet)
         self.update()
         
     @Pyro5.server.expose
-    def pdu_cycle(self, pduname, outlet):
-        self.pdu_dict[pduname].cycle(outlet)
+    def pdu_cycle(self, addr, outlet):
+        self.log(f'sending cycle command to pdu {addr}, outlet {outlet}')
+        self.pdu_dict[addr].cycle(outlet)
         self.update()
                 
     @Pyro5.server.expose

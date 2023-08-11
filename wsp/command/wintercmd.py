@@ -183,6 +183,7 @@ class Wintercmd(QtCore.QObject):
                  telescope, 
                  dome, 
                  chiller, 
+                 labjacks, 
                  powerManager, 
                  logger, 
                  #viscam, 
@@ -191,7 +192,8 @@ class Wintercmd(QtCore.QObject):
                  #wintercamera,
                  camdict,
                  fwdict,
-                 ephem):
+                 ephem,
+                 verbose = False):
         # init the parent class
         #super().__init__()
         super(Wintercmd, self).__init__()
@@ -199,7 +201,6 @@ class Wintercmd(QtCore.QObject):
         # things that define the command line prompt
         self.intro = 'Welcome to wintercmd, the WINTER Command Interface'
         self.prompt = 'wintercmd: '
-        
         # grab some useful inputs
         self.state = state
         self.alertHandler = alertHandler
@@ -207,6 +208,7 @@ class Wintercmd(QtCore.QObject):
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
+        self.labjacks = labjacks
         self.powerManager = powerManager
     
         self.base_directory = base_directory
@@ -220,6 +222,10 @@ class Wintercmd(QtCore.QObject):
         self.fwdict = fwdict
         self.mirror_cover = mirror_cover
         self.ephem = ephem
+        
+        self.verbose = verbose
+
+        
         self.defineParser()
         
         # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
@@ -2606,7 +2612,10 @@ class Wintercmd(QtCore.QObject):
                                     action = None,
                                     help = '<azimuth_degs>')
         
-        
+        self.cmdparser.add_argument('--verbose', '-v',
+                                    action = 'store_true',
+                                    default = False,
+                                    help = 'verbose')
         
         self.getargs()
             # this is what happens when called from the cmd line. otherwise include az so it can be called internally
@@ -2614,6 +2623,7 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('GoTo', az)
         self.dome.newCommand.emit(sigcmd)
         
+        verbose = self.args.verbose
         
         # estimated drivetime
         # this is from a study of a bunch of moves, move_time = delta_az/effective_speed = lag_time
@@ -2631,7 +2641,8 @@ class Wintercmd(QtCore.QObject):
         drivetime = np.abs(dist_to_go)/effective_speed + lag_time# total time to move
         # now start "moving the dome" it stays moving for an amount of time
             # based on the dome speed and distance to move
-        self.logger.info(f'wintercmd: Estimated Dome Drivetime = {drivetime} s')
+        if verbose:
+            self.logger.info(f'wintercmd: Estimated Dome Drivetime = {drivetime} s')
         
         #self.logger.info(f'self.state["dome_az_deg"] = {self.state["dome_az_deg"]}, type = {type(self.state["dome_az_deg"])}')
         #self.logger.info(f'az = {az}, type = {type(az)}')
@@ -2670,7 +2681,8 @@ class Wintercmd(QtCore.QObject):
             msg = f'Warning: Dome took {dt} s to move but it should have only taken {drivetime} s'
             self.logger.info(msg)
             self.alertHandler.slack_log(msg)
-        self.logger.info(f'wintercmd: actual dome drivetime = {dt} s')
+        if verbose:
+            self.logger.info(f'wintercmd: actual dome drivetime = {dt} s')
         
     @cmd 
     def dome_go_home(self):
@@ -2847,8 +2859,119 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd('TurnOn')
         self.chiller.newCommand.emit(sigcmd)
     
+    # FPA 12V Power Switching
     @cmd
-    def pdu_on(self):
+    def fpa(self):
+        """
+        created: NPL 8-11-23
+        This will turn on or off the 12V power supplies that power each 
+        half of the WINTER focal planes. This is a convenience function that
+        makes the power "on" or "off" behave more logically than directly calling
+        the labjack dio functions, since for these power supplies, turning
+        the digital line "on" turns the power supply off.
+        
+        call it like this:
+            fpa <action> <addr>
+            where action is one of ['on', 'off']
+            and addr is one of ['port', 'star', ''] where '' corresponds to
+            applying the action to all supplies. 
+            In the future hopefully we will be able  to pass single channel
+            addresses like 'pa' to this function
+            
+        """
+        self.defineCmdParser('turn on or off the 12v power supply for the winter FPAs')
+        self.cmdparser.add_argument('action',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    choices = ['on', 'off'],
+                                    )
+        
+        self.cmdparser.add_argument('channel',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    default = 'all',
+                                    )
+        
+        
+        
+        self.getargs()
+        if self.verbose:
+            print(self.args)
+        
+        action = self.args.action[0]
+        
+        if action.lower() == 'on':
+            lj_action = 'off'
+        elif action.lower() == 'off':
+            lj_action = 'on'
+        else:
+            self.logger.info(f'invalid action: {action}. returning')
+            return
+        
+            
+        channels = self.args.channel
+        
+        if self.verbose:
+            self.logger.info(f'setting fpa power for {channels} to {action}')
+        
+        if channels == 'all':
+            channels = ['port', 'star']
+        
+        for channel in channels:
+            lj_channel = f'fpa_{channel}'
+            self.parse(f'lj_dio {lj_action} {lj_channel}')
+            
+    # Labjack Power Switching
+    @cmd
+    def lj_dio(self):
+        """
+        created: NPL 8-10-23
+        
+        this turns on a channel on the specified labjack
+        
+        example calls: 
+            lj_dio on LJ0 FIO5
+            lj_dio off fpa_port
+
+        """
+        
+        self.defineCmdParser('send on or off command to labjack digital output')
+        
+        self.cmdparser.add_argument('action',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    choices = ['on', 'off'],
+                                    )
+        
+        self.cmdparser.add_argument('channel',
+                                    nargs = '*',
+                                    action = None,
+                                    type = str,
+                                    )
+        
+        
+        
+        self.getargs()
+        if self.verbose:
+            print(self.args)
+        
+        action = self.args.action[0]
+        
+        
+            
+        channel = self.args.channel
+        
+        if self.verbose:
+            print(f'lj command, action = {action}, channel = {channel}')
+        
+        sigcmd = signalCmd('dio_do', action = action, outlet_specifier = channel)
+        self.labjacks.newCommand.emit(sigcmd)
+    
+    @cmd
+    def pdu(self):
         """
         created: NPL 6-7-21
         
@@ -2858,26 +2981,39 @@ class Wintercmd(QtCore.QObject):
 
         """
         
-        self.defineCmdParser('turn on specified outlet on specified pdu')
-        self.cmdparser.add_argument('channel',
-                                    nargs = 2,
-                                    type = int,
-                                    action = None,
-                                    help = "<pdu_num> <chan_num>")
-        self.getargs()
-        pdu_num = self.args.channel[0]
-        chan_num = self.args.channel[1]
+        self.defineCmdParser('send command to a pdu')
         
-        # send the on command
-        active_pdus = [1,2]
-        if pdu_num in active_pdus:
-            pduname = f'pdu{pdu_num}'
+        self.cmdparser.add_argument('action',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    choices = ['on', 'off', 'cycle'],
+                                    )
+        
+        self.cmdparser.add_argument('channel',
+                                    nargs = '*',
+                                    action = None,
+                                    type = str,
+                                    )
+        
+        
+        
+        self.getargs()
+        if self.verbose:
+            print(self.args)
+        
+        action = self.args.action[0]
+        
+        
             
-            sigcmd = signalCmd('pdu_on', pduname = pduname, outlet = chan_num)
-            self.powerManager.newCommand.emit(sigcmd)
-        else:
-            self.logger.info(f'right now PDU numbers are hardcoded, and only {active_pdus} are active')
-            
+        channel = self.args.channel
+        
+        if self.verbose:
+            print(f'pdu command, action = {action}, channel = {channel}')
+        
+        sigcmd = signalCmd('pdu_do', action = action, outlet_specifier = channel)
+        self.powerManager.newCommand.emit(sigcmd)
+         
     @cmd
     def pdu_off(self):
         """

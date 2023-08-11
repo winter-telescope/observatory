@@ -1,0 +1,120 @@
+# define critical ranges and time average parameters for winter status fields
+
+tavg: 5
+
+fields:
+    ###########################################################
+    # FPA: ROIC
+    ###########################################################
+    pa_T_roic:
+        min: None
+        max: 30.0
+    pb_T_roic:
+        min: None
+        max: 30.0
+    pc_T_roic:
+        min: None
+        max: 30.0
+    sa_T_roic:
+        min: None
+        max: 30.0
+    sb_T_roic:
+        min: None
+        max: 30.0
+    sc_T_roic:
+        min: None
+        max: 30.0
+    ###########################################################
+    # FPGA
+    ###########################################################
+    T_fpga_sb:
+        min: None
+        max: 50
+    ###########################################################
+    # Power Boards
+    ###########################################################
+    pa_T_pb:
+        min: None
+        max: 55
+    pb_T_pb:
+        min: None
+        max: 55
+    pc_T_pb:
+        min: None
+        max: 55
+    sa_T_pb:
+        min: None
+        max: 55
+    sb_T_pb:
+        min: None
+        max: 55
+    sc_T_pb:
+        min: None
+        max: 55
+    ###########################################################
+    # Sensor Boards
+    ###########################################################
+    pa_T_sb:
+        min: None
+        max: 40
+    pb_T_sb:
+        min: None
+        max: 40
+    pc_T_sb:
+        min: None
+        max: 40
+    sa_T_sb:
+        min: None
+        max: 40
+    sb_T_sb:
+        min: None
+        max: 40
+    sc_T_sb:
+        min: None
+        max: 40
+    ###########################################################
+    # Flowmeters
+    ###########################################################
+    # PortA 
+    Flow_LJ0_1:
+        min: 0.5
+        max: None
+    # PortB
+    Flow_LJ0_2:
+        min: 1.0
+        max: None
+    Flow_LJ0_3:
+        min: 0.2
+        max: None
+    Flow_LJ0_4:
+        min: 0.8
+        max: None
+    Flow_LJ0_5:
+        min: 1.0
+        max: None
+    Flow_LJ0_6:
+        min: 0.8
+        max: None
+    ###########################################################
+    # FPA Heatsinks:
+    ###########################################################
+    T_heatsink_pa:
+        min: None
+        max: 25
+    T_heatsink_pb:
+        min: None
+        max: None
+    T_heatsink_pc:
+        min: None
+        max: 25
+    T_heatsink_sa:
+        min: None
+        max: 25
+    T_heatsink_sb:
+        min: None
+        max: None
+    T_heatsink_sc:
+        min: None
+        max: 25
+        
+    

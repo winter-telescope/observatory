@@ -165,8 +165,8 @@ class StatusMonitor(QtCore.QObject):
         self.reconnector.increment_reconnect_timeout()
         
         try:
-            
-            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: trying to connection to ({self.addr} | {self.port})')
+            if self.verbose:
+                self.log(f'(Thread {threading.get_ident()}) StatusMonitor: trying to connection to ({self.addr} | {self.port})')
             
             # try to reconnect the socket
             self.sock.connect((self.addr, self.port))
@@ -184,7 +184,8 @@ class StatusMonitor(QtCore.QObject):
             
             # the connection is broken. set connected to false
             self.connected = False
-            self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful: {e}, waiting {self.reconnector.reconnect_timeout} until next reconnection')   
+            if self.verbose:
+                self.log(f'(Thread {threading.get_ident()}) StatusMonitor: connection unsuccessful: {e}, waiting {self.reconnector.reconnect_timeout} until next reconnection')   
             
             
     
