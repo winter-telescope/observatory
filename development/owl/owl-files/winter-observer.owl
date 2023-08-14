@@ -903,12 +903,12 @@
                             "_id": "3609293"
                         },
                         "_map": {
-                            "-10": "CLOSED[style=No style (P1651625545)]",
-                            "-20": "FAULT[style=No style (P1651625545)]",
-                            "-5": "CLOSING[style=No style (P1651625545)]",
+                            "-1": "CLOSED[style=No style (P258035071)]",
+                            "-10": "FAULT[style=No style (P258035071)]",
+                            "-5": "CLOSING[style=No style (P258035071)]",
                             "-999": "No Data![style=No style (P1651625545)]",
                             "0": "STOPPED[style=No style (P1651625545)]",
-                            "10": "OPEN[style=No style (P1651625545)]",
+                            "1": "OPEN[style=No style (P258035071)]",
                             "5": "OPENING[style=No style (P1651625545)]"
                         }
                     },
