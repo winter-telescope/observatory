@@ -1423,8 +1423,11 @@ class RoboOperator(QtCore.QObject):
         """
         NPL 12-15-21: porting over the steps from Josh's total_startup to here
         for better error handling.
-        """
         
+        NPL 8-16-23: commenting out returns in exceptions at each step so that 
+        it will keep going down to attempt each step of the process
+        """
+        systems_started = []
         # this is for passing to errors
         context = 'do_startup'
         
@@ -1450,12 +1453,14 @@ class RoboOperator(QtCore.QObject):
             msg = 'dome startup complete'
             self.logger.info(f'robo: {msg}')
             self.alertHandler.slack_log(f':greentick: {msg}')
+            systems_started.append(True)
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            systems_started.append(False)
+            #return
         
         
         ### MOUNT SETUP ###
@@ -1494,14 +1499,15 @@ class RoboOperator(QtCore.QObject):
             self.do('mount_home')
             
             self.announce(':greentick: telescope startup complete!')
-            
+            systems_started.append(True)
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
             self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            systems_started.append(False)
+            #return
         
         
         system = 'mirror cover'
@@ -1518,17 +1524,18 @@ class RoboOperator(QtCore.QObject):
                 # open the mirror cover
                 if not self.test_mode:
                     self.do('mirror_cover_open')
-            
+                self.announce(':greentick: mirror covers open!')
+                systems_started.append(True)
             except Exception as e:
                 msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
                 self.log(msg)
                 self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
-                return
+                systems_started.append(False)
+                #return
         
-        self.announce(':greentick: mirror covers open!')
-
+        
         if startup_cameras:
             system = 'camera'
             
@@ -1545,22 +1552,29 @@ class RoboOperator(QtCore.QObject):
                     self.announce(msg)
                     self.do(f'tecStart --{camname}')
                     self.announce(':greentick: camera startup complete!')
-
+                    systems_started.append(True)
                 except Exception as e:
                     msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
                     self.log(msg)
                     self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                     err = roboError(context, self.lastcmd, system, msg)
                     self.hardware_error.emit(err)
-                    return
+                    systems_started.append(True)
+                    #return
             
             
 
         # if we made it all the way to the bottom, say the startup is complete!
-        self.startup_complete = True
+        
+        if all(systems_started):
+            self.startup_complete = True
+            self.announce(':greentick: startup complete!')
+            print(f'robo: do_startup complete')
+        else:
+            self.startup_complete = False
             
-        self.announce(':greentick: startup complete!')
-        print(f'robo: do_startup complete')
+            self.announce(':caution: startup complete but with some errors')
+            print(f'robo: do_startup complete but with some errors')
         
     def do_shutdown(self, shutdown_cameras = False):
         """
@@ -1568,7 +1582,7 @@ class RoboOperator(QtCore.QObject):
         script, replicating its essential functions but with better communications
         and error handling.
         """
-        
+        systems_shutdown = []
         # this is for passing to errors
         context = 'do_startup'
         
@@ -1595,12 +1609,14 @@ class RoboOperator(QtCore.QObject):
             msg = 'dome shutdown complete'
             self.logger.info(f'robo: {msg}')
             self.alertHandler.slack_log(f':greentick: {msg}')
+            systems_shutdown.append(True)
         except Exception as e:
             msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            systems_shutdown.append(False)
+            #return
     
         ### MOUNT SHUTDOWN ###
         system = 'telescope'
@@ -1635,6 +1651,7 @@ class RoboOperator(QtCore.QObject):
             #self.do('mount_disconnect')
             
             self.announce(':greentick: telescope shutdown complete!')
+            systems_shutdown.append(True)
             
         except Exception as e:
             msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
@@ -1642,7 +1659,8 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            systems_shutdown.append(False)
+            #return
         
         ### MIRROR COVER CLOSURE ###
         if not self.mountsim:
@@ -1655,16 +1673,19 @@ class RoboOperator(QtCore.QObject):
                 
                 # open the mirror cover
                 self.do('mirror_cover_close')
-            
+                
+                self.announce(':greentick: mirror covers closed!')
+                systems_shutdown.append(True)
             except Exception as e:
                 msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
                 self.log(msg)
                 self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
-                return
+                systems_shutdown.append(False)
+                #return
         
-        self.announce(':greentick: mirror covers closed!')
+        
         
         if shutdown_cameras:
             system = 'camera'
@@ -1682,20 +1703,28 @@ class RoboOperator(QtCore.QObject):
                     self.announce(msg)
                     self.do(f'tecSetSetpoint 15 --{camname}')
                     self.announce(':greentick: camera startup complete!')
-
+                    systems_shutdown.append(True)
+                    
                 except Exception as e:
                     msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
                     self.log(msg)
                     self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                     err = roboError(context, self.lastcmd, system, msg)
                     self.hardware_error.emit(err)
-                    return
+                    systems_shutdown.append(False)
+                    #return
         
         # if we made it all the way to the bottom, say the startup is complete!
-        self.shutdown_complete = True
+        if all(systems_shutdown):
+            self.shutdown_complete = True
+            self.announce(':greentick: shutdown complete!')
+            print(f'robo: do_shutdown complete')
+        else:
+            self.shutdown_complete = False
+            self.announce(':caution: shutdown complete but with errors')
+            print(f'robo: do_shutdown complete but with errors')
             
-        self.announce(':greentick: shutdown complete!')
-        print(f'robo: do_shutdown complete')
+        
 
     
     
