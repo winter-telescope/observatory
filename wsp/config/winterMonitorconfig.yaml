@@ -18,24 +18,24 @@ prestart_conditions:
         ###########################################################
         # FPA: ROIC
         ###########################################################
-        pa_T_roic:
-            min: None
-            max: 30.0
-        pb_T_roic:
-            min: None
-            max: 30.0
-        pc_T_roic:
-            min: None
-            max: 30.0
-        sa_T_roic:
-            min: None
-            max: 30.0
-        sb_T_roic:
-            min: None
-            max: 30.0
-        sc_T_roic:
-            min: None
-            max: 30.0
+        # pa_T_roic:
+        #     min: None
+        #     max: 30.0
+        # pb_T_roic:
+        #     min: None
+        #     max: 30.0
+        # pc_T_roic:
+        #     min: None
+        #     max: 30.0
+        # sa_T_roic:
+        #     min: None
+        #     max: 30.0
+        # sb_T_roic:
+        #     min: None
+        #     max: 30.0
+        # sc_T_roic:
+        #     min: None
+        #     max: 30.0
         ###########################################################
         # FPGA
         ###########################################################

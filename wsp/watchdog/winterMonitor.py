@@ -190,9 +190,9 @@ class WINTER_monitor(QtCore.QObject):
                         if self.avgdict[f'{field}_avg'] < minval:
                             too_low.append(field)
                             alarms.append(f'{field} TOO LOW')
-                    if np.isnan(self.avgdict[f'{field}_avg']):
-                        bad_read.append(field)
-                        alarms.append(f'{field} NOT READING')
+                    #if np.isnan(self.avgdict[f'{field}_avg']):
+                    #    bad_read.append(field)
+                    #    alarms.append(f'{field} NOT READING')
                 
                 except Exception as e:
                     self.log(f'could not evaluate state: {e}')
