@@ -215,7 +215,15 @@ class RoboOperator(QtCore.QObject):
     stopRoboSignal = QtCore.pyqtSignal()
     
     startExposure = QtCore.pyqtSignal(object)
-
+    
+    # alarm methods to trigger various issues
+    cameraAlarm = QtCore.pyqtSignal(object)
+    chillerAlarm = QtCore.pyqtSignal(object)
+    
+    # operator methods to clear/disable/enable alarms and lockouts
+    clearAlarms = QtCore.pyqtSignal()
+    disableAlarms = QtCore.pyqtSignal()
+    enableAlarms = QtCore.pyqtSignal()
     
 
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
@@ -295,6 +303,11 @@ class RoboOperator(QtCore.QObject):
         self.observatory_stowed = False
         
         
+        ### ALARMS ###
+        self.active_alarms = []
+        self.alarm_enable = True
+        
+        
         ### SET UP THE WRITER ###
         # init the database writer
         writerpath = self.config['obslog_directory'] + '/' + self.config['obslog_database_name']
@@ -362,6 +375,9 @@ class RoboOperator(QtCore.QObject):
         self.telescope.signals.wrapWarning.connect(self.handle_wrap_warning)
         # change schedule. for now commenting out bc i think its handled in the robo Thread def
         #self.changeSchedule.connect(self.change_schedule)
+        
+        self.cameraAlarm.connect(self.estop_camera)
+        self.chillerAlarm.connect(self.estop_camera)
         
         ## overrides
         """ Lets you run with the dome closed and ignore sun/weather/etc """
@@ -432,9 +448,9 @@ class RoboOperator(QtCore.QObject):
         self.waitAndCheckTimer.start()
     
     
-    def announce(self, msg):
+    def announce(self, msg, group = None):
         self.log(f'robo: {msg}')
-        self.alertHandler.slack_log(msg, group = None)
+        self.alertHandler.slack_log(msg, group = group)
     
     def doCommand(self, cmd_obj):
         """
@@ -499,8 +515,28 @@ class RoboOperator(QtCore.QObject):
         if printstate:
                 print(f'robostate = {json.dumps(self.robostate, indent = 3)}')
 
-            
-    
+    def estop_camera(self):
+        self.announce('This is a test of the camera ESTOP!')
+        self.announce(':redsiren: CAUGHT CRITICAL CAMERA ALARMS!', group = 'operator')        
+        
+        self.announce('Sending TEC Stop Command to all FPAS')
+        #self.doTry('tecStop')
+        time.sleep(2)
+        
+        self.announce('Sending camera shutdown to all FPAS')
+        #self.doTry('shutdownCamera')
+        time.sleep(2)
+        
+        self.announce('Powering off sensor power with the labjack')
+        #self.doTry('fpa off')
+        time.sleep(2)
+        
+        self.announce('Powering off the sensor power box AC input power with the PDU')
+        #self.doTry('pdu off fpas')
+        time.sleep(2)
+        
+        self.announce('Completed camera ESTOP handling, locking out further observations until further operator intervention.', group = 'operator')
+        
     def rotator_stop_and_reset(self):
         if self.mountsim:
             return
@@ -803,6 +839,17 @@ class RoboOperator(QtCore.QObject):
                     
                     self.checktimer.start()
                     return
+            #---------------------------------------------------------------------        
+            # check the camera(s)
+            #---------------------------------------------------------------------
+            if self.get_camera_ready_status():
+                self.log(f'the cameras are ready to observe!')
+                # if True, then the cameras in self.camdict are ready to observe
+                pass
+            else:
+                self.log(f'')
+            
+            
             #---------------------------------------------------------------------
             # get the current timestamp and MJD
             #---------------------------------------------------------------------
@@ -3499,7 +3546,8 @@ class RoboOperator(QtCore.QObject):
             
             self.do(f'dome_goto {self.target_az}')
             
-            time.sleep(5)
+            #NPL 8-16-23 commented out this sleep! why is it here!!??
+            #time.sleep(5)
             
             # turn tracking back on 
             #self.do('dome_tracking_on')

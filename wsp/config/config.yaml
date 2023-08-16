@@ -2609,7 +2609,20 @@ fields:
         dtype: float64
         rate: slow
         var: labjacks.state['TEMP_LJ1_AIN3']
-    
+    fpa_port_power_disabled:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: labjacks.state['LJ1']['FIO5']
+    fpa_star_power_disabled:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: labjacks.state['LJ1']['FIO4']
     
     # Viscam housekeeping
 

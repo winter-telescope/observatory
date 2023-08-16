@@ -16,7 +16,7 @@ import numpy as np
 from Pyt5 import QtCore
 from datetime import datetime
 
-class WINTERmonitor(QtCore.QObject):
+class WINTER_monitor(QtCore.QObject):
     
     """
     This is the pyro object that handles the creation of the dirfile,
@@ -30,31 +30,52 @@ class WINTERmonitor(QtCore.QObject):
     
     
     def __init__(self, monitor_config, logger, verbose = False):
-        super(WINTERmonitor, self).__init__()
+        super(WINTER_monitor, self).__init__()
         
         self.monitor_config = monitor_config
         self.logger = logger
         self.verbose = verbose
-        self.avgwindow = self.monitor_config['tavg']
+        self.default_value = -888
+
         self.timestamp = datetime.utcnow().timestamp()
-        self.timestamps = []
+        
+        self.lockout = False
+        self.lockout_enable = True
+        
         
         # 
+        
+    def clear_lockout(self):
+        """
+        clear any lockout conditions.
+        """
+        self.lockout = True
 
-    def setupAvgVals(self):
+    def setup_avg_vals(self):
+        """
+        dictionary to hold average values of various parameters to monitor.
+        Using the avg values because these can be very noisy and this will help
+        prevent the values from triggering shutdowns just on noise
+        """
         self.avgdict = dict()
-        self.avgdict.update({'timestamps' : []})
-        for field in self.monitor_config:
+        self.avgdict.update({'avg_timestamps' : []})
+        for field in self.monitor_config['prestart_conditions']['fields']:
             self.avgdict.update({f'{field}_arr' : []})
-            self.avgdict.update({f'{field}_avg' : []})
+            self.avgdict.update({f'{field}_avg' : self.default_value})
             
-    def updateAvgVals(self, state):
+    def update_avg_vals(self, state):
+        """
+        take in a state dictionary, then update all the arrays the corresponding
+        average values to use for monitoring whether the camera is in okay
+        shape.
+        """
         # read in the state and update all the averages
         self.timestamp = datetime.utcnow().timestamp()
         
-        self.timestamps.update(self.timestamp)
-        timearr = self.avgdict['timestamps']
-        timestamp_condition = self.timestamps[self.timestamps - self.timestamps[-1] > (-1.0*(self.avgwindow))]
+        self.avgdict['avg_timestamps'].update(self.timestamp)
+        
+        timestamps = self.avgdict['avg_timestamps']
+        timestamp_condition = timestamps[timestamps - timestamps[-1] > (-1.0*(self.monitor_config['prestart_conditions']['dt_window']))]
         
         for field in self.monitor_config['fields']:
             # append the new data from state, and replace missing vals with nan
@@ -67,25 +88,150 @@ class WINTERmonitor(QtCore.QObject):
             # update the averages
             self.avgdict.update({f'{field}_avg' : np.average(arr)})
         
+    
+    def setup_temp_slope_vals(self):
+        """
+        dictionary to hold temperature values and temperature change slopes
+        to monitor whether the TEC is hitting its commanded temperature in time
+        """
+        self.temp_slope_dict = dict()
+        self.temp_slope_dict.update({'slope_timestamps' : []})
+        for field in self.monitor_config['tec_temps']['fields']:
+            self.temp_slope_dict.update({f'{field}_arr' : []})
+            self.temp_slope_dict.update({f'{field}_slope' : self.default_value})
             
+    
+    def update_temp_slope_vals(self, state):
+        """
+        take in a state dictionary, then update all the arrays and the
+        corresponding temperature slope values to use for monitoring whether 
+        camera TEC is hitting its desired temperature.
+        """
+        # read in the state and update all the averages
+        self.timestamp = datetime.utcnow().timestamp()
+        
+        # we don't want to do this at arbitrary time precision, these
+        # vectors will get huge. Make sure it's been enough time in between
+        # samples
+        
+        dt_since_last_sample = self.timestamp - self.temp_slop_dict['slope_timesetamps'][-1]
+        
+        if dt_since_last_sample > self.monitor_config['tec_temps']['dt_min']:
+        
+            self.temp_slope_dict['slope_timestamps'].update(self.timestamp)
             
-    def evalState(self, state):
+            timestamps = self.temp_slope_dict['slope_timestamps']
+            timestamp_condition = timestamps[timestamps - timestamps[-1] > (-1.0*(self.monitor_config['tec_temps']['dt_window']))]
+            
+            for field in self.monitor_config['tec_temps']['fields']:
+                # append the new data from state, and replace missing vals with nan
+                arr = self.temp_slope_dict[f'{field}_arr']
+                arr.append(state.get(field, np.nan))
+                # trim so that we only have times within the average window
+                arr = arr[timestamp_condition]
+                # update the dict with the new array
+                self.temp_slope_dict.update({f'{field}_arr' : arr})
+                # update the averages
+                try:
+                    self.temp_slope_dict.update({f'{field}_slope' : np.polyfit(self.temp_slope_dict['slope_timestamps'], self.temp_slope_dict[f'{field}_arr'], 1)})
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f'could not update slope calculation for {field}: {e}')
+                    self.temp_slope_dict.update({f'{field}_slope' : None})
+                    
+    def get_alarms(self, state):
         """
         check the state against the field limits in the monitor_config
         """
         too_high = []
         too_low = []
         bad_read = []
+        alarms = []
         
-        for field in self.monitor_config:
-            try:
-                if self.avgdict[f'{field}_avg'] > self.monitor_config[field]['max']:
-                    too_high.append(field)
-                if self.avgdict[f'{field}_avg'] < self.monitor_config[field]['min']:
-                    too_low.append(field)
-                if np.isnan(self.avgdict[f'{field}_avg']):
-                    bad_read.append(field)
+        self.update_avg_vals(state)
+        #self.update_temp_slope_vals()
+        
+        # if the camera is powered, we need everything to be within range
+        camera_powered = self.get_camera_powered_status(state)
+        if self.camera_powered:
+        
+            for field in self.monitor_config:
+                try:
+                    if self.avgdict[f'{field}_avg'] > self.monitor_config[field]['max']:
+                        too_high.append(field)
+                        alarms.append(f'{field} TOO HIGH')
+                    if self.avgdict[f'{field}_avg'] < self.monitor_config[field]['min']:
+                        too_low.append(field)
+                        alarms.append(f'{field} TOO LOW')
+                    if np.isnan(self.avgdict[f'{field}_avg']):
+                        bad_read.append(field)
+                        alarms.append(f'{field} NOT READING')
                 
-
+                except Exception as e:
+                    self.log(f'could not evaluate state: {e}')
+                    return
+            
+            if any(alarms):
+                self.log('FOUND ACTIVE ALARMS!! Camera is powered while these states are out of range:')
+                self.log(alarms)
+        else:
+            # don't worry about chiller being off if the camera isn't powered
+            pass
+        
+        return alarms
+    
+    def get_camera_powered_status(self, state):
+        
+        # is the PDU on?
+        if state['pdu2_2'] == 1:
+            pass
+        else:
+            return False
+        
+        # is the labjack enabled?
+        power_enabled = [ state['fpa_port_power_disabled'] == 0,
+                          state['fpa_port_power_disabled'] == 0]
+        
+        if any(power_enabled):
+            pass
+        else:
+            return False
+        
+        # if we got here the camera is powered on:
+        return True
+        
+    
+    def get_camera_running_status(self, state):
+        
+        camera_powered = self.get_camera_powered_status(state)
+        
+        if camera_powered:
+            pass
+        else:
+            return False
+        
+        cams_connected = [state['pa_connected'],
+                          state['pb_connected'],
+                          state['pc_connected'],
+                          state['sa_connected'],
+                          state['sb_connected'],
+                          state['sc_connected'],
+                          ]
+        if any(cams_connected):
+            pass
+        else:
+            return False
+        
+        
+        
+        return
+                
+    def get_ready_to_startup_status(self, state):
+        
+        return
+    
+    def get_ready_to_image_status(self):
+        
+        return
                 
                 

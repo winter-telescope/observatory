@@ -47,14 +47,15 @@ from utils import logging_setup
 from utils import utils
 from alerts import alert_handler
 
-
+from winterMonitor import WINTER_monitor
 
 class Watchdog(QtCore.QObject):
-    def __init__(self,  config, cams, alertHandler, ns_host = None, dt = 1000, name = 'power', logger = None, verbose = False):
+    def __init__(self,  config, monitor_dict, alertHandler, ns_host = None, dt = 1000, name = 'power', logger = None, verbose = False):
         
         super(Watchdog, self).__init__()   
         
         self.config = config
+        self.monitor_dict = monitor_dict
         self.alertHandler = alertHandler
         self.ns_host = ns_host
         self.name = name
@@ -62,13 +63,16 @@ class Watchdog(QtCore.QObject):
         self.logger = logger
         
         self.state = dict()
+        self.hk_state = dict()
         
+        self.monitor_dict = monitor_dict
+        self.setup_alarm_dict()
         
         self.log('finished init, starting monitoring loop')
         
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
-        self.timer.timeout.connect(self.update)
+        self.timer.timeout.connect(self.update_state)
         self.timer.start()
         
     
@@ -81,29 +85,73 @@ class Watchdog(QtCore.QObject):
         else:
             self.logger.log(level = level, msg = msg)
     
-    
-            
+    def setup_alarm_dict(self):
         
-    def update(self):
-
-        for pduname in self.pdu_dict:
+        self.alarm_dict = dict()
+        
+        for cam in self.monitor_dict:
+            self.alarm_dict.update({cam : []})
+    
+    def init_hk_state_object(self):
+        # init the remote object
+        try:
+            ns = Pyro5.core.locate_ns(host = self.ns_host)
+            uri = ns.lookup("state")
+            self.remote_hk_state_object = Pyro5.client.Proxy(uri)
+            self.hk_connected = True
+        except:
+            self.hk_connected = False
+            pass
+        '''
+        except Exception:
+            self.log('connection with remote object failed', exc_info = True)
+        '''
+    def update_hk_state(self):
+        # poll the state, if we're not connected try to reconnect
+        # this should reconnect down the line if we get disconnected
+        if not self.hk_connected:
+            self.init_hk_state_object()
             
-            # query the pdu status
-            pdustate = self.pdu_dict[pduname].getState()
-            self.state.update({pduname : pdustate})
-            #print(pdustate['status'][7])
+        else:
+            try:
+                self.hk_state = self.remote_hk_state_object.GetStatus()
+                
+            except Exception as e:
+                if self.verbose:
+                    self.log(f'could not update remote housekeeping state: {e}')
+                self.hk_connected = False    
+    
+    def update_state(self):
+        self.update_hk_state()
+        try:
+            self.state = self.remote_object.GetStatus()
+                            
+            self.parse_state()
+            
+            
+        except Exception as e:
+            if self.verbose:
+                self.log(f'could not update state: {e}')
+            pass
+    
 
     
-        self.update()
-                
+    def parse_state(self):
+
+        for cam in self.monitor_dict:
+            
+            # check for alarms
+            alarms = self.monitor_dict[cam].get_alarms(self.state)
+            self.alarm_dict.update({cam : alarms})
+        
+        # add the active alarms to the state dictionary
+        
+        self.state.update({'alarms' : self.alarm_dict})
     @Pyro5.server.expose
     def getState(self):
         return self.state 
     
-    @Pyro5.server.expose
-    def test(self):
-        print('TEST')
-        return 'TEST' 
+
     
 class PyroGUI(QtCore.QObject):   
 
@@ -209,13 +257,18 @@ if __name__ == "__main__":
 
     alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
     
-    cams = []
+    monitor_dict = dict()
+
     if watch_winter:
-        cams.append('winter')
+        winter_monitor_config = utils.loadconfig(wsp_path + '/config/monitorMonitorconfig.yaml')
+        winter_monitor = WINTER_monitor(monitor_config = winter_monitor_config, 
+                                       logger = logger, verbose = verbose)
+        monitor_dict.update({'winter' : winter_monitor})
+        
     if watch_summer:
-        cams.append('summer')
+        pass
     
-    main = PyroGUI(config, cams, alert_handler, ns_host, logger, verbose)
+    main = PyroGUI(config, monitor_dict, alert_handler, ns_host, logger, verbose)
     
     signal.signal(signal.SIGINT, sigint_handler)
 
