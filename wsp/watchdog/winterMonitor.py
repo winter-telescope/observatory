@@ -91,13 +91,18 @@ class WINTER_monitor(QtCore.QObject):
         for field in self.monitor_config['prestart_conditions']['fields']:
             # append the new data from state, and replace missing vals with nan
             arr = self.avgdict[f'{field}_arr']
-            arr = np.append(arr, state.get(field, np.nan))
-            # trim so that we only have times within the average window
-            arr = arr[timestamp_condition]
-            # update the dict with the new array
-            self.avgdict.update({f'{field}_arr' : arr})
-            # update the averages
-            self.avgdict.update({f'{field}_avg' : np.average(arr)})
+            newval = state.get(field, np.nan)
+            if newval == 999:
+                # skip it, it's just startup junk
+                pass
+            else:
+                arr = np.append(arr, newval)
+                # trim so that we only have times within the average window
+                arr = arr[timestamp_condition]
+                # update the dict with the new array
+                self.avgdict.update({f'{field}_arr' : arr})
+                # update the averages
+                self.avgdict.update({f'{field}_avg' : np.average(arr)})
         
         #print(f'avgdict = {self.avgdict["Flow_LJ0_3_avg"]}')
     
