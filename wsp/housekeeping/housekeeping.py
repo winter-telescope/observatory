@@ -47,6 +47,7 @@ from daemon import daemon_utils
 
 class housekeeping():                     
     def __init__(self, config, base_directory, mode = None, 
+                 watchdog = None,
                  schedule = None, 
                  telescope = None, 
                  mirror_cover=None, 
@@ -77,6 +78,7 @@ class housekeeping():
         self.mode = mode
         
         # redefine the methods passed in: ie the hardware systems
+        self.watchdog = watchdog
         self.schedule = schedule
         self.telescope = telescope
         self.dome = dome
@@ -159,7 +161,8 @@ class housekeeping():
                 self.housekeeping_poll_functions.append(self.mirror_cover.update_state)
             
             #self.housekeeping_poll_functions.append(self.powerManager.update_state)
-        
+            
+            self.housekeeping_poll_functions.append(self.watchdog.update_state)
         # things that should happen in all modes
         self.housekeeping_poll_functions.append(self.labjacks.update_state)
         self.housekeeping_poll_functions.append(self.powerManager.update_state)

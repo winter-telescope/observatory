@@ -643,7 +643,7 @@
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_extrema": true,
-                    "_extremaID": "(P878580251)",
+                    "_extremaID": "(P1387058382)",
                     "_format": "%.1f lpm",
                     "_source": "Flow_LJ0_3",
                     "type": "PNDI"
@@ -934,16 +934,23 @@
                     "type": "PNDI"
                 },
                 {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "2045994145"
+                        },
+                        "_map": {
+                            "0": "OFF",
+                            "1": "ON[style=No style (P670576141)]"
+                        }
+                    },
                     "PObject": {
-                        "_id": "1196923257"
+                        "_id": "1540247597"
                     },
                     "_caption": "Tracking",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
-                    "_extrema": false,
-                    "_format": "",
                     "_source": "dome_tracking_status",
-                    "type": "PNDI"
+                    "type": "PMDI"
                 }
             ],
             "geometryHeight": 105,
@@ -1219,9 +1226,8 @@
                     },
                     "_caption": "PB HX",
                     "_captionStyle": "noStyle",
-                    "_defaultStyle": "noStyle",
-                    "_extrema": true,
-                    "_extremaID": "(P1524054100)",
+                    "_defaultStyle": "(P1521393217)",
+                    "_extrema": false,
                     "_format": "%.1f C",
                     "_source": "T_heatsink_pb",
                     "type": "PNDI"
@@ -1352,7 +1358,7 @@
                     "_defaultStyle": "noStyle",
                     "_extrema": false,
                     "_format": "%.1f C",
-                    "_source": "sa_T_fpa_sp",
+                    "_source": "sb_T_fpa_sp",
                     "type": "PNDI"
                 },
                 {
@@ -1812,6 +1818,8 @@
                             "_id": "1162962024"
                         },
                         "_map": {
+                            "0": "ON",
+                            "1": "OFF"
                         }
                     },
                     "PObject": {
@@ -1820,7 +1828,7 @@
                     "_caption": "FPA Port",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "(P1984630902)",
-                    "_source": "P_fpa_port",
+                    "_source": "fpa_port_power_disabled",
                     "type": "PMDI"
                 },
                 {
@@ -1829,6 +1837,8 @@
                             "_id": "1612725795"
                         },
                         "_map": {
+                            "0": "ON",
+                            "1": "OFF[style=No style (P670576141)]"
                         }
                     },
                     "PObject": {
@@ -1837,41 +1847,7 @@
                     "_caption": "FPA Star",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
-                    "_source": "P_fpa_star",
-                    "type": "PMDI"
-                },
-                {
-                    "PMDI": {
-                        "PObject": {
-                            "_id": "354362917"
-                        },
-                        "_map": {
-                        }
-                    },
-                    "PObject": {
-                        "_id": "1870022787"
-                    },
-                    "_caption": "12V Misc",
-                    "_captionStyle": "noStyle",
-                    "_defaultStyle": "noStyle",
-                    "_source": "P_12v_misc",
-                    "type": "PMDI"
-                },
-                {
-                    "PMDI": {
-                        "PObject": {
-                            "_id": "643025753"
-                        },
-                        "_map": {
-                        }
-                    },
-                    "PObject": {
-                        "_id": "107013733"
-                    },
-                    "_caption": "24V Misc",
-                    "_captionStyle": "noStyle",
-                    "_defaultStyle": "noStyle",
-                    "_source": "P_24v_misc",
+                    "_source": "fpa_star_power_disabled",
                     "type": "PMDI"
                 }
             ],
@@ -2602,7 +2578,7 @@
             "PObject": {
                 "_id": "2106806408"
             },
-            "_high": 30,
+            "_high": 40,
             "_low": 20,
             "_name": "SensorBoards",
             "_shigh": "(P1913941534)",
@@ -2625,6 +2601,20 @@
             "_sxlow": "(P1521393217)",
             "_xhigh": 100,
             "_xlow": -800
+        },
+        {
+            "PObject": {
+                "_id": "1387058382"
+            },
+            "_high": 1,
+            "_low": 0.25,
+            "_name": "flowmeter_pc",
+            "_shigh": "NO STYLE",
+            "_slow": "(P564751211)",
+            "_sxhigh": "NO STYLE",
+            "_sxlow": "(P564751211)",
+            "_xhigh": 2,
+            "_xlow": 0.25
         }
     ],
     "linkNames": [

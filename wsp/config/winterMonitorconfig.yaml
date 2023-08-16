@@ -1,8 +1,8 @@
 # define critical ranges and time average parameters for winter status fields
 
 chiller:
-    enabled:
-    temp:
+    enabled: 0
+    temp: 0
     
 
 tec_temps:
@@ -68,22 +68,22 @@ prestart_conditions:
         ###########################################################
         pa_T_sb:
             min: None
-            max: 40
+            max: 45
         pb_T_sb:
             min: None
-            max: 40
+            max: 45
         pc_T_sb:
             min: None
-            max: 40
+            max: 45
         sa_T_sb:
             min: None
-            max: 40
+            max: 45
         sb_T_sb:
             min: None
-            max: 40
+            max: 45
         sc_T_sb:
             min: None
-            max: 40
+            max: 45
         ###########################################################
         # Flowmeters
         ###########################################################

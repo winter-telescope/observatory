@@ -142,7 +142,7 @@ if __name__ == '__main__':
     config_file = wsp_path + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
-    labjacks = local_labjackHandler(wsp_path, config, ns_host = '192.168.1.20')
+    labjacks = local_labjackHandler(wsp_path, config, ns_host = '192.168.1.10')
     
     #%%
     labjacks.update_state()

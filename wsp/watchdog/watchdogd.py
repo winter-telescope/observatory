@@ -61,6 +61,7 @@ class Watchdog(QtCore.QObject):
         self.name = name
         self.dt = dt
         self.logger = logger
+        self.verbose = verbose
         
         self.state = dict()
         self.hk_state = dict()
@@ -68,7 +69,11 @@ class Watchdog(QtCore.QObject):
         self.monitor_dict = monitor_dict
         self.setup_alarm_dict()
         
+        self.hk_connected = False
+        
         self.log('finished init, starting monitoring loop')
+        
+        time.sleep(60)
         
         self.timer = QtCore.QTimer()
         self.timer.setInterval(self.dt)
@@ -78,7 +83,7 @@ class Watchdog(QtCore.QObject):
     
     def log(self, msg, level = logging.INFO):
         
-        msg = f'powerd: {msg}'
+        msg = f'watchdogd: {msg}'
         
         if self.logger is None:
                 print(msg)
@@ -123,8 +128,10 @@ class Watchdog(QtCore.QObject):
     
     def update_state(self):
         self.update_hk_state()
+        self.parse_state()
+        """
         try:
-            self.state = self.remote_object.GetStatus()
+            
                             
             self.parse_state()
             
@@ -133,6 +140,7 @@ class Watchdog(QtCore.QObject):
             if self.verbose:
                 self.log(f'could not update state: {e}')
             pass
+        """
     
 
     
@@ -141,7 +149,7 @@ class Watchdog(QtCore.QObject):
         for cam in self.monitor_dict:
             
             # check for alarms
-            alarms = self.monitor_dict[cam].get_alarms(self.state)
+            alarms = self.monitor_dict[cam].get_alarms(self.hk_state)
             self.alarm_dict.update({cam : alarms})
         
         # add the active alarms to the state dictionary
@@ -161,7 +169,7 @@ class PyroGUI(QtCore.QObject):
         print(f'main: running in thread {threading.get_ident()}')
         
         self.watchdog = Watchdog(config, cams, alertHandler, ns_host = ns_host,
-                                 dt = 5000, name = 'watchdog', verbose = verbose, logger = logger)
+                                 dt = 1000, name = 'watchdog', verbose = verbose, logger = logger)
                 
         self.pyro_thread = daemon_utils.PyroDaemon(obj = self.watchdog, name = 'watchdog',
                                                    ns_host = ns_host)
@@ -194,8 +202,8 @@ if __name__ == "__main__":
     print(f'args = {args}')
     
     # set the defaults
-    verbose = False
-    doLogging = True
+    verbose = True #False
+    doLogging = False #True
     ns_host = '192.168.1.10'
     watch_winter = True
     watch_summer = False    
@@ -260,7 +268,7 @@ if __name__ == "__main__":
     monitor_dict = dict()
 
     if watch_winter:
-        winter_monitor_config = utils.loadconfig(wsp_path + '/config/monitorMonitorconfig.yaml')
+        winter_monitor_config = utils.loadconfig(wsp_path + '/config/winterMonitorconfig.yaml')
         winter_monitor = WINTER_monitor(monitor_config = winter_monitor_config, 
                                        logger = logger, verbose = verbose)
         monitor_dict.update({'winter' : winter_monitor})

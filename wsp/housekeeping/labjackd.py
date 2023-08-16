@@ -127,6 +127,10 @@ class LabjackHandler(QtCore.QObject):
             
             
             # DIOX --> V_LJX_DIOX
+            if 'DIGITAL_OUTPUTS' in self.ljs.labjacks[lj].config:
+                for ch in self.ljs.labjacks[lj].config['DIGITAL_OUTPUTS']:
+                    val = self.ljs.labjacks[lj].state[ch]                    
+                    self.state.update({f'{lj}_{ch}' : val})
             
             # Flowmeters: DIO0_EF_READ_A --> COUNT_LJX_DIOX
             if 'FLOWMETERS' in self.ljs.labjacks[lj].config:

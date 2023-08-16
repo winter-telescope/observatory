@@ -2615,14 +2615,14 @@ fields:
         units: None
         dtype: int64
         rate: hk
-        var: labjacks.state['LJ1']['FIO5']
+        var: labjacks.state['LJ1_FIO5']
     fpa_star_power_disabled:
         ftype: raw
         label: 'Status'
         units: None
         dtype: int64
         rate: hk
-        var: labjacks.state['LJ1']['FIO4']
+        var: labjacks.state['LJ1_FIO4']
     
     # Viscam housekeeping
 

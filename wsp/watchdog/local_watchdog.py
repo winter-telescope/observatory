@@ -22,6 +22,7 @@ import Pyro5.server
 import time
 from datetime import datetime
 import logging
+from PyQt5 import QtCore
 import json
 
 # add the wsp directory to the PATH
@@ -32,9 +33,12 @@ from utils import utils
 
 
 
-class local_watchdog(object):
+class local_watchdog(QtCore.QObject):
+
+    winterAlarm = QtCore.pyqtSignal(object)
     
     def __init__(self, base_directory, config, ns_host = None, logger = None, verbose = False):
+        super(local_watchdog, self).__init__()
         self.base_directory = base_directory
         self.config = config
         self.ns_host = ns_host
@@ -45,6 +49,8 @@ class local_watchdog(object):
         self.default = -888
         self.default_timestamp = datetime(1970,1,1,0,0).timestamp()
         
+        self.min_dt_between_alarms = 60.0
+        self.timestamp_of_last_alarm = datetime.utcnow().timestamp()
         
         # init the local and remote state dictionaries
         self.state = dict()
@@ -92,7 +98,21 @@ class local_watchdog(object):
             self.state.update({key : self.remote_state[key]})
         
         # assign some variables we need internally
-
+        
+        # trigger any alarms
+        if any(self.state['alarms']['winter']):
+            alarm_timestamp = datetime.utcnow().timestamp()
+            dt_since_last_alarm = alarm_timestamp - self.timestamp_of_last_alarm
+            
+            if dt_since_last_alarm > self.min_dt_between_alarms:
+                self.winterAlarm.emit(self.state['alarms']['winter'])
+                
+                self.log("FOUND ACTIVE ALARMS!! Camera is powered while these states are out of range: ")
+                self.log(f"{self.state['alarms']['winter']}")
+                
+                self.timestamp_of_last_alarm = alarm_timestamp
+            else:
+                pass
         
         
         

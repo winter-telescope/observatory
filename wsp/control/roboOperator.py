@@ -123,7 +123,8 @@ class RoboOperatorThread(QtCore.QThread):
     # a generic do command signal for executing any command in robothread
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, 
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
+                 alertHandler, watchdog, schedule, telescope, dome, chiller, ephem, 
                  #viscam, ccd, 
                  camdict, fwdict,
                  mirror_cover, robostate, sunsim, dometest, mountsim):
@@ -141,6 +142,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.chiller = chiller
         self.logger = logger
         self.alertHandler = alertHandler
+        self.watchdog = watchdog
         self.ephem = ephem
         #self.viscam = viscam
         #self.ccd = ccd
@@ -160,6 +162,7 @@ class RoboOperatorThread(QtCore.QThread):
                                      wintercmd = self.wintercmd,
                                      logger = self.logger,
                                      alertHandler = self.alertHandler,
+                                     watchdog = self.watchdog,
                                      schedule = self.schedule,
                                      telescope = self.telescope, 
                                      dome = self.dome, 
@@ -227,7 +230,7 @@ class RoboOperator(QtCore.QObject):
     
 
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
-                 alertHandler, schedule, telescope, dome, chiller, ephem, 
+                 alertHandler, watchdog, schedule, telescope, dome, chiller, ephem, 
                  #viscam, ccd, 
                  camdict, fwdict,
                  mirror_cover, robostate, sunsim, dometest, mountsim):
@@ -241,12 +244,12 @@ class RoboOperator(QtCore.QObject):
         # assign self to wintercmd so that wintercmd has access to the signals
         self.wintercmd.roboOperator = self
         self.alertHandler = alertHandler
+        self.watchdog = watchdog
         # set up the hardware systems
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
         self.logger = logger
-        self.alertHandler = alertHandler
         self.ephem = ephem
         self.schedule = schedule
         #self.viscam = viscam
@@ -376,8 +379,10 @@ class RoboOperator(QtCore.QObject):
         # change schedule. for now commenting out bc i think its handled in the robo Thread def
         #self.changeSchedule.connect(self.change_schedule)
         
-        self.cameraAlarm.connect(self.estop_camera)
-        self.chillerAlarm.connect(self.estop_camera)
+        
+        self.watchdog.winterAlarm.connect(self.estop_camera)
+        #self.cameraAlarm.connect(self.estop_camera)
+        #self.chillerAlarm.connect(self.estop_camera)
         
         ## overrides
         """ Lets you run with the dome closed and ignore sun/weather/etc """
@@ -516,23 +521,23 @@ class RoboOperator(QtCore.QObject):
                 print(f'robostate = {json.dumps(self.robostate, indent = 3)}')
 
     def estop_camera(self):
-        self.announce('This is a test of the camera ESTOP!')
+        #self.announce('This is a test of the camera ESTOP!')
         self.announce(':redsiren: CAUGHT CRITICAL CAMERA ALARMS!', group = 'operator')        
         
         self.announce('Sending TEC Stop Command to all FPAS')
-        #self.doTry('tecStop')
+        self.doTry('tecStop')
         time.sleep(2)
         
         self.announce('Sending camera shutdown to all FPAS')
-        #self.doTry('shutdownCamera')
+        self.doTry('shutdownCamera')
         time.sleep(2)
         
         self.announce('Powering off sensor power with the labjack')
-        #self.doTry('fpa off')
+        self.doTry('fpa off')
         time.sleep(2)
         
         self.announce('Powering off the sensor power box AC input power with the PDU')
-        #self.doTry('pdu off fpas')
+        self.doTry('pdu off fpas')
         time.sleep(2)
         
         self.announce('Completed camera ESTOP handling, locking out further observations until further operator intervention.', group = 'operator')

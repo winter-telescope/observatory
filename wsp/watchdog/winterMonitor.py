@@ -13,7 +13,8 @@ see if there are any scary problems. if there are, it will raise various flags.
 @author: nlourie
 """
 import numpy as np
-from Pyt5 import QtCore
+import logging
+from PyQt5 import QtCore
 from datetime import datetime
 
 class WINTER_monitor(QtCore.QObject):
@@ -41,9 +42,18 @@ class WINTER_monitor(QtCore.QObject):
         
         self.lockout = False
         self.lockout_enable = True
+        self.setup_avg_vals()
+        #self.setup_temp_slope_vals()
         
         
-        # 
+    def log(self, msg, level = logging.INFO):
+        
+        msg = f'winterMonitor: {msg}'
+        
+        if self.logger is None:
+                print(msg)
+        else:
+            self.logger.log(level = level, msg = msg)
         
     def clear_lockout(self):
         """
@@ -58,9 +68,9 @@ class WINTER_monitor(QtCore.QObject):
         prevent the values from triggering shutdowns just on noise
         """
         self.avgdict = dict()
-        self.avgdict.update({'avg_timestamps' : []})
+        self.avgdict.update({'avg_timestamps' : np.array([])})
         for field in self.monitor_config['prestart_conditions']['fields']:
-            self.avgdict.update({f'{field}_arr' : []})
+            self.avgdict.update({f'{field}_arr' : np.array([])})
             self.avgdict.update({f'{field}_avg' : self.default_value})
             
     def update_avg_vals(self, state):
@@ -71,16 +81,17 @@ class WINTER_monitor(QtCore.QObject):
         """
         # read in the state and update all the averages
         self.timestamp = datetime.utcnow().timestamp()
+                
+        timestamps = np.append(self.avgdict['avg_timestamps'], self.timestamp)
         
-        self.avgdict['avg_timestamps'].update(self.timestamp)
+        timestamp_condition = timestamps - timestamps[-1] > (-1.0*(self.monitor_config['prestart_conditions']['dt_window']))
+        timestamps = timestamps[timestamp_condition]
+        self.avgdict['avg_timestamps'] = timestamps
         
-        timestamps = self.avgdict['avg_timestamps']
-        timestamp_condition = timestamps[timestamps - timestamps[-1] > (-1.0*(self.monitor_config['prestart_conditions']['dt_window']))]
-        
-        for field in self.monitor_config['fields']:
+        for field in self.monitor_config['prestart_conditions']['fields']:
             # append the new data from state, and replace missing vals with nan
             arr = self.avgdict[f'{field}_arr']
-            arr.append(state.get(field, np.nan))
+            arr = np.append(arr, state.get(field, np.nan))
             # trim so that we only have times within the average window
             arr = arr[timestamp_condition]
             # update the dict with the new array
@@ -88,6 +99,7 @@ class WINTER_monitor(QtCore.QObject):
             # update the averages
             self.avgdict.update({f'{field}_avg' : np.average(arr)})
         
+        #print(f'avgdict = {self.avgdict["Flow_LJ0_3_avg"]}')
     
     def setup_temp_slope_vals(self):
         """
@@ -153,16 +165,26 @@ class WINTER_monitor(QtCore.QObject):
         
         # if the camera is powered, we need everything to be within range
         camera_powered = self.get_camera_powered_status(state)
-        if self.camera_powered:
+        if camera_powered:
         
-            for field in self.monitor_config:
+            for field in self.monitor_config['prestart_conditions']['fields']:
+                maxval = self.monitor_config['prestart_conditions']['fields'][field]['max']
+                minval = self.monitor_config['prestart_conditions']['fields'][field]['min']
                 try:
-                    if self.avgdict[f'{field}_avg'] > self.monitor_config[field]['max']:
-                        too_high.append(field)
-                        alarms.append(f'{field} TOO HIGH')
-                    if self.avgdict[f'{field}_avg'] < self.monitor_config[field]['min']:
-                        too_low.append(field)
-                        alarms.append(f'{field} TOO LOW')
+                    if type(maxval) is str:
+                        if maxval.lower() == 'none':
+                            pass
+                    else:
+                        if self.avgdict[f'{field}_avg'] > maxval:
+                            too_high.append(field)
+                            alarms.append(f'{field} TOO HIGH')
+                    if type(minval) is str:
+                        if minval.lower() == 'none':
+                            pass
+                    else:
+                        if self.avgdict[f'{field}_avg'] < minval:
+                            too_low.append(field)
+                            alarms.append(f'{field} TOO LOW')
                     if np.isnan(self.avgdict[f'{field}_avg']):
                         bad_read.append(field)
                         alarms.append(f'{field} NOT READING')
@@ -171,9 +193,10 @@ class WINTER_monitor(QtCore.QObject):
                     self.log(f'could not evaluate state: {e}')
                     return
             
-            if any(alarms):
-                self.log('FOUND ACTIVE ALARMS!! Camera is powered while these states are out of range:')
-                self.log(alarms)
+            if self.verbose:
+                if any(alarms):
+                    self.log('FOUND ACTIVE ALARMS!! Camera is powered while these states are out of range:')
+                    self.log(alarms)
         else:
             # don't worry about chiller being off if the camera isn't powered
             pass
@@ -181,16 +204,15 @@ class WINTER_monitor(QtCore.QObject):
         return alarms
     
     def get_camera_powered_status(self, state):
-        
         # is the PDU on?
-        if state['pdu2_2'] == 1:
+        if state.get('pdu2_2', 0) == 1:
             pass
         else:
             return False
         
         # is the labjack enabled?
-        power_enabled = [ state['fpa_port_power_disabled'] == 0,
-                          state['fpa_port_power_disabled'] == 0]
+        power_enabled = [ state.get('fpa_port_power_disabled', 0) == 0,
+                          state.get('fpa_star_power_disabled', 0) == 0]
         
         if any(power_enabled):
             pass
