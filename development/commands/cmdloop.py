@@ -20,29 +20,40 @@ class WinterCmdSocket(object):
         
     def send(self, cmd):
         # now that the connection is established, data can be sent with sendall() and received with recv()
-        if not self.connected:
-            self.connect_to_server()
-        
-        
-        
-        
         if self.connected:
             try:
                 
                 self.sock.sendall(bytes(cmd,"utf-8"))
                 reply = self.sock.recv(1024).decode("utf-8")
-                print(f"\treceived message back from server: '{reply}'\n")
+                print(f"received message back from server: '{reply}'\n")
+                
+            except socket.error:
+                try:
+                    self.connect_to_server()
+                    self.sock.sendall(bytes(cmd,"utf-8"))
+                    reply = self.sock.recv(1024).decode("utf-8")
+                    print(f"received message back from server: '{reply}'\n")
+                    self.connected = True
+                except Exception as e:
+                    print(f'error after reconnection attempt: {e}')
+                    self.sock.close()
+                    print(f"WSP has disconnected. Socket is closed until a manual reconnect. Did not send the command {cmd}")
+                    self.connected = False
+        else:
+            try:
+                self.connect_to_server()
+                self.sock.sendall(bytes(cmd,"utf-8"))
+                reply = self.sock.recv(1024).decode("utf-8")
+                print(f"received message back from server: '{reply}'\n")
                 self.connected = True
             except Exception as e:
-                print(f'\terror after reconnection attempt: {e}')
+                print(f'error after reconnection attempt: {e}')
                 self.sock.close()
-                print(f"\tWSP has disconnected. Could not send the command {cmd}\n")
+                print(f"WSP has disconnected. Socket is closed until a manual reconnect. Did not send the command {cmd}")
                 self.connected = False
-
 
     def connect_to_server(self):
         try:
-            print('\tnot connected to wsp. attempting to reconnect...')
             # create a TCP/IP socket
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             # connect the socket ot the port where the server is listening
@@ -50,7 +61,7 @@ class WinterCmdSocket(object):
             self.sock.connect(server_address)
             self.connected = True
         except Exception as e:
-            print(f"\tcould not connect to WSP: {e}")
+            print(f"Could not connect to WSP: {e}")
             self.sock.close()
             self.connected = False
 
@@ -82,14 +93,7 @@ class WinterCmdShell(pycmd.Cmd):
         self.completekey = completekey
         # NPL from here down:
         self.prompt = 'wintercmd: '
-        self.intro = "\n----------------------------------------------------------------"
-        self.intro+= '\n' + 'Welcome to the wsp interactive wintercmd shell!'
-        self.intro+= "\n----------------------------------------------------------------"
-        self.intro+="\nDon't expect much feedback from replies."
-        self.intro+="\n" + "For feedback, monitor ~/data/winter.log on wsp machine"
-        self.intro+="\n" + "This is typically done with: tail -fn 250 ~/data/winter.log"
-        self.intro+= "\n----------------------------------------------------------------"
-        self.intro+="\n\n"
+        self.intro = 'Welcome to the interactive wintercmd shell!'
         self.verbose = verbose
         self.wintercmd = WinterCmdSocket()
         

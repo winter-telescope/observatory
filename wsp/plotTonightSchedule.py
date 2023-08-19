@@ -50,7 +50,7 @@ try:
     cur = conn.cursor()
 
     command = '''SELECT exposures.progname, exposures.fieldid, exposures.ra, exposures.dec,
-                    exposures.fid, exposures."expMJD", exposures."ExpTime",exposures.airmass,
+                    exposures.fid, exposures."expmjd", exposures."exptime",exposures.airmass,
                     programs.progid, programs.progname, programs.progtitle FROM exposures INNER JOIN programs ON
                     programs.progname=exposures.progname; '''
 
@@ -117,10 +117,10 @@ for idx, prog in enumerate(programs):
     ra[ra > np.pi] -= 2*np.pi
     dec = np.array(dec,dtype=np.float32) * np.pi/180.0
     plt.scatter(ra,dec,alpha=.9,label="tonight: "+prog, color = colors[idx])
-plt.legend(loc='lower right',frameon=True)
+plt.legend(loc="lower right",frameon=True, bbox_to_anchor=(1.3,-0.2))
 # plt.show()
-
+plt.tight_layout()
 figname = os.path.join(os.getenv("HOME"),'data','skymap_tonight.jpg')
-plt.savefig(figname)
+plt.savefig(figname, bbox_inches='tight')
 
 alertHandler.slack_postImage(figname)

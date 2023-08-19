@@ -578,9 +578,10 @@ cal_params:
         dark:
             n_imgs: 5
             exptimes:
-                - 120
-                - 30
                 - 10
+                - 30
+                - 60
+                - 120
             filterID: 'dark'
         bias:
             n_imgs: 0
@@ -619,7 +620,10 @@ focus_loop_param:
         summer:
             - 'r'
         winter:
+            #- 'Y'
+            #- 'Hs'
             - 'J'
+
     targets:
         #targ0:
         #    target_type: object
@@ -641,7 +645,7 @@ focus_loop_param:
             target: '40 304'
     focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
-    focus_graceperiod_hours: 12
+    focus_graceperiod_hours: 3
     max_focus_attempts: 2
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
@@ -829,56 +833,112 @@ fields:
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][0]'
+        var: 'powerManager.state[1]["status"][0]'
     pdu1_2:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][1]'
+        var: 'powerManager.state[1]["status"][1]'
     pdu1_3:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][2]'
+        var: 'powerManager.state[1]["status"][2]'
     pdu1_4:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][3]'
+        var: 'powerManager.state[1]["status"][3]'
     pdu1_5:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][4]'
+        var: 'powerManager.state[1]["status"][4]'
     pdu1_6:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][5]'
+        var: 'powerManager.state[1]["status"][5]'
     pdu1_7:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][6]'
+        var: 'powerManager.state[1]["status"][6]'
     pdu1_8:
         ftype: raw
         label: 'State'
         units: None
         dtype: int64
         rate: 'hk'
-        var: 'powerManager.state["pdu1"]["status"][7]'
+        var: 'powerManager.state[1]["status"][7]'
+    pdu2_1:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][0]'
+    pdu2_2:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][1]'
+    pdu2_3:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][2]'
+    pdu2_4:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][3]'
+    pdu2_5:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][4]'
+    pdu2_6:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][5]'
+    pdu2_7:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][6]'
+    pdu2_8:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[2]["status"][7]'
 # site
     site_latitude_degs:
         ftype: raw
@@ -2553,7 +2613,20 @@ fields:
         dtype: float64
         rate: slow
         var: labjacks.state['TEMP_LJ1_AIN3']
-    
+    fpa_port_power_disabled:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: labjacks.state['LJ1_FIO5']
+    fpa_star_power_disabled:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: labjacks.state['LJ1_FIO4']
     
     # Viscam housekeeping
 

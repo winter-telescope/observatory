@@ -127,13 +127,22 @@ class local_labjackHandler(QtCore.QObject):
             self.state.update({key : self.remote_state[key]})
         
         #self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
-        
+      
+    def dio_do(self, action, outlet_specifier):
+        try:
+            self.log(f'sending {action} command to labjack digital output specified by {outlet_specifier}')
+            self.remote_object.dio_do(action, outlet_specifier)
+            
+        except Exception as e:
+            self.log(f'could not send {action} command to labjack digital output specified by {outlet_specifier}: {e}')
+            pass   
+      
 if __name__ == '__main__':
     # load the config
     config_file = wsp_path + '/config/config.yaml'
     config = utils.loadconfig(config_file)
     
-    labjacks = local_labjackHandler(wsp_path, config, ns_host = '192.168.1.20')
+    labjacks = local_labjackHandler(wsp_path, config, ns_host = '192.168.1.10')
     
     #%%
     labjacks.update_state()

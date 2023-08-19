@@ -123,7 +123,8 @@ class RoboOperatorThread(QtCore.QThread):
     # a generic do command signal for executing any command in robothread
     newCommand = QtCore.pyqtSignal(object)
     
-    def __init__(self, base_directory, config, mode, state, wintercmd, logger, alertHandler, schedule, telescope, dome, chiller, ephem, 
+    def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
+                 alertHandler, watchdog, schedule, telescope, dome, chiller, ephem, 
                  #viscam, ccd, 
                  camdict, fwdict,
                  mirror_cover, robostate, sunsim, dometest, mountsim):
@@ -141,6 +142,7 @@ class RoboOperatorThread(QtCore.QThread):
         self.chiller = chiller
         self.logger = logger
         self.alertHandler = alertHandler
+        self.watchdog = watchdog
         self.ephem = ephem
         #self.viscam = viscam
         #self.ccd = ccd
@@ -160,6 +162,7 @@ class RoboOperatorThread(QtCore.QThread):
                                      wintercmd = self.wintercmd,
                                      logger = self.logger,
                                      alertHandler = self.alertHandler,
+                                     watchdog = self.watchdog,
                                      schedule = self.schedule,
                                      telescope = self.telescope, 
                                      dome = self.dome, 
@@ -215,11 +218,19 @@ class RoboOperator(QtCore.QObject):
     stopRoboSignal = QtCore.pyqtSignal()
     
     startExposure = QtCore.pyqtSignal(object)
-
+    
+    # alarm methods to trigger various issues
+    cameraAlarm = QtCore.pyqtSignal(object)
+    chillerAlarm = QtCore.pyqtSignal(object)
+    
+    # operator methods to clear/disable/enable alarms and lockouts
+    clearAlarms = QtCore.pyqtSignal()
+    disableAlarms = QtCore.pyqtSignal()
+    enableAlarms = QtCore.pyqtSignal()
     
 
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
-                 alertHandler, schedule, telescope, dome, chiller, ephem, 
+                 alertHandler, watchdog, schedule, telescope, dome, chiller, ephem, 
                  #viscam, ccd, 
                  camdict, fwdict,
                  mirror_cover, robostate, sunsim, dometest, mountsim):
@@ -233,12 +244,12 @@ class RoboOperator(QtCore.QObject):
         # assign self to wintercmd so that wintercmd has access to the signals
         self.wintercmd.roboOperator = self
         self.alertHandler = alertHandler
+        self.watchdog = watchdog
         # set up the hardware systems
         self.telescope = telescope
         self.dome = dome
         self.chiller = chiller
         self.logger = logger
-        self.alertHandler = alertHandler
         self.ephem = ephem
         self.schedule = schedule
         #self.viscam = viscam
@@ -293,6 +304,11 @@ class RoboOperator(QtCore.QObject):
         self.observatory_ready = False
         # a similar flag to denote whether the observatory is safely stowed
         self.observatory_stowed = False
+        
+        
+        ### ALARMS ###
+        self.active_alarms = []
+        self.alarm_enable = True
         
         
         ### SET UP THE WRITER ###
@@ -363,6 +379,11 @@ class RoboOperator(QtCore.QObject):
         # change schedule. for now commenting out bc i think its handled in the robo Thread def
         #self.changeSchedule.connect(self.change_schedule)
         
+        
+        self.watchdog.winterAlarm.connect(self.estop_camera)
+        #self.cameraAlarm.connect(self.estop_camera)
+        #self.chillerAlarm.connect(self.estop_camera)
+        
         ## overrides
         """ Lets you run with the dome closed and ignore sun/weather/etc """
         if self.dometest:
@@ -432,9 +453,9 @@ class RoboOperator(QtCore.QObject):
         self.waitAndCheckTimer.start()
     
     
-    def announce(self, msg):
+    def announce(self, msg, group = None):
         self.log(f'robo: {msg}')
-        self.alertHandler.slack_log(msg, group = None)
+        self.alertHandler.slack_log(msg, group = group)
     
     def doCommand(self, cmd_obj):
         """
@@ -499,8 +520,28 @@ class RoboOperator(QtCore.QObject):
         if printstate:
                 print(f'robostate = {json.dumps(self.robostate, indent = 3)}')
 
-            
-    
+    def estop_camera(self):
+        #self.announce('This is a test of the camera ESTOP!')
+        self.announce(':redsiren: CAUGHT CRITICAL CAMERA ALARMS!', group = 'operator')        
+        
+        self.announce('Sending TEC Stop Command to all FPAS')
+        self.doTry('tecStop')
+        time.sleep(2)
+        
+        self.announce('Sending camera shutdown to all FPAS')
+        self.doTry('shutdownCamera')
+        time.sleep(2)
+        
+        self.announce('Powering off sensor power with the labjack')
+        self.doTry('fpa off')
+        time.sleep(2)
+        
+        self.announce('Powering off the sensor power box AC input power with the PDU')
+        self.doTry('pdu off fpas')
+        time.sleep(2)
+        
+        self.announce('Completed camera ESTOP handling, locking out further observations until further operator intervention.', group = 'operator')
+        
     def rotator_stop_and_reset(self):
         if self.mountsim:
             return
@@ -803,6 +844,17 @@ class RoboOperator(QtCore.QObject):
                     
                     self.checktimer.start()
                     return
+            #---------------------------------------------------------------------        
+            # check the camera(s)
+            #---------------------------------------------------------------------
+            # if self.get_camera_ready_status():
+            #     self.log(f'the cameras are ready to observe!')
+            #     # if True, then the cameras in self.camdict are ready to observe
+            #     pass
+            # else:
+            #     self.log(f'')
+            
+            
             #---------------------------------------------------------------------
             # get the current timestamp and MJD
             #---------------------------------------------------------------------
@@ -1371,8 +1423,11 @@ class RoboOperator(QtCore.QObject):
         """
         NPL 12-15-21: porting over the steps from Josh's total_startup to here
         for better error handling.
-        """
         
+        NPL 8-16-23: commenting out returns in exceptions at each step so that 
+        it will keep going down to attempt each step of the process
+        """
+        systems_started = []
         # this is for passing to errors
         context = 'do_startup'
         
@@ -1398,12 +1453,14 @@ class RoboOperator(QtCore.QObject):
             msg = 'dome startup complete'
             self.logger.info(f'robo: {msg}')
             self.alertHandler.slack_log(f':greentick: {msg}')
+            systems_started.append(True)
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            systems_started.append(False)
+            #return
         
         
         ### MOUNT SETUP ###
@@ -1442,14 +1499,15 @@ class RoboOperator(QtCore.QObject):
             self.do('mount_home')
             
             self.announce(':greentick: telescope startup complete!')
-            
+            systems_started.append(True)
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
             self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            systems_started.append(False)
+            #return
         
         
         system = 'mirror cover'
@@ -1466,17 +1524,18 @@ class RoboOperator(QtCore.QObject):
                 # open the mirror cover
                 if not self.test_mode:
                     self.do('mirror_cover_open')
-            
+                self.announce(':greentick: mirror covers open!')
+                systems_started.append(True)
             except Exception as e:
                 msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
                 self.log(msg)
                 self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
-                return
+                systems_started.append(False)
+                #return
         
-        self.announce(':greentick: mirror covers open!')
-
+        
         if startup_cameras:
             system = 'camera'
             
@@ -1493,22 +1552,29 @@ class RoboOperator(QtCore.QObject):
                     self.announce(msg)
                     self.do(f'tecStart --{camname}')
                     self.announce(':greentick: camera startup complete!')
-
+                    systems_started.append(True)
                 except Exception as e:
                     msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
                     self.log(msg)
                     self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                     err = roboError(context, self.lastcmd, system, msg)
                     self.hardware_error.emit(err)
-                    return
+                    systems_started.append(True)
+                    #return
             
             
 
         # if we made it all the way to the bottom, say the startup is complete!
-        self.startup_complete = True
+        
+        if all(systems_started):
+            self.startup_complete = True
+            self.announce(':greentick: startup complete!')
+            print(f'robo: do_startup complete')
+        else:
+            self.startup_complete = False
             
-        self.announce(':greentick: startup complete!')
-        print(f'robo: do_startup complete')
+            self.announce(':caution: startup complete but with some errors')
+            print(f'robo: do_startup complete but with some errors')
         
     def do_shutdown(self, shutdown_cameras = False):
         """
@@ -1516,7 +1582,7 @@ class RoboOperator(QtCore.QObject):
         script, replicating its essential functions but with better communications
         and error handling.
         """
-        
+        systems_shutdown = []
         # this is for passing to errors
         context = 'do_startup'
         
@@ -1543,12 +1609,14 @@ class RoboOperator(QtCore.QObject):
             msg = 'dome shutdown complete'
             self.logger.info(f'robo: {msg}')
             self.alertHandler.slack_log(f':greentick: {msg}')
+            systems_shutdown.append(True)
         except Exception as e:
             msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            systems_shutdown.append(False)
+            #return
     
         ### MOUNT SHUTDOWN ###
         system = 'telescope'
@@ -1583,6 +1651,7 @@ class RoboOperator(QtCore.QObject):
             #self.do('mount_disconnect')
             
             self.announce(':greentick: telescope shutdown complete!')
+            systems_shutdown.append(True)
             
         except Exception as e:
             msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
@@ -1590,7 +1659,8 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            systems_shutdown.append(False)
+            #return
         
         ### MIRROR COVER CLOSURE ###
         if not self.mountsim:
@@ -1603,16 +1673,19 @@ class RoboOperator(QtCore.QObject):
                 
                 # open the mirror cover
                 self.do('mirror_cover_close')
-            
+                
+                self.announce(':greentick: mirror covers closed!')
+                systems_shutdown.append(True)
             except Exception as e:
                 msg = f'roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}'
                 self.log(msg)
                 self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
-                return
+                systems_shutdown.append(False)
+                #return
         
-        self.announce(':greentick: mirror covers closed!')
+        
         
         if shutdown_cameras:
             system = 'camera'
@@ -1630,20 +1703,28 @@ class RoboOperator(QtCore.QObject):
                     self.announce(msg)
                     self.do(f'tecSetSetpoint 15 --{camname}')
                     self.announce(':greentick: camera startup complete!')
-
+                    systems_shutdown.append(True)
+                    
                 except Exception as e:
                     msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
                     self.log(msg)
                     self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                     err = roboError(context, self.lastcmd, system, msg)
                     self.hardware_error.emit(err)
-                    return
+                    systems_shutdown.append(False)
+                    #return
         
         # if we made it all the way to the bottom, say the startup is complete!
-        self.shutdown_complete = True
+        if all(systems_shutdown):
+            self.shutdown_complete = True
+            self.announce(':greentick: shutdown complete!')
+            print(f'robo: do_shutdown complete')
+        else:
+            self.shutdown_complete = False
+            self.announce(':caution: shutdown complete but with errors')
+            print(f'robo: do_shutdown complete but with errors')
             
-        self.announce(':greentick: shutdown complete!')
-        print(f'robo: do_shutdown complete')
+        
 
     
     
@@ -3499,7 +3580,8 @@ class RoboOperator(QtCore.QObject):
             
             self.do(f'dome_goto {self.target_az}')
             
-            time.sleep(5)
+            #NPL 8-16-23 commented out this sleep! why is it here!!??
+            #time.sleep(5)
             
             # turn tracking back on 
             #self.do('dome_tracking_on')

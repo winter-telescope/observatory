@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Wed Aug 16 02:56:00 2023
+
+@author: nlourie
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Thu Apr 29 09:57:39 2021
 
 @author: nlourie
@@ -13,9 +21,9 @@ import Pyro5.core
 import Pyro5.server
 import time
 from datetime import datetime
-import astropy.coordinates
-import astropy.units as u
 import logging
+from PyQt5 import QtCore
+import json
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -25,9 +33,12 @@ from utils import utils
 
 
 
-class local_ephem(object):
+class local_watchdog(QtCore.QObject):
+
+    winterAlarm = QtCore.pyqtSignal(object)
     
     def __init__(self, base_directory, config, ns_host = None, logger = None, verbose = False):
+        super(local_watchdog, self).__init__()
         self.base_directory = base_directory
         self.config = config
         self.ns_host = ns_host
@@ -38,15 +49,9 @@ class local_ephem(object):
         self.default = -888
         self.default_timestamp = datetime(1970,1,1,0,0).timestamp()
         
-        # set up site
-        lat = astropy.coordinates.Angle(self.config['site']['lat'])
-        lon = astropy.coordinates.Angle(self.config['site']['lon'])
-        self.height_m = self.config['site']['height']
-        height = self.height_m * u.Unit(self.config['site']['height_units'])
-                                        
-        self.site = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
-        self.lat_deg = lat.deg
-        self.lon_deg = lon.deg
+        self.min_dt_between_alarms = 60.0
+        self.timestamp_of_last_alarm = datetime.utcnow().timestamp()
+        
         # init the local and remote state dictionaries
         self.state = dict()
         self.remote_state = dict()
@@ -55,7 +60,7 @@ class local_ephem(object):
         self.update_state()
     
     def log(self, msg, level = logging.INFO):
-        msg = f'ephem: {msg}'
+        msg = f'watchdog: {msg}'
         if self.logger is None:
                 print(msg)
         else:
@@ -66,7 +71,7 @@ class local_ephem(object):
         # init the remote object
         try:
             ns = Pyro5.core.locate_ns(host = self.ns_host)
-            uri = ns.lookup('ephem')
+            uri = ns.lookup('watchdog')
             self.remote_object = Pyro5.client.Proxy(uri)
         
         except Exception as e:
@@ -93,16 +98,21 @@ class local_ephem(object):
             self.state.update({key : self.remote_state[key]})
         
         # assign some variables we need internally
-        self.sunalt = self.remote_state.get('sunalt', self.default)
-        self.moonalt = self.remote_state.get('moonalt', self.default)
-        self.moonaz = self.remote_state.get('moonaz', self.default)
         
-        
-        
+        # trigger any alarms
+        if any(self.state['alarms']['winter']):
+            alarm_timestamp = datetime.utcnow().timestamp()
+            dt_since_last_alarm = alarm_timestamp - self.timestamp_of_last_alarm
             
-        # is the sun below the horizon?
-        self.sun_below_horizon = self.remote_state.get('sun_below_horizon', False)
-        self.state.update({'sun_below_horizon' : self.sun_below_horizon})
+            if dt_since_last_alarm > self.min_dt_between_alarms:
+                self.winterAlarm.emit(self.state['alarms']['winter'])
+                
+                self.log("FOUND ACTIVE ALARMS!! Camera is powered while these states are out of range: ")
+                self.log(f"{self.state['alarms']['winter']}")
+                
+                self.timestamp_of_last_alarm = alarm_timestamp
+            else:
+                pass
         
         
         
@@ -110,14 +120,9 @@ class local_ephem(object):
     def print_state(self):
         #self.update_state()
         #print(f'Local Object: {self.msg}')
-        print(f'state = {self.state}')
+        print(json.dumps(self.state, indent = 3))
     
-    def ephemInViewTarget_AltAz(self, target_alt, target_az, obstime = 'now', time_format = 'datetime'):
-        # send a query to the ephemeris daemon to ask if the specified target is too close to ephemeris bodies
-        
-        inview = self.remote_object.ephemInViewTarget_AltAz(target_alt, target_az, obstime, time_format)
-        
-        return inview
+  
         
 # Try it out
 if __name__ == '__main__':
@@ -127,15 +132,15 @@ if __name__ == '__main__':
     
     config = utils.loadconfig(wsp_path + '/config/config.yaml')
 
-    ephem = local_ephem(wsp_path, config, ns_host = ns_host, logger = logger)
+    mon = local_watchdog(wsp_path, config, ns_host = ns_host, logger = logger)
 
 
     while True:
         try:
-            ephem.update_state()
+            mon.update_state()
             #counter.get_remote_status()
             #counter.print_status()
-            print(f'sunalt = {ephem.state["sunalt"]}')
+            mon.print_state()
             time.sleep(.5)
         except KeyboardInterrupt:
             break

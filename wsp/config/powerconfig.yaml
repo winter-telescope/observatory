@@ -1,6 +1,9 @@
 #power configuration file
 # replaces the old configObject and .ini system
 
+# the startup code is sent to the pdu on autostart=True
+#    1 = turn on, 0 = turn off, 2 = do nothing
+
 pdus:
     pdu1:
         pdu_number: 1
@@ -13,20 +16,20 @@ pdus:
             4: 'Empty'
             5: 'Switch'
             6: 'Router'
-            7: 'Empty'
-            8: 'Empty'
+            7: 'Dead'
+            8: 'Dead'
         startup: 11111111
     pdu2:
         pdu_number: 2
         ip: 192.168.1.75
-        rand: 'Digital Loggers'
+        brand: 'Digital Loggers'
         outlets:
-            1: 'FPA Power'
-            2: 'WINTER GenPurpose'
+            1: 'Camera12V'
+            2: 'FPAS'
             3: 'Empty'
             4: 'Empty'
             5: 'Odin'
-            6: 'SUMMER Acc'
+            6: 'SUMMER'
             7: 'Thor'
             8: 'Freya'
-        startup: 11111111
+        startup: 22111111

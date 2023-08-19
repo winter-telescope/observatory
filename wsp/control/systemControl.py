@@ -65,6 +65,7 @@ from power import powerManager
 from housekeeping import labjack_handler_local
 from camera import camera
 from filterwheel import filterwheel
+from watchdog import local_watchdog
 
 
 # Create the control class -- it inherets from QObject
@@ -111,6 +112,7 @@ class control(QtCore.QObject):
                            'sun_simulator.py',
                            'powerd.py',
                            'labjackd.py',
+                           'watchdogd.py',
                            ]
         daemon_utils.cleanup(daemons_to_kill)
         
@@ -223,11 +225,10 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.hkd)
             
             # power (PDU/NPS) daemon
-            """
-            #TODO: 5/19/23 need to add this back in
-            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py")
+            self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py",
+                                            args = ['-n', self.ns_host])
             self.daemonlist.add_daemon(self.powerd)
-            """
+            
             
             # labjack daemon
             self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])
@@ -298,6 +299,12 @@ class control(QtCore.QObject):
             self.winterfwd = daemon_utils.PyDaemon(name = 'winterfw', filepath = f"{wsp_path}/filterwheel/winterFilterd.py", args = winterfwargs)
             self.daemonlist.add_daemon(self.winterfwd)
             
+            # watchdog monitor daemon
+            self.watchdog = daemon_utils.PyDaemon(name = 'watchdog', 
+                                                 filepath = f"{wsp_path}/watchdog/watchdogd.py", 
+                                                 args = ['-n', self.ns_host])
+            self.daemonlist.add_daemon(self.watchdog)
+            
         if mode in ['r']:
             # ROBOTIC OPERATION MODE!
             # ROBO MANAGER DAEMON
@@ -335,7 +342,8 @@ class control(QtCore.QObject):
         except Exception as e:
             self.logger.warning(f"control: could not init NPS at pdu1, {type(e)}: {e}")
         """
-        self.powerManager = powerManager.local_PowerManager(self.base_directory)
+        self.powerManager = powerManager.local_PowerManager(self.base_directory, ns_host = self.ns_host,
+                                                            logger = logger, verbose = self.verbose)
         
         # init the test object (goes with the test_daemon)
         self.counter =  test_daemon_local.local_counter(wsp_path, ns_host = self.ns_host)
@@ -425,7 +433,8 @@ class control(QtCore.QObject):
         self.labjacks = labjack_handler_local.local_labjackHandler(base_directory = self.base_directory, config = self.config, 
                                                                    ns_host = self.ns_host, logger = self.logger)
         
-        
+        self.watchdog = local_watchdog.local_watchdog(self.base_directory, self.config, 
+                                                      ns_host = self.ns_host, logger = self.logger)
         ### SET UP THE HOUSEKEEPING ###
             
             
@@ -435,6 +444,7 @@ class control(QtCore.QObject):
         self.hk = housekeeping.housekeeping(self.config,
                                                 base_directory = self.base_directory,
                                                 mode = mode,
+                                                watchdog = self.watchdog,
                                                 schedule = self.schedule,
                                                 telescope = self.telescope,
                                                 dome = self.dome,
@@ -472,6 +482,7 @@ class control(QtCore.QObject):
                                              telescope = self.telescope, 
                                              dome = self.dome, 
                                              chiller = self.chiller, 
+                                             labjacks = self.labjacks,
                                              powerManager = self.powerManager, 
                                              logger = self.logger, 
                                              #viscam = self.viscam, 
@@ -512,6 +523,7 @@ class control(QtCore.QObject):
                                                               wintercmd = self.wintercmd, 
                                                               logger = self.logger, 
                                                               alertHandler = self.alertHandler, 
+                                                              watchdog = self.watchdog,
                                                               schedule = self.schedule, 
                                                               telescope = self.telescope, 
                                                               dome = self.dome, 

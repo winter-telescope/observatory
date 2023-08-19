@@ -71,7 +71,7 @@ class ObsLogger(object):
             cur = conn.cursor()
 
             command = '''SELECT exposures.progname, exposures.fieldid, exposures.ra, exposures.dec,
-                    exposures.fid, exposures."expMJD", exposures."ExpTime",exposures.airmass,
+                    exposures.fid, exposures."expmjd", exposures."exptime",exposures.airmass,
                     programs.progid, programs.progname, programs.progtitle FROM exposures INNER JOIN programs ON
                     programs.progname=exposures.progname; '''
 
@@ -80,11 +80,11 @@ class ObsLogger(object):
             res = cur.fetchall()
     
             self.history = pd.DataFrame(res, columns=['puid', 'fieldid', 'ra', 'dec', 'fid', 'expMJD',
-                                        'ExpTime', 'airmass', 'progid', 'progname'])
+                                        'ExpTime', 'airmass', 'progid', 'progname', 'progtitle'])
         except Exception as e:
             print("Failed to grab history because of:", e)
             self.history = pd.DataFrame( columns=['puid', 'fieldid', 'ra', 'dec', 'fid', 'expMJD',
-                                        'ExpTime', 'airmass', 'progid', 'progname'])
+                                        'ExpTime', 'airmass', 'progid', 'progname', 'progtitle'])
         print("History:", self.history)
         # rename progID to propID for scheduler
         if 'progid' in self.history.columns:

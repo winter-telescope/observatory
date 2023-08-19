@@ -82,6 +82,7 @@ class LabjackHandler(QtCore.QObject):
         
     
     def log(self, msg, level = logging.INFO):
+        msg = f'labjackd: {msg}'
         if self.logger is None:
                 print(msg)
         else:
@@ -126,6 +127,10 @@ class LabjackHandler(QtCore.QObject):
             
             
             # DIOX --> V_LJX_DIOX
+            if 'DIGITAL_OUTPUTS' in self.ljs.labjacks[lj].config:
+                for ch in self.ljs.labjacks[lj].config['DIGITAL_OUTPUTS']:
+                    val = self.ljs.labjacks[lj].state[ch]                    
+                    self.state.update({f'{lj}_{ch}' : val})
             
             # Flowmeters: DIO0_EF_READ_A --> COUNT_LJX_DIOX
             if 'FLOWMETERS' in self.ljs.labjacks[lj].config:
@@ -186,6 +191,17 @@ class LabjackHandler(QtCore.QObject):
     @Pyro5.server.expose
     def getState(self):
         return self.state 
+    
+    @Pyro5.server.expose
+    def dio_do(self, action, outlet_specifier):
+        """
+        generic action for toggling dio output states
+        takes in action = [on, off], and a outlet_specifier,
+        which is either a list: ['LJ0', 'FIO5'], or a string corresponding
+        to an outlet name, 'fpa_port'.
+        """
+        self.ljs.dio_do(action, outlet_specifier)
+        return
 
     def printState(self):
         print(json.dumps(self.state, indent = 3))

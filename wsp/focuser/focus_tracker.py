@@ -96,9 +96,11 @@ class FocusTracker(object):
         self.log(f'resetting focus log')
         
         # first get the focus reference filters
-        self.getFocusFilters()
-        # first check the active filters
-        self.getActiveFilters()
+        for cam in self.config['focus_loop_param']['focus_filters']:
+            self.log(f'getting focus filters for {cam}')
+            self.getFocusFilters(cam)
+            # first check the active filters
+            self.getActiveFilters(cam)
         
         for filterID in self.active_filters:
                 filter_entry = self.active_filters[filterID]
@@ -152,7 +154,7 @@ class FocusTracker(object):
                 
         return self.active_filters
     
-    def getFocusFilters(self, cam = 'summer'):
+    def getFocusFilters(self, cam = 'winter'):
         
         self.focus_filters = dict()
         
@@ -211,6 +213,10 @@ class FocusTracker(object):
         self.getFocusFilters(cam)
         for filterID in self.focus_filters:
             last_focus_timestamp_utc = self.focus_log[filterID]['last_focus_timestamp_utc']
+            
+            print(f'obs_timestamp = {obs_timestamp}, type = {obs_timestamp}')
+            print(f'last_focus_timestamp_utc = {last_focus_timestamp_utc}, type = {type(last_focus_timestamp_utc)}')
+            print(f'graceperiod_seconds = {graceperiod_seconds}, type = {type(graceperiod_seconds)}')
             
             if last_focus_timestamp_utc is None:
                 filterIDs_to_focus.append(filterID)
@@ -308,6 +314,7 @@ if __name__ == '__main__':
     
     
     focusTracker = FocusTracker(config)
+    focusTracker.resetFocusLog()
     focus_filters = focusTracker.getFocusFilters()
     print('Focus Filters:')
     for filterID in focus_filters:

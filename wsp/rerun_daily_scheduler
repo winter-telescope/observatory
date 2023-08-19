@@ -105,3 +105,9 @@ msg = ''
 for prog in np.unique(df3.index.get_level_values(0)):
     msg += f'Program name {prog} is allocated {df3.loc[df3.index.get_level_values(0) == prog].sum()*100:.2f} percent of tonight\'s observations \n'
 alertHandler.slack_log(msg)
+
+
+#plot
+args = [pythonpath, 'plotTonightSchedule.py']
+scheduler_process = subprocess.Popen(args, shell = False)
+scheduler_process.wait() # wait to finish before return

@@ -1,5 +1,6 @@
 # Labjack setup config
-
+location: 'misc box'
+lj_num: 0
 
 ### DEVICE INFORMATION ###
 lj_type: "T7"
@@ -61,10 +62,14 @@ DIGITAL_COUNTERS:
 #DIGITAL_INPUTS:
 #    - FIO4
     
-#DIGITAL_OUTPUTS:
-#    # output is zero or one
-#    FIO5:
-#        OUTPUT: 0
+DIGITAL_OUTPUTS:
+    # output is zero or one
+    FIO4:
+        NAME: cam_fans_1
+        STARTUP_OUTPUT: 1
+    FIO5:
+        NAME: cam_fans_2
+        STARTUP_OUTPUT: 1
 
 ### FLOWMETERS ###
 # note the test flowmeter is BV2000-250: 1000 ppl = 3785 ppg, the ones ordered for the full
