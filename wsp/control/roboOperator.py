@@ -847,12 +847,12 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------        
             # check the camera(s)
             #---------------------------------------------------------------------
-            if self.get_camera_ready_status():
-                self.log(f'the cameras are ready to observe!')
-                # if True, then the cameras in self.camdict are ready to observe
-                pass
-            else:
-                self.log(f'')
+            # if self.get_camera_ready_status():
+            #     self.log(f'the cameras are ready to observe!')
+            #     # if True, then the cameras in self.camdict are ready to observe
+            #     pass
+            # else:
+            #     self.log(f'')
             
             
             #---------------------------------------------------------------------

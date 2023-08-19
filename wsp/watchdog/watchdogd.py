@@ -202,8 +202,8 @@ if __name__ == "__main__":
     print(f'args = {args}')
     
     # set the defaults
-    verbose = True #False
-    doLogging = False #True
+    verbose =  False
+    doLogging = True
     ns_host = '192.168.1.10'
     watch_winter = True
     watch_summer = False    
