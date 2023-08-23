@@ -191,16 +191,16 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: True
             cmd: 'load_nightly_schedule'
-        evening_darks_bias:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: 0.0
-                    cond: '<'
-            sundir: 0
-            repeat_on_restart: False
-            #cmd: 'robo_do_calibration -d -b'
-            cmd: 'robo_do_darks'
+        # evening_darks_bias:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 0.0
+        #             cond: '<'
+        #     sundir: 0
+        #     repeat_on_restart: False
+        #     #cmd: 'robo_do_calibration -d -b'
+        #     cmd: 'robo_do_darks'
         open_dome:
             conds:
                 cond1:
