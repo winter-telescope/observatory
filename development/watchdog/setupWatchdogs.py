@@ -98,7 +98,7 @@ if hostname == 'freya':
     #servicefilepath = os.path.join(service_file_dir, servicefile)
 elif hostname == 'odin':
     print(f'we eventually need rules for hostname {hostname}, but they are not yet implemented! exiting...')
-    services = [('wspWatchdog', 'wspV0', '/home/winter/WINTER_GIT/observatory/wsp/wsp.py -r')]
+    services = [('wsp_watchdog', 'wspV0', '/home/winter/WINTER_GIT/observatory/wsp/wsp.py -r')]
     
     sys.exit()
 else:
