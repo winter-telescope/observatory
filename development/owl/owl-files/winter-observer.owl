@@ -1346,7 +1346,7 @@
                     "_defaultStyle": "noStyle",
                     "_extrema": false,
                     "_format": "%.1f C",
-                    "_source": "pc_T_fpa_sp",
+                    "_source": "sa_T_fpa_sp",
                     "type": "PNDI"
                 },
                 {

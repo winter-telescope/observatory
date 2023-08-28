@@ -540,7 +540,12 @@ class RoboOperator(QtCore.QObject):
         self.doTry('pdu off fpas')
         time.sleep(2)
         
+        self.announce('setting chiller setpoint to 20C to avoid possible condensation')
+        self.doTry('chiller_set_setpoint 20')
+        time.sleep(2)
+        
         self.announce('Completed camera ESTOP handling, locking out further observations until further operator intervention.', group = 'operator')
+        self.running = False
         
     def rotator_stop_and_reset(self):
         if self.mountsim:
@@ -1951,7 +1956,7 @@ class RoboOperator(QtCore.QObject):
                                 system = 'robo routine'
                                 self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
                             else:
-                                system = 'ccd'
+                                system = 'camera'
                                 self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
                             
                             # now dither. if i is odd do ra, otherwise dec
@@ -2516,7 +2521,11 @@ class RoboOperator(QtCore.QObject):
                     self.log(f'could not connect to WINTER image daemon', exc_info = True)
                     
                 if image_daemon_connected:
-                    x0_fit = self.image_daemon.get_focus_from_imgpathlist(images)
+                    #board_ids_to_use = [4, 3, 2]
+                    board_ids_to_use = [4, 3]
+                    x0_fit = self.image_daemon.get_focus_from_imgpathlist(images, 
+                                                                          board_ids_to_use = board_ids_to_use,
+                                                                          plot_all = False)
                     self.announce(f'Ran the focus script on Freya and got best focus = {x0_fit:.1f}')
                     fit_successful = True
                 else:
