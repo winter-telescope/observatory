@@ -587,12 +587,20 @@ cal_params:
             n_imgs: 0
             filterID: 'dark'
         flats:
+            min_sunalt: -7.0
+            max_sunalt: -5.0
             n_imgs: 5
-            exptime: 10
             filterIDs:
                 - 'J'
                 - 'Y'
                 - 'Hs'
+            exptime:
+                min: 2.5
+                max: 60.0
+                J: 10
+                Y: 10
+                Hs: 10
+                    
     summer:
         dark:
             n_imgs: 5
@@ -603,13 +611,41 @@ cal_params:
             n_imgs: 5
             filterID: 'r'
         flats:
+            min_sunalt: -7.0
+            max_sunalt: -5.0
             n_imgs: 2
-            exptime: 10
             filterIDs:
                 - 'u'
                 - 'g'
                 - 'r'
-                - 'i'
+                - 'i
+            exptime:
+                min: 2.5
+                max: 60.0
+                u: 'model'
+                g: 'model'
+                r: 'model'
+                i: 'model'
+            model:
+                goal_counts: 40000
+                u:
+                    a: 73.40
+                    n: -1.23
+                    scale: 1.6
+                g:
+                    a: 75.08
+                    n: -1.23
+                    scale: 0.5
+                r:
+                    a: 75.08
+                    n: -1.23
+                    scale: 1.0
+                i:
+                    a: 73.40
+                    n: -1.23
+                    scale: 1.6
+                    
+                
 ########### FOCUSER LOOP PARAM ###########
 focus_loop_param:
     sweep_param:
