@@ -1956,7 +1956,7 @@ class RoboOperator(QtCore.QObject):
                                 system = 'robo routine'
                                 self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
                             else:
-                                system = 'ccd'
+                                system = 'camera'
                                 self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
                             
                             # now dither. if i is odd do ra, otherwise dec
@@ -2521,7 +2521,8 @@ class RoboOperator(QtCore.QObject):
                     self.log(f'could not connect to WINTER image daemon', exc_info = True)
                     
                 if image_daemon_connected:
-                    board_ids_to_use = [4, 3, 2]
+                    #board_ids_to_use = [4, 3, 2]
+                    board_ids_to_use = [4, 3]
                     x0_fit = self.image_daemon.get_focus_from_imgpathlist(images, 
                                                                           board_ids_to_use = board_ids_to_use,
                                                                           plot_all = False)
