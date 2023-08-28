@@ -587,9 +587,12 @@ cal_params:
             n_imgs: 0
             filterID: 'dark'
         flats:
-            n_imgs: 2
+            n_imgs: 5
+            exptime: 10
             filterIDs:
                 - 'J'
+                - 'Y'
+                - 'Hs'
     summer:
         dark:
             n_imgs: 5
@@ -601,6 +604,7 @@ cal_params:
             filterID: 'r'
         flats:
             n_imgs: 2
+            exptime: 10
             filterIDs:
                 - 'u'
                 - 'g'

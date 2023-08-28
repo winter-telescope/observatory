@@ -131,7 +131,7 @@ class WINTER_monitor(QtCore.QObject):
         # vectors will get huge. Make sure it's been enough time in between
         # samples
         
-        dt_since_last_sample = self.timestamp - self.temp_slop_dict['slope_timesetamps'][-1]
+        dt_since_last_sample = self.timestamp - self.temp_slop_dict['slope_timestamps'][-1]
         
         if dt_since_last_sample > self.monitor_config['tec_temps']['dt_min']:
         
