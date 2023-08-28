@@ -178,8 +178,8 @@ def plotFITSdata(CCDData, printinfo = False, xmin = None, xmax = None, ymin = No
 #%%
 #data_directory = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'tonight_images.lnk'))
 # evening skyflats
-data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20210817')
-
+#data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20210817')
+data_directory = os.path.join('/data', 'images','20210817')
 #image_path = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
 image_path = '/home/winter/data/images/20210817/SUMMER_20210816_235912_Camera0.fits'
 
