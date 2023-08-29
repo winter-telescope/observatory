@@ -165,10 +165,11 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     print(f'wsp.py: args = {args}')
 
-    options = "rimvn:"
+    options = "rimvn:s"
     long_options = ["robo", "instrument", "manual", "verbose", "ns_host=", 
                     "smallchiller", "nochiller",
-                    "sunsim", "domesim", "dometest", "mountsim"]
+                    "sunsim", "domesim", "dometest", "mountsim",
+                    "shell"]
     arguments, values = getopt.getopt(args, options, long_options)
     # checking each argument
     print()

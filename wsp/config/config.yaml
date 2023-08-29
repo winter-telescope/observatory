@@ -134,7 +134,7 @@ log_link_name: 'winter.log'
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
-max_sun_alt_for_observing: -7
+max_sun_alt_for_observing: -12
 
 
 robotic_manager_triggers:
@@ -210,25 +210,25 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'dome_open'
-        # evening_flats:
-        #     conds:
-        #         cond1:
-        #             type: 'sun'
-        #             val: -5.0
-        #             cond: '<'
-        #         cond2:
-        #             type: 'sun'
-        #             val: -7.0
-        #             cond: '>'
-        #     repeat_on_restart: False
-        #     sundir: -1
-        #     cmd: 'robo_do_calibration -f'
+        evening_flats:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: -5.0
+                    cond: '<'
+                cond2:
+                    type: 'sun'
+                    val: -9.0
+                    cond: '>'
+            repeat_on_restart: False
+            sundir: -1
+            cmd: 'robo_do_calibration -f'
 
         start_obs:
             conds:
                cond1:
                    type: 'sun'
-                   val: -7.0
+                   val: -11.0
                    cond: '<'
             repeat_on_restart: True
             sundir: 0
@@ -276,7 +276,7 @@ robotic_manager_triggers:
             conds:
                 cond1:
                     type: 'sun'
-                    val:  -18.0
+                    val:  -12.0
                     cond: '>'
             nextmorning: True
             sundir: 1
@@ -286,7 +286,7 @@ robotic_manager_triggers:
             conds:
                 cond1:
                     type: 'sun'
-                    val: -7.0
+                    val: -9.0
                     cond: '>'
                 cond2:
                     type: 'sun'
@@ -295,8 +295,8 @@ robotic_manager_triggers:
             nextmorning: True   
             repeat_on_restart: False          
             sundir: 1
-            #cmd: 'robo_do_calibration -f -d'
-            cmd: 'robo_do_darks'
+            cmd: 'robo_do_calibration -f'
+            #cmd: 'robo_do_darks'
         shutdown:
             conds:
                 cond1:
@@ -587,9 +587,9 @@ cal_params:
             n_imgs: 0
             filterID: 'dark'
         flats:
-            min_sunalt: -7.0
+            min_sunalt: -9.0
             max_sunalt: -5.0
-            n_imgs: 5
+            n_imgs: 2
             filterIDs:
                 - 'J'
                 - 'Y'
@@ -597,10 +597,9 @@ cal_params:
             exptime:
                 min: 2.5
                 max: 60.0
-                J: 10
-                Y: 10
-                Hs: 10
-                    
+                J: 30.0
+                Y: 30.0
+                Hs: 30.0
     summer:
         dark:
             n_imgs: 5
@@ -618,14 +617,14 @@ cal_params:
                 - 'u'
                 - 'g'
                 - 'r'
-                - 'i
+                - 'i'
             exptime:
                 min: 2.5
                 max: 60.0
-                u: 'model'
-                g: 'model'
-                r: 'model'
-                i: 'model'
+                u: model
+                g: model
+                r: model
+                i: model
             model:
                 goal_counts: 40000
                 u:
@@ -644,7 +643,6 @@ cal_params:
                     a: 73.40
                     n: -1.23
                     scale: 1.6
-                    
                 
 ########### FOCUSER LOOP PARAM ###########
 focus_loop_param:

@@ -1884,6 +1884,12 @@ class RoboOperator(QtCore.QObject):
         ra_total_offset_arcmin = 0
         dec_total_offset_arcmin = 0
         
+        self.log(f"sun alt: {self.state['sun_alt']}")
+        self.log(f"min sun alt: {self.config['cal_params'][camname]['flats']['min_sunalt']}")
+        self.log(f"max sun alt: {self.config['cal_params'][camname]['flats']['max_sunalt']}")
+        self.log(f"sun alt > min alt: {(self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt'])}")
+        self.log(f"sun alt < max alt: {(self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])}")
+        
         # start a loop to take flats as long as we're within the allowed limits
         while ((self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt']) & 
         (self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])): 
@@ -1891,22 +1897,29 @@ class RoboOperator(QtCore.QObject):
             # step through each filter
             for filterID in filterIDs:
                 
+                self.log(f'setting up flat for filterID: {filterID}')
                 # go to the specified filter
                 system = 'filter wheel'
-
-                # get filter number
-                for position in self.config['filter_wheels'][camname]['positions']:
-                    if self.config['filter_wheels'][camname]['positions'][position].lower() == self.filter_scheduled:
-                        filter_num = position
+                try:
+                    # get filter number
+                    for position in self.config['filter_wheels'][camname]['positions']:
+                        if self.config['filter_wheels'][camname]['positions'][position].lower() == filterID.lower():
+                            filter_num = position
+                        else:
+                            pass
+                    if filter_num == self.fw.state['filter_pos']:
+                        self.log('requested filter matches current, no further action taken')
                     else:
-                        pass
-                if filter_num == self.fw.state['filter_pos']:
-                    self.log('requested filter matches current, no further action taken')
-                else:
-                    self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
-                    #self.do(f'fw_goto {filter_num} --{self.camname}')
-                    self.do(f'fw_goto {filter_num} --{camname}')
-                
+                        self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
+                        #self.do(f'fw_goto {filter_num} --{self.camname}')
+                        self.do(f'fw_goto {filter_num} --{camname}')
+                except Exception as e:
+                    msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err) 
+                    return
                 # take the specified number of images
                 for i in range(nflats):
                     
@@ -1942,7 +1955,7 @@ class RoboOperator(QtCore.QObject):
                                 self.log(f'could get exposure time for filter {camname}: {filterID} due to: {e}, setting to default {flat_exptime} s')
                         
                         # set the exposure time
-                        minexptime = self.config['cal_params'][camname]['flats']['exptime']['max']
+                        minexptime = self.config['cal_params'][camname]['flats']['exptime']['min']
                         maxexptime = self.config['cal_params'][camname]['flats']['exptime']['max']
                         if type(flat_exptime) is complex:
                             self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')

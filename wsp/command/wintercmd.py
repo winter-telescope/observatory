@@ -3724,9 +3724,16 @@ class Wintercmd(QtCore.QObject):
         
         
         print('Good Bye!')
-        if self.promptThread and self.execThread:
+        try:
             self.promptThread.stop()
+        except Exception as e:
+            print(f'could not stop promptThread: {e}')
+        
+        try:
             self.execThread.stop()
+        except Exception as e:
+            print(f'could not stop cmd executor thread: {e}')
+        
         
         """
         #NPL 5-19-23 commenting out
