@@ -497,6 +497,9 @@ class RoboOperator(QtCore.QObject):
                   'qcomment',
                   'targtype',
                   'targetName',
+                  'obsmode',
+                  'scheduleName',
+                  'scheduleType',
                   'maxAirmass',
                   #'ditherNumber',
                   'num_dithers',
@@ -1981,7 +1984,7 @@ class RoboOperator(QtCore.QObject):
                             if i==0:
                                 self.log('handling the i=0 case')
                                 system = 'robo routine'
-                                self.do(f'robo_observe altaz {flat_alt} {flat_az} -f')
+                                self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --calibration')
                             else:
                                 system = 'camera'
                                 self.do('robo_do_exposure -f')
@@ -2015,129 +2018,7 @@ class RoboOperator(QtCore.QObject):
                         self.log('in do_flats method and self.running is False, likely a lockout? Returning.')
                         return
                     
-                
-                
-         
-                 
-        
-    
 
-        """   
-        
-        ######################
-        # if we got here we're good to start
-        # take  flats!
-        nflats = 2
-        
-        ra_total_offset_arcmin = 0
-        dec_total_offset_arcmin = 0
-        
-        #cycle through all the active filters:for filterID in 
-        filterIDs = self.focusTracker.getActiveFilters()
-                
-        for filterID in filterIDs:
-            self.announce(f'executing focus loop for filter: {filterID}')
-            try:
-                self.announce(f'doing flats for filter: {filterID}')
-
-                # step through each filter to focus, and run a focus loop
-                # 1. change filter to filterID
-                system = 'filter wheel'
-
-                # get filter number
-                for position in self.config['filter_wheels'][self.camname]['positions']:
-                    if self.config['filter_wheels'][self.camname]['positions'][position].lower() == self.filter_scheduled:
-                        filter_num = position
-                    else:
-                        pass
-                if filter_num == self.fw.state['filter_pos']:
-                    self.log('requested filter matches current, no further action taken')
-                else:
-                    self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
-                    #self.do(f'command_filter_wheel {filter_num}')
-                    self.do(f'fw_goto {filter_num} --{self.camname}')
-                    
-                for i in range(nflats):
-                    try:
-                        self.log(f'setting up flat #{i + 1}')
-                
-                        # estimate required exposure time
-                        if filterID == 'g':
-                            #flat_exptime = 30000.0/(1.14e8 * (-1*self.state["sun_alt"])**-6.2)
-                            a = 75.08
-                            n = -1.31
-                        else:
-                            #flat_exptime = 30000.0/(2.319937e9 * ((-1*self.state["sun_alt"])**-8.004657))
-                            
-                            a = 73.40
-                            n = -1.23
-                        
-                        flat_exptime = 30000.0/(np.exp(a*(-1*self.state["sun_alt"])**n))
-                        if filterID in ['u', 'i']:
-                            flat_exptime = flat_exptime*1.6
-                        if filterID == 'g':
-                            flat_exptime = flat_exptime*0.5
-                        
-                        minexptime = 2.5 + i
-                        maxexptime = 60
-                        if type(flat_exptime) is complex:
-                            self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')
-                            flat_exptime = minexptime
-                            
-                        elif (flat_exptime < minexptime):
-                            self.log(f'calculated exptime too short ({flat_exptime} < {minexptime}), setting to {minexptime} s')
-                            flat_exptime = minexptime
-                        elif (flat_exptime > maxexptime):
-                            self.log(f'calculated exptime too long ({flat_exptime} > {maxexptime}), setting to {maxexptime} s')
-                            flat_exptime = maxexptime
-                        else:
-                            self.log(f'setting exptime to estimated {flat_exptime} s')
-                        
-                        system = 'camera'
-                        self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
-                        time.sleep(2)
-                        
-                        qcomment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
-                        #qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
-                        # now trigger the actual observation. this also starts the mount tracking
-                        self.announce(f'Executing {qcomment}')
-                        if i==0:
-                            self.log(f'handling the i=0 case')
-                            #self.do(f'robo_set_qcomment "{qcomment}"')
-                            system = 'robo routine'
-                            self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
-                        else:
-                            system = 'camera'
-                            self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
-                        
-                        # now dither. if i is odd do ra, otherwise dec
-                        dither_arcmin = 5
-                        if i%2:
-                            axis = 'ra'
-                            ra_total_offset_arcmin += dither_arcmin
-                        else:
-                            axis = 'dec'
-                            dec_total_offset_arcmin += dither_arcmin
-                            
-                        #self.do(f'mount_offset {axis} add_arcsec {dither_arcsec}')
-                        self.do(f'mount_dither {axis} {dither_arcmin}')
-                    
-                    except Exception as e:
-                        msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
-                        self.log(msg)
-                        self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                        err = roboError(context, self.lastcmd, system, msg)
-                        self.hardware_error.emit(err)
-                        #return
-                
-            except Exception as e:
-                msg = f'roboOperator: could not complete flats for {filterID} due to error with {system}: due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                #return
-        """
         # if we get here, we're done with the light exposure, so turn off dome and mount tracking
                 # so that the telescope doesn't drift
         
@@ -2497,7 +2378,7 @@ class RoboOperator(QtCore.QObject):
                         try:
                             print(f'Focus Loop Running in Thread: {threading.get_ident()}')
                             #raise TargetError('what happens if i explicitly raise an error???')
-                            self.do(f'robo_observe {focus_target_type} {focus_target} -foc --comment "{qcomment}"')
+                            self.do(f'robo_observe {focus_target_type} {focus_target} -foc --comment "{qcomment}" --calibration')
                             
                             # check if the observation was completed successfully
                             if self.observation_completed:
@@ -2879,14 +2760,17 @@ class RoboOperator(QtCore.QObject):
         self.validStop = -1
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
         self.maxAirmass = 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)
-        self.num_dithers = -1
+        self.num_dithers = 1
         self.ditherStepSize = 0
         self.fieldID = -1
         self.targetName = ''
+        self.scheduleName = ''
+        self.scheduleType = ''
         self.qcomment = ''
         self.obstype = ''
-        self.num_dithers = -1
-        self.dithnum = -1
+        self.obsmode = ''
+        self.num_dithers = 1
+        self.dithnum = 1
         
     def do_currentObs(self, currentObs = 'default'):
         """
@@ -2936,6 +2820,9 @@ class RoboOperator(QtCore.QObject):
             self.checkWhatToDo()
             return
         
+        # reset all the header stuff
+        self.resetObsValues()
+        
         #print(f'currentObs = {currentObs}')
         # first grab some fields from the currentObs
         # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which 
@@ -2958,7 +2845,9 @@ class RoboOperator(QtCore.QObject):
         self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.camname]['ditherStepSize']))
         self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
         self.targetName = str(currentObs.get('targName', ''))
-        self.qcomment = str(currentObs.get('origin_filename', ''))
+        self.scheduleName = str(currentObs.get('origin_filename', ''))
+        self.scheduleType = str(currentObs.get('scheduleType', ''))
+        self.qcomment = ''
         self.obstype = 'SCIENCE'
         # if num_dithers = 0, you'll get no images... so change it to 1
         if self.num_dithers == 0:
@@ -3051,20 +2940,6 @@ class RoboOperator(QtCore.QObject):
                     
                     # changing the filter can take a little time so only do it if the filter is DIFFERENT than the current
                     system = 'filter wheel'
-                    """
-                    if self.camname == 'summer':
-                        # get filter number
-                        for position in self.config['filter_wheels'][self.camname]['positions']:
-                            if self.config['filter_wheels'][self.camname]['positions'][position] == self.filter_scheduled:
-                                filter_num = position
-                            else:
-                                pass
-                        if filter_num == self.state['Viscam_Filter_Wheel_Position']:
-                            self.log('requested filter matches current, no further action taken')
-                        else:
-                            self.log(f'current filter = {self.state["Viscam_Filter_Wheel_Position"]}, changing to {filter_num}')
-                            self.do(f'command_filter_wheel {filter_num}')
-                    """
                     
                     # get filter number
                     for position in self.config['filter_wheels'][self.camname]['positions']:
@@ -3082,11 +2957,11 @@ class RoboOperator(QtCore.QObject):
                     if dithnum == 0:
                         if self.test_mode:
                             self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
-                            self.do(f'robo_observe altaz {self.target_alt} {self.target_az} --test')
+                            self.do(f'robo_observe altaz {self.target_alt} {self.target_az} --test --schedule')
                         else:
                             
                             # now do the observation
-                            self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science')
+                            self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science --schedule')
                         
                         
                         
@@ -3323,7 +3198,9 @@ class RoboOperator(QtCore.QObject):
     
     
     
-    def do_observation(self, targtype, target = None, tracking = 'auto', field_angle = 'auto', obstype = 'TEST', comment = ''):
+    def do_observation(self, targtype, target = None, tracking = 'auto', 
+                       field_angle = 'auto', obstype = 'TEST', comment = '',
+                       obsmode = 'SCHEDULE'):
         """
         A GENERIC OBSERVATION FUNCTION
         
@@ -3366,6 +3243,13 @@ class RoboOperator(QtCore.QObject):
         else:
             
             return
+        
+        # set the obsmode
+        self.obsmode = obsmode.upper()
+        
+        # if observation mode is manual, reset all the header values
+        if self.obsmode == 'MANUAL':
+            self.resetObsValues()
         
         ### Validate the observation ###
         # just make it lowercase to avoid any case issues
@@ -3904,7 +3788,7 @@ class RoboOperator(QtCore.QObject):
             
                 # do the observation
                 #self.do(f'robo_observe_altaz {target_alt} {target_az}')
-                self.do(f'robo_observe altaz {target_alt} {target_az} --pointing')
+                self.do(f'robo_observe altaz {target_alt} {target_az} --pointing --calibration')
                 
                 if self.target_ok:
                     

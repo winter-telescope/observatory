@@ -5027,6 +5027,12 @@ header_fields:
         var: robostate["targtype"]
     targetName:
         var: robostate["targetName"]
+    scheduleName:
+        var: robostate["scheduleName"]
+    scheduleType:
+        var: robostate["scheduleType"]
+    obsmode:
+        var: robostate["obsmode"]
     pwi4_version:
         var: telescope.state["pwi4.version"]
     mount_model_filename:

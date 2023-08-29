@@ -61,6 +61,7 @@ def GetHeader(config, state, imageinfo):
     
     ###### BASIC PARAMETERS ######
     header.append(('OBSTYPE',  imageinfo.get('imtype', ''),            'Observation Type'))
+    header.append(('OBSMODE',  state.get('obsmode', ''),                'Observation mode (eg manual/calibration/schedule'))
     #add the filename to the header
     header.append(('FILENAME', imageinfo.get('imname', ''), 'File name'))
     header.append(('ORIGNAME', imageinfo.get('imname', ''), 'Original filename'))
@@ -144,9 +145,12 @@ def GetHeader(config, state, imageinfo):
     header.append(('FIELDID',      state.get('robo_fieldID',''),                       'Field ID number'))
     ### targName
     header.append(('TARGNAME',     state.get('targetName',''),                      'target name'))
-
-    
-    #header.append(('QCOMMENT',     state.get('qcomment',''),                       'Queue comment'))
+    ### scheduleName
+    header.append(('SCHDNAME',     state.get('scheduleName',''),                    'schedule file name'))
+    ### scheduleType
+    header.append(('SCHDTYPE',     state.get('scheduleType', ''),                   'schedule type (eg nightly or target)'))
+    ### qcomment
+    header.append(('QCOMMENT',     state.get('qcomment',''),                       'Queue comment (general comment)'))
     try:
         objra = astropy.coordinates.Angle(state.get('robo_target_ra_j2000', 0)*u.hour)
         objdec = astropy.coordinates.Angle(state.get('robo_target_dec_j2000', 0)*u.deg)
