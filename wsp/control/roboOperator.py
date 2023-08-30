@@ -1894,8 +1894,25 @@ class RoboOperator(QtCore.QObject):
         self.log(f"sun alt < max alt: {(self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])}")
         
         # start a loop to take flats as long as we're within the allowed limits
-        while ((self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt']) & 
-        (self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])): 
+        #while ((self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt']) & 
+        #(self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])): 
+        while True:    
+            
+            self.log(f'taking {nflats} flats in each filter:')
+            self.log(f"sun alt: {self.state['sun_alt']}")
+            self.log(f"min sun alt: {self.config['cal_params'][camname]['flats']['min_sunalt']}")
+            self.log(f"max sun alt: {self.config['cal_params'][camname]['flats']['max_sunalt']}")
+            below_max = (self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])
+            above_min = (self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt'])
+            sun_in_range = (below_max & above_min)
+            self.log(f"sun alt > min alt: {above_min}")
+            self.log(f"sun alt < max alt: {below_max}")
+            self.log(f"sun in range: {sun_in_range}")
+            
+            if sun_in_range:
+                pass
+            else:
+                self.log(f'sun not in range! exiting autocal routine')
             
             # step through each filter
             for filterID in filterIDs:
@@ -1929,6 +1946,9 @@ class RoboOperator(QtCore.QObject):
                     # check if we're still running
                     if self.running:
                         
+                        # check for events. do we need this? unclear
+                        QtCore.QCoreApplication.processEvents()
+                        
                         # check if it is ok to observe
                         self.check_ok_to_observe()
                         if self.ok_to_observe:
@@ -1937,50 +1957,100 @@ class RoboOperator(QtCore.QObject):
                             self.log('in do_flats but self.ok_to_observe is False. Returning.')
                             return
                         
+                        # check if the sun is in range
+                        below_max = (self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])
+                        above_min = (self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt'])
+                        sun_in_range = (below_max & above_min)
+                        self.log(f'taking {nflats} flats in each filter:')
+                        self.log(f"sun alt: {self.state['sun_alt']}")
+                        self.log(f"min sun alt: {self.config['cal_params'][camname]['flats']['min_sunalt']}")
+                        self.log(f"max sun alt: {self.config['cal_params'][camname]['flats']['max_sunalt']}")
+                        self.log(f"sun alt > min alt: {above_min}")
+                        self.log(f"sun alt < max alt: {below_max}")
+                        self.log(f"sun in range: {sun_in_range}")
+                        
+                        if sun_in_range:
+                            pass
+                        else:
+                            self.log(f'sun not in range! exiting autocal routine')
+                        
                         # get the exposure time
-                        if self.config['cal_params'][camname]['flats']['exptime'] == 'model':
+                        if self.config['cal_params'][camname]['flats']['exptime'][filterID] == 'model':
                             
                             try:
                                 a = self.config['cal_params'][camname]['flats']['model'][filterID]['a']
                                 n = self.config['cal_params'][camname]['flats']['model'][filterID]['n']
                                 scale = self.config['cal_params'][camname]['flats']['model'][filterID]['scale']
                                 goal_counts = self.config['cal_params'][camname]['flats']['model']['goal_counts']
-                                flat_exptime = scale*(goal_counts/(np.exp(a*(-1*self.state["sun_alt"])**n)))
+                                sky_rate = np.exp(a*(-1*self.state["sun_alt"])**n)
+                                dark_rate = self.config['cal_params'][camname]['flats']['model']['dark_rate'] 
+                                flat_exptime_requested = scale*(goal_counts/(sky_rate + dark_rate))
+                                #flat_exptime = scale*(goal_counts/(np.exp(a*(-1*self.state["sun_alt"])**n)))
+                                
                             except Exception as e:
-                                flat_exptime = 10.0
-                                self.log(f'could not set up model flat exposure time for filter {camname}: {filterID} due to: {e}, setting to default {flat_exptime} s')
+                                flat_exptime_requested = 10.0
+                                self.log(f'could not set up model flat exposure time for filter {camname}: {filterID} due to: {e}, setting to default {flat_exptime_requested} s')
                                 
                         else:
                             try:
-                                flat_exptime = self.config['cal_params'][camname]['flats']['exptime'][filterID]
+                                flat_exptime_requested = self.config['cal_params'][camname]['flats']['exptime'][filterID]
                             except Exception as e:
-                                flat_exptime = 10.0
-                                self.log(f'could get exposure time for filter {camname}: {filterID} due to: {e}, setting to default {flat_exptime} s')
+                                flat_exptime_requested = 10.0
+                                self.log(f'could get exposure time for filter {camname}: {filterID} due to: {e}, setting to default {flat_exptime_requested} s')
                         
-                        # set the exposure time
-                        minexptime = self.config['cal_params'][camname]['flats']['exptime']['min']
-                        maxexptime = self.config['cal_params'][camname]['flats']['exptime']['max']
-                        if type(flat_exptime) is complex:
-                            self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')
-                            flat_exptime = minexptime
+                        try:
                             
-                        elif (flat_exptime < minexptime):
-                            self.log(f'calculated exptime too short ({flat_exptime} < {minexptime}), setting to {minexptime} s')
-                            flat_exptime = minexptime
-                        elif (flat_exptime > maxexptime):
-                            self.log(f'calculated exptime too long ({flat_exptime} > {maxexptime}), setting to {maxexptime} s')
-                            flat_exptime = maxexptime
-                        else:
-                            self.log(f'setting exptime to {flat_exptime} s')
+                            # set the exposure time
+                            self.log(f'requested flat exposure time: {flat_exptime_requested}')
+                            allowed_exptimes = np.array(self.config['cal_params'][camname]['dark']['exptimes'])
+                            self.log(f'allowed exposure times: {allowed_exptimes}')
+                            if type(flat_exptime_requested) is complex:
+                                self.log(f'calculation gave complex value of exptime ({flat_exptime_requested}), setting to {min(allowed_exptimes)}s')
+                                flat_exptime = min(allowed_exptimes)
+                            
+                            else:
+                                # get the index of the closest allowed exposure time
+                                index_of_nearest = np.abs(allowed_exptimes - flat_exptime_requested).argmin()
+                                flat_exptime = allowed_exptimes[index_of_nearest]
+                                self.log(f'setting exptime to {flat_exptime} s')
+                            """
+                            # set the exposure time
+                            minexptime = self.config['cal_params'][camname]['flats']['exptime']['min']
+                            maxexptime = self.config['cal_params'][camname]['flats']['exptime']['max']
+                            
+                            self.log(f'exptime = {flat_exptime} ({type(flat_exptime)})')
+                            self.log(f'min exptime = {minexptime} ({type(minexptime)})')
+                            self.log(f'max exptime = {maxexptime} ({type(maxexptime)})')
+                            
+                            if type(flat_exptime) is complex:
+                                self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')
+                                flat_exptime = minexptime
+                                
+                            elif (flat_exptime < minexptime):
+                                self.log(f'calculated exptime too short ({flat_exptime} < {minexptime}), setting to {minexptime} s')
+                                flat_exptime = minexptime
+                            elif (flat_exptime > maxexptime):
+                                self.log(f'calculated exptime too long ({flat_exptime} > {maxexptime}), setting to {maxexptime} s')
+                                flat_exptime = maxexptime
+                            else:
+                                self.log(f'setting exptime to {flat_exptime} s')
+                            """
+                            system = 'camera'
+                            self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
+                        except Exception as e:
+                            msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                            self.log(msg)
+                            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                            err = roboError(context, self.lastcmd, system, msg)
+                            self.hardware_error.emit(err) 
+                            return
                         
-                        system = 'camera'
-                        self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
                         
                         # do the exposure!
                         try:
                             comment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
                             # now trigger the actual observation. this also starts the mount tracking
-                            self.announce(f'Executing {comment}')
+                            self.announce(f'Executing {filterID}: {comment}, sun alt = {self.state["sun_alt"]:.1f} deg, exptime = {flat_exptime:.1f} s')
                             if i==0:
                                 self.log('handling the i=0 case')
                                 system = 'robo routine'

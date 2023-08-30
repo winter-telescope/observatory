@@ -3424,7 +3424,7 @@ class Wintercmd(QtCore.QObject):
             obsmode = 'MANUAL'
         elif self.args.schedule:
             obsmode = 'SCHEDULE'
-        elif self.args.cal:
+        elif self.args.calibration:
             obsmode = 'CALIBRATION'
         else:
             # SET THE DEFAULT

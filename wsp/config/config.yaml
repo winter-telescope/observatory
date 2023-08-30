@@ -578,10 +578,14 @@ cal_params:
         dark:
             n_imgs: 5
             exptimes:
+                - 2.5
                 - 10
+                - 15
                 - 30
                 - 60
                 - 120
+                - 150
+                - 180
             filterID: 'dark'
         bias:
             n_imgs: 0
@@ -596,10 +600,26 @@ cal_params:
                 - 'Hs'
             exptime:
                 min: 2.5
-                max: 60.0
-                J: 30.0
-                Y: 30.0
-                Hs: 30.0
+                max: 120.0
+                J: 'model'
+                Y: 'model'
+                Hs: 'model'
+            model:
+                goal_counts: 30000
+                dark_rate: 100
+                Hs:
+                    a: 24.80760462
+                    n: -0.91458396
+                    scale: 1.0
+                J:
+                    a: 343.62927408
+                    n: -2.19398583
+                    scale: 1.0
+                Y:
+                    a: 383.23066531
+                    n: -2.16061927
+                    scale: 1.0
+                
     summer:
         dark:
             n_imgs: 5
@@ -627,6 +647,7 @@ cal_params:
                 i: model
             model:
                 goal_counts: 40000
+                model: 0
                 u:
                     a: 73.40
                     n: -1.23
