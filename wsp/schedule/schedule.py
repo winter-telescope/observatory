@@ -325,6 +325,9 @@ class Schedule(object):
             self.currentObs = currentObs
             self.currentObsHistID = self.currentObs['obsHistID']
             self.last_obsHistID = self.currentObs['obsHistID']
+            
+            # make a not of what kind of schedule this is
+            self.currentObs.update({'scheduleType' : self.scheduleType})
         
         
     def getRemainingValidObs(self, obstime_mjd):

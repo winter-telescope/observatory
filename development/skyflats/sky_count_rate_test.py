@@ -186,14 +186,14 @@ def powerLaw(x, a, n):
 #image_path = '/home/winter/data/images/20210817/SUMMER_20210816_235912_Camera0.fits'
 imlist = []
 # g-band images
-gband_flats_data_directory = os.path.join(os.getenv("HOME"), 'data', 'images','20220810')
+gband_flats_data_directory = os.path.join('/data', 'images','20220810')
 gband_images = glob.glob(os.path.join(gband_flats_data_directory, '*.fits'))
 
 
-gband_extra_images = ['/home/winter/data/images/20220810/SUMMER_20220810_201621_Camera0.fits',
-                '/home/winter/data/images/20220811/SUMMER_20220811_200113_Camera0.fits',
-                '/home/winter/data/images/20220811/SUMMER_20220811_200037_Camera0.fits',
-                '/home/winter/data/images/20220811/SUMMER_20220812_053812_Camera0.fits']
+gband_extra_images = ['/data/images/20220810/SUMMER_20220810_201621_Camera0.fits',
+                '/data/images/20220811/SUMMER_20220811_200113_Camera0.fits',
+                '/data/images/20220811/SUMMER_20220811_200037_Camera0.fits',
+                '/data/images/20220811/SUMMER_20220812_053812_Camera0.fits']
 imlist = imlist + gband_images
 imlist = imlist + gband_extra_images
 
@@ -201,9 +201,9 @@ imlist = imlist + gband_extra_images
 # r-band images
 rband_flats_data_directory = os.path.join('/data', 'images','20210817')
 rband_images = glob.glob(os.path.join(rband_flats_data_directory, '*.fits'))
-rband_extra_images = ['/home/winter/data/images/20220726/SUMMER_20220726_201910_Camera0.fits',
-                      '/home/winter/data/images/20220728/SUMMER_20220729_053343_Camera0.fits',
-                      '/home/winter/data/images/20220728/SUMMER_20220729_053429_Camera0.fits',
+rband_extra_images = ['/data/images/20220726/SUMMER_20220726_201910_Camera0.fits',
+                      '/data/images/20220728/SUMMER_20220729_053343_Camera0.fits',
+                      '/data/images/20220728/SUMMER_20220729_053429_Camera0.fits',
                       ]
 imlist = imlist + rband_images
 #imlist = imlist + rband_extra_images

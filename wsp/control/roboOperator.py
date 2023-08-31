@@ -497,6 +497,9 @@ class RoboOperator(QtCore.QObject):
                   'qcomment',
                   'targtype',
                   'targetName',
+                  'obsmode',
+                  'scheduleName',
+                  'scheduleType',
                   'maxAirmass',
                   #'ditherNumber',
                   'num_dithers',
@@ -1742,267 +1745,9 @@ class RoboOperator(QtCore.QObject):
         # if we're in here set running to True
         self.running = True
         
-        context = 'do_calibration'
+        
         if do_flats:
-            # check to make sure conditions are okay before attempting cal routine. prevents weird hangups
-            # copied logic from checkWhatToDo(), but don't actually command any systems if there's an issue.
-            # instead just exit out of this routine. hopefully this avoids conflicting sets of instructions.
-            # 
-            self.announce('checking conditions before running auto calibration routine')
-    
-            #---------------------------------------------------------------------
-            ### check the dome
-            #---------------------------------------------------------------------
-            if self.get_dome_status():
-                # if True, then the dome is fine
-                self.log('the dome status is good!')
-                pass
-            else:
-                self.announce(f'there is a problem with the dome (eg weather, etc) preventing operation. exiting calibration routine...')
-                """
-                self.log('there is a problem with the dome (eg weather, etc). STOWING OBSERVATORY')
-                # there is a problem with the dome.
-                self.stow_observatory(force = False)
-                # skip the rest of the checks, just start the timer for the next check
-                self.checktimer.start()
-                """
-                return
-            #---------------------------------------------------------------------
-            # check the sun
-            #---------------------------------------------------------------------
-            if self.get_sun_status():
-                self.log(f'the sun is low are we are ready to go!')
-                # if True, then the sun is fine. just keep going
-                pass
-            else:
-                self.announce(f'the sun is not ready for operation. exiting calibration routine...')
-                """
-                self.log(f'waiting for the sun to set')
-                # the sun is up, can't proceed. just hang out.
-                self.checktimer.start()
-                """
-                return
-            #---------------------------------------------------------------------
-            # check if the observatory is ready
-            #---------------------------------------------------------------------
-            if self.get_observatory_ready_status():
-                self.log(f'the observatory is ready to observe!')
-                # if True, then the observatory is ready (eg successful startup and focus sequence)
-                pass
-            else:
-                self.announce(f'the observatory is not ready to observe! exiting calibration routine...')
-                """
-                self.log(f'need to start up observatory')
-                # we need to (re)run do_startup
-                self.do_startup()
-                # after running do_startup, kick back to the top of the loop
-                self.checktimer.start()
-                """
-                return
-            #---------------------------------------------------------------------        
-            # check the dome
-            #---------------------------------------------------------------------
-            if self.dome.Shutter_Status == 'OPEN':
-                self.log(f'the dome is open and we are ready to start taking data')
-                # the dome is open and we're ready for observations. just pass
-                pass
-            else:
-                if self.dometest:
-                    self.log('observatory and sun are ready for observing, ignoring the dome shutter in dometest mode')
-                else:
-                    # the dome and sun are okay, but the dome is closed. we should open the dome
-                    self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
-                    self.doTry('dome_open')
-                    """
-                    self.checktimer.start()
-                    return
-                    """
-                
-            # if we made it to here, we're good to do the auto calibration
-            
-            self.announce('starting auto calibration sequence.')
-            #self.logger.info('robo: doing calibration routine. for now this does nothing.')
-            
-            ### TAKE SKY FLATS ###
-            # for now some numbers are hard coded which should be in the config file
-            # pick which direction to look: look away from the sun
-            if self.state['sun_rising']:
-                flat_az = 270.0
-                
-            else:
-                flat_az = 0.0
-                
-            
-                
-            # get the altitude
-            flat_alt = 75.0
-            
-            
-            system = 'dome'
-            try:
-                # slew the dome
-                self.do(f'dome_tracking_off')
-                self.do(f'dome_goto {flat_az}')
-                self.do(f'dome_tracking_on')
-                
-                system = 'telescope'
-                # slew the telescope
-                self.do(f'mount_goto_alt_az {flat_alt} {flat_az}')
-               
-               
-                self.log(f'starting the flat observations')
-            
-            except Exception as e:
-                msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                return
-            # if we got here we're good to start
-            # take  flats!
-            nflats = 2
-            
-            ra_total_offset_arcmin = 0
-            dec_total_offset_arcmin = 0
-            
-            #cycle through all the active filters:for filterID in 
-            filterIDs = self.focusTracker.getActiveFilters()
-                    
-            for filterID in filterIDs:
-                self.announce(f'executing focus loop for filter: {filterID}')
-                try:
-                    self.announce(f'doing flats for filter: {filterID}')
-    
-                    # step through each filter to focus, and run a focus loop
-                    # 1. change filter to filterID
-                    system = 'filter wheel'
-                    """
-                    if self.camname == 'summer':
-                        # get filter number
-                        for position in self.config['filter_wheels'][self.camname]['positions']:
-                            if self.config['filter_wheels'][self.camname]['positions'][position] == filterID:
-                                filter_num = position
-                            else:
-                                pass
-                            
-                        #self.do(f'command_filter_wheel {filter_num}')
-                        if filter_num == self.state['Viscam_Filter_Wheel_Position']:
-                            self.log('requested filter matches current, no further action taken')
-                        else:
-                            self.log(f'current filter = {self.state["Viscam_Filter_Wheel_Position"]}, changing to {filter_num}')
-                            self.do(f'command_filter_wheel {filter_num}')
-                    """
-                    # get filter number
-                    for position in self.config['filter_wheels'][self.camname]['positions']:
-                        if self.config['filter_wheels'][self.camname]['positions'][position].lower() == self.filter_scheduled:
-                            filter_num = position
-                        else:
-                            pass
-                    if filter_num == self.fw.state['filter_pos']:
-                        self.log('requested filter matches current, no further action taken')
-                    else:
-                        self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
-                        #self.do(f'command_filter_wheel {filter_num}')
-                        self.do(f'fw_goto {filter_num} --{self.camname}')
-                        
-                    for i in range(nflats):
-                        try:
-                            self.log(f'setting up flat #{i + 1}')
-                    
-                            # estimate required exposure time
-                            if filterID == 'g':
-                                #flat_exptime = 30000.0/(1.14e8 * (-1*self.state["sun_alt"])**-6.2)
-                                a = 75.08
-                                n = -1.31
-                            else:
-                                #flat_exptime = 30000.0/(2.319937e9 * ((-1*self.state["sun_alt"])**-8.004657))
-                                
-                                a = 73.40
-                                n = -1.23
-                            
-                            flat_exptime = 30000.0/(np.exp(a*(-1*self.state["sun_alt"])**n))
-                            if filterID in ['u', 'i']:
-                                flat_exptime = flat_exptime*1.6
-                            if filterID == 'g':
-                                flat_exptime = flat_exptime*0.5
-                            
-                            minexptime = 2.5 + i
-                            maxexptime = 60
-                            if type(flat_exptime) is complex:
-                                self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')
-                                flat_exptime = minexptime
-                                
-                            elif (flat_exptime < minexptime):
-                                self.log(f'calculated exptime too short ({flat_exptime} < {minexptime}), setting to {minexptime} s')
-                                flat_exptime = minexptime
-                            elif (flat_exptime > maxexptime):
-                                self.log(f'calculated exptime too long ({flat_exptime} > {maxexptime}), setting to {maxexptime} s')
-                                flat_exptime = maxexptime
-                            else:
-                                self.log(f'setting exptime to estimated {flat_exptime} s')
-                            
-                            system = 'camera'
-                            self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
-                            time.sleep(2)
-                            
-                            qcomment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
-                            #qcomment = f"(Alt, Az) = ({self.state['mount_alt_deg']:0.1f}, {self.state['mount_az_deg']:0.1f})"
-                            # now trigger the actual observation. this also starts the mount tracking
-                            self.announce(f'Executing {qcomment}')
-                            if i==0:
-                                self.log(f'handling the i=0 case')
-                                #self.do(f'robo_set_qcomment "{qcomment}"')
-                                system = 'robo routine'
-                                self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --comment "{qcomment}"')
-                            else:
-                                system = 'camera'
-                                self.do(f'robo_do_exposure --comment "{qcomment}" -f ')
-                            
-                            # now dither. if i is odd do ra, otherwise dec
-                            dither_arcmin = 5
-                            if i%2:
-                                axis = 'ra'
-                                ra_total_offset_arcmin += dither_arcmin
-                            else:
-                                axis = 'dec'
-                                dec_total_offset_arcmin += dither_arcmin
-                                
-                            #self.do(f'mount_offset {axis} add_arcsec {dither_arcsec}')
-                            self.do(f'mount_dither {axis} {dither_arcmin}')
-                        
-                        except Exception as e:
-                            msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
-                            self.log(msg)
-                            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                            err = roboError(context, self.lastcmd, system, msg)
-                            self.hardware_error.emit(err)
-                            #return
-                    
-                except Exception as e:
-                    msg = f'roboOperator: could not complete flats for {filterID} due to error with {system}: due to {e.__class__.__name__}, {e}'
-                    self.log(msg)
-                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                    err = roboError(context, self.lastcmd, system, msg)
-                    self.hardware_error.emit(err)
-                    #return
-            
-            # if we get here, we're done with the light exposure, so turn off dome and mount tracking
-                    # so that the telescope doesn't drift
-            
-            system = 'dome'
-            try:
-                self.do('dome_tracking_off')
-                
-                system = 'telescope'
-                self.do('mount_tracking_off')
-            except Exception as e:
-                msg = f'roboOperator: could not stop tracking after flat fields due to error with {system}: due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err)
-                #return
+            self.do_flats()
         
         ### Take Darks ###
         if do_darks:
@@ -2014,7 +1759,353 @@ class RoboOperator(QtCore.QObject):
         
         self.log(f'finished with calibration. no more to do.')    
         self.announce('auto calibration sequence completed successfully!')
+    
+    def do_flats(self):
+        # check to make sure conditions are okay before attempting cal routine. prevents weird hangups
+        # copied logic from checkWhatToDo(), but don't actually command any systems if there's an issue.
+        # instead just exit out of this routine. hopefully this avoids conflicting sets of instructions.
+        # 
+        self.announce('checking conditions before running auto calibration routine')
+        context = 'do_calibration'
         
+        #---------------------------------------------------------------------
+        ### check the dome
+        #---------------------------------------------------------------------
+        if self.get_dome_status():
+            # if True, then the dome is fine
+            self.log('the dome status is good!')
+            pass
+        else:
+            self.announce(f'there is a problem with the dome (eg weather, etc) preventing operation. exiting calibration routine...')
+            """
+            self.log('there is a problem with the dome (eg weather, etc). STOWING OBSERVATORY')
+            # there is a problem with the dome.
+            self.stow_observatory(force = False)
+            # skip the rest of the checks, just start the timer for the next check
+            self.checktimer.start()
+            """
+            return
+        #---------------------------------------------------------------------
+        # check the sun
+        #---------------------------------------------------------------------
+        if self.get_sun_status():
+            self.log(f'the sun is low are we are ready to go!')
+            # if True, then the sun is fine. just keep going
+            pass
+        else:
+            self.announce(f'the sun is not ready for operation. exiting calibration routine...')
+            """
+            self.log(f'waiting for the sun to set')
+            # the sun is up, can't proceed. just hang out.
+            self.checktimer.start()
+            """
+            return
+        #---------------------------------------------------------------------
+        # check if the observatory is ready
+        #---------------------------------------------------------------------
+        if self.get_observatory_ready_status():
+            self.log(f'the observatory is ready to observe!')
+            # if True, then the observatory is ready (eg successful startup and focus sequence)
+            pass
+        else:
+            self.announce(f'the observatory is not ready to observe! exiting calibration routine...')
+            """
+            self.log(f'need to start up observatory')
+            # we need to (re)run do_startup
+            self.do_startup()
+            # after running do_startup, kick back to the top of the loop
+            self.checktimer.start()
+            """
+            return
+        #---------------------------------------------------------------------        
+        # check the dome
+        #---------------------------------------------------------------------
+        if self.dome.Shutter_Status == 'OPEN':
+            self.log(f'the dome is open and we are ready to start taking data')
+            # the dome is open and we're ready for observations. just pass
+            pass
+        else:
+            if self.dometest:
+                self.log('observatory and sun are ready for observing, ignoring the dome shutter in dometest mode')
+            else:
+                # the dome and sun are okay, but the dome is closed. we should open the dome
+                self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
+                self.doTry('dome_open')
+                """
+                self.checktimer.start()
+                return
+                """
+            
+        # if we made it to here, we're good to do the auto calibration
+        
+        self.announce('starting auto calibration sequence.')
+        #self.logger.info('robo: doing calibration routine. for now this does nothing.')
+        
+        ### TAKE SKY FLATS ###
+        # for now some numbers are hard coded which should be in the config file
+        # pick which direction to look: look away from the sun
+        if self.state['sun_rising']:
+            flat_az = 270.0
+            
+        else:
+            flat_az = 0.0
+            
+        
+            
+        # get the altitude
+        flat_alt = 75.0
+        
+        
+        system = 'dome'
+        try:
+            # slew the dome
+            self.do(f'dome_tracking_off')
+            self.do(f'dome_goto {flat_az}')
+            self.do(f'dome_tracking_on')
+            
+            system = 'telescope'
+            # slew the telescope
+            self.do(f'mount_goto_alt_az {flat_alt} {flat_az}')
+           
+           
+            self.log(f'starting the flat observations')
+        
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+        
+        # get the filters to cycle through
+        # for now just do WINTER
+        camname = 'winter'
+        filterIDs = self.config['cal_params'][camname]['flats']['filterIDs']
+        
+        nflats = self.config['cal_params'][camname]['flats']['n_imgs']
+        ra_total_offset_arcmin = 0
+        dec_total_offset_arcmin = 0
+        
+        self.log(f"sun alt: {self.state['sun_alt']}")
+        self.log(f"min sun alt: {self.config['cal_params'][camname]['flats']['min_sunalt']}")
+        self.log(f"max sun alt: {self.config['cal_params'][camname]['flats']['max_sunalt']}")
+        self.log(f"sun alt > min alt: {(self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt'])}")
+        self.log(f"sun alt < max alt: {(self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])}")
+        
+        # start a loop to take flats as long as we're within the allowed limits
+        #while ((self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt']) & 
+        #(self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])): 
+        while True:    
+            
+            self.log(f'taking {nflats} flats in each filter:')
+            self.log(f"sun alt: {self.state['sun_alt']}")
+            self.log(f"min sun alt: {self.config['cal_params'][camname]['flats']['min_sunalt']}")
+            self.log(f"max sun alt: {self.config['cal_params'][camname]['flats']['max_sunalt']}")
+            below_max = (self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])
+            above_min = (self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt'])
+            sun_in_range = (below_max & above_min)
+            self.log(f"sun alt > min alt: {above_min}")
+            self.log(f"sun alt < max alt: {below_max}")
+            self.log(f"sun in range: {sun_in_range}")
+            
+            if sun_in_range:
+                pass
+            else:
+                self.log(f'sun not in range! exiting autocal routine')
+            
+            # step through each filter
+            for filterID in filterIDs:
+                
+                self.log(f'setting up flat for filterID: {filterID}')
+                # go to the specified filter
+                system = 'filter wheel'
+                try:
+                    # get filter number
+                    for position in self.config['filter_wheels'][camname]['positions']:
+                        if self.config['filter_wheels'][camname]['positions'][position].lower() == filterID.lower():
+                            filter_num = position
+                        else:
+                            pass
+                    if filter_num == self.fw.state['filter_pos']:
+                        self.log('requested filter matches current, no further action taken')
+                    else:
+                        self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
+                        #self.do(f'fw_goto {filter_num} --{self.camname}')
+                        self.do(f'fw_goto {filter_num} --{camname}')
+                except Exception as e:
+                    msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                    self.log(msg)
+                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                    err = roboError(context, self.lastcmd, system, msg)
+                    self.hardware_error.emit(err) 
+                    return
+                # take the specified number of images
+                for i in range(nflats):
+                    
+                    # check if we're still running
+                    if self.running:
+                        
+                        # check for events. do we need this? unclear
+                        QtCore.QCoreApplication.processEvents()
+                        
+                        # check if it is ok to observe
+                        self.check_ok_to_observe()
+                        if self.ok_to_observe:
+                            pass
+                        else:
+                            self.log('in do_flats but self.ok_to_observe is False. Returning.')
+                            return
+                        
+                        # check if the sun is in range
+                        below_max = (self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])
+                        above_min = (self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt'])
+                        sun_in_range = (below_max & above_min)
+                        self.log(f'taking {nflats} flats in each filter:')
+                        self.log(f"sun alt: {self.state['sun_alt']}")
+                        self.log(f"min sun alt: {self.config['cal_params'][camname]['flats']['min_sunalt']}")
+                        self.log(f"max sun alt: {self.config['cal_params'][camname]['flats']['max_sunalt']}")
+                        self.log(f"sun alt > min alt: {above_min}")
+                        self.log(f"sun alt < max alt: {below_max}")
+                        self.log(f"sun in range: {sun_in_range}")
+                        
+                        if sun_in_range:
+                            pass
+                        else:
+                            self.log(f'sun not in range! exiting autocal routine')
+                        
+                        # get the exposure time
+                        if self.config['cal_params'][camname]['flats']['exptime'][filterID] == 'model':
+                            
+                            try:
+                                a = self.config['cal_params'][camname]['flats']['model'][filterID]['a']
+                                n = self.config['cal_params'][camname]['flats']['model'][filterID]['n']
+                                scale = self.config['cal_params'][camname]['flats']['model'][filterID]['scale']
+                                goal_counts = self.config['cal_params'][camname]['flats']['model']['goal_counts']
+                                sky_rate = np.exp(a*(-1*self.state["sun_alt"])**n)
+                                dark_rate = self.config['cal_params'][camname]['flats']['model']['dark_rate'] 
+                                flat_exptime_requested = scale*(goal_counts/(sky_rate + dark_rate))
+                                #flat_exptime = scale*(goal_counts/(np.exp(a*(-1*self.state["sun_alt"])**n)))
+                                
+                            except Exception as e:
+                                flat_exptime_requested = 10.0
+                                self.log(f'could not set up model flat exposure time for filter {camname}: {filterID} due to: {e}, setting to default {flat_exptime_requested} s')
+                                
+                        else:
+                            try:
+                                flat_exptime_requested = self.config['cal_params'][camname]['flats']['exptime'][filterID]
+                            except Exception as e:
+                                flat_exptime_requested = 10.0
+                                self.log(f'could get exposure time for filter {camname}: {filterID} due to: {e}, setting to default {flat_exptime_requested} s')
+                        
+                        try:
+                            
+                            # set the exposure time
+                            self.log(f'requested flat exposure time: {flat_exptime_requested}')
+                            allowed_exptimes = np.array(self.config['cal_params'][camname]['dark']['exptimes'])
+                            self.log(f'allowed exposure times: {allowed_exptimes}')
+                            if type(flat_exptime_requested) is complex:
+                                self.log(f'calculation gave complex value of exptime ({flat_exptime_requested}), setting to {min(allowed_exptimes)}s')
+                                flat_exptime = min(allowed_exptimes)
+                            
+                            else:
+                                # get the index of the closest allowed exposure time
+                                index_of_nearest = np.abs(allowed_exptimes - flat_exptime_requested).argmin()
+                                flat_exptime = allowed_exptimes[index_of_nearest]
+                                self.log(f'setting exptime to {flat_exptime} s')
+                            """
+                            # set the exposure time
+                            minexptime = self.config['cal_params'][camname]['flats']['exptime']['min']
+                            maxexptime = self.config['cal_params'][camname]['flats']['exptime']['max']
+                            
+                            self.log(f'exptime = {flat_exptime} ({type(flat_exptime)})')
+                            self.log(f'min exptime = {minexptime} ({type(minexptime)})')
+                            self.log(f'max exptime = {maxexptime} ({type(maxexptime)})')
+                            
+                            if type(flat_exptime) is complex:
+                                self.log(f'calculation gave complex value of exptime ({flat_exptime}), setting to {minexptime}s')
+                                flat_exptime = minexptime
+                                
+                            elif (flat_exptime < minexptime):
+                                self.log(f'calculated exptime too short ({flat_exptime} < {minexptime}), setting to {minexptime} s')
+                                flat_exptime = minexptime
+                            elif (flat_exptime > maxexptime):
+                                self.log(f'calculated exptime too long ({flat_exptime} > {maxexptime}), setting to {maxexptime} s')
+                                flat_exptime = maxexptime
+                            else:
+                                self.log(f'setting exptime to {flat_exptime} s')
+                            """
+                            system = 'camera'
+                            self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
+                        except Exception as e:
+                            msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                            self.log(msg)
+                            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                            err = roboError(context, self.lastcmd, system, msg)
+                            self.hardware_error.emit(err) 
+                            return
+                        
+                        
+                        # do the exposure!
+                        try:
+                            comment = f"Auto Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az}), RA +{ra_total_offset_arcmin} am, DEC +{dec_total_offset_arcmin} am"
+                            # now trigger the actual observation. this also starts the mount tracking
+                            self.announce(f'Executing {filterID}: {comment}, sun alt = {self.state["sun_alt"]:.1f} deg, exptime = {flat_exptime:.1f} s')
+                            if i==0:
+                                self.log('handling the i=0 case')
+                                system = 'robo routine'
+                                self.do(f'robo_observe altaz {flat_alt} {flat_az} -f --calibration')
+                            else:
+                                system = 'camera'
+                                self.do('robo_do_exposure -f')
+                            
+                            # now dither. if i is odd do ra, otherwise dec
+                            dither_arcmin = 5
+                            if i%2:
+                                axis = 'ra'
+                                ra_total_offset_arcmin += dither_arcmin
+                            else:
+                                axis = 'dec'
+                                dec_total_offset_arcmin += dither_arcmin
+                                
+                            self.do(f'mount_dither {axis} {dither_arcmin}')
+                        
+                        except Exception as e:
+                            msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                            self.log(msg)
+                            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                            err = roboError(context, self.lastcmd, system, msg)
+                            self.hardware_error.emit(err)
+                                    
+                                
+                        
+                        
+                                
+                            
+                        
+                    else:
+                        # we're not running! return now.
+                        self.log('in do_flats method and self.running is False, likely a lockout? Returning.')
+                        return
+                    
+
+        # if we get here, we're done with the light exposure, so turn off dome and mount tracking
+                # so that the telescope doesn't drift
+        
+        system = 'dome'
+        try:
+            self.do('dome_tracking_off')
+            
+            system = 'telescope'
+            self.do('mount_tracking_off')
+        except Exception as e:
+            msg = f'roboOperator: could not stop tracking after flat fields due to error with {system}: due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            #return
+    
     def do_bias(self):
         self.log(f'running bias image sequence')
         context = 'do_bias'
@@ -2357,7 +2448,7 @@ class RoboOperator(QtCore.QObject):
                         try:
                             print(f'Focus Loop Running in Thread: {threading.get_ident()}')
                             #raise TargetError('what happens if i explicitly raise an error???')
-                            self.do(f'robo_observe {focus_target_type} {focus_target} -foc --comment "{qcomment}"')
+                            self.do(f'robo_observe {focus_target_type} {focus_target} -foc --comment "{qcomment}" --calibration')
                             
                             # check if the observation was completed successfully
                             if self.observation_completed:
@@ -2739,14 +2830,17 @@ class RoboOperator(QtCore.QObject):
         self.validStop = -1
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
         self.maxAirmass = 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)
-        self.num_dithers = -1
+        self.num_dithers = 1
         self.ditherStepSize = 0
         self.fieldID = -1
         self.targetName = ''
+        self.scheduleName = ''
+        self.scheduleType = ''
         self.qcomment = ''
         self.obstype = ''
-        self.num_dithers = -1
-        self.dithnum = -1
+        self.obsmode = ''
+        self.num_dithers = 1
+        self.dithnum = 1
         
     def do_currentObs(self, currentObs = 'default'):
         """
@@ -2796,6 +2890,9 @@ class RoboOperator(QtCore.QObject):
             self.checkWhatToDo()
             return
         
+        # reset all the header stuff
+        self.resetObsValues()
+        
         #print(f'currentObs = {currentObs}')
         # first grab some fields from the currentObs
         # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which 
@@ -2818,7 +2915,9 @@ class RoboOperator(QtCore.QObject):
         self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.camname]['ditherStepSize']))
         self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
         self.targetName = str(currentObs.get('targName', ''))
-        self.qcomment = str(currentObs.get('origin_filename', ''))
+        self.scheduleName = str(currentObs.get('origin_filename', ''))
+        self.scheduleType = str(currentObs.get('scheduleType', ''))
+        self.qcomment = ''
         self.obstype = 'SCIENCE'
         # if num_dithers = 0, you'll get no images... so change it to 1
         if self.num_dithers == 0:
@@ -2911,20 +3010,6 @@ class RoboOperator(QtCore.QObject):
                     
                     # changing the filter can take a little time so only do it if the filter is DIFFERENT than the current
                     system = 'filter wheel'
-                    """
-                    if self.camname == 'summer':
-                        # get filter number
-                        for position in self.config['filter_wheels'][self.camname]['positions']:
-                            if self.config['filter_wheels'][self.camname]['positions'][position] == self.filter_scheduled:
-                                filter_num = position
-                            else:
-                                pass
-                        if filter_num == self.state['Viscam_Filter_Wheel_Position']:
-                            self.log('requested filter matches current, no further action taken')
-                        else:
-                            self.log(f'current filter = {self.state["Viscam_Filter_Wheel_Position"]}, changing to {filter_num}')
-                            self.do(f'command_filter_wheel {filter_num}')
-                    """
                     
                     # get filter number
                     for position in self.config['filter_wheels'][self.camname]['positions']:
@@ -2942,11 +3027,11 @@ class RoboOperator(QtCore.QObject):
                     if dithnum == 0:
                         if self.test_mode:
                             self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
-                            self.do(f'robo_observe altaz {self.target_alt} {self.target_az} --test')
+                            self.do(f'robo_observe altaz {self.target_alt} {self.target_az} --test --schedule')
                         else:
                             
                             # now do the observation
-                            self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science')
+                            self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science --schedule')
                         
                         
                         
@@ -3183,7 +3268,9 @@ class RoboOperator(QtCore.QObject):
     
     
     
-    def do_observation(self, targtype, target = None, tracking = 'auto', field_angle = 'auto', obstype = 'TEST', comment = ''):
+    def do_observation(self, targtype, target = None, tracking = 'auto', 
+                       field_angle = 'auto', obstype = 'TEST', comment = '',
+                       obsmode = 'SCHEDULE'):
         """
         A GENERIC OBSERVATION FUNCTION
         
@@ -3226,6 +3313,13 @@ class RoboOperator(QtCore.QObject):
         else:
             
             return
+        
+        # set the obsmode
+        self.obsmode = obsmode.upper()
+        
+        # if observation mode is manual, reset all the header values
+        if self.obsmode == 'MANUAL':
+            self.resetObsValues()
         
         ### Validate the observation ###
         # just make it lowercase to avoid any case issues
@@ -3764,7 +3858,7 @@ class RoboOperator(QtCore.QObject):
             
                 # do the observation
                 #self.do(f'robo_observe_altaz {target_alt} {target_az}')
-                self.do(f'robo_observe altaz {target_alt} {target_az} --pointing')
+                self.do(f'robo_observe altaz {target_alt} {target_az} --pointing --calibration')
                 
                 if self.target_ok:
                     

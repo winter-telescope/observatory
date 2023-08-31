@@ -138,6 +138,7 @@ class control(QtCore.QObject):
         self.dometest   = False
         self.mountsim   = False
         self.nochiller  = False
+        self.interactive_mode = False
         
         print('sysControl: Parsing opts...')
         for currentArgument, currentValue in opts:
@@ -166,6 +167,10 @@ class control(QtCore.QObject):
             # option to use the simulated telescope mount
             if currentArgument in ['--nochiller']:
                 self.nochiller = True
+            
+            # start in interactive mode with command line interface shell started
+            if currentArgument in ['-s', '--shell']:
+                self.interactive_mode = True
 
         print(f'sysControl: ns_host = {self.ns_host}')
         print(f'sysControl: verbose = {self.verbose}')
@@ -502,11 +507,13 @@ class control(QtCore.QObject):
         # init the command executor
         self.cmdexecutor = commandParser.cmd_executor(telescope = self.telescope, wintercmd = self.wintercmd, logger = self.logger)#, listener = listener)
         
-        # init the command prompt
-        self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
         
-        # connect the new command signal to the command executor
-        self.cmdprompt.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
+        if self.interactive_mode:
+            # init the command prompt
+            self.cmdprompt = commandParser.cmd_prompt(self.telescope, self.wintercmd)
+            
+            # connect the new command signal to the command executor
+            self.cmdprompt.newcmd.connect(self.cmdexecutor.add_cmd_request_to_queue)
         # signal for if main wants to execute a raw cmd (same format as terminal).
         self.newcmd.connect(self.cmdexecutor.add_cmd_to_queue)
         # signal for if main wants to execute a command request

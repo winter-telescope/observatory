@@ -3382,6 +3382,12 @@ class Wintercmd(QtCore.QObject):
                                     default = 'radec',
                                     help = '<comment> ')
         
+        # by default it assumes manual mode. 
+        obsmode_group = self.cmdparser.add_mutually_exclusive_group()
+        obsmode_group.add_argument('-man', '--manual',      action = 'store_true', default = False)
+        obsmode_group.add_argument('--schedule',    action = 'store_true', default = False)
+        obsmode_group.add_argument('-cal', '--calibration',    action = 'store_true', default = False)
+
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument('-s',    '--science',   action = 'store_true', default = False)
@@ -3394,6 +3400,7 @@ class Wintercmd(QtCore.QObject):
         
         self.getargs()
         
+        # obstype
         if self.args.science:
             obstype = 'SCIENCE'
         elif self.args.dark:
@@ -3411,6 +3418,17 @@ class Wintercmd(QtCore.QObject):
         else:
             # SET THE DEFAULT
             obstype = 'TEST'
+            
+        # obsmode
+        if self.args.manual:
+            obsmode = 'MANUAL'
+        elif self.args.schedule:
+            obsmode = 'SCHEDULE'
+        elif self.args.calibration:
+            obsmode = 'CALIBRATION'
+        else:
+            # SET THE DEFAULT
+            obsmode = 'UNKNOWN'
         
         #print(f'robo_observe: args = {self.args}')
         comment = self.args.comment
@@ -3448,7 +3466,8 @@ class Wintercmd(QtCore.QObject):
                                tracking = 'auto',
                                field_angle = 'auto',
                                obstype = obstype,
-                               comment = comment)
+                               comment = comment,
+                               obsmode = obsmode)
         
         elif targtype == 'object':
             obj = self.args.target[0]
@@ -3458,7 +3477,8 @@ class Wintercmd(QtCore.QObject):
                                tracking = 'auto',
                                field_angle = 'auto',
                                obstype = obstype,
-                               comment = comment)
+                               comment = comment,
+                               obsmode = obsmode)
         else:
             msg = f'wintercmd: target type not allowed!'
             self.logger.info(msg)
@@ -3724,9 +3744,16 @@ class Wintercmd(QtCore.QObject):
         
         
         print('Good Bye!')
-        if self.promptThread and self.execThread:
+        try:
             self.promptThread.stop()
+        except Exception as e:
+            print(f'could not stop promptThread: {e}')
+        
+        try:
             self.execThread.stop()
+        except Exception as e:
+            print(f'could not stop cmd executor thread: {e}')
+        
         
         """
         #NPL 5-19-23 commenting out
