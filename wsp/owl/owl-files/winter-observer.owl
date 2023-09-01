@@ -351,7 +351,7 @@
             "_boxTitle": "Schedule",
             "_style": "(P412507495)",
             "cellHeight": 7,
-            "cellWidth": 17,
+            "cellWidth": 8,
             "cellX": 41,
             "cellY": 22,
             "dataItems": [
@@ -416,8 +416,8 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 105,
-            "geometryWidth": 255,
+            "geometryHeight": 106,
+            "geometryWidth": 121,
             "geometryX": 615,
             "geometryY": 330
         },
@@ -2235,6 +2235,126 @@
             "geometryWidth": 120,
             "geometryX": 750,
             "geometryY": 210
+        },
+        {
+            "PObject": {
+                "_id": "1277615614"
+            },
+            "_boxTitle": "Filter Tray",
+            "_style": "(P2072147126)",
+            "cellHeight": 7,
+            "cellWidth": 8,
+            "cellX": 50,
+            "cellY": 22,
+            "dataItems": [
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "656301370"
+                        },
+                        "_map": {
+                            "-1": "?",
+                            "1": "Dark[style=No style (P389699351)]",
+                            "2": "J[style=No style (P389699351)]",
+                            "3": "][style=No style (P389699351)][style=No style (P389699351)][style=No style (P389699351)]",
+                            "4": "Hs[style=No style (P389699351)]"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "584464399"
+                    },
+                    "_caption": "Filter   ",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "winter_fw_filter_pos",
+                    "type": "PMDI"
+                },
+                {
+                    "PObject": {
+                        "_id": "1340831128"
+                    },
+                    "_caption": "Pos",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_extrema": false,
+                    "_format": "",
+                    "_source": "winter_fw_pos",
+                    "type": "PNDI"
+                },
+                {
+                    "PObject": {
+                        "_id": "2910952"
+                    },
+                    "_caption": "Pos Goal  ",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_extrema": false,
+                    "_format": "",
+                    "_source": "winter_fw_pos_goal",
+                    "type": "PNDI"
+                },
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "1148764748"
+                        },
+                        "_map": {
+                            "0": "NO",
+                            "1": "YES"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "783627052"
+                    },
+                    "_caption": "Homed  ",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "winter_fw_is_homed",
+                    "type": "PMDI"
+                },
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "982938131"
+                        },
+                        "_map": {
+                            "0": "NO[style=No style (P389699351)]",
+                            "1": "Yes[style=No style (P389699351)]"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "38801863"
+                    },
+                    "_caption": "Homing ",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "winter_fw_is_homing",
+                    "type": "PMDI"
+                },
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "509647593"
+                        },
+                        "_map": {
+                            "0": "YES",
+                            "1": "NO[style=No style (P389699351)]"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "1651857044"
+                    },
+                    "_caption": "Online",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "winter_fw_connected",
+                    "type": "PMDI"
+                }
+            ],
+            "geometryHeight": 105,
+            "geometryWidth": 120,
+            "geometryX": 750,
+            "geometryY": 330
         }
     ],
     "extremas": [
@@ -2632,12 +2752,12 @@
             },
             "cellHeight": 7,
             "cellWidth": 5,
-            "cellX": 13,
+            "cellX": 14,
             "cellY": 0,
             "geometryHeight": 105,
             "geometryWidth": 75,
-            "geometryX": 195,
-            "geometryY": 0
+            "geometryX": 210,
+            "geometryY": -15
         }
     ],
     "styles": [
@@ -2645,9 +2765,9 @@
             "PObject": {
                 "_id": "2072147126"
             },
-            "_bg": "#55ff00",
+            "_bg": "#c3beff",
             "_bold": true,
-            "_fg": "#0000ff",
+            "_fg": "#0a01ff",
             "_italic": false,
             "_linked": true,
             "_name": "defbox"
