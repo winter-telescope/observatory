@@ -1142,19 +1142,31 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'Mount Offset complete')
         
     def mount_random_dither_arcsec(self):
-        """Usage: mount_random_dither <boxwidth>"""        
-        self.defineCmdParser("execute a random dither from within a ra-dec box of full-witdh <boxwidth> arcseconds")
+        """Usage: mount_random_dither <step>"""        
+        self.defineCmdParser("execute a random dither from within a ra-dec circle of radius <step> arcseconds")
         
-        self.cmdparser.add_argument('boxwidth',
+        self.cmdparser.add_argument('step',
                                     type = float,
                                     action = None,
-                                    help = "box halfwidth in arcseconds",
+                                    help = "max dither radius in arcseconds",
+                                    )
+        self.cmdparser.add_argument('--minstep',
+                                    type = float,
+                                    nargs = 1,
+                                    action = None,
+                                    default = 0.0,
+                                    help = "min dither radius in arcseconds",
                                     )
         self.getargs()
         
-        boxwidth = self.args.boxwidth
-
-        ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-boxwidth/2.0, boxwidth/2.0, 2)
+        #boxwidth = self.args.boxwidth
+        #ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-boxwidth/2.0, boxwidth/2.0, 2)
+        radius = self.args.step
+        minradius = self.args.minstep
+        radius = np.random.uniform(minradius, radius)
+        theta = np.random.uniform(0, np.pi)
+        ra_dist_arcsec = radius * np.cos(theta)
+        dec_dist_arcsec = radius * np.sin(theta)
         
         self.parse(f'mount_dither_arcsec_radec {ra_dist_arcsec} {dec_dist_arcsec}')
         

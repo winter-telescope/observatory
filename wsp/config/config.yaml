@@ -74,20 +74,7 @@ obslog_directory: 'data'
 obslog_database_name: 'WINTER_ObsLog' #.db is implied
 
 
-# dither table
-# base directory is wsp path
-dither_file: 'config/dither_list.conf'
-dither_defaults:
-# for each camera specifiy:
-# ditherNumber (number of dithers to do)
-# ditherStepSize (box width for random dither to be selected from)
-    camera:
-        summer:
-            ditherNumber: 5
-            ditherStepSize: 15
-        winter:
-            ditherNumber: 5
-            ditherStepSize: 15
+
     
 
 
@@ -841,7 +828,51 @@ pointing_model:
     ps3cli_path: ps3cli
     catalog_path: Kepler
     
-    
+
+########### GENERAL OBSERVING STRATEGY ###########
+# x_pixel: x pixel position on requested board. This assumes the X pixel value
+#     when an individual board image is opened in DS9.
+# y_pixel: y pixel position on requested board. This assumes the Y pixel value
+#     when an individual board image is opened in DS9.
+
+# # dither table
+# # base directory is wsp path
+# dither_file: 'config/dither_list.conf'
+# dither_defaults:
+# # for each camera specifiy:
+# # ditherNumber (number of dithers to do)
+# # ditherStepSize (box width for random dither to be selected from)
+#     camera:
+#         summer:
+#             ditherNumber: 5
+#             ditherStepSize: 15
+#         winter:
+#             ditherNumber: 5
+#             ditherStepSize: 15
+
+
+observing_parameters:
+    winter:
+        offset_pointings:
+            - coords:
+                dRA: 500
+                dDec: 1000
+        dithers: 
+            ditherNumber: 5
+            ditherMinStep_as: 10
+            ditherMaxStep_as: 15
+        best_position:
+            board_id: 4
+            x_pixel: 600
+            y_pixel: 530
+            
+    summer:
+        best_position:
+            board_id: None
+            x_pixel: None
+            y_pixel: None
+        
+
 ###############################################################################    
 ##################### ONLY HOUSEKEEPING DATA BELOW THIS!! #####################     
 ###############################################################################
