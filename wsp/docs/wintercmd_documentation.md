@@ -19,8 +19,8 @@ Welcome to the Observatory Control CLI documentation. This guide provides compre
    - [tecSetCoeffs](#tecsetcoeffs)
    - [killCameraDaemon](#killcameradaemon)
 
-4. [Observation Scheduling](#observation-scheduling)
-   - [generate_supernovae_db](#generate_supernovae_db)
+4. [Observing](#observation-scheduling)
+   - [robo_observe](#robo_observe)
 
 5. [Observatory Startup and Shutdown](#observatory-startup-and-shutdown)
    - [do_startup](#do_startup)
@@ -121,12 +121,34 @@ The Camera Control section provides commands for controlling observatory cameras
 
 The Observation Scheduling section provides commands for generating observation schedules.
 
-### generate_supernovae_db
+### robo_observe
 
-- **Usage**: `generate_supernovae_db [source]`
-- **Description**: Generates a supernovae observation schedule based on the specified data source (ZTF or Rochester).
-- **Parameters**:
-  - `source` (optional): Data source for supernovae information (default: ZTF).
+**Usage:** `robo_observe <targtype> <target> {<target>}`
+
+**Description:** Tell the robotic operator to execute an observation.
+
+**Parameters:**
+- `<targtype>`: The type of target (choices: 'altaz', 'radec', 'object', 'here').
+- `<target>`: The coordinates/location of the target (multiple targets can be specified).
+- `--comment <comment>` (optional): Additional comment for the observation.
+- `-man`, `--manual` (optional): Set observation mode to manual (default: False).
+- `--schedule` (optional): Set observation mode to schedule (default: False).
+- `-cal`, `--calibration` (optional): Set observation mode to calibration (default: False).
+- `-s`, `--science` (optional): Set observation type to science (default: False).
+- `-d`, `--dark` (optional): Set observation type to dark (default: False).
+- `-f`, `--flat` (optional): Set observation type to flat (default: False).
+- `-foc`, `--focus` (optional): Set observation type to focus (default: False).
+- `-t`, `--test` (optional): Set observation type to test (default: False).
+- `-b`, `--bias` (optional): Set observation type to bias (default: False).
+- `-p`, `--pointing` (optional): Set observation type to pointing (default: False).
+
+**Example:** `robo_observe radec '05:34:30.52' '22:00:59.9' --comment 'Example comment' -s`
+
+**Note:**
+- The `<targtype>` parameter accepts values 'altaz', 'radec', 'object', or 'here'.
+- The `--comment` parameter is optional and allows you to add a comment to the observation.
+- Observation modes can be set using mutually exclusive options: `-man`, `--manual`, `--schedule`, or `-cal`.
+- Observation types can be set using mutually exclusive options: `-s`, `-d`, `-f`, `-foc`, `-t`, `-b`, `-p`.
 
 ## 5. Observatory Startup and Shutdown <a name="observatory-startup-and-shutdown"></a>
 
