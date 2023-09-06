@@ -27,6 +27,18 @@ Welcome to the Observatory Control CLI documentation. This guide provides compre
    - [total_shutdown](#total_shutdown)
    - [stow_observatory](#stow_observatory)
    - [total_restart](#total_restart)
+6. [Dome Control](#dome-control)
+   - [dome_home](#dome_home)
+   - [dome_close](#dome_close)
+   - [dome_open](#dome_open)
+   - [dome_stop](#dome_stop)
+   - [dome_takecontrol](#dome_takecontrol)
+   - [dome_givecontrol](#dome_givecontrol)
+   - [dome_goto](#dome_goto)
+   - [dome_go_home](#dome_go_home)
+   - [dome_set_home](#dome_set_home)
+   - [dome_tracking_on](#dome_tracking_on)
+   - [dome_tracking_off](#dome_tracking_off)
 
 ## 1. Introduction <a name="introduction"></a>
 
@@ -143,6 +155,69 @@ The Observatory Startup and Shutdown section provides commands for starting up, 
 - **Description**: Restarts the observatory by first shutting it down and then starting it up again.
 
 This Observatory Control CLI documentation provides a comprehensive guide to controlling your observatory's equipment and functionality through the command-line interface. For detailed information on each command and practical examples, refer to the corresponding sections above.
+
+## 6. Dome Control <a name="dome-control"></a>
+
+The Dome Control section provides commands for controlling the observatory's dome.
+
+### dome_home
+
+- **Usage**: `dome_home`
+- **Description**: Homes the observatory dome.
+
+### dome_close
+
+- **Usage**: `dome_close`
+- **Description**: Closes the observatory dome.
+
+### dome_open
+
+- **Usage**: `dome_open`
+- **Description**: Opens the observatory dome.
+
+### dome_stop
+
+- **Usage**: `dome_stop`
+- **Description**: Stops the observatory dome's movement.
+
+### dome_takecontrol
+
+- **Usage**: `dome_takecontrol`
+- **Description**: Takes remote control of the observatory dome.
+
+### dome_givecontrol
+
+- **Usage**: `dome_givecontrol`
+- **Description**: Gives up remote control of the observatory dome.
+
+### dome_goto
+
+- **Usage**: `dome_goto <azimuth> [--verbose | -v]`
+- **Description**: Sends the observatory dome to the specified azimuth position.
+  - `<azimuth>`: The azimuth angle in degrees.
+  - `--verbose` or `-v` (optional): Enable verbose mode.
+
+### dome_go_home
+
+- **Usage**: `dome_go_home`
+- **Description**: Attempts to slew the observatory dome to the home azimuth position. If the dome is not homed, it homes the dome first.
+
+### dome_set_home
+
+- **Usage**: `dome_set_home <azimuth>`
+- **Description**: Updates the dome's home azimuth position without communicating with the dome.
+  - `<azimuth>`: The new azimuth angle in degrees.
+
+### dome_tracking_on
+
+- **Usage**: `dome_tracking_on`
+- **Description**: Enables dome tracking to follow the telescope's movement.
+
+### dome_tracking_off
+
+- **Usage**: `dome_tracking_off`
+- **Description**: Disables dome tracking to stop following the telescope's movement.
+
 
 ## Conclusion
 
