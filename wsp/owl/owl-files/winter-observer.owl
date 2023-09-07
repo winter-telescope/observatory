@@ -416,8 +416,8 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 106,
-            "geometryWidth": 121,
+            "geometryHeight": 105,
+            "geometryWidth": 120,
             "geometryX": 615,
             "geometryY": 330
         },
@@ -950,6 +950,25 @@
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "dome_tracking_status",
+                    "type": "PMDI"
+                },
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "82131671"
+                        },
+                        "_map": {
+                            "0": "SUN UP[style=No style (P78090990)]",
+                            "1": "SUN DOWN[style=No style (P78090990)]"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "1066175500"
+                    },
+                    "_caption": "Sun Status",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "dome_sunlight_status",
                     "type": "PMDI"
                 }
             ],
@@ -2201,7 +2220,7 @@
             },
             "_boxTitle": "Rotator Pos",
             "_style": "(P1363916365)",
-            "cellHeight": 7,
+            "cellHeight": 4,
             "cellWidth": 8,
             "cellX": 50,
             "cellY": 14,
@@ -2231,7 +2250,7 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 105,
+            "geometryHeight": 60,
             "geometryWidth": 120,
             "geometryX": 750,
             "geometryY": 210
@@ -2254,9 +2273,9 @@
                         },
                         "_map": {
                             "-1": "?",
-                            "1": "Dark[style=No style (P389699351)]",
-                            "2": "J[style=No style (P389699351)]",
-                            "3": "][style=No style (P389699351)][style=No style (P389699351)][style=No style (P389699351)]",
+                            "1": "Dark[style=No style (P78090990)]",
+                            "2": "J[style=No style (P78090990)]",
+                            "3": "Y",
                             "4": "Hs[style=No style (P389699351)]"
                         }
                     },
@@ -2355,6 +2374,61 @@
             "geometryWidth": 120,
             "geometryX": 750,
             "geometryY": 330
+        },
+        {
+            "PObject": {
+                "_id": "1187992407"
+            },
+            "_boxTitle": "Observatory",
+            "_style": "(P2072147126)",
+            "cellHeight": 3,
+            "cellWidth": 8,
+            "cellX": 50,
+            "cellY": 18,
+            "dataItems": [
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "860881513"
+                        },
+                        "_map": {
+                            "0": "NO",
+                            "1": "YES"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "455024995"
+                    },
+                    "_caption": "Stowed   ",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "robo_observatory_stowed",
+                    "type": "PMDI"
+                },
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "1545982509"
+                        },
+                        "_map": {
+                            "0": "NO",
+                            "1": "YES"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "1886586342"
+                    },
+                    "_caption": "Ready",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "robo_observatory_ready",
+                    "type": "PMDI"
+                }
+            ],
+            "geometryHeight": 45,
+            "geometryWidth": 120,
+            "geometryX": 750,
+            "geometryY": 270
         }
     ],
     "extremas": [
@@ -2757,7 +2831,7 @@
             "geometryHeight": 105,
             "geometryWidth": 75,
             "geometryX": 210,
-            "geometryY": -15
+            "geometryY": 0
         }
     ],
     "styles": [
@@ -2765,7 +2839,7 @@
             "PObject": {
                 "_id": "2072147126"
             },
-            "_bg": "#c3beff",
+            "_bg": "#f289ff",
             "_bold": true,
             "_fg": "#0a01ff",
             "_italic": false,
