@@ -210,19 +210,19 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: -1
             cmd: 'dome_open'
-        evening_flats:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -5.0
-                    cond: '<'
-                cond2:
-                    type: 'sun'
-                    val: -9.0
-                    cond: '>'
-            repeat_on_restart: False
-            sundir: -1
-            cmd: 'robo_do_calibration -f'
+        # evening_flats:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: -5.0
+        #             cond: '<'
+        #         cond2:
+        #             type: 'sun'
+        #             val: -9.0
+        #             cond: '>'
+        #     repeat_on_restart: False
+        #     sundir: -1
+        #     cmd: 'robo_do_calibration -f'
 
         start_obs:
             conds:
@@ -282,21 +282,21 @@ robotic_manager_triggers:
             sundir: 1
             repeat_on_restart: False
             cmd: 'robo_stop'
-        morning_flats:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: -9.0
-                    cond: '>'
-                cond2:
-                    type: 'sun'
-                    val: -5.0
-                    cond: '<'  
-            nextmorning: True   
-            repeat_on_restart: False          
-            sundir: 1
-            cmd: 'robo_do_calibration -f'
-            #cmd: 'robo_do_darks'
+        # morning_flats:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: -9.0
+        #             cond: '>'
+        #         cond2:
+        #             type: 'sun'
+        #             val: -5.0
+        #             cond: '<'  
+        #     nextmorning: True   
+        #     repeat_on_restart: False          
+        #     sundir: 1
+        #     cmd: 'robo_do_calibration -f'
+        #     #cmd: 'robo_do_darks'
         shutdown:
             conds:
                 cond1:
