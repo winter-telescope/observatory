@@ -1161,8 +1161,13 @@ class Wintercmd(QtCore.QObject):
         
         #boxwidth = self.args.boxwidth
         #ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-boxwidth/2.0, boxwidth/2.0, 2)
-        radius = self.args.step
-        minradius = self.args.minstep
+        radius = abs(self.args.step)
+        minradius = abs(self.args.minstep)
+        
+        if minradius >= radius:
+            self.logger.info(f'min radius {minradius} is >= radius {radius}. setting to minradius to zero')
+        
+        
         radius = np.random.uniform(minradius, radius)
         theta = np.random.uniform(0, np.pi)
         ra_dist_arcsec = radius * np.cos(theta)

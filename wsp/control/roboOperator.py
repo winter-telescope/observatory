@@ -35,7 +35,7 @@ import Pyro5.core
 import sqlalchemy as db
 
 #import wintertoo.validate
-
+import winterutils
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -2972,9 +2972,10 @@ class RoboOperator(QtCore.QObject):
         # calculate individual exposure time
         self.exptime = (self.visitExpTime/self.num_dithers)/num_pointings
         
-        # start the dither number at 0, note it immediately increments to one in the loop below
-        self.dithnum = 0
-        for pointing_num, pointing_offset in enumerate(pointing_offsets):
+        # start the dither number at 1, it gets incremented after the exposure is complete.
+        self.dithnum = 1
+        
+        for pointing_num, pointing_offset in enumerate(pointing_offsets, 1):
             
             
             # convert ra and dec from radians to astropy objects
@@ -3015,12 +3016,21 @@ class RoboOperator(QtCore.QObject):
             
             # put the dither for loop here:
             #for dithnum in range(self.num_dithers):
-            for dithnum in range(self.num_dithers_per_pointing):
-                #self.dithnum = dithnum + 1
-                self.dithnum += 1
+            
+            # NUMBERING DITHERS AS 1, 2, ... , self.num_dithers
+                # e.g., if you want 5 dithers per pointing, then self.dithnum = 1, 2, 3, ... , self.num_dithers
+            
+            for dithnum_in_this_pointing in np.arange(1, self.num_dithers_per_pointing+1, 1): #INDEX STARTS AT 1!!!
                 
-                # how many dithers remain AFTER this one?
-                self.remaining_dithers = (self.num_dithers - dithnum) - 1
+                #ex: dither 3/5 of the secoind pointing:
+                    # dithnum_in_this_pointing = 3
+                    # self.num_dithers_per_pointing = 5
+                    # self.dithnum = 8
+                    # self.remaining_dithers_in_this_pointing = 2
+                
+                # how many dithers remain AFTER this one in the current pointing
+                self.remaining_dithers_in_this_pointing = (self.num_dithers_per_pointing - dithnum_in_this_pointing)
+                
                 #self.announce(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}, self.remaining_dithers = {self.remaining_dithers}')
                 # for each dither, execute the observation
                 if self.running & self.ok_to_observe:
@@ -3037,7 +3047,7 @@ class RoboOperator(QtCore.QObject):
                     # now go off and execute the observation
                     
                     # print out to the slack log a bunch of info (only once per target)
-                    if dithnum == 0:
+                    if dithnum_in_this_pointing == 1:
                         msg = f'Executing observation of obsHistID = {self.obsHistID}'
                         self.announce(msg)
                         #self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
@@ -3046,9 +3056,7 @@ class RoboOperator(QtCore.QObject):
                         
                         self.announce(f'>> Target Current (ALT, AZ) = ({self.target_alt} deg, {self.target_az} deg)')
                     
-                    msg = f'>> Executing Pointing Number [{pointing_num+1}]/{num_pointings}: (dRA, dDec) = ({pointing_offset["dRA"]}, {pointing_offset["dDec"]})'
-                    msg+= f', Dither Number [{dithnum +1}/{self.num_dithers}]'
-                    self.announce(msg)
+                    
                     
                     # Do one last housekeeping check to make sure the camera is happy
                     #if self.camname == 'summer':
@@ -3096,8 +3104,15 @@ class RoboOperator(QtCore.QObject):
                             self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
                             #self.do(f'command_filter_wheel {filter_num}')
                             self.do(f'fw_goto {filter_num} --{self.camname}')
-    
-                        if dithnum == 0:
+                        
+                        # set up a big descriptive message for slack:
+                        msg = f'>> Executing Observation: Pointing Number [{pointing_num+1}]/{num_pointings}: (dRA, dDec) = ({pointing_offset["dRA"]}, {pointing_offset["dDec"]})'
+
+                        if dithnum_in_this_pointing == 0:
+                            
+                            msg+= f', Dither Number [{dithnum_in_this_pointing}/{self.num_dithers}], Dither (dRA, dDec) = (0, 0) as'
+                            self.announce(msg)
+                            
                             if self.test_mode:
                                 self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
                                 #self.do(f'robo_observe altaz {self.target_alt} {self.target_az} --test --schedule')
@@ -3115,8 +3130,24 @@ class RoboOperator(QtCore.QObject):
                             system = 'camera'
                             # do the dither
                             if self.ditherStepSize > 0.0:
-                                self.do(f'mount_random_dither_arcsec {self.ditherStepSize} --minstep {10.0}')
                                 
+                                
+                                
+                                minradius = self.config['observing_parameters'][self.camname]['dithers']['ditherMinStep_as']
+                                radius = self.ditherStepSize
+                                radius = np.random.uniform(minradius, radius)
+                                theta = np.random.uniform(0, np.pi)
+                                ra_dither_arcsec = radius * np.cos(theta)
+                                dec_dither_arcsec = radius * np.sin(theta)
+                                
+                                msg+= f', Dither Number [{dithnum_in_this_pointing}/{self.num_dithers}], Dither (dRA, dDec) = ({ra_dither_arcsec:0.1f}, {dec_dither_arcsec:.1f}) as'
+                                self.announce(msg)
+                                
+                                self.parse(f'mount_dither_arcsec_radec {ra_dither_arcsec} {dec_dither_arcsec}')
+                            
+                            
+                            
+                            self.announce(msg)       
                             if self.test_mode:
                                 #self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
                                 self.do(f'robo_do_exposure --test')
@@ -3139,6 +3170,9 @@ class RoboOperator(QtCore.QObject):
                                 #if we're here there's some generic error. raise it.
                                 self.announce(f'problem with this exposure, going to next...')
                                 
+                        # no matter what happens, increment the dither
+                        self.dithnum += 1
+                        
                         
                         # it is now okay to trigger going to the next observation
                         # always log observation, but only gotoNext if we're on the last dither
@@ -3159,6 +3193,7 @@ class RoboOperator(QtCore.QObject):
                         self.hardware_error.emit(err)
                         #NPL 4-7-22 trying to get it to break out of the dither loop on error
                         break
+                    
                     # if we got here the observation wasn't completed properly
                     #return
                     #self.gotoNext()
