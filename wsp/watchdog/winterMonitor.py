@@ -155,7 +155,7 @@ class WINTER_monitor(QtCore.QObject):
                     if self.verbose:
                         self.log(f'could not update slope calculation for {field}: {e}')
                     self.temp_slope_dict.update({f'{field}_slope' : None})
-                    
+    
     def get_alarms(self, state):
         """
         check the state against the field limits in the monitor_config
@@ -171,7 +171,8 @@ class WINTER_monitor(QtCore.QObject):
         # if the camera is powered, we need everything to be within range
         camera_powered = self.get_camera_powered_status(state)
         if camera_powered:
-        
+            
+            # Check if things are generally in range. Driven by config file
             for field in self.monitor_config['prestart_conditions']['fields']:
                 maxval = self.monitor_config['prestart_conditions']['fields'][field]['max']
                 minval = self.monitor_config['prestart_conditions']['fields'][field]['min']
@@ -198,6 +199,10 @@ class WINTER_monitor(QtCore.QObject):
                     self.log(f'could not evaluate state: {e}')
                     return
             
+            # specific alarms:
+            
+            
+            
             if self.verbose:
                 if any(alarms):
                     self.log('FOUND ACTIVE ALARMS!! Camera is powered while these states are out of range:')
@@ -207,6 +212,14 @@ class WINTER_monitor(QtCore.QObject):
             pass
         
         return alarms
+    
+    
+    def get_depoint_alarm_status(self, state):
+        
+        pass
+        
+    
+    
     
     def get_camera_powered_status(self, state):
         # is the PDU on?
