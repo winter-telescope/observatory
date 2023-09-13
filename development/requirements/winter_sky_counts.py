@@ -127,12 +127,14 @@ def sky_counts_per_pixel(mag_per_sq_arcsec, zeropoint="pred", filter_id=1):
     mag_per_pix = mag_per_sq_arcsec - 2.5 * np.log10(pixarea)
     # use predicted zeropoint or scale from prototype
     if zeropoint == "pred":
-        R_sky = 1* 10**(0.4*(winter_zp_J_fp-mag_per_pix)) # 1 count/s 
+        R_sky = 1* 10**(0.4*(winter_zp_J_fp-mag_per_pix))/conversion_gain
     elif zeropoint == "proto":
-        R_sky = 1* 10**(0.4*(winter_zp_J_proto-mag_per_pix))
+        R_sky = 1* 10**(0.4*(winter_zp_J_proto-mag_per_pix))/conversion_gain
         #print(camera.zeropoint[filter_id])
+   # WIRC zp gives you 1e-/s
     elif zeropoint == "wirc":
-        R_sky = 1* 10**(0.4*(winter_zp_J_wirc-mag_per_pix))
+        R_sky = 1* 10**(0.4*(winter_zp_J_wirc-mag_per_pix))/conversion_gai
+    # on-sky zp from Viraj gives you 1 count/s  
     elif zeropoint == "sky":
         R_sky = 1* 10**(0.4*(winter_zp_J_onsky-mag_per_pix))
     return R_sky
