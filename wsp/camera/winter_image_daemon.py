@@ -20,9 +20,16 @@ import threading
 from datetime import datetime
 import yaml
 import logging
+import pathlib
+import numpy as np
+
 
 from winter_utils import focusloop_winter as foc
-from winter_utils.paths import astrom_sex, astrom_param, astrom_filter, astrom_nnw, MASK_DIR, MASTERDARK_DIR, MASTERFLAT_DIR, DEFAULT_OUTPUT_DIR
+from winter_utils.winter_image import WinterImage
+from winter_utils.paths import astrom_sex, astrom_param, astrom_filter, astrom_nnw
+from winter_utils.paths import MASK_DIR, MASTERDARK_DIR, MASTERFLAT_DIR, DEFAULT_OUTPUT_DIR
+from winter_utils.paths import MASTERBIAS_DIR
+import winter_utils.utils
 #from winter_utils.io import get_focus_images_in_directory
 #from winter_utils import quick_combine_images
 
@@ -37,6 +44,93 @@ from alerts import alert_handler
 from utils import utils
 from utils import logging_setup
 
+
+class BiasChecker(object):
+    """
+    a helper class to analyze a winter bias image and decide whether each 
+    sensor seems in good working order
+    """
+    
+    def __init__(self):
+        
+        self.layer_ok = [False for i in range(6)]
+        pass
+    
+    def load_template_data(self, paths):
+        """
+        load in the path or list of paths corresponding to "good" bias 
+        images.
+        """
+        
+        if type(paths) is str:
+            # there is just one path provided
+            self.template_imagepath = paths
+            self.template_data = WinterImage(self.template_imagepath)
+            return
+        
+        else:
+            raise ValueError('combined template data option not yet implemented')
+    
+    
+    def validate_image(self, mef_file_path, comment = '', plot = True, savepath = None):
+        """
+        compare the image specified to the template images and decide if it is
+        in good shape. return a dictionary of the addresses and whether they're
+        "okay" or suspicious and a reboot is merited.
+        """
+        results = dict()
+        cmaps = []
+        bad_chans = []
+        good_chans = []
+        
+        # load the data
+        testdata = WinterImage(mef_file_path)
+        # analyze the data
+        # make an image to analyze
+        data_imgs = np.abs(1 - (testdata.imgs/self.template_data.imgs))
+        data = WinterImage(data_imgs)
+        
+        
+        # now loop through all the images and evaluate
+        for addr in self.template_data._layer_by_addr:
+            std = np.std(data.get_img(addr))
+            mean = np.average(data.get_img(addr))
+            
+            if (std > 0.5) or (mean > 0.1):
+                # image is likely bad!!
+                okay = False
+                cmaps.append('Reds')
+                bad_chans.append(addr)
+            else:
+                okay = True
+                cmaps.append('gray')
+                good_chans.append(addr)
+                
+            results.update({addr : {'okay' : okay,
+                                    'mean' : float(mean),
+                                    'std'  : float(std),
+                                    }})
+        
+        # make an easy place to grab all the good and bad channels
+        results.update({'bad_chans'  : bad_chans,
+                        'good_chans' : good_chans})
+            
+        # now plot the result
+        if plot:
+            if len(bad_chans) == 0:
+                suptitle = 'No Bad Channels!'
+            else:
+                suptitle = f'Bad Channel(s): {bad_chans}'
+            title= f"\Huge{{{suptitle}}}\n{testdata.filename}"
+            if comment != '':
+                title +=  f'\n{comment}'
+            testdata.plot_mosaic(cmap = cmaps, title = title, norm_by = 'chan')
+        
+        return results
+        
+    
+
+
 class ImageHandler(QtCore.QObject):
 
     def __init__ (self, logger = None):
@@ -48,6 +142,9 @@ class ImageHandler(QtCore.QObject):
         self.logger = logger
         # init the state dictionary
         self.state = dict()
+        
+        # set up the bias analyzer
+        self.bias_checker = BiasChecker()
         
         # init the connection to the nameserver
         
@@ -203,6 +300,35 @@ class ImageHandler(QtCore.QObject):
         
         self.log(f'found best focus to be: {best_focus} um')
         return best_focus
+    
+    
+    ### BIAS CHECKING METHODS ###
+    @Pyro5.server.expose
+    def validate_bias(self, bias_image_path, comment = '', template_path = None, savepath = None):
+        # take in a bias path image and assess the state of the sensors
+        
+        # load the bias template image
+        if template_path is None:
+            template_path = os.path.join(MASTERBIAS_DIR, 'master_bias.fits')
+        else:
+            template_path = template_path
+        self.bias_checker.load_template_data(template_path)
+        
+        bias_image_filename = pathlib.Path(bias_image_path).stem # strips the directory and extension
+        tonight_local_str = winter_utils.utils.tonight_local()
+        image_output_dir = os.path.join(os.getenv("HOME"), 'data', 'images', 'bias')#, tonight_local_str)
+        image_output_filepath = os.path.join(image_output_dir, f'{bias_image_filename}_bias_validation.png')
+        
+        # create the output dir if it doesn't already exist
+        pathlib.Path(image_output_dir).mkdir(parents = True, exist_ok = True)
+        self.log(f'making directory: {image_output_dir}')
+        
+        # assesss the bias image
+        results = self.bias_checker.validate_image(mef_file_path = bias_image_path,
+                                                   comment = comment, plot = True,
+                                                   savepath = image_output_filepath)
+    
+        return results
     
     @Pyro5.server.expose
     def killImageDaemon(self):
