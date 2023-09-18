@@ -2952,7 +2952,7 @@ class RoboOperator(QtCore.QObject):
             self.switchCamera(cam_to_use)
         
         # how many pointings will we do?
-        pointing_offsets = [{'coords': {'dRA': 500, 'dDec': 1000}}]
+        pointing_offsets = [{'coords': {'dRA': 0, 'dDec': 0}}]
         if 'offset_pointings' in self.config['observing_parameters'][self.camname]:
             pointing_offsets = pointing_offsets + self.config['observing_parameters'][self.camname]['offset_pointings']
         else:
