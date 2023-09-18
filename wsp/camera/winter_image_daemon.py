@@ -182,7 +182,8 @@ class ImageHandler(QtCore.QObject):
         return
     
     @Pyro5.server.expose
-    def get_focus_from_imgpathlist(self, imgpathlist, dirpath = None):
+    def get_focus_from_imgpathlist(self, imgpathlist, dirpath = None,
+                                   board_ids_to_use = None, plot_all = False):
         self.log(f'running focus analysis of these images: {imgpathlist}')
 
         if dirpath is None:
@@ -199,7 +200,9 @@ class ImageHandler(QtCore.QObject):
         self.log(f'analyzing focus images in this directory of symbolic links: {dirpath}')
 
         # now run the focus script on the directory
-        best_focus = self.get_focus_in_dir(dirpath)
+        best_focus = self.get_focus_in_dir(dirpath,
+                             board_ids_to_use = board_ids_to_use,
+                             plot_all = plot_all)
         
         self.log(f'found best focus to be: {best_focus} um')
         return best_focus
