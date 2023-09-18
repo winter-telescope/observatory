@@ -121,11 +121,13 @@ class BiasChecker(object):
                 suptitle = 'No Bad Channels!'
             else:
                 suptitle = f'Bad Channel(s): {bad_chans}'
-            title= f"\Huge{{{suptitle}}}\n{testdata.filename}"
+            #title= f"\Huge{{{suptitle}}}\n{testdata.filename}"
+            title= f"{suptitle}\n{testdata.filename}"
             if comment != '':
                 title +=  f'\n{comment}'
-            testdata.plot_mosaic(cmap = cmaps, title = title, norm_by = 'chan')
-        
+            testdata.plot_mosaic(cmap = cmaps, title = title, norm_by = 'chan',
+                                 savepath = savepath)
+            
         return results
         
     
@@ -307,7 +309,7 @@ class ImageHandler(QtCore.QObject):
     
     ### BIAS CHECKING METHODS ###
     @Pyro5.server.expose
-    def validate_bias(self, bias_image_path, comment = '', template_path = None, savepath = None):
+    def validate_bias(self, bias_image_path, comment = '', template_path = None, savedir = None):
         # take in a bias path image and assess the state of the sensors
         
         # load the bias template image
@@ -319,17 +321,24 @@ class ImageHandler(QtCore.QObject):
         
         bias_image_filename = pathlib.Path(bias_image_path).stem # strips the directory and extension
         tonight_local_str = winter_utils.utils.tonight_local()
-        image_output_dir = os.path.join(os.getenv("HOME"), 'data', 'images', 'bias')#, tonight_local_str)
+        if savedir is None:
+            image_output_dir = os.path.join(os.getenv("HOME"), 'data', 'images', 'bias')#, tonight_local_str)
+        else:
+            image_output_dir = savedir
         image_output_filepath = os.path.join(image_output_dir, f'{bias_image_filename}_bias_validation.png')
         
         # create the output dir if it doesn't already exist
         pathlib.Path(image_output_dir).mkdir(parents = True, exist_ok = True)
         self.log(f'making directory: {image_output_dir}')
+        self.log(f'will save result plot to {image_output_filepath}')
         
         # assesss the bias image
         results = self.bias_checker.validate_image(mef_file_path = bias_image_path,
                                                    comment = comment, plot = True,
                                                    savepath = image_output_filepath)
+        
+        # post to slack
+        self.post_results_to_slack(image_output_filepath)
     
         return results
     

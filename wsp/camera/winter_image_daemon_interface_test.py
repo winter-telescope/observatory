@@ -25,4 +25,13 @@ except Exception as e:
 #%% Test the bias validation
 #tonight_local_str = winter_utils.utils.tonight_local()
 image_output_dir = os.path.join(os.getenv("HOME"), 'data', 'images', 'bias')
-bias_dir = os.path.join(os.getenv("HOME"), 'data', '')
+bias_dir = os.path.join(os.getenv("HOME"), 'data', 'images', 'bias_test_imgs')
+biases = ['bad-sb.fits', 'good.fits']
+for bias in biases:
+    bias_image_path = os.path.join(bias_dir, bias)
+    #    def validate_bias(self, bias_image_path, comment = '', template_path = None, savepath = None):
+    
+    results = image_daemon.validate_bias(bias_image_path = bias_image_path)
+    
+    print(f'Image: {bias}, Bad Channels = {results["bad_chans"]}')
+
