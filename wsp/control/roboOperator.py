@@ -4094,4 +4094,74 @@ class RoboOperator(QtCore.QObject):
         else:
             return False
     
+    def startupWINTERCamera(self):
+        """
+        This is a method which starts up the WINTER cameara is online,
+        and healthy. If all daemons are connected it will take a bias image
+        """
+        pass
     
+    def WINTER_bias_image_is_okay(self):
+        """
+        Takes a bias image with WINTER, then checks if it is okay
+        
+        returns status, bad_chans, where badchans is a list of bad channels
+        """
+        
+        bias_ok = False
+        bad_chans = []
+        
+        context = 'checkWINTERCameraBias'
+        
+        # take a bias image
+        system = 'camera'
+        try:
+            # set exposure time to zero
+            self.do('setExposure 0.0')
+            
+            # take an image
+            self.do('doExposure -b')
+            
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            self.target_ok = False
+            return False, []
+        
+        
+        # ask the WINTER image daemon if the image is okay
+        system = 'WINTER Image Daemon'
+        try:
+            
+            image_directory, image_filename = self.camera.getLastImagePath()
+            image_filepath = os.path.join(image_directory, image_filename)
+        except Exception as e:
+            msg = f'roboOperator: could not get last image filename from {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            self.target_ok = False
+            return False, []
+        
+        try:
+            ns = Pyro5.core.locate_ns(host = '192.168.1.10')
+            uri = ns.lookup('WINTERimage')
+            self.image_daemon = Pyro5.client.Proxy(uri)
+            image_daemon_connected = True
+        except Exception as e:
+            image_daemon_connected = False
+            self.log(f'could not connect to WINTER image daemon', exc_info = True)
+            return False, []
+        
+        if image_daemon_connected:
+            results = self.image_daemon.validate_bias(image_filepath)
+            bad_chans = results['bad_chans']
+            if len(bad_chans):
+                bias_ok = True
+            
+            return bias_ok, bad_chans
+        else:
+            return False, [] 
+        return

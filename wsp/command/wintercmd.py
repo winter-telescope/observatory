@@ -4989,6 +4989,36 @@ class Wintercmd(QtCore.QObject):
     ####### End Camera API Methods #######
     
     @cmd
+    def checkCamera(self):
+        self.defineCmdParser('check the camera')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        
+        
+        self.getargs()
+
+        self.logger.info(f'check the camera status: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+           
+        if camname == 'winter':
+            sigcmd = signalCmd('WINTER_bias_image_is_okay')
+            self.roboThread.newCommand.emit('WINTER_bias_image_is_okay')
+        else:
+            self.logger.info(f'wintercmd: checkCamera only defined for WINTER')
+    
+    
+    @cmd
     def generate_supernovae_db(self):
         self.defineCmdParser('Generate supernovae observation schedule')
         self.cmdparser.add_argument('source', nargs = 1, default = 'ZTF', action = None)
