@@ -10,7 +10,27 @@ tec_temps:
     dt_min: 1.0
     max_slope: 0.1
     fields:
+
+preset_temp_modes:
+    trig_field: Tdp_outside_pcs
+    modes:
+        cold:
+            description: 'Normal baseline operating mode with coldest temperatures'
+            trig_min: None
+            trig_max: 12.5
+            chiller_setpoint: 10.0
+        warm:
+            description: 'High setpoint mode for operating in humid conditions'
+            trig_min: 12.5
+            trig_max: 15.0
+            chiller_setpoint: 15.0
+        off:
+            description: 'High chiller temp mode for stowing observatory'
+            trig_min: 15.0
+            trig_max: None
+            chiller_setpoint: 20.0
         
+       
 
 prestart_conditions:
     dt_window: 5
@@ -128,9 +148,9 @@ prestart_conditions:
         T_heatsink_sc:
             min: None
             max: 25
-        ###########################################################
-        # chiller:
-        ###########################################################
+        # ###########################################################
+        # # chiller:
+        # ###########################################################
         Tdp_outside_pcs:
             min: None
             max: 12.5
