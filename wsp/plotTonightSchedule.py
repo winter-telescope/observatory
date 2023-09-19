@@ -12,6 +12,9 @@ import psycopg
 import  pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib.patches import Polygon
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
 from astropy.coordinates import SkyCoord
 import sqlalchemy
 
@@ -93,8 +96,46 @@ for idx, prog in enumerate(programs):
     ra  = np.array(ra,dtype=np.float32) * np.pi/180.0
     ra[ra > np.pi] -= 2*np.pi
     dec = np.array(dec,dtype=np.float32) * np.pi/180.0
+    #print('ra', ra[0:10])
+    #print('dec', dec[0:10])
     plt.scatter(ra,dec,alpha=0.1,label="history: "+prog, color = colors[idx])
 #plt.legend(loc='lower right',frameon=True)
+
+"""
+jet = plt.get_cmap('jet') 
+fig2 = plt.figure(figsize=(8,6), dpi=1200)
+ax2 = fig2.add_axes([0.05,0.05,0.8,0.8], projection='aitoff')
+#cax = fig2.add_axes([0.9,0.2,0.02,0.5])
+field_size = 1.1 #degree on sky
+half_size = field_size / 2
+colors = cm.Set1(np.linspace(0, 1, len(programs)))
+
+for idx, prog in enumerate(programs):
+    ra = list(df_ra[df_ra.index.get_level_values(0)==prog]['ra'])[0]
+    dec = list(df_dec[df_dec.index.get_level_values(0)==prog]['dec'])[0]
+    # RA and DEC are in degrees, but radians are needed for plotting
+    ra  = np.array(ra,dtype=np.float32) * np.pi/180.0
+    ra[ra > np.pi] -= 2*np.pi
+    dec = np.array(dec,dtype=np.float32) * np.pi/180.0
+    decsB = dec*(180/np.pi) - half_size
+    decsT = dec*(180/np.pi) + half_size
+    rad_decsB = decsB*np.pi/180
+    rad_decsT = decsT*np.pi/180
+    radiffB = (half_size*np.pi/180)/np.cos(decsB*np.pi/180)
+    radiffT = (half_size*np.pi/180)/np.cos(decsT*np.pi/180)
+    ra1 = ra - radiffB
+    ra2 = ra + radiffB
+    ra4 = ra - radiffT
+    ra3 = ra + radiffT
+    ax2.fill([ra1,ra2,ra3,ra4],[rad_decsB,rad_decsB,rad_decsT,rad_decsT], alpha=0.1, color = colors[idx], fill=True, edgecolor='none')
+    ax2.scatter(3, 3, alpha=1, marker='s', color = colors[idx], label=prog)
+
+#plt.tight_layout()
+fig2.legend(loc="right")
+#plt.legend(loc="lower right",frameon=True)#, bbox_to_anchor=(1.3,-0.2))
+figname = os.path.join(os.getenv("HOME"),'data','molly_skymap_tonight.jpg')
+fig2.savefig(figname, bbox_inches='tight')
+"""
 
 ################# Tonight ##################
 ################ (Red dots) #################
