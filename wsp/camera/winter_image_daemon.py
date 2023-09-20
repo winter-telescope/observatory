@@ -330,6 +330,7 @@ class ImageHandler(QtCore.QObject):
         # create the output dir if it doesn't already exist
         pathlib.Path(image_output_dir).mkdir(parents = True, exist_ok = True)
         self.log(f'making directory: {image_output_dir}')
+        self.log(f'checking sensors startup health from bias at: {bias_image_path}')
         self.log(f'will save result plot to {image_output_filepath}')
         
         # assesss the bias image
