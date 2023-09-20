@@ -5013,7 +5013,7 @@ class Wintercmd(QtCore.QObject):
            
         if camname == 'winter':
             sigcmd = signalCmd('WINTER_bias_image_is_okay')
-            self.roboThread.newCommand.emit('WINTER_bias_image_is_okay')
+            self.roboThread.newCommand.emit(sigcmd)
         else:
             self.logger.info(f'wintercmd: checkCamera only defined for WINTER')
     

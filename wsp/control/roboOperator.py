@@ -35,7 +35,7 @@ import Pyro5.core
 import sqlalchemy as db
 
 #import wintertoo.validate
-import winterutils
+#import winter_utils
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -320,9 +320,6 @@ class RoboOperator(QtCore.QObject):
         self.data_to_log = dict()
         
         ### SCHEDULE ATTRIBUTES ###
-        # load the dither list
-        self.default_ditherfile_path = os.path.join(self.base_directory, self.config['dither_file'])
-        self.default_dither_ra_arcsec, self.default_dither_dec_arcsec = np.loadtxt(self.default_ditherfile_path, unpack = True)
         # hold a variable to track remaining dithers in kst
         self.remaining_dithers = 0 
         
@@ -2929,8 +2926,10 @@ class RoboOperator(QtCore.QObject):
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
         self.maxAirmass = float(currentObs.get('maxAirmass', 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)))
         #self.num_dithers = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.camname]['ditherNumber']))
-        self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.camname]['ditherNumber']))
-        self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.camname]['ditherStepSize']))
+        #self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.camname]['ditherNumber']))
+        self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['observing_parameters'][self.camname]['dithers']['ditherNumber']))
+        #self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.camname]['ditherStepSize']))
+        self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['observing_parameters'][self.camname]['dithers']['ditherMaxStep_as']))
         self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
         self.targetName = str(currentObs.get('targName', ''))
         self.scheduleName = str(currentObs.get('origin_filename', ''))
@@ -2970,7 +2969,8 @@ class RoboOperator(QtCore.QObject):
             
         
         # calculate individual exposure time
-        self.exptime = (self.visitExpTime/self.num_dithers)/num_pointings
+        # NPL 9-19-23 for now multiply by 2 so that we get the expected 60s exposure times
+        self.exptime = ((self.visitExpTime/self.num_dithers)/num_pointings)*2
         
         # start the dither number at 1, it gets incremented after the exposure is complete.
         self.dithnum = 1
@@ -3002,8 +3002,8 @@ class RoboOperator(QtCore.QObject):
             
             # calculate the actual pointing coordinates, eg after applying the pointing offset
             # figure out where to go
-            offset_ra = pointing_offset['dRA'] *u.arcsecond
-            offset_dec = pointing_offset['dDec'] * u.arcsecond
+            offset_ra  = pointing_offset['coords']['dRA']  * u.arcsecond
+            offset_dec = pointing_offset['coords']['dDec'] * u.arcsecond
             
             pointing_coords = scheduled_coords.spherical_offsets_by(offset_ra, offset_dec)
             self.pointing_ra_j2000_hours = pointing_coords.ra.hour
@@ -3031,7 +3031,8 @@ class RoboOperator(QtCore.QObject):
                 # how many dithers remain AFTER this one in the current pointing
                 self.remaining_dithers_in_this_pointing = (self.num_dithers_per_pointing - dithnum_in_this_pointing)
                 
-                #self.announce(f'top of loop: dithnum = {dithnum}, self.num_dithers = {self.num_dithers}, self.remaining_dithers = {self.remaining_dithers}')
+                self.announce(f'top of loop: self.dithnum = {self.dithnum}, self.num_dithers = {self.num_dithers}')
+                self.announce(f'dithnum_in_this_pointing = {dithnum_in_this_pointing}, self.remaining_dithers_in_this_pointing = {self.remaining_dithers_in_this_pointing}')
                 # for each dither, execute the observation
                 if self.running & self.ok_to_observe:
                     
@@ -3106,11 +3107,11 @@ class RoboOperator(QtCore.QObject):
                             self.do(f'fw_goto {filter_num} --{self.camname}')
                         
                         # set up a big descriptive message for slack:
-                        msg = f'>> Executing Observation: Pointing Number [{pointing_num+1}]/{num_pointings}: (dRA, dDec) = ({pointing_offset["dRA"]}, {pointing_offset["dDec"]})'
+                        msg = f'>> Executing Observation: Pointing Number [{pointing_num}/{num_pointings}]: (dRA, dDec) = ({pointing_offset["coords"]["dRA"]}, {pointing_offset["coords"]["dDec"]})'
 
-                        if dithnum_in_this_pointing == 0:
+                        if dithnum_in_this_pointing == 1:
                             
-                            msg+= f', Dither Number [{dithnum_in_this_pointing}/{self.num_dithers}], Dither (dRA, dDec) = (0, 0) as'
+                            msg+= f', Dither Number [{dithnum_in_this_pointing}/{self.num_dithers_per_pointing}], Dither (dRA, dDec) = (0, 0) as'
                             self.announce(msg)
                             
                             if self.test_mode:
@@ -3143,11 +3144,11 @@ class RoboOperator(QtCore.QObject):
                                 msg+= f', Dither Number [{dithnum_in_this_pointing}/{self.num_dithers}], Dither (dRA, dDec) = ({ra_dither_arcsec:0.1f}, {dec_dither_arcsec:.1f}) as'
                                 self.announce(msg)
                                 
-                                self.parse(f'mount_dither_arcsec_radec {ra_dither_arcsec} {dec_dither_arcsec}')
+                                self.do(f'mount_dither_arcsec_radec {ra_dither_arcsec} {dec_dither_arcsec}')
                             
                             
                             
-                            self.announce(msg)       
+                            #self.announce(msg)       
                             if self.test_mode:
                                 #self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
                                 self.do(f'robo_do_exposure --test')
@@ -3175,8 +3176,8 @@ class RoboOperator(QtCore.QObject):
                         
                         
                         # it is now okay to trigger going to the next observation
-                        # always log observation, but only gotoNext if we're on the last dither
-                        if self.remaining_dithers == 0:
+                        # always log observation, but only gotoNext if we're on the last TOTAL dither
+                        if self.dithnum == self.num_dithers:
                             gotoNext = True
                             self.log_observation_and_gotoNext(gotoNext = gotoNext, logObservation = True)
                         else:
@@ -4136,7 +4137,8 @@ class RoboOperator(QtCore.QObject):
         try:
             
             image_directory, image_filename = self.camera.getLastImagePath()
-            image_filepath = os.path.join(image_directory, image_filename)
+            # remember that it doesn't return the _mef.fits part of the filename!
+            image_filepath = os.path.join(image_directory, image_filename + '_mef.fits')
         except Exception as e:
             msg = f'roboOperator: could not get last image filename from {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)

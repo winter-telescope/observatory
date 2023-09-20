@@ -3236,13 +3236,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['bench_Terr_pid']  
+    bench_T_pid_err_avg:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_Terr_pid_avg'] 
     bench_T_pid_err_slope:
         ftype: raw
         label: 'dTdt'
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['bench_Terr_pid_slope'] 
+        var: camdict['winter'].state['bench_T_pid_slope'] 
     bench_Kp:
         ftype: raw
         label: 'Coeff'
@@ -3523,14 +3530,21 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sa_Terr_pid']  
+        var: camdict['winter'].state['sa_Terr_pid'] 
+    sa_T_pid_err_avg:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_Terr_pid_avg']  
     sa_T_pid_err_slope:
         ftype: raw
         label: 'dTdt'
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sa_Terr_pid_slope']  
+        var: camdict['winter'].state['sa_T_pid_slope']  
     sa_Kp:
         ftype: raw
         label: 'Coeff'
@@ -3811,14 +3825,21 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sb_Terr_pid']  
+        var: camdict['winter'].state['sb_Terr_pid'] 
+    sb_T_pid_err_avg:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_Terr_pid_avg'] 
     sb_T_pid_err_slope:
         ftype: raw
         label: 'dTdt'
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sb_Terr_pid_slope']   
+        var: camdict['winter'].state['sb_T_pid_slope']   
     sb_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4100,13 +4121,20 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sc_Terr_pid']  
+    sc_T_pid_err_avg:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_Terr_pid_avg']
     sc_T_pid_err_slope:
         ftype: raw
         label: 'dTdt'
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sc_Terr_pid_slope'] 
+        var: camdict['winter'].state['sc_T_pid_slope'] 
     sc_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4387,14 +4415,21 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pa_Terr_pid']  
+        var: camdict['winter'].state['pa_Terr_pid']
+    pa_T_pid_err_avg:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_Terr_pid_avg']  
     pa_T_pid_err_slope:
         ftype: raw
         label: 'dTdt'
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pa_Terr_pid_slope'] 
+        var: camdict['winter'].state['pa_T_pid_slope'] 
     pa_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4675,14 +4710,21 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pb_Terr_pid']  
+        var: camdict['winter'].state['pb_Terr_pid'] 
+    pb_T_pid_err_avg:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_Terr_pid_avg'] 
     pb_T_pid_err_slope:
         ftype: raw
         label: 'dTdt'
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pb_Terr_pid_slope'] 
+        var: camdict['winter'].state['pb_T_pid_slope'] 
     pb_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4963,14 +5005,21 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pc_Terr_pid']  
+        var: camdict['winter'].state['pc_Terr_pid'] 
+    pc_T_pid_err_avg:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_Terr_pid_avg'] 
     pc_T_pid_err_slope:
         ftype: raw
         label: 'dTdt'
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pc_Terr_pid_slope']  
+        var: camdict['winter'].state['pc_T_pid_slope']  
     pc_Kp:
         ftype: raw
         label: 'Coeff'
