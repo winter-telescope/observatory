@@ -407,18 +407,13 @@ class EZStepper(QtCore.QObject):
         except Exception as e:
             self.log(f'We ran into an error: {e}')
 
-        if timed_out:
-            self.log('Homing the filter timed out. Might want to power cycle.')
-            return -1
-
         # opto check
         input_status = self.getInputStatus()
         actually_homed = input_status['opto1'] == 0
 
+        self.is_homing = 0
+        self.is_moving = 0        
         if actually_homed:
-            self.homed = 1
-            self.is_homing = 0
-            self.is_moving = 0
             self.homed = 1
             self.filter_pos = 1
             self.update_state()
@@ -428,9 +423,9 @@ class EZStepper(QtCore.QObject):
             self.log('Homing complete')
             return self.encoder_pos
         else:
-            self.log("The stepper thinks we homed, but we actually didn't. "
-                     "Might want to power cycle, otherwise filter positions "
-                     "will likely be incorrect.")
+            self.log("The stepper thinks we homed, but we actually timed out and didn't. ")
+            self.filter_pos = -1
+            self.update_state()
             return -1
 
 
@@ -487,7 +482,9 @@ class EZStepper(QtCore.QObject):
                 return self.encoder_pos
         
         self.log(f'Moving the filter to position {microstep_loc} failed '
-                 f'after {attempt - 1} attempts. We will stop trying!')
+                 f'after {attempt - 1} attempts. We will stop trying! '
+                 'Setting homed to 0.')
+        self.homed = 0
         self.is_moving = 0
         self.update_state()
         return self.encoder_pos
