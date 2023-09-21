@@ -802,7 +802,7 @@ if __name__ == '__main__':
     argumentList = sys.argv[1:]
 
     verbose = False
-    doLogging = False
+    doLogging = True
     ns_host = '192.168.1.20'
     # Options
     options = "vpn:a:"
