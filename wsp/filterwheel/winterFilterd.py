@@ -434,23 +434,25 @@ class EZStepper(QtCore.QObject):
             return -1
 
 
-    def goToLocation(self, microstep_loc: int, verbose=False) -> int:
+    def goToLocation(self, microstep_loc: int, max_attempts=5, verbose=False, ) -> int:
         '''Tell motor to go to the specific microstep location.
 
         Parameters
         ----------
         microstep_loc : int
             Microstep location.
+        max_attempts : int, optional
+            Maximum number of home -> position attempts performed before erroring.
 
         Returns
         -------
         int
-            Final encoder position, or -1 if error.
+            Final encoder position.
         '''
         if self.homed == 0:
             self.log(f'Motor is not homed. Homing before '
                      f'moving to microstep location {microstep_loc}.')
-            self.home()
+            self.home(verbose=verbose)
 
         self.pos_goal = microstep_loc
         self.encoder_pos_goal = microstep_loc
@@ -458,22 +460,34 @@ class EZStepper(QtCore.QObject):
         self.is_moving = 1
         self.update_state()
 
-        arrived = False
-        timed_out = False
-        start_time = time.time()
-        while not (arrived or timed_out):
-            time.sleep(self.state_update_dt)
-            self.encoder_pos = self.getEncoderLoc()
-            self.pos = self.getMicrostepLoc()
-            arrived = abs(microstep_loc - self.encoder_pos) < self.max_encoder_err
-            timed_out = ((time.time() - start_time) >
-                         self.config['stepper_config']['timeout_secs'])
+        attempt = 1
+        while attempt <= max_attempts:
+            if attempt > 1:
+                self.log(f'Moving the filter to position {microstep_loc} timed out. '
+                        'We will home and try again. '
+                        f'This is attempt number {attempt} of a maximum {max_attempts}.')
+                self.home(verbose=verbose)
+            
+            arrived = False
+            timed_out = False
+            start_time = time.time()
+            while not (arrived or timed_out):
+                time.sleep(self.state_update_dt)
+                self.encoder_pos = self.getEncoderLoc()
+                self.pos = self.getMicrostepLoc()
+                arrived = abs(microstep_loc - self.encoder_pos) < self.max_encoder_err
+                timed_out = ((time.time() - start_time) >
+                            self.config['stepper_config']['timeout_secs'])
 
-        if timed_out:
-            self.log(f'Moving the filter to position {microstep_loc} timed out. '
-                     'Might want to power cycle.')
-            return -1
-
+            if timed_out:
+                attempt += 1
+            else:  # we have arrived
+                self.is_moving = 0
+                self.update_state()
+                return self.encoder_pos
+        
+        self.log(f'Moving the filter to position {microstep_loc} failed '
+                 f'after {attempt - 1} attempts. We will stop trying!')
         self.is_moving = 0
         self.update_state()
         return self.encoder_pos
@@ -509,6 +523,7 @@ class EZStepper(QtCore.QObject):
 
 
     def goto(self, pos):
+        # this is a simulated move, does not actually move the filter
         try:
             self.pos_goal = pos
             self.encoder_pos_goal = self.config['filters']['encoder_positions'].get(pos, -1.0)
