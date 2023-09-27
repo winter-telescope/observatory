@@ -26,6 +26,7 @@ can be read and visualized in real time using KST.
 
 # system packages
 import sys
+import time
 import os
 import numpy as np
 #import time
@@ -115,6 +116,7 @@ class hk_loop(QtCore.QThread):
             self.log(f'(Thread {threading.get_ident()}) hk_loop: creating pyro connection to sun simulator')
         # init the remote object
         try:
+            time.sleep(1)
             ns = Pyro5.core.locate_ns(host = self.ns_host)
             uri = ns.lookup('sunsim')
             self.remote_object = Pyro5.client.Proxy(uri)

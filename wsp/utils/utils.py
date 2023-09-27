@@ -54,7 +54,7 @@ def loadconfig(config_file):
     """
     just a wrapper to make the syntax easier to get the config
     """
-    config = yaml.load(open(config_file), Loader = yaml.FullLoader)
+    config = yaml.safe_load(open(config_file))
     return config
 
 
