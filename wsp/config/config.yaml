@@ -574,6 +574,11 @@ ephem:
 
 ########### CALIBRATION DEFAULTS ###########
 cal_params:
+    dark_tracker:
+        log_dir: 'data'
+        log_file: 'dark_tracker_log.json'
+        graceperiod_days: 3
+        max_sunalt: -50.0
     winter:
         dark:
             n_imgs: 5
