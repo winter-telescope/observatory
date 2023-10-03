@@ -350,7 +350,9 @@ class ImageHandler(QtCore.QObject):
         QtCore.QCoreApplication.quit()
 
 
-
+    @Pyro5.server.expose
+    def getStatus(self):
+        return self.status
         
         
         

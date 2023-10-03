@@ -38,6 +38,9 @@ try:
 except:
     from camera import fitsheader
 
+class PyroCommunicationError(Exception):
+    pass
+
 class WINTERImageHandler(QtCore.QObject):    
     '''
     Using a QObject so that it can signals. The problem is that all the Pyro
@@ -98,15 +101,20 @@ class WINTERImageHandler(QtCore.QObject):
             
             # make sure we're connected to the daemon
             for i in range(self.reconnect_attempts):
-                self.log('checking connection to image daemon')
+                if self.verbose:
+                    self.log(f'checking connection to image daemon, attempt {i+1}/{self.reconnect_attempts}')
                 self.update_state()
+                if self.verbose:
+                    self.log(f'self.connected = {self.connected}')
                 if self.connected:
                     break
-                # if we get here it didn't connect :(
-                self.log(f'command {func} not executed! could not connect to daemon after {self.reconnect_attempts} attempts')
                 
-            # now excecute the function
-            func(*args, **kwargs)
+            if not self.connected:
+                msg = f'command {func} not executed! could not connect to daemon after {self.reconnect_attempts} attempts'
+                raise PyroCommunicationError(msg)
+            else:
+                # now excecute the function
+                func(self, *args, **kwargs)
             # try:
             #     func(*args, **kwargs)
                 
@@ -152,6 +160,8 @@ class WINTERImageHandler(QtCore.QObject):
             ns = Pyro5.core.locate_ns(host = self.ns_host)
             uri = ns.lookup(self.daemonname)
             self.remote_object = Pyro5.client.Proxy(uri)
+            # connect
+            self.remote_object._pyroBind()
             self.connected = True
         except Exception as e:
             self.connected = False
@@ -241,7 +251,7 @@ if __name__ == '__main__':
     logger = logging_setup.setup_logger(wsp_path, config)        
     
     logger = None
-    verbose = True
+    verbose = False
     
     """
     def __init__(self, base_directory, config, daemon_pyro_name,
@@ -254,7 +264,9 @@ if __name__ == '__main__':
                        ns_host = '192.168.1.10', logger = logger, verbose = verbose)
     
     winter_image_handler.print_state()
-    
+    print()
+    print()
+    winter_image_handler.killImageDaemon()
     """
     while True:
         try:
