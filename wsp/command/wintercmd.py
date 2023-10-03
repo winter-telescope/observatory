@@ -1142,19 +1142,36 @@ class Wintercmd(QtCore.QObject):
         self.logger.info(f'Mount Offset complete')
         
     def mount_random_dither_arcsec(self):
-        """Usage: mount_random_dither <boxwidth>"""        
-        self.defineCmdParser("execute a random dither from within a ra-dec box of full-witdh <boxwidth> arcseconds")
+        """Usage: mount_random_dither <step>"""        
+        self.defineCmdParser("execute a random dither from within a ra-dec circle of radius <step> arcseconds")
         
-        self.cmdparser.add_argument('boxwidth',
+        self.cmdparser.add_argument('step',
                                     type = float,
                                     action = None,
-                                    help = "box halfwidth in arcseconds",
+                                    help = "max dither radius in arcseconds",
+                                    )
+        self.cmdparser.add_argument('--minstep',
+                                    type = float,
+                                    nargs = 1,
+                                    action = None,
+                                    default = 0.0,
+                                    help = "min dither radius in arcseconds",
                                     )
         self.getargs()
         
-        boxwidth = self.args.boxwidth
-
-        ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-boxwidth/2.0, boxwidth/2.0, 2)
+        #boxwidth = self.args.boxwidth
+        #ra_dist_arcsec, dec_dist_arcsec = np.random.uniform(-boxwidth/2.0, boxwidth/2.0, 2)
+        radius = abs(self.args.step)
+        minradius = abs(self.args.minstep)
+        
+        if minradius >= radius:
+            self.logger.info(f'min radius {minradius} is >= radius {radius}. setting to minradius to zero')
+        
+        
+        radius = np.random.uniform(minradius, radius)
+        theta = np.random.uniform(0, np.pi)
+        ra_dist_arcsec = radius * np.cos(theta)
+        dec_dist_arcsec = radius * np.sin(theta)
         
         self.parse(f'mount_dither_arcsec_radec {ra_dist_arcsec} {dec_dist_arcsec}')
         
@@ -4970,6 +4987,36 @@ class Wintercmd(QtCore.QObject):
     
     
     ####### End Camera API Methods #######
+    
+    @cmd
+    def checkCamera(self):
+        self.defineCmdParser('check the camera')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        
+        
+        self.getargs()
+
+        self.logger.info(f'check the camera status: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+           
+        if camname == 'winter':
+            sigcmd = signalCmd('WINTER_bias_image_is_okay')
+            self.roboThread.newCommand.emit(sigcmd)
+        else:
+            self.logger.info(f'wintercmd: checkCamera only defined for WINTER')
+    
     
     @cmd
     def generate_supernovae_db(self):
