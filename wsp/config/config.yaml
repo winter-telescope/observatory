@@ -121,7 +121,7 @@ log_link_name: 'winter.log'
 # read this as: send the CMD when the current value of sun_alt or time is COND than the specified value.
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
-max_sun_alt_for_observing: -12
+max_sun_alt_for_observing: -7
 
 
 robotic_manager_triggers:
@@ -215,7 +215,7 @@ robotic_manager_triggers:
             conds:
                cond1:
                    type: 'sun'
-                   val: -11.0
+                   val: -7.0
                    cond: '<'
             repeat_on_restart: True
             sundir: 0
@@ -252,7 +252,7 @@ robotic_manager_triggers:
             conds:
                cond1:
                    type: 'time'
-                   val: '0:20:0.0'
+                   val: '0:30:0.0'
                    cond: '>'
                
             repeat_on_restart: False
@@ -565,14 +565,17 @@ cal_params:
         dark:
             n_imgs: 5
             exptimes:
-                - 2.5
+                #- 2.5
+                - 5
                 - 10
                 - 15
                 - 30
+                - 45
                 - 60
+                #- 100
                 - 120
-                - 150
-                - 180
+                #- 150
+                #- 180
             filterID: 'dark'
         bias:
             n_imgs: 0

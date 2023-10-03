@@ -2927,7 +2927,10 @@ class RoboOperator(QtCore.QObject):
         self.maxAirmass = float(currentObs.get('maxAirmass', 1.0/np.cos((90 - self.config['telescope']['min_alt'])*np.pi/180.0)))
         #self.num_dithers = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.camname]['ditherNumber']))
         #self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.camname]['ditherNumber']))
-        self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['observing_parameters'][self.camname]['dithers']['ditherNumber']))
+        
+        #self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['observing_parameters'][self.camname]['dithers']['ditherNumber']))
+        self.num_dithers_per_pointing = 5 # just commented out above line to force this to 3 for testing
+        
         #self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.camname]['ditherStepSize']))
         self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['observing_parameters'][self.camname]['dithers']['ditherMaxStep_as']))
         self.fieldID = int(currentObs.get('fieldID', -1)) # previously was using 999999999 but that's annoying :D
@@ -2970,8 +2973,8 @@ class RoboOperator(QtCore.QObject):
         
         # calculate individual exposure time
         # NPL 9-19-23 for now multiply by 2 so that we get the expected 60s exposure times
-        self.exptime = ((self.visitExpTime/self.num_dithers)/num_pointings)*2
-        
+        self.exptime = ((self.visitExpTime/self.num_dithers))#/num_pointings)*2 # NPL 9-23-23 reverting this so that we get mostly 120s exposures for now
+        #self.exptime = 45.0 #120.0
         # start the dither number at 1, it gets incremented after the exposure is complete.
         self.dithnum = 1
         
