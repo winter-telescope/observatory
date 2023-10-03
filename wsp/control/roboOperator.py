@@ -1221,6 +1221,22 @@ class RoboOperator(QtCore.QObject):
         
         return self.observatory_ready
     
+    def get_winter_camera_ready_status(self):
+        
+        """
+        Run a check to see if the WINTER camera is ready to observe. Basically,
+        for each sensor:
+            - we have a record of a successful bias frame
+            - the TEC is running
+            - the PID loop is steady
+            - the PID loop is at temperature
+        """
+        
+        
+        
+        pass
+    
+    
     def get_observatory_stowed_status(self):
         """
         Run a check to see if the observatory is in a safe stowed state.

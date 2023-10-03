@@ -368,7 +368,7 @@ class PyroGUI(QtCore.QObject):
         
         self.imageHandler = ImageHandler(logger = logger)
                 
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.imageHandler, name = 'WINTERimage', ns_host = ns_host)
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.imageHandler, name = 'WINTERImageDaemon', ns_host = ns_host)
         self.pyro_thread.start()
         
         
