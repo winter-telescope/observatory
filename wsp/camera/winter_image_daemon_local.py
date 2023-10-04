@@ -114,7 +114,8 @@ class WINTERImageHandler(QtCore.QObject):
                 raise PyroCommunicationError(msg)
             else:
                 # now excecute the function
-                func(self, *args, **kwargs)
+                result = func(self, *args, **kwargs)
+                return result
             # try:
             #     func(*args, **kwargs)
                 
