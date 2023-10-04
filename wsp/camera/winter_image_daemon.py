@@ -340,7 +340,7 @@ class ImageHandler(QtCore.QObject):
         
         # post to slack
         self.post_results_to_slack(image_output_filepath)
-    
+        self.log(results)
         return results
     
     @Pyro5.server.expose
