@@ -472,7 +472,7 @@ class control(QtCore.QObject):
                                                 #wintercamera = self.wintercamera,
                                                 camdict = self.camdict,
                                                 fwdict = self.fwdict,
-                                                imghandlerdict = self.image_handler_dict,
+                                                imghandlerdict = self.imghandlerdict,
                                                 mirror_cover = self.mirror_cover,
                                                 robostate = self.robostate,
                                                 sunsim = self.sunsim,
@@ -505,7 +505,7 @@ class control(QtCore.QObject):
                                              #wintercamera = self.wintercamera,
                                              camdict = self.camdict,
                                              fwdict = self.fwdict,
-                                             imghandlerdict = self.image_handler_dict,
+                                             imghandlerdict = self.imghandlerdict,
                                              mirror_cover = self.mirror_cover,
                                              ephem = self.ephem)
         
@@ -550,7 +550,7 @@ class control(QtCore.QObject):
                                                               #ccd = self.ccd, 
                                                               camdict = self.camdict,
                                                               fwdict = self.fwdict,
-                                                              imghandlerdict = self.image_handler_dict,
+                                                              imghandlerdict = self.imghandlerdict,
                                                               mirror_cover = self.mirror_cover,
                                                               robostate = self.robostate,
                                                               sunsim = self.sunsim,
