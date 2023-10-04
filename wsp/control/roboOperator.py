@@ -126,7 +126,7 @@ class RoboOperatorThread(QtCore.QThread):
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
                  alertHandler, watchdog, schedule, telescope, dome, chiller, ephem, 
                  #viscam, ccd, 
-                 camdict, fwdict,
+                 camdict, fwdict, imghandlerdict,
                  mirror_cover, robostate, sunsim, dometest, mountsim):
         super(QtCore.QThread, self).__init__()
         
@@ -148,6 +148,7 @@ class RoboOperatorThread(QtCore.QThread):
         #self.ccd = ccd
         self.camdict = camdict
         self.fwdict = fwdict
+        self.imghandlerdict = imghandlerdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
@@ -172,6 +173,7 @@ class RoboOperatorThread(QtCore.QThread):
                                      #ccd = self.ccd,
                                      camdict = self.camdict,
                                      fwdict = self.fwdict,
+                                     imghandlerdict = self.imghandlerdict,
                                      mirror_cover = self.mirror_cover,
                                      robostate = self.robostate,
                                      sunsim = self.sunsim,
@@ -232,7 +234,7 @@ class RoboOperator(QtCore.QObject):
     def __init__(self, base_directory, config, mode, state, wintercmd, logger, 
                  alertHandler, watchdog, schedule, telescope, dome, chiller, ephem, 
                  #viscam, ccd, 
-                 camdict, fwdict,
+                 camdict, fwdict, imghandlerdict,
                  mirror_cover, robostate, sunsim, dometest, mountsim):
         super(RoboOperator, self).__init__()
         
@@ -256,6 +258,7 @@ class RoboOperator(QtCore.QObject):
         #self.ccd = ccd
         self.camdict = camdict
         self.fwdict = fwdict
+        self.imghandlerdict = imghandlerdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
@@ -310,7 +313,7 @@ class RoboOperator(QtCore.QObject):
         self.active_alarms = []
         self.alarm_enable = True
         
-        
+        """ TO PURGE! # NPL 10-3-23
         ### SET UP THE WRITER ###
         # init the database writer
         writerpath = self.config['obslog_directory'] + '/' + self.config['obslog_database_name']
@@ -318,7 +321,7 @@ class RoboOperator(QtCore.QObject):
         self.writer = ObsWriter.ObsWriter(writerpath, self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
         # create an empty dict that will hold the data that will get written out to the fits header and the log db
         self.data_to_log = dict()
-        
+        """
         ### SCHEDULE ATTRIBUTES ###
         # hold a variable to track remaining dithers in kst
         self.remaining_dithers = 0 
@@ -1221,20 +1224,104 @@ class RoboOperator(QtCore.QObject):
         
         return self.observatory_ready
     
-    def get_winter_camera_ready_status(self):
+    def get_winter_camera_ready_to_observe_status(self):
         
         """
         Run a check to see if the WINTER camera is ready to observe. Basically,
         for each sensor:
+            - is connected
             - we have a record of a successful bias frame
             - the TEC is running
             - the PID loop is steady
             - the PID loop is at temperature
         """
+        conds = []
         
+        # run through identical conditions for each sensor:
+        for addr in self.camdict['winter'].state['addrs']:
+            
+            # check that we're connected
+            conds.append(self.state[f'{addr}_connected'] == True)
+            
+            # check that there is a record of a successful bias frame for each sensor
+            conds.append(self.state[f'{addr}_startup_validated'] == True)
         
+            # check that the TEC is running 
+            conds.append(self.state[f'{addr}_tec_status'] == True)
+            
+            # check that the TEC temp is steady
+            conds.append(self.state[f'{addr}_pid_ramp_status'] == 0)
+            
+            # check that the TEC temp is at the setpoint
+            conds.append(self.state[f'{addr}_pid_at_setpoint'] == True)
+    
         
-        pass
+        self.winter_camera_ready_to_observe = all(conds)
+        
+        return self.winter_camera_ready_to_observe
+    
+    def get_winter_camera_ready_to_stow_status(self):
+        
+        """
+        Run a check to see if the WINTER camera is ready to be stowed. Basically,
+        for each sensor:
+            - the TEC is running
+            - the PID loop is steady
+            - the PID loop is at temperature
+            - the PID loop is set to 15 C
+        """
+        conds = []
+        
+        # run through identical conditions for each sensor:
+        for addr in self.camdict['winter'].state['addrs']:
+        
+            # check that the TEC is running 
+            conds.append(self.state[f'{addr}_tec_status'] == True)
+            
+            # check that the TEC temp is steady
+            conds.append(self.state[f'{addr}_pid_ramp_status'] == 0)
+            
+            # check that the TEC temp is at the setpoint
+            conds.append(self.state[f'{addr}_pid_at_setpoint'] == True)
+    
+            # check that all the TECs are set to 15 C
+            conds.append(self.state[f'{addr}_T_fpa_sp'] == 15.0)
+        
+        self.winter_camera_ready_to_stow_status = all(conds)
+        
+        return self.winter_camera_ready_to_stow_status
+    
+    def get_winter_camera_stowed_status(self):
+        
+        """
+        Run a check to see if the WINTER camera is ready to be stowed. Basically,
+        for each sensor:
+            - the TEC is off
+            - is shut down
+            - labjack power enable is off
+            - pdu channel is off
+        """
+        conds = []
+        
+        # run through identical conditions for each sensor:
+        for addr in self.camdict['winter'].state['addrs']:
+        
+            # check that the TEC is off 
+            conds.append(self.state[f'{addr}_tec_status'] == False)
+            
+            # check that sensor is shutdown
+            
+        # check that labjack power inhibit is on 
+        #TODO: NPL 10-3-23 make these less hard coded
+        conds.append(self.state['fpa_port_power_disabled'] == True)
+        conds.append(self.state['star_port_power_disabled'] == True)
+        
+        # check that pdu is off
+        conds.append(self.state['pdu2_2'] == False)
+        
+        self.winter_camera_stowed_status = all(conds)
+        
+        return self.winter_camera_stowed_status
     
     
     def get_observatory_stowed_status(self):
@@ -4121,7 +4208,7 @@ class RoboOperator(QtCore.QObject):
         """
         pass
     
-    def WINTER_bias_image_is_okay(self):
+    def checkWINTERCamera(self):
         """
         Takes a bias image with WINTER, then checks if it is okay
         
@@ -4166,23 +4253,35 @@ class RoboOperator(QtCore.QObject):
             self.target_ok = False
             return False, []
         
-        try:
-            ns = Pyro5.core.locate_ns(host = '192.168.1.10')
-            uri = ns.lookup('WINTERimage')
-            self.image_daemon = Pyro5.client.Proxy(uri)
-            image_daemon_connected = True
-        except Exception as e:
-            image_daemon_connected = False
-            self.log(f'could not connect to WINTER image daemon', exc_info = True)
-            return False, []
         
-        if image_daemon_connected:
-            results = self.image_daemon.validate_bias(image_filepath)
+        
+        try:
+            results = self.imghandlerdict['winter'].validate_bias(image_filepath)
+            """
+            Note: the results are a dictionary with these entries for 
+            each addr (eg, sa, sb, sc, ... , pc)
+                results = { 'sa' : {'okay' : False,
+                                    'mean' : 0.15,
+                                    'std'  : 0.01,
+                                    },
+                            etc...
+                           }
+            """
             bad_chans = results['bad_chans']
             if len(bad_chans):
                 bias_ok = True
             
+            # update the record of the validation status with the camera daemon
+            for addr in results:
+                self.camdict['winter'].updateStartupValidation(results[addr]['okay'], addrs = addr)
+            
             return bias_ok, bad_chans
-        else:
-            return False, [] 
-        return
+
+        except Exception as e:
+            msg = f'roboOperator: could not get last image filename from {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            self.target_ok = False
+            return False, []
+        

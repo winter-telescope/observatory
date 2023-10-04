@@ -192,6 +192,7 @@ class Wintercmd(QtCore.QObject):
                  #wintercamera,
                  camdict,
                  fwdict,
+                 imghandlerdict,
                  ephem,
                  verbose = False):
         # init the parent class
@@ -220,6 +221,7 @@ class Wintercmd(QtCore.QObject):
         #self.wintercamera = wintercamera
         self.camdict = camdict
         self.fwdict = fwdict
+        self.imghandlerdict = imghandlerdict
         self.mirror_cover = mirror_cover
         self.ephem = ephem
         
@@ -5012,7 +5014,7 @@ class Wintercmd(QtCore.QObject):
         camera = self.camdict[camname]
            
         if camname == 'winter':
-            sigcmd = signalCmd('WINTER_bias_image_is_okay')
+            sigcmd = signalCmd('checkWINTERCamera')
             self.roboThread.newCommand.emit(sigcmd)
         else:
             self.logger.info(f'wintercmd: checkCamera only defined for WINTER')

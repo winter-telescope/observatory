@@ -3295,7 +3295,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['bench_max_dacV'] 
-    bench_V_tec_status:
+    bench_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -3316,6 +3316,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['bench_connected']
+    bench_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_sensor_daemon_connected']
+    bench_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_startup_validated']
     bench_new_img_flag:
         ftype: raw
         label: 'status'
@@ -3604,7 +3618,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sa_max_dacV'] 
-    sa_V_tec_status:
+    sa_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -3625,6 +3639,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sa_connected']
+    sa_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_sensor_daemon_connected']
+    sa_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_startup_validated']
     sa_new_img_flag:
         ftype: raw
         label: 'status'
@@ -3913,7 +3941,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sb_max_dacV'] 
-    sb_V_tec_status:
+    sb_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -3934,6 +3962,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sb_connected']
+    sb_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_sensor_daemon_connected']
+    sb_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_startup_validated']
     sb_new_img_flag:
         ftype: raw
         label: 'status'
@@ -4222,7 +4264,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sc_max_dacV'] 
-    sc_V_tec_status:
+    sc_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -4243,6 +4285,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sc_connected']
+    sc_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_sensor_daemon_connected']
+    sc_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_startup_validated']
     sc_new_img_flag:
         ftype: raw
         label: 'status'
@@ -4531,7 +4587,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pa_max_dacV'] 
-    pa_V_tec_status:
+    pa_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -4552,6 +4608,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pa_connected']
+    pa_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_sensor_daemon_connected']
+    pa_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_startup_validated']
     pa_new_img_flag:
         ftype: raw
         label: 'status'
@@ -4840,7 +4910,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pb_max_dacV']   
-    pb_V_tec_status:
+    pb_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -4861,6 +4931,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pb_connected']
+    pb_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_sensor_daemon_connected']
+    pb_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_startup_validated']
     pb_new_img_flag:
         ftype: raw
         label: 'status'
@@ -5149,7 +5233,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pc_max_dacV'] 
-    pc_V_tec_status:
+    pc_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -5170,6 +5254,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pc_connected']
+    pc_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_sensor_daemon_connected']
+    pc_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_startup_validated']
     pc_new_img_flag:
         ftype: raw
         label: 'status'

@@ -66,6 +66,7 @@ from housekeeping import labjack_handler_local
 from camera import camera
 from filterwheel import filterwheel
 from watchdog import local_watchdog
+from camera import winter_image_daemon_local
 
 
 # Create the control class -- it inherets from QObject
@@ -406,6 +407,10 @@ class control(QtCore.QObject):
                                                       daemon_pyro_name = 'WINTERfw', ns_host = self.ns_host,
                                                       logger = self.logger, verbose = self.verbose)
         
+        self.winter_image_handler = winter_image_daemon_local.WINTERImageHandler(wsp_path, config = self.config, camname = 'winter',
+                           daemon_pyro_name = 'WINTERImageDaemon',
+                           ns_host = self.ns_host, logger = self.logger, verbose = self.verbose)
+        
         # init the camera dictionary to hold all the cameras we have access to
         self.camdict = dict({'winter' : self.wintercamera,
                              #'summer' : self.summercamera,
@@ -416,6 +421,9 @@ class control(QtCore.QObject):
                             #'summer' : self.summerfw,
                             })
         
+        # init the image daemon handler dictionary
+        self.imghandlerdict = dict({'winter' : self.winter_image_handler,
+                                        })
         
         # init the alert handler
         auth_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['auth_config_file'] )) , Loader = yaml.FullLoader)
@@ -464,6 +472,7 @@ class control(QtCore.QObject):
                                                 #wintercamera = self.wintercamera,
                                                 camdict = self.camdict,
                                                 fwdict = self.fwdict,
+                                                imghandlerdict = self.image_handler_dict,
                                                 mirror_cover = self.mirror_cover,
                                                 robostate = self.robostate,
                                                 sunsim = self.sunsim,
@@ -496,6 +505,7 @@ class control(QtCore.QObject):
                                              #wintercamera = self.wintercamera,
                                              camdict = self.camdict,
                                              fwdict = self.fwdict,
+                                             imghandlerdict = self.image_handler_dict,
                                              mirror_cover = self.mirror_cover,
                                              ephem = self.ephem)
         
@@ -540,6 +550,7 @@ class control(QtCore.QObject):
                                                               #ccd = self.ccd, 
                                                               camdict = self.camdict,
                                                               fwdict = self.fwdict,
+                                                              imghandlerdict = self.image_handler_dict,
                                                               mirror_cover = self.mirror_cover,
                                                               robostate = self.robostate,
                                                               sunsim = self.sunsim,
