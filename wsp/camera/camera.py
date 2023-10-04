@@ -350,6 +350,10 @@ class local_camera(QtCore.QObject):
     def restartSensorDaemon(self, addrs = None):
         self.remote_object.restartSensorDaemon(addrs = addrs)
         #self.remote_object.reconnect()
+        
+    def updateStartupValidation(self, startupValidation, addrs = None):
+        self.remote_object.updateStartupValidation(startupValidation = startupValidation, addrs = addrs)
+    
     def killCameraDaemon(self):
         self.remote_object.killCameraDaemon()
     
