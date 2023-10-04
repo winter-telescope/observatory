@@ -3040,6 +3040,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['doing_exposure']
+    winter_camera_connected:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['is_connected']
     winter_camera_command_timeout:
         ftype: raw
         label: 'Time'
