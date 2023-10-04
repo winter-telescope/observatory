@@ -872,6 +872,64 @@ class RoboOperator(QtCore.QObject):
             #---------------------------------------------------------------------        
             # check the camera(s)
             #---------------------------------------------------------------------
+            """
+            Camera Startup:
+                Camera is ready_to_startup if:
+                    - power supplies are on
+                    - chiller is in good shape
+                Camera is ready_to_cool if:
+                    - sensor daemons are connected
+                    - sensors are connected
+                    - sensors have a record of a good bias frame
+                Camera is ready_to_observe if:
+                    - TEC is running
+                    - sensor temps are at setpoint
+                    - sensor temps are steady 
+            Camera Shutdown:
+                Camera is ready_to_warm if:
+                    - sensor daemons are connected
+                    - sensors are connected 
+                Camera is ready_to_shut down if:
+                    - sensors are warm
+                Camera is ready to power off if:
+                    - TECs are off
+                    - sensors are shutdown
+            
+                
+                
+            if camera_should_be_on:
+                if camera_is_on:
+                    # the camera is on as requested
+                    if camera_is_ready_to_observe:
+                        # good! fine to observe.
+                        pass
+                    else:
+                        if taking_too_long_to_startup:
+                            send_out_an_alert_about_this()
+                        else:
+                            # we're just waiting for the TEC to cool
+                            self.checktimer.start()
+                else:
+                    # the camera is not on but it should be
+                    robo_startup_camera()
+                    
+            else:
+                # the camera should not be on
+                if camera_is_on:
+                    
+                    if camera_is_shutting_down:
+                        if taking_too_long_to_shutdown:
+                            send_out_an_alert_about_this()
+                        else:
+                            # we're just waiting for the camera to '
+                    # the camera is on and it should NOT be
+                    robo_shutdown_camera()
+                
+                        
+                
+            
+            """
+            
             # if self.get_camera_ready_status():
             #     self.log(f'the cameras are ready to observe!')
             #     # if True, then the cameras in self.camdict are ready to observe
@@ -879,6 +937,7 @@ class RoboOperator(QtCore.QObject):
             # else:
             #     self.log(f'')
             
+        
             
             #---------------------------------------------------------------------
             # get the current timestamp and MJD
@@ -1224,16 +1283,32 @@ class RoboOperator(QtCore.QObject):
         
         return self.observatory_ready
     
+    def get_winter_camera_on_status(self):
+        """
+        Run a check to see if the camera started up properly, and is ready to 
+        start cooling. Specifically that each sensor:
+            - the PDU is on
+            - the labjack has enabled the power
+            - is connected
+            - we have a record of a successful bias frame
+        """
+        
+        conds = []
+        
+        
+        self.winter_camera_on_status = all(conds)
+        return self.winter_camera_on_status
+    
     def get_winter_camera_ready_to_observe_status(self):
         
         """
-        Run a check to see if the WINTER camera is ready to observe. Basically,
-        for each sensor:
-            - is connected
-            - we have a record of a successful bias frame
-            - the TEC is running
-            - the PID loop is steady
-            - the PID loop is at temperature
+        Run a check to see if the WINTER camera is ready to observe, eg
+        that it started properly and that it is cold and stable:
+            - the camera is on (see get_winter_camera_on_status)
+            - check that each sensor:
+                - the TEC is running
+                - the PID loop is steady
+                - the PID loop is at temperature
         """
         conds = []
         
@@ -4267,6 +4342,7 @@ class RoboOperator(QtCore.QObject):
                             etc...
                            }
             """
+            self.log(f'bias validation results: {results}')
             bad_chans = results['bad_chans']
             if len(bad_chans):
                 bias_ok = True
@@ -4278,7 +4354,7 @@ class RoboOperator(QtCore.QObject):
             return bias_ok, bad_chans
 
         except Exception as e:
-            msg = f'roboOperator: could not get last image filename from {system} due to {e.__class__.__name__}, {e}'
+            msg = f'roboOperator: could not update sensor validation on {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
