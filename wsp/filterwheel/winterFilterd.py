@@ -408,6 +408,7 @@ class EZStepper(QtCore.QObject):
             self.log(f'We ran into an error: {e}')
 
         # opto check
+        time.sleep(0.5)  # give time for filter tray to settle
         input_status = self.getInputStatus()
         actually_homed = input_status['opto1'] == 0
 

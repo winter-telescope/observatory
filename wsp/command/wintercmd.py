@@ -4275,7 +4275,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 150
+        timeout = 60 * 5
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
