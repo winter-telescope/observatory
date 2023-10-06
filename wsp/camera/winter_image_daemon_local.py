@@ -20,6 +20,7 @@ import Pyro5.core
 import Pyro5.server
 import Pyro5.errors
 #import traceback as tb
+import threading
 from datetime import datetime
 from PyQt5 import QtCore
 import logging
@@ -69,7 +70,7 @@ class WINTERImageHandler(QtCore.QObject):
         self.connected = False
         self.logger = logger
         self.default = self.config['default_value']
-        self.verbose = verbose
+        self.verbose = True#verbose
         
         self.reconnect_attempts = 3
 
@@ -86,7 +87,7 @@ class WINTERImageHandler(QtCore.QObject):
         
         
     def log(self, msg, level = logging.INFO):
-        msg = f'{self.daemonname}_local: {msg}'
+        msg = f'{self.daemonname}_local @ Thread {threading.get_ident()}: {msg}'
         if self.logger is None:
                 print(msg)
         else:
@@ -117,22 +118,28 @@ class WINTERImageHandler(QtCore.QObject):
                 # now excecute the function
                 result = func(self, *args, **kwargs)
                 return result
-            # try:
-            #     func(*args, **kwargs)
-                
-                
-            # except Exception as e:
-            #     '''
-            #     Exceptions are already handled by the argument parser
-            #     so do nothing here.
-            #     '''
-            #     msg = (f'Could not execute command {func.__name__}: {e}')
-            #     raise Exception(e)
-                
-                
-            #     pass
+
         return connect_then_execute
     
+    def MakeProxyAndExecFunction(func):
+        """
+        This is a simple wrapper to simplify the try/except statement
+        when executing a function in the command list.
+        """
+        def connect_then_execute(self, *args, **kwargs):
+            
+            # make sure we're connected to the daemon
+            self.init_remote_object()
+                
+            if not self.connected:
+                msg = f'command {func} not executed! could not connect to daemon after {self.reconnect_attempts} attempts'
+                raise PyroCommunicationError(msg)
+            else:
+                # now excecute the function
+                result = func(self, *args, **kwargs)
+                return result
+
+        return connect_then_execute
     
     ###    
     def doCommand(self, cmd_obj):
@@ -165,6 +172,7 @@ class WINTERImageHandler(QtCore.QObject):
             # connect
             self.remote_object._pyroBind()
             self.connected = True
+            self.log(f'connected proxy object in this thread')
         except Exception as e:
             self.connected = False
             if self.verbose:
@@ -223,23 +231,29 @@ class WINTERImageHandler(QtCore.QObject):
     def print_state(self):
         self.update_state()
         print(f'state = {json.dumps(self.state, indent = 2)}')
-        
+    
+    
+    
     #### EXTERNAL METHODS ####
-    @AutoconnectFunction
+    #@AutoconnectFunction
+    @MakeProxyAndExecFunction
     def get_focus_from_imgpathlist(self, images, dirpath = None,
                                    board_ids_to_use = None, plot_all = False):
         
+        self.log(f'getting focus from image path: {images}')
         self.remote_object.get_focus_from_imgpathlist(images = images, 
                                                       board_ids_to_use = board_ids_to_use,
                                                       plot_all = plot_all)
-    @AutoconnectFunction
+    #@AutoconnectFunction
+    @MakeProxyAndExecFunction
     def validate_bias(self, image_filepath):
-        
+        self.log(f'validating bias image at {image_filepath}')
         results = self.remote_object.validate_bias(image_filepath)
     
         return results
     
-    @AutoconnectFunction
+    #@AutoconnectFunction
+    @MakeProxyAndExecFunction
     def killImageDaemon(self):
         self.remote_object.killImageDaemon()
     
@@ -254,7 +268,7 @@ if __name__ == '__main__':
     logger = logging_setup.setup_logger(wsp_path, config)        
     
     logger = None
-    verbose = False
+    verbose = True
     
     """
     def __init__(self, base_directory, config, daemon_pyro_name,

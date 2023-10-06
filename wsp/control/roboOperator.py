@@ -4346,10 +4346,12 @@ class RoboOperator(QtCore.QObject):
             bad_chans = results['bad_chans']
             if len(bad_chans):
                 bias_ok = True
-            
+            all_addrs = results['bad_chans'] + results['good_chans']
             # update the record of the validation status with the camera daemon
-            for addr in results:
-                self.camdict['winter'].updateStartupValidation(results[addr]['okay'], addrs = addr)
+            for addr in all_addrs:
+                self.log(f' updating sensor addr = {addr}, results[addr] = {results[addr]}')
+                self.do(f'updateSensorValidation {results[addr]["okay"]} -n {addr}')
+                #self.camdict['winter'].updateStartupValidation(results[addr]['okay'], addrs = addr)
             
             return bias_ok, bad_chans
 
@@ -4357,6 +4359,7 @@ class RoboOperator(QtCore.QObject):
             msg = f'roboOperator: could not update sensor validation on {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
             err = roboError(context, self.lastcmd, system, msg)
+            self.log(traceback.format_exc())
             self.hardware_error.emit(err)
             self.target_ok = False
             return False, []
