@@ -49,7 +49,7 @@ class WINTERImageHandler(QtCore.QObject):
     '''
     newCommand = QtCore.pyqtSignal(object)
     
-    imageSaved = QtCore.pyqtSignal()
+    request_init_remote_object = QtCore.pyqtSignal()
     
     def __init__(self, base_directory, config, camname, daemon_pyro_name,
                  ns_host = None,
@@ -78,6 +78,7 @@ class WINTERImageHandler(QtCore.QObject):
         # connect the signals and slots
         self.newCommand.connect(self.doCommand)
                 
+        self.request_init_remote_object.connect(self.init_remote_object)
         # Startup
         # setup connection to pyro ccd
         self.init_remote_object()
@@ -178,7 +179,8 @@ class WINTERImageHandler(QtCore.QObject):
         if not self.connected:
             if self.verbose:
                 self.log(f'self.connected = {self.connected}: try to init_remote_object again')
-            self.init_remote_object()
+            #self.init_remote_object()
+            self.request_init_remote_object.emit()
         
 
         else:
