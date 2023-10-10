@@ -3107,7 +3107,8 @@ class RoboOperator(QtCore.QObject):
         #self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['dither_defaults']['camera'][self.camname]['ditherNumber']))
         
         #self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['observing_parameters'][self.camname]['dithers']['ditherNumber']))
-        self.num_dithers_per_pointing = 5 # just commented out above line to force this to 3 for testing
+        #self.num_dithers_per_pointing = 5 # just commented out above line to force this to 3 for testing
+        self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', 5))
         
         #self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.camname]['ditherStepSize']))
         self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['observing_parameters'][self.camname]['dithers']['ditherMaxStep_as']))
