@@ -2796,7 +2796,7 @@ class RoboOperator(QtCore.QObject):
                 # make this better and less specific if possible...
                 try:
                     ns = Pyro5.core.locate_ns(host = '192.168.1.10')
-                    uri = ns.lookup('WINTERimage')
+                    uri = ns.lookup('WINTERImageDaemon')
                     self.image_daemon = Pyro5.client.Proxy(uri)
                     image_daemon_connected = True
                 except Exception as e:
