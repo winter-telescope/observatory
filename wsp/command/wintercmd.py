@@ -5065,8 +5065,13 @@ class Wintercmd(QtCore.QObject):
         camera = self.camdict[camname]
            
         if camname == 'winter':
-            sigcmd = signalCmd('checkWINTERCamera')
-            self.roboThread.newCommand.emit(sigcmd)
+            #sigcmd = signalCmd('checkWINTERCamera')
+            #self.roboThread.newCommand.emit(sigcmd)
+            
+            sigcmd = signalCmd('checkCamera')
+            camera = self.camdict[camname]
+            camera.newCommand.emit(sigcmd)
+            
         else:
             self.logger.info(f'wintercmd: checkCamera only defined for WINTER')
     
