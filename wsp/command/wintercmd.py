@@ -5075,6 +5075,39 @@ class Wintercmd(QtCore.QObject):
         else:
             self.logger.info(f'wintercmd: checkCamera only defined for WINTER')
     
+    @cmd
+    def autoStartupCamera(self):
+        self.defineCmdParser('run the autostart sequence')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        
+        
+        self.getargs()
+
+        self.logger.info(f'autoStartupCamera: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+           
+        if camname == 'winter':
+            #sigcmd = signalCmd('checkWINTERCamera')
+            #self.roboThread.newCommand.emit(sigcmd)
+            
+            sigcmd = signalCmd('autoStartupCamera')
+            camera = self.camdict[camname]
+            camera.newCommand.emit(sigcmd)
+            
+        else:
+            self.logger.info(f'wintercmd: autoStartupCamera only defined for WINTER')
     
     @cmd
     def generate_supernovae_db(self):

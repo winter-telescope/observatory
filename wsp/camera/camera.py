@@ -357,6 +357,12 @@ class local_camera(QtCore.QObject):
     def checkCamera(self):
         self.remote_object.checkCamera()
     
+    def autoStartupCamera(self):
+        self.remote_object.autoStartup()
+    
+    def autoShutdownCamera(self):
+        self.remote_object.autoShutdown()
+    
     def killCameraDaemon(self):
         self.remote_object.killCameraDaemon()
     
