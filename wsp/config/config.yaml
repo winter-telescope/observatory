@@ -3274,6 +3274,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['bench_pid_ramp_status']  
+    bench_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate:'hk'
+        var: camdict['winter'].state['bench_pid_init_timestamp']
     bench_Kp:
         ftype: raw
         label: 'Coeff'
@@ -3597,6 +3604,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sa_pid_ramp_status'] 
+    sa_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate:'hk'
+        var: camdict['winter'].state['sa_pid_init_timestamp']
     sa_Kp:
         ftype: raw
         label: 'Coeff'
@@ -3920,6 +3934,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sb_pid_ramp_status'] 
+    sb_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate:'hk'
+        var: camdict['winter'].state['sb_pid_init_timestamp']
     sb_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4243,6 +4264,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sc_pid_ramp_status'] 
+    sc_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate:'hk'
+        var: camdict['winter'].state['sc_pid_init_timestamp']
     sc_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4566,6 +4594,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pa_pid_ramp_status']
+    pa_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate:'hk'
+        var: camdict['winter'].state['pa_pid_init_timestamp']
     pa_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4889,6 +4924,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pb_pid_ramp_status']
+    pb_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate:'hk'
+        var: camdict['winter'].state['pb_pid_init_timestamp']
     pb_Kp:
         ftype: raw
         label: 'Coeff'
@@ -5212,6 +5254,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pc_pid_ramp_status'] 
+    pc_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate:'hk'
+        var: camdict['winter'].state['pc_pid_init_timestamp']
     pc_Kp:
         ftype: raw
         label: 'Coeff'
