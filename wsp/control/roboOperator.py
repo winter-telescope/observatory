@@ -3359,7 +3359,7 @@ class RoboOperator(QtCore.QObject):
                         
                         # it is now okay to trigger going to the next observation
                         # always log observation, but only gotoNext if we're on the last TOTAL dither
-                        if self.dithnum == self.num_dithers:
+                        if self.dithnum == self.num_dithers+1:
                             gotoNext = True
                             self.log_observation_and_gotoNext(gotoNext = gotoNext, logObservation = True)
                         else:
