@@ -3068,6 +3068,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['command_elapsed_dt']
+    winter_camera_autostart_requested:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['autoStartRequested']
+    winter_camera_autostart_complete:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['autoStartComplete']
+    winter_camera_autoshutdown_requested:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['autoShutdownRequested']
+    winter_camera_autoshutdown_complete:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['autoShutdownComplete']
         
 ########### HOUSEKEEPING WINTER SENSORS ##########
 # Bench Sensor        
