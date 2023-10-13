@@ -290,6 +290,7 @@ class RoboOperator(QtCore.QObject):
         # set an attribute to indicate if we are okay to observe
         ## ie, if startup is complete, the calibration is complete, and the weather/dome is okay
         self.ok_to_observe = False
+        self.estop_active = False
     
         # a flag to indicate we're in a daylight test mode which will spoof some observations and trigger
         ## off of schedule alt/az rather than ra/dec
@@ -525,7 +526,9 @@ class RoboOperator(QtCore.QObject):
 
     def estop_camera(self):
         #self.announce('This is a test of the camera ESTOP!')
-        self.announce(':redsiren: CAUGHT CRITICAL CAMERA ALARMS!', group = 'operator')        
+        self.announce(':redsiren: CAUGHT CRITICAL CAMERA ALARMS!', group = 'operator') 
+        
+        self.estop_active = True
         
         self.announce('Sending TEC Stop Command to all FPAS')
         self.doTry('tecStop')
@@ -745,6 +748,11 @@ class RoboOperator(QtCore.QObject):
             but if we're just loopin through restart_robo we can safely ignore the constant logging'
         """
         
+        # if estop active return false immediately
+        if self.estop_active:
+            self.ok_to_observe = False
+            return
+        
         # if we're in dometest mode, ignore the full tree
         if self.dometest:
             self.ok_to_observe = True
@@ -929,6 +937,45 @@ class RoboOperator(QtCore.QObject):
                 
             
             """
+            # WINTER camera
+            self.log('checking if the camera should be on')
+            if self.get_camera_should_be_running_status():
+                self.log(f'the camera should be on!')
+                
+                # the camera should be running! make sure it is.
+                if self.camdict['winter'].state['autoStartRequested']:
+                    # the camera should be on
+                    
+                    if self.camdict['winter'].state['autoStartComplete']:
+                        
+                        # the startup is complete!
+                        # double check it
+                        if self.get_winter_camera_ready_to_observe_status():
+                            self.log(f'camera is okay to observe!')
+                            # the camera is confirmed good to observe
+                            pass
+                        else:
+                            
+                            # camera is not ready but autostart has been requested. stand by
+                            self.log(f'camera autostart not finished yet. Standing by...')
+                            self.checktimer.start()
+                            return
+                    else:
+                        # camera is not ready but autostart has been requested. stand by
+                        self.log(f'camera autostart not finished yet. Standing by...')
+                        self.checktimer.start()
+                        return
+                else:
+                    # we need to request an autostart
+                    #self.doTry('autoStartupCamera --winter', context = 'robo loop', system = 'camera')
+                    self.do_camera_startup('winter')
+                    self.checktimer.start()
+                    return
+            else:
+                # the camera should be off
+                self.log(f'the camera should be off, but autoShutdownCamera not yet implemented')
+                pass
+            
             
             # if self.get_camera_ready_status():
             #     self.log(f'the cameras are ready to observe!')
@@ -1283,22 +1330,43 @@ class RoboOperator(QtCore.QObject):
         
         return self.observatory_ready
     
-    def get_winter_camera_on_status(self):
-        """
-        Run a check to see if the camera started up properly, and is ready to 
-        start cooling. Specifically that each sensor:
-            - the PDU is on
-            - the labjack has enabled the power
-            - is connected
-            - we have a record of a successful bias frame
-        """
+    # def get_winter_camera_on_status(self):
+    #     """
+    #     Run a check to see if the camera started up properly, and is ready to 
+    #     start cooling. Specifically that each sensor:
+    #         - the PDU is on
+    #         - the labjack has enabled the power
+    #         - is connected
+    #         - we have a record of a successful bias frame
+    #     """
         
-        conds = []
+    #     conds = []
         
         
-        self.winter_camera_on_status = all(conds)
-        return self.winter_camera_on_status
+    #     self.winter_camera_on_status = all(conds)
+    #     return self.winter_camera_on_status
     
+    def get_camera_should_be_running_status(self):
+        
+        ### Notes:
+        """
+        The plan here is that roboManager will set a flag. roboOperator
+        will init to cameras should be off is unknown, and then roboManager
+        will send a command that they should be on. 
+        
+        Or the other option is to add in limits in the config and interpret 
+        them using the robo manager methods
+        
+        
+        """
+        
+        # For now do the easy thing:
+        if self.state['sun_alt'] <= -5.0:
+            return True
+        
+        else:
+            return False
+            
     def get_winter_camera_ready_to_observe_status(self):
         
         """
@@ -1775,7 +1843,92 @@ class RoboOperator(QtCore.QObject):
             
             self.announce(':caution: startup complete but with some errors')
             print(f'robo: do_startup complete but with some errors')
+    
+    def do_camera_startup(self, camname):
+        system = 'camera'
+        context = 'do_camera_startup'
+        systems_started = []
+        msg = 'setting up chiller (if not already)'
+        self.announce(msg)
+        try:
+            # make sure the chiller is on
+            system = 'chiller'
+            
+            self.do('chiller_start')
+            time.sleep(2)
+            self.do('chiller_set_setpoint 10')
+            
+            self.announce(':greentick: chiller startup complete')
+            systems_started.append(True)
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            systems_started.append(False)
+            
+            
+            
+            # make sure the flow is going
+            
+            
+            # # make sure the LJ is off
+            # don't do this because it would turn sensor off while running
+            # system = 'labjack'
+            # self.do('fpa off')
         
+        systems_started = []
+        msg = 'powering on the focal planes'
+        self.announce(msg)
+        try:
+            # make sure the pdu is on
+            system = 'pdu'
+            self.do('pdu on fpas')
+            
+            # make sure the LJ is on
+            system = 'labjack'
+            self.do('fpa on')
+            
+            self.announce(':greentick: camera power startup complete')
+            systems_started.append(True)
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            systems_started.append(False)
+            
+        try:
+            # make sure the pdu is on
+            system = 'camera'
+            msg = f':cold_face: running autostart routine on {camname}!'
+            self.announce(msg)
+            self.do(f'autoStartupCamera --{camname}')
+            
+            self.announce(':greentick: camera power startup complete')
+            systems_started.append(True)
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            systems_started.append(False)    
+            
+        # if we made it all the way to the bottom, say the startup is complete!
+        
+        if all(systems_started):
+            self.camera_startup_complete = True
+            self.announce(':greentick: startup complete!')
+            self.log(f'robo: do_camera_startup complete')
+        else:
+            self.camera_startup_complete = False
+            
+            self.announce(':caution: camera startup complete but with some errors')
+            self.log(f'do_startup complete but with some errors')
+    
     def do_shutdown(self, shutdown_cameras = False):
         """
         This is the counterpart to do_startup. It supercedes the old "total_shutdown"

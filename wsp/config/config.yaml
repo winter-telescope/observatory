@@ -167,8 +167,8 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: False
             #cmd: 'total_startup --cameras'
-            cmd: 'do_startup --cameras'
-            #cmd: 'do_startup'
+            #cmd: 'do_startup --cameras'
+            cmd: 'do_startup'
         load_schedule:
             conds:
                 cond1:
@@ -217,6 +217,11 @@ robotic_manager_triggers:
                    type: 'sun'
                    val: -7.0
                    cond: '<'
+               # make sure we start after the purge starts
+               cond2:
+                   type: 'time'
+                   val: '18:45:0.0'
+                   cond: '>'
             repeat_on_restart: True
             sundir: 0
             cmd: 'robo_run'
