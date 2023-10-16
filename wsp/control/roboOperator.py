@@ -945,6 +945,8 @@ class RoboOperator(QtCore.QObject):
                 # the camera should be running! make sure it is.
                 if self.camdict['winter'].state['autoStartRequested']:
                     # the camera should be on
+                    self.log(f"autoStartRequested = {self.camdict['winter'].state['autoStartRequested']}")
+                    self.log(f"autoStartRequested is not True, even though the camera autostart should have been requested. Requesting again")
                     
                     if self.camdict['winter'].state['autoStartComplete']:
                         
@@ -968,6 +970,7 @@ class RoboOperator(QtCore.QObject):
                 else:
                     # we need to request an autostart
                     #self.doTry('autoStartupCamera --winter', context = 'robo loop', system = 'camera')
+                    self.log(f'running do_camera_startup')
                     self.do_camera_startup('winter')
                     self.checktimer.start()
                     return
