@@ -942,14 +942,17 @@ class RoboOperator(QtCore.QObject):
             if self.get_camera_should_be_running_status():
                 self.log(f'the camera should be on!')
                 
+                self.log(f"autoStartRequested = {self.camdict['winter'].state['autoStartRequested']}")
+                self.log(f"autoStartComplete = {self.camdict['winter'].state['autoStartComplete']}")
+                
                 # the camera should be running! make sure it is.
                 if self.camdict['winter'].state['autoStartRequested']:
                     # the camera should be on
-                    self.log(f"autoStartRequested = {self.camdict['winter'].state['autoStartRequested']}")
-                    self.log(f"autoStartRequested is not True, even though the camera autostart should have been requested. Requesting again")
+                    
                     
                     if self.camdict['winter'].state['autoStartComplete']:
                         
+                        self.log(f'autostart requested but not complete.')
                         # the startup is complete!
                         # double check it
                         if self.get_winter_camera_ready_to_observe_status():
@@ -964,12 +967,13 @@ class RoboOperator(QtCore.QObject):
                             return
                     else:
                         # camera is not ready but autostart has been requested. stand by
-                        self.log(f'camera autostart not finished yet. Standing by...')
+                        self.log(f'camera autostart requested but not finished yet. Standing by...')
                         self.checktimer.start()
                         return
                 else:
                     # we need to request an autostart
                     #self.doTry('autoStartupCamera --winter', context = 'robo loop', system = 'camera')
+                    self.log(f"autoStartRequested is not True, even though the camera autostart should have been requested. Requesting again")
                     self.log(f'running do_camera_startup')
                     self.do_camera_startup('winter')
                     self.checktimer.start()
