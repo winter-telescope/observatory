@@ -3247,9 +3247,9 @@ class RoboOperator(QtCore.QObject):
                 total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
                 nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
                 #nom_focus = 'default'
-                #nom_focus = 'last'
+                nom_focus = 'last'
                 #nom_focus = 'model'
-                nom_focus = 12000 #NPL 7-1-23 using this for now
+                #nom_focus = 12000 #NPL 7-1-23 using this for now
                 focusType = 'Vcurve'
                 """
                 else:
