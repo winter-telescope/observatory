@@ -1089,9 +1089,9 @@ class RoboOperator(QtCore.QObject):
                     self.log(f"autoStartRequested is not True, even though the camera autostart should have been requested. Requesting again")
                     self.log(f'running do_camera_startup')
                     self.do_camera_startup('winter')
-                    self.cameras_ready = False
-                    # self.checktimer.start()
-                    # return
+                    #self.cameras_ready = False
+                    self.checktimer.start()
+                    return
             else:
                 # the camera should be off
                 self.log(f'the camera should be off')
@@ -2016,8 +2016,7 @@ class RoboOperator(QtCore.QObject):
         
         if all(systems_started):
             self.camera_startup_complete = True
-            self.announce(':greentick: startup complete!')
-            self.log(f'robo: do_camera_startup complete')
+            self.announce(':greentick: startup initiation sequence complete. waitint for cameras to finish starting up!')
         else:
             self.camera_startup_complete = False
             
@@ -2098,13 +2097,11 @@ class RoboOperator(QtCore.QObject):
         
         if all(systems_started):
             self.camera_startup_complete = True
-            self.announce(':greentick: shutdown complete!')
-            self.log(f'robo: do_camera_shutdown complete')
+            self.announce(':greentick: camera shutdown sequence initiated! waiting for camera to finish shutting down.')
         else:
             self.camera_startup_complete = False
             
-            self.announce(':caution: camera shutdown complete but with some errors')
-            self.log(f'do_startup complete but with some errors')
+            self.announce(':caution: camera shutdown sequence initiated but with some errors')
     
     def do_shutdown(self, shutdown_cameras = False):
         """
