@@ -820,66 +820,30 @@ class RoboOperator(QtCore.QObject):
         self.log('checking what to do!')
         if self.running:
             self.log('robo operator is running')
-            #---------------------------------------------------------------------
-            ### check the dome
-            #---------------------------------------------------------------------
-            if self.get_dome_status():
-                # if True, then the dome is fine
-                self.log('the dome status is good!')
-                pass
-            else:
-                self.log('there is a problem with the dome (eg weather, etc). STOWING OBSERVATORY')
-                # there is a problem with the dome.
-                self.stow_observatory(force = False)
-                # skip the rest of the checks, just start the timer for the next check
-                self.checktimer.start()
-                return
-            #---------------------------------------------------------------------
-            # check the sun
-            #---------------------------------------------------------------------
-            if self.get_sun_status():
-                self.log(f'the sun is low are we are ready to go!')
-                # if True, then the sun is fine. just keep going
-                pass
-            else:
-                self.log(f'waiting for the sun to set')
-                # the sun is up, can't proceed. just hang out.
-                self.checktimer.start()
-                return
-            #---------------------------------------------------------------------
-            # check if the observatory is ready
-            #---------------------------------------------------------------------
-            if self.get_observatory_ready_status():
-                self.log(f'the observatory is ready to observe!')
-                # if True, then the observatory is ready (eg successful startup and focus sequence)
-                pass
-            else:
-                self.log(f'need to start up observatory')
-                # we need to (re)run do_startup
-                self.do_startup()
-                # after running do_startup, kick back to the top of the loop
-                self.checktimer.start()
-            #---------------------------------------------------------------------        
-            # check the dome
-            #---------------------------------------------------------------------
-            if self.dometest:
-                self.log('dometest mode: ignoring whether the shutter is open!')
-                pass
-            else:
-                if self.dome.Shutter_Status == 'OPEN':
-                    self.log(f'the dome is open and we are ready to start taking data')
-                    # the dome is open and we're ready for observations. just pass
-                    pass
-                else:
-                    # the dome and sun are okay, but the dome is closed. we should open the dome
-                    self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
-                    self.doTry('dome_open')
-                    
-                    self.checktimer.start()
-                    return
+            
             #---------------------------------------------------------------------        
             # check the camera(s)
             #---------------------------------------------------------------------
+            """
+            - check if the camera(s) should be on
+            - if they should be on:
+                - see if startup has been requested. 
+                - if startup requested already:
+                    - pass
+                - else if startup not requested yet:
+                    - request startup
+            - else if they should be off:
+                - see if shutdown has been requested
+                - if shutdown requested already:
+                    - pass
+                - else if shutdown not requested yet:
+                    - request shutdown
+            * Do not run checktimer here. it should always make it through
+            this block, and down to the observatory checks below. That is
+            where we will trigger the checktimer wait to run the loop again.
+            """
+            
+            
             """
             Camera Startup:
                 Camera is ready_to_startup if:
@@ -957,27 +921,177 @@ class RoboOperator(QtCore.QObject):
                         # double check it
                         if self.get_winter_camera_ready_to_observe_status():
                             self.log(f'camera is okay to observe!')
+                            self.cameras_ready = True
                             # the camera is confirmed good to observe
+                            
+                            #---------------------------------------------------------------------
+                            ### OBSERVING SEQUENCE ###
+                            #---------------------------------------------------------------------
+                            
+                            #---------------------------------------------------------------------
+                            ### check the dome
+                            #---------------------------------------------------------------------
+                            if self.get_dome_status():
+                                # if True, then the dome is fine
+                                self.log('the dome status is good!')
+                                pass
+                            else:
+                                self.log('there is a problem with the dome (eg weather, etc). STOWING OBSERVATORY')
+                                # there is a problem with the dome.
+                                self.stow_observatory(force = False)
+                                # skip the rest of the checks, just start the timer for the next check
+                                self.checktimer.start()
+                                return
+                            #---------------------------------------------------------------------
+                            # check the sun
+                            #---------------------------------------------------------------------
+                            if self.get_sun_status():
+                                self.log(f'the sun is low are we are ready to go!')
+                                # if True, then the sun is fine. just keep going
+                                pass
+                            else:
+                                self.log(f'waiting for the sun to set')
+                                # the sun is up, can't proceed. just hang out.
+                                self.checktimer.start()
+                                return
+                            #---------------------------------------------------------------------
+                            # check if the observatory is ready
+                            #---------------------------------------------------------------------
+                            if self.get_observatory_ready_status():
+                                self.log(f'the observatory is ready to observe!')
+                                # if True, then the observatory is ready (eg successful startup and focus sequence)
+                                pass
+                            else:
+                                self.log(f'need to start up observatory')
+                                # we need to (re)run do_startup
+                                self.do_startup()
+                                # after running do_startup, kick back to the top of the loop
+                                self.checktimer.start()
+                            #---------------------------------------------------------------------        
+                            # check the dome
+                            #---------------------------------------------------------------------
+                            if self.dometest:
+                                self.log('dometest mode: ignoring whether the shutter is open!')
+                                pass
+                            else:
+                                if self.dome.Shutter_Status == 'OPEN':
+                                    self.log(f'the dome is open and we are ready to start taking data')
+                                    # the dome is open and we're ready for observations. just pass
+                                    pass
+                                else:
+                                    # the dome and sun are okay, but the dome is closed. we should open the dome
+                                    self.announce('observatory and sun are ready for observing, but dome is closed. opening...')
+                                    self.doTry('dome_open')
+                                    
+                                    self.checktimer.start()
+                                    return
+                            
+                            
+                            #---------------------------------------------------------------------
+                            # get the current timestamp and MJD
+                            #---------------------------------------------------------------------
+                                # turn the timestamp into mjd
+                                
+                            #TODO: NPL 8-17-22 there's no reason (I THINK) not to always use the time from self.ephem?
+                            obstime_mjd = self.ephem.state.get('mjd',0)
+                            obstime_timestamp_utc = astropy.time.Time(obstime_mjd, format = 'mjd').unix
+
+                                
+                            #---------------------------------------------------------------------
+                            # check if we need to focus the telescope
+                            #---------------------------------------------------------------------
+                            
+                            graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
+                            if self.test_mode == True:
+                                self.log(f"not checking focus bc we're in test mode")
+                                pass
+                            else:
+                                filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, 
+                                                                                         graceperiod_hours = graceperiod_hours,
+                                                                                         cam = self.camname)
+                                
+                                # here is a good place to insert a good check on temperature change,
+                                # or even better a check on FWHM of previous images
+                            
+                                if not filterIDs_to_focus is None:   
+                                    print(f'robo: focus attempt #{self.focus_attempt_number}')
+                                    if self.focus_attempt_number <= self.config['focus_loop_param']['max_focus_attempts']:
+                                        self.announce(f'**Out of date focus results**: we need to focus the telescope in these filters: {filterIDs_to_focus}')
+                                        # there are filters to focus! run a focus sequence
+                                        self.do_focus_sequence(filterIDs = filterIDs_to_focus)
+                                        self.announce(f'got past the do_focus_sequence call in checkWhatToDo?')
+                                        self.focus_attempt_number += 1
+                                        # now exit and rerun the check
+                                        self.checktimer.start()
+                                        return
+                            
+                            # here we should check if the temperature has changed by some amount and nudge the focus if need be
+                            
+                            
+                            
+                            #---------------------------------------------------------------------
+                            # check what we should be observing NOW
+                            #---------------------------------------------------------------------
+                            # if it is low enough (typically between astronomical dusk and dawn)
+                            # then check for targets, otherwise just stand by
+                            #print(f'checking what to observe NOW')
+                            if self.state['sun_alt'] <= self.config['max_sun_alt_for_observing']:
+                                self.load_best_observing_target(obstime_mjd)
+                                
+                                #print(f'currentObs = {self.schedule.currentObs}')
+                                #print(f'self.schedule.schedulefile = {self.schedule.schedulefile}, self.schedule.scheduleType = {self.schedule.scheduleType}')
+                                #print(f'type(self.schedule.currentObs) = {type(self.schedule.currentObs)}')
+                                #print(f'self.schedule.currentObs == "default": {self.schedule.currentObs == "default"}')
+                                if self.schedule.currentObs is None:
+                                #if currentObs is None:
+                                    self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
+                                    # first stow the rotator
+                                    self.rotator_stop_and_reset()
+                                    
+                                    if self.schedule.end_of_schedule == True:
+                                        if self.schedulefile_name is None:
+                                            pass
+                                        else:
+                                            self.announce(f'{self.schedule.schedulefile_name} completed! shutting down schedule connection')
+                                        self.handle_end_of_schedule()
+                                    # nothing is up right now, just loop back and check again
+                                    self.checktimer.start()
+                                    
+                                else:
+                                    # if we got an observation, then let's go do it!!
+                                    # log the observation to note that we ATTEMPTED the observation
+                                    self.schedule.log_observation()
+                                    self.do_currentObs(self.schedule.currentObs)
+                            
+                            else:
+                                # if we are here then the sun is not low enough to observe, stand by
+                                self.checktimer.start()
+                                return
+                            
+                            
                             pass
                         else:
                             
                             # camera is not ready but autostart has been requested. stand by
                             self.log(f'camera autostart not finished yet. Standing by...')
-                            self.checktimer.start()
-                            return
+                            self.cameras_ready = False
+                            # self.checktimer.start()
+                            # return
                     else:
                         # camera is not ready but autostart has been requested. stand by
                         self.log(f'camera autostart requested but not finished yet. Standing by...')
-                        self.checktimer.start()
-                        return
+                        self.cameras_ready = False
+                        # self.checktimer.start()
+                        # return
                 else:
                     # we need to request an autostart
                     #self.doTry('autoStartupCamera --winter', context = 'robo loop', system = 'camera')
                     self.log(f"autoStartRequested is not True, even though the camera autostart should have been requested. Requesting again")
                     self.log(f'running do_camera_startup')
                     self.do_camera_startup('winter')
-                    self.checktimer.start()
-                    return
+                    self.cameras_ready = False
+                    # self.checktimer.start()
+                    # return
             else:
                 # the camera should be off
                 self.log(f'the camera should be off')
@@ -1012,16 +1126,26 @@ class RoboOperator(QtCore.QObject):
                         
                         self.do_camera_power_shutdown('winter')
                         
-                        msg = 'camera powered off, turning off robot'
-                        self.log(msg)
+                        msg = 'camera powered off!'
                         self.announce(msg)
                         
-                        self.running = False
+                        # stow the observatory if it is not already
+                        if self.get_observatory_stowed_status():
+                            self.announce(f'observatory already stowed.')
+                            pass
+                        else:
+                            self.announce(f'stowing observatory')
+                            self.stow_observatory(force = False) 
+                            
+                            
+                        #self.running = False
+                        self.checktimer.start()
                         return
                         
                     else:
                         # camera is not ready but autostart has been requested. stand by
                         self.log(f'camera auto shutdown requested but not finished yet. Standing by...')
+                        #self.cameras_ready = False
                         self.checktimer.start()
                         return
                 else:
@@ -1030,112 +1154,22 @@ class RoboOperator(QtCore.QObject):
                     self.log(f"autoShutdown Requested is not True, even though the camera auto shutdown should have been requested. Requesting again")
                     self.log(f'running do_camera_shutdown')
                     self.do_camera_shutdown('winter')
+                    #self.cameras_ready = False
                     self.checktimer.start()
                     return
                 
                 
                 pass
             
+            # if self.cameras_ready:
+            #     self.log(f'cameras are ready. continuing with observatory checks')
+            #     pass
+            # else:
+            #     self.log(f'cameras not ready. standing by while we wait for them...')
+            #     self.checktimer.start()
+            #     return
             
 
-            
-        
-            
-            #---------------------------------------------------------------------
-            # get the current timestamp and MJD
-            #---------------------------------------------------------------------
-                # turn the timestamp into mjd
-                
-            #TODO: NPL 8-17-22 there's no reason (I THINK) not to always use the time from self.ephem?
-            obstime_mjd = self.ephem.state.get('mjd',0)
-            obstime_timestamp_utc = astropy.time.Time(obstime_mjd, format = 'mjd').unix
-
-                
-            #---------------------------------------------------------------------
-            # check if we need to focus the telescope
-            #---------------------------------------------------------------------
-            
-            graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
-            if self.test_mode == True:
-                self.log(f"not checking focus bc we're in test mode")
-                pass
-            else:
-                filterIDs_to_focus = self.focusTracker.getFiltersToFocus(obs_timestamp = obstime_timestamp_utc, 
-                                                                         graceperiod_hours = graceperiod_hours,
-                                                                         cam = self.camname)
-                
-                # here is a good place to insert a good check on temperature change,
-                # or even better a check on FWHM of previous images
-            
-                if not filterIDs_to_focus is None:   
-                    print(f'robo: focus attempt #{self.focus_attempt_number}')
-                    if self.focus_attempt_number <= self.config['focus_loop_param']['max_focus_attempts']:
-                        self.announce(f'**Out of date focus results**: we need to focus the telescope in these filters: {filterIDs_to_focus}')
-                        # there are filters to focus! run a focus sequence
-                        self.do_focus_sequence(filterIDs = filterIDs_to_focus)
-                        self.announce(f'got past the do_focus_sequence call in checkWhatToDo?')
-                        self.focus_attempt_number += 1
-                        # now exit and rerun the check
-                        self.checktimer.start()
-                        return
-            
-            # here we should check if the temperature has changed by some amount and nudge the focus if need be
-            
-            
-            
-            #---------------------------------------------------------------------
-            # check what we should be observing NOW
-            #---------------------------------------------------------------------
-            # if it is low enough (typically between astronomical dusk and dawn)
-            # then check for targets, otherwise just stand by
-            #print(f'checking what to observe NOW')
-            if self.state['sun_alt'] <= self.config['max_sun_alt_for_observing']:
-                self.load_best_observing_target(obstime_mjd)
-                
-                #print(f'currentObs = {self.schedule.currentObs}')
-                #print(f'self.schedule.schedulefile = {self.schedule.schedulefile}, self.schedule.scheduleType = {self.schedule.scheduleType}')
-                #print(f'type(self.schedule.currentObs) = {type(self.schedule.currentObs)}')
-                #print(f'self.schedule.currentObs == "default": {self.schedule.currentObs == "default"}')
-                if self.schedule.currentObs is None:
-                #if currentObs is None:
-                    self.announce(f'no valid observations at this time (MJD = {self.state.get("ephem_mjd",-999)}), standing by...')
-                    # first stow the rotator
-                    self.rotator_stop_and_reset()
-                    
-                    if self.schedule.end_of_schedule == True:
-                        if self.schedulefile_name is None:
-                            pass
-                        else:
-                            self.announce(f'{self.schedule.schedulefile_name} completed! shutting down schedule connection')
-                        self.handle_end_of_schedule()
-                    # nothing is up right now, just loop back and check again
-                    self.checktimer.start()
-                    
-                    """ 
-                    # NPL: 8-17-22
-                    # this is the old way, but it stops the loop when the schedule is done,
-                    # we don't want to do that, want to keep the thread open to wait for 
-                    # any new schedules.
-                    # if we're at the bottom of the schedule, then handle the end of the schedule
-                    if self.schedule.end_of_schedule == True:
-                            self.announce('schedule complete! shutting down schedule connection')
-                            self.handle_end_of_schedule()
-                    else:
-                        # nothing is up right now, just loop back and check again
-                        self.checktimer.start()
-                    return
-                """
-                else:
-                    # if we got an observation, then let's go do it!!
-                    #self.do_currentObs(currentObs)
-                    # log the observation to note that we ATTEMPTED the observation
-                    self.schedule.log_observation()
-                    self.do_currentObs(self.schedule.currentObs)
-            
-            else:
-                # if we are here then the sun is not low enough to observe, stand by
-                self.checktimer.start()
-                return
             
         
     
