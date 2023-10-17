@@ -980,16 +980,64 @@ class RoboOperator(QtCore.QObject):
                     return
             else:
                 # the camera should be off
-                self.log(f'the camera should be off, but autoShutdownCamera not yet implemented')
+                self.log(f'the camera should be off')
+                self.log(f"autoShutdownRequested = {self.camdict['winter'].state['autoShutdownRequested']}")
+                self.log(f"autoShutdownComplete = {self.camdict['winter'].state['autoShutdownComplete']}")
+                
+                # the camera should be running! make sure it is.
+                if self.camdict['winter'].state['autoShutdownRequested']:
+                    # the camera should be on
+                    
+                    
+                    if self.camdict['winter'].state['autoShutdownComplete']:
+                        
+                        self.log(f'auto shutdown complete.')
+                        # check if the camera is actually stowed
+                        
+                        # # the startup is complete!
+                        # # double check it
+                        # if self.get_winter_camera_ready_to_observe_status():
+                        #     self.log(f'camera is okay to observe!')
+                        #     # the camera is confirmed good to observe
+                        #     pass
+                        # else:
+                            
+                        #     # camera is not ready but autostart has been requested. stand by
+                        #     self.log(f'camera autostart not finished yet. Standing by...')
+                        #     self.checktimer.start()
+                        #     return
+                        # camera is not ready but autostart has been requested. stand by
+                        self.log(f'camera auto shutdown finished. ')
+                        self.announce(f'Camera Auto Shutdown Complete. Shutting off focal plane power.')
+                        
+                        self.do_camera_power_shutdown('winter')
+                        
+                        msg = 'camera powered off, turning off robot'
+                        self.log(msg)
+                        self.announce(msg)
+                        
+                        self.running = False
+                        return
+                        
+                    else:
+                        # camera is not ready but autostart has been requested. stand by
+                        self.log(f'camera auto shutdown requested but not finished yet. Standing by...')
+                        self.checktimer.start()
+                        return
+                else:
+                    # we need to request an autostart
+                    #self.doTry('autoStartupCamera --winter', context = 'robo loop', system = 'camera')
+                    self.log(f"autoShutdown Requested is not True, even though the camera auto shutdown should have been requested. Requesting again")
+                    self.log(f'running do_camera_shutdown')
+                    self.do_camera_shutdown('winter')
+                    self.checktimer.start()
+                    return
+                
+                
                 pass
             
             
-            # if self.get_camera_ready_status():
-            #     self.log(f'the cameras are ready to observe!')
-            #     # if True, then the cameras in self.camdict are ready to observe
-            #     pass
-            # else:
-            #     self.log(f'')
+
             
         
             
@@ -1934,6 +1982,88 @@ class RoboOperator(QtCore.QObject):
             self.camera_startup_complete = False
             
             self.announce(':caution: camera startup complete but with some errors')
+            self.log(f'do_startup complete but with some errors')
+    
+    def do_camera_power_shutdown(self, camname):
+        system = 'camera'
+        context = 'do_camera_startup'
+        systems_started = []
+        
+        
+        systems_started = []
+        msg = 'shutting off the focal plane power'
+        self.announce(msg)
+        try:
+            
+            # make sure the LJ is off
+            system = 'labjack'
+            self.do('fpa off')
+            
+            # make sure the pdu is off
+            system = 'pdu'
+            self.do('pdu off fpas')
+            
+            self.announce(':greentick: camera power shutdown complete')
+            systems_started.append(True)
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            systems_started.append(False)
+            
+        
+        # if we made it all the way to the bottom, say the startup is complete!
+        
+        if all(systems_started):
+            self.camera_startup_complete = True
+            self.announce(':greentick: startup complete!')
+            self.log(f'robo: do_camera_startup complete')
+        else:
+            self.camera_startup_complete = False
+            
+            self.announce(':caution: camera power shutdown complete but with some errors')
+            self.log(f'do_camera_power_shutdown complete but with some errors')
+    
+    def do_camera_shutdown(self, camname):
+        system = 'camera'
+        context = 'do_camera_startup'
+        systems_started = []
+        
+        
+        systems_started = []
+        msg = 'powering on the focal planes'
+        self.announce(msg)
+        
+            
+        try:
+            # make sure the pdu is on
+            system = 'camera'
+            msg = f':hot_garbage: running autostart routine on {camname}!'
+            self.announce(msg)
+            self.do(f'autoShutdownCamera --{camname}')
+            
+            self.announce(':greentick: camera power startup complete')
+            systems_started.append(True)
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            systems_started.append(False)    
+            
+        # if we made it all the way to the bottom, say the startup is complete!
+        
+        if all(systems_started):
+            self.camera_startup_complete = True
+            self.announce(':greentick: shutdown complete!')
+            self.log(f'robo: do_camera_shutdown complete')
+        else:
+            self.camera_startup_complete = False
+            
+            self.announce(':caution: camera shutdown complete but with some errors')
             self.log(f'do_startup complete but with some errors')
     
     def do_shutdown(self, shutdown_cameras = False):
