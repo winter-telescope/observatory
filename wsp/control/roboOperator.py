@@ -1972,16 +1972,18 @@ class RoboOperator(QtCore.QObject):
         self.announce(msg)
         try:
             # make sure the pdu is on
+            self.announce('turning on PDU output channel for FPAs')
             system = 'pdu'
             self.do('pdu on fpas')
             
-            time.sleep(5)
+            time.sleep(10)
             
             # make sure the LJ is on
+            self.announce('enabling FPA power with labjack')
             system = 'labjack'
             self.do('fpa on')
             
-            time.sleep(5)
+            time.sleep(10)
             
             self.announce(':greentick: camera power startup complete')
             systems_started.append(True)
