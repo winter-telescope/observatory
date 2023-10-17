@@ -1975,9 +1975,13 @@ class RoboOperator(QtCore.QObject):
             system = 'pdu'
             self.do('pdu on fpas')
             
+            time.sleep(5)
+            
             # make sure the LJ is on
             system = 'labjack'
             self.do('fpa on')
+            
+            time.sleep(5)
             
             self.announce(':greentick: camera power startup complete')
             systems_started.append(True)
