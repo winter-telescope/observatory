@@ -1056,6 +1056,7 @@ class RoboOperator(QtCore.QObject):
                                         self.handle_end_of_schedule()
                                     # nothing is up right now, just loop back and check again
                                     self.checktimer.start()
+                                    return
                                     
                                 else:
                                     # if we got an observation, then let's go do it!!
@@ -1075,14 +1076,14 @@ class RoboOperator(QtCore.QObject):
                             # camera is not ready but autostart has been requested. stand by
                             self.log(f'camera autostart not finished yet. Standing by...')
                             self.cameras_ready = False
-                            # self.checktimer.start()
-                            # return
+                            self.checktimer.start()
+                            return
                     else:
                         # camera is not ready but autostart has been requested. stand by
                         self.log(f'camera autostart requested but not finished yet. Standing by...')
                         self.cameras_ready = False
-                        # self.checktimer.start()
-                        # return
+                        self.checktimer.start()
+                        return
                 else:
                     # we need to request an autostart
                     #self.doTry('autoStartupCamera --winter', context = 'robo loop', system = 'camera')
