@@ -1132,7 +1132,7 @@ class RoboOperator(QtCore.QObject):
                         
                         # stow the observatory if it is not already
                         if self.get_observatory_stowed_status():
-                            self.announce(f'observatory already stowed.')
+                            self.log(f'observatory already stowed.')
                             pass
                         else:
                             self.announce(f'stowing observatory')
