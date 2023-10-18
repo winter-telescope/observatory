@@ -986,6 +986,19 @@ class RoboOperator(QtCore.QObject):
                                     self.checktimer.start()
                                     return
                             
+                            #---------------------------------------------------------------------        
+                            # check the filter wheel
+                            #---------------------------------------------------------------------
+                            
+                            for camname in self.fwdict:
+                                if self.state[f'{camname}_fw_is_homed'] != 1:
+                                    # the filter wheel is not homed
+                                    self.announce(f'{camname} filter wheel is not homed! sending fw_home command.')
+                                    self.doTry(f'fw_home --{camname}')
+                                    
+                                    self.checktimer.start()
+                                else:
+                                    pass
                             
                             #---------------------------------------------------------------------
                             # get the current timestamp and MJD
@@ -1123,12 +1136,21 @@ class RoboOperator(QtCore.QObject):
                         #     return
                         # camera is not ready but autostart has been requested. stand by
                         self.log(f'camera auto shutdown finished. ')
-                        self.announce(f'Camera Auto Shutdown Complete. Shutting off focal plane power.')
                         
-                        self.do_camera_power_shutdown('winter')
+                        if self.get_winter_camera_stowed_status():
+                            
+                            self.log(f'camera power already off. standing by.')
+                            pass
                         
-                        msg = 'camera powered off!'
-                        self.announce(msg)
+                        else:
+                            self.announce(f'Camera Auto Shutdown Complete, but camera still powered. Shutting off focal plane power.')
+                        
+                            self.do_camera_power_shutdown('winter')
+                            
+                            msg = 'camera powered off!'
+                            self.announce(msg)
+                            pass
+                            
                         
                         # stow the observatory if it is not already
                         if self.get_observatory_stowed_status():
@@ -1529,7 +1551,7 @@ class RoboOperator(QtCore.QObject):
         """
         Run a check to see if the WINTER camera is ready to be stowed. Basically,
         for each sensor:
-            - the TEC is off
+            #- the TEC is off
             - is shut down
             - labjack power enable is off
             - pdu channel is off
@@ -1537,10 +1559,10 @@ class RoboOperator(QtCore.QObject):
         conds = []
         
         # run through identical conditions for each sensor:
-        for addr in self.camdict['winter'].state['addrs']:
+        # for addr in self.camdict['winter'].state['addrs']:
         
-            # check that the TEC is off 
-            conds.append(self.state[f'{addr}_tec_status'] == False)
+        #     # check that the TEC is off 
+        #     conds.append(self.state[f'{addr}_tec_status'] == False)
             
             # check that sensor is shutdown
             

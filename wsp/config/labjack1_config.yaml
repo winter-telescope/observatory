@@ -30,13 +30,13 @@ ANALOG_INPUTS:
 #    - FIO4
     
 DIGITAL_OUTPUTS:
-    # output is zero or one
+    # output is zero or one, 2 = do nothing
     FIO4:
         NAME: fpa_star
-        STARTUP_OUTPUT: 0
+        STARTUP_OUTPUT: 2
     FIO5:
         NAME: fpa_port
-        STARTUP_OUTPUT: 0
+        STARTUP_OUTPUT: 2
     
 
 

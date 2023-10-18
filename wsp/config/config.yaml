@@ -140,6 +140,23 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: True
             cmd: xyzzy
+        restart_winter_camera_daemon:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 0
+                    cond: '>'
+                cond2:
+                    type: 'time'
+                    val: '9:00:0.0'
+                    cond: '>'
+                cond3:
+                    type: 'time'
+                    val: '10:00:0.0'
+                    cond: '<'
+            sundir: 0
+            repeat_on_restart: False
+            cmd: 'killCameraDaemon'
         fans_on:
             conds:
                 cond1:
@@ -158,17 +175,17 @@ robotic_manager_triggers:
             sundir: -1
             repeat_on_restart: False
             cmd: 'chiller_start'             
-        startup:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: 5.0
-                    cond: '<'
-            sundir: 0
-            repeat_on_restart: False
-            #cmd: 'total_startup --cameras'
-            #cmd: 'do_startup --cameras'
-            cmd: 'do_startup'
+        # startup:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 5.0
+        #             cond: '<'
+        #     sundir: 0
+        #     repeat_on_restart: False
+        #     #cmd: 'total_startup --cameras'
+        #     #cmd: 'do_startup --cameras'
+        #     cmd: 'do_startup'
         load_schedule:
             conds:
                 cond1:
@@ -215,7 +232,8 @@ robotic_manager_triggers:
             conds:
                cond1:
                    type: 'sun'
-                   val: -7.0
+                   #val: -7.0
+                   val: 0.0
                    cond: '<'
                # make sure we start after the purge starts
                cond2:
@@ -264,16 +282,18 @@ robotic_manager_triggers:
             nextmorning: True
             sundir: 0
             cmd: 'robo_run'
-        stop_obs:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val:  -12.0
-                    cond: '>'
-            nextmorning: True
-            sundir: 1
-            repeat_on_restart: False
-            cmd: 'robo_stop'
+        # stop_obs:
+        #     conds:
+        #         # cond1:
+        #         #     type: 'sun'
+        #         #     val:  -12.0
+        #         #     cond: '>'
+        #         cond1:
+        #             type: 'time'
+        #     nextmorning: True
+        #     sundir: 1
+        #     repeat_on_restart: False
+        #     cmd: 'robo_stop'
         # morning_flats:
         #     conds:
         #         cond1:
@@ -289,16 +309,16 @@ robotic_manager_triggers:
         #     sundir: 1
         #     cmd: 'robo_do_calibration -f'
         #     #cmd: 'robo_do_darks'
-        shutdown:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: 0
-                    cond: '>'
-            nextmorning: True
-            repeat_on_restart: False
-            sundir: 1
-            cmd: 'stow_observatory --cameras'
+        # shutdown:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 0
+        #             cond: '>'
+        #     nextmorning: True
+        #     repeat_on_restart: False
+        #     sundir: 1
+        #     cmd: 'stow_observatory --cameras'
         fans_off:
             conds:
                 cond1:
