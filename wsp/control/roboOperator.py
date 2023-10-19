@@ -1569,7 +1569,7 @@ class RoboOperator(QtCore.QObject):
         # check that labjack power inhibit is on 
         #TODO: NPL 10-3-23 make these less hard coded
         conds.append(self.state['fpa_port_power_disabled'] == True)
-        conds.append(self.state['star_port_power_disabled'] == True)
+        conds.append(self.state['fpa_star_power_disabled'] == True)
         
         # check that pdu is off
         conds.append(self.state['pdu2_2'] == False)
@@ -2102,7 +2102,7 @@ class RoboOperator(QtCore.QObject):
         try:
             # make sure the pdu is on
             system = 'camera'
-            msg = f':hot_garbage: running autostart routine on {camname}!'
+            msg = f':hot_garbage: running auto shutdown routine on {camname}!'
             self.announce(msg)
             self.do(f'autoShutdownCamera --{camname}')
             
@@ -3458,7 +3458,7 @@ class RoboOperator(QtCore.QObject):
         
         #self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', self.config['observing_parameters'][self.camname]['dithers']['ditherNumber']))
         #self.num_dithers_per_pointing = 5 # just commented out above line to force this to 3 for testing
-        self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', 5))
+        self.num_dithers_per_pointing = int(currentObs.get('ditherNumber', 10))
         
         #self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['dither_defaults']['camera'][self.camname]['ditherStepSize']))
         self.ditherStepSize = float(currentObs.get('ditherStepSize', self.config['observing_parameters'][self.camname]['dithers']['ditherMaxStep_as']))

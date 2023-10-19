@@ -887,12 +887,12 @@ pointing_model:
 
 observing_parameters:
     winter:
-        offset_pointings:
-            - coords:
-                dRA: 500
-                dDec: 1000
+        #offset_pointings:
+        #    - coords:
+        #        dRA: 500
+        #        dDec: 1000
         dithers: 
-            ditherNumber: 5
+            ditherNumber: 10 #5
             ditherMinStep_as: 10
             ditherMaxStep_as: 15
         best_position:
