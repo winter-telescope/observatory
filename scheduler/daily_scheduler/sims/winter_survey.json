@@ -295,7 +295,7 @@
 		 "internight_gap_days": 1,
 		 "n_visits_per_night": 1,
 		 "nightly_priority": "oldest",
-		 "dither": 5,
+		 "dither": 10,
 		 "active_months": "all"}
 	]
 }
