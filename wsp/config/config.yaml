@@ -238,7 +238,8 @@ robotic_manager_triggers:
                # make sure we start after the purge starts
                cond2:
                    type: 'time'
-                   val: '18:45:0.0'
+                   #val: '18:45:0.0'
+                   val: '16:15:0.0'
                    cond: '>'
             repeat_on_restart: True
             sundir: 0

@@ -1473,7 +1473,7 @@ class RoboOperator(QtCore.QObject):
         """
         
         # For now do the easy thing:
-        if self.state['sun_alt'] <= -5.0:
+        if self.state['sun_alt'] <= 5.0: #-5.0:
             return True
         
         else:
