@@ -1495,20 +1495,27 @@ class RoboOperator(QtCore.QObject):
         # run through identical conditions for each sensor:
         for addr in self.camdict['winter'].state['addrs']:
             
-            # check that we're connected
-            conds.append(self.state[f'{addr}_connected'] == True)
+            #TODO:ADD BACK IN!?
+            # NPL 11/9/23 removing this check in favor of letting the camera
+            # daemon decide if startup is done
             
-            # check that there is a record of a successful bias frame for each sensor
-            conds.append(self.state[f'{addr}_startup_validated'] == True)
+            # # check that the TEC temp is steady
+            # conds.append(self.state[f'{addr}_pid_ramp_status'] == 0)
+            
+            # # check that the TEC temp is at the setpoint
+            # conds.append(self.state[f'{addr}_pid_at_setpoint'] == True)
+            
+            # # check that we're connected
+            # conds.append(self.state[f'{addr}_connected'] == True)
+            
+            # # check that there is a record of a successful bias frame for each sensor
+            # conds.append(self.state[f'{addr}_startup_validated'] == True)
         
-            # check that the TEC is running 
-            conds.append(self.state[f'{addr}_tec_status'] == True)
+            # # check that the TEC is running 
+            # conds.append(self.state[f'{addr}_tec_status'] == True)
             
-            # check that the TEC temp is steady
-            conds.append(self.state[f'{addr}_pid_ramp_status'] == 0)
-            
-            # check that the TEC temp is at the setpoint
-            conds.append(self.state[f'{addr}_pid_at_setpoint'] == True)
+            # NPL see above: doing this now
+            conds.append(self.state['winter_camera_autostart_complete'] == True)
     
         
         self.winter_camera_ready_to_observe = all(conds)
@@ -1530,17 +1537,26 @@ class RoboOperator(QtCore.QObject):
         # run through identical conditions for each sensor:
         for addr in self.camdict['winter'].state['addrs']:
         
-            # check that the TEC is running 
-            conds.append(self.state[f'{addr}_tec_status'] == True)
             
-            # check that the TEC temp is steady
-            conds.append(self.state[f'{addr}_pid_ramp_status'] == 0)
             
-            # check that the TEC temp is at the setpoint
-            conds.append(self.state[f'{addr}_pid_at_setpoint'] == True)
+            # NPL: 11/9/23: instead of doing an independent check on ramp status
+            # and setpoint and TEC, let camera daemon do that, and just check if
+            # autoshutdown is complete
+            
+            # check if autoshutdown is complete
+            conds.append(self.state['winter_camera_autoshutdown_complete'])
+            
+            # # check that the TEC is running 
+            # conds.append(self.state[f'{addr}_tec_status'] == True)
+            
+            # # check that the TEC temp is steady
+            # conds.append(self.state[f'{addr}_pid_ramp_status'] == 0)
+            
+            # # check that the TEC temp is at the setpoint
+            # conds.append(self.state[f'{addr}_pid_at_setpoint'] == True)
     
-            # check that all the TECs are set to 15 C
-            conds.append(self.state[f'{addr}_T_fpa_sp'] == 15.0)
+            # # check that all the TECs are set to 15 C
+            # conds.append(self.state[f'{addr}_T_fpa_sp'] == 15.0)
         
         self.winter_camera_ready_to_stow_status = all(conds)
         
