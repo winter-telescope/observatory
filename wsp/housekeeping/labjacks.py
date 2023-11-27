@@ -160,10 +160,12 @@ class labjack(object):
                 opt_text = channel_name
                 val = self.config[channel_type][channel_name]['STARTUP_OUTPUT']
                 self.log(f'      > STARTUP_OUTPUT: {val}')
-                opts.update({opt_text : val})
-    
+                if int(val) in [0, 1]:
+                    opts.update({opt_text : val})
+                elif int(val) == 2:
+                    self.log(f'      > STARTUP_OUTPUT 2 MEANS DO NOT SEND A STATE')
             # send the options to the labjack to set the channels as outputs
-            ljm.eWriteNames(self.handle, len(digital_outputs), opts.keys(), opts.values())
+            ljm.eWriteNames(self.handle, len(opts), opts.keys(), opts.values())
         
     def setup_counters(self):
         # set up channels to work as pulse counters, eg for the flowmeters

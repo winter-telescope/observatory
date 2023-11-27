@@ -50,7 +50,7 @@ class hk_loop(QtCore.QThread):
     def __init__(self,config, state, curframe, schedule, telescope, mirror_cover, labjacks, 
                  counter, dome, chiller, powerManager, ephem, 
                  #viscam, ccd, summercamera, wintercamera, 
-                 camdict, fwdict,
+                 camdict, fwdict, imghandlerdict,
                  robostate, sunsim = False, verbose = False, ns_host = None, logger = None):
         QtCore.QThread.__init__(self)
         # loop execution number
@@ -72,6 +72,7 @@ class hk_loop(QtCore.QThread):
         #self.wintercamera = wintercamera
         self.camdict = camdict
         self.fwdict = fwdict
+        self.imghandlerdict = imghandlerdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.verbose = verbose

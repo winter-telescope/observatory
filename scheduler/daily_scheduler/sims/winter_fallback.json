@@ -12,10 +12,10 @@
 		 "field_selections":{"dec_range":[60,90]},
 		 "filter_choice": "sequence",
 		 "filter_ids": [2],
-		 "exposure_time": 600, 
+		 "exposure_time": 960, 
 		 "internight_gap_days": 1,
 		 "n_visits_per_night": 1,
-		 "dither": 5,
+		 "dither": 8,
 		 "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":2},
 		 "active_months": "all"}
 	]

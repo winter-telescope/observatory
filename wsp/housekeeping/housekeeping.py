@@ -63,6 +63,7 @@ class housekeeping():
                  #wintercamera = None,
                  camdict = None,
                  fwdict = None,
+                 imghandlerdict = None,
                  robostate = None, 
                  sunsim = False, 
                  ns_host = None, 
@@ -93,6 +94,7 @@ class housekeeping():
         #self.wintercamera = wintercamera
         self.camdict = camdict
         self.fwdict = fwdict
+        self.imghandlerdict = imghandlerdict
         self.mirror_cover = mirror_cover
         self.robostate = robostate
         self.sunsim = sunsim
@@ -209,6 +211,7 @@ class housekeeping():
                                                #wintercamera = self.wintercamera,
                                                camdict = self.camdict,
                                                fwdict = self.fwdict,
+                                               imghandlerdict = self.imghandlerdict,
                                                mirror_cover = self.mirror_cover,
                                                robostate = self.robostate,
                                                sunsim = self.sunsim,

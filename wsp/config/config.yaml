@@ -140,6 +140,23 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: True
             cmd: xyzzy
+        restart_winter_camera_daemon:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 0
+                    cond: '>'
+                cond2:
+                    type: 'time'
+                    val: '9:00:0.0'
+                    cond: '>'
+                cond3:
+                    type: 'time'
+                    val: '10:00:0.0'
+                    cond: '<'
+            sundir: 0
+            repeat_on_restart: False
+            cmd: 'killCameraDaemon'
         fans_on:
             conds:
                 cond1:
@@ -158,17 +175,17 @@ robotic_manager_triggers:
             sundir: -1
             repeat_on_restart: False
             cmd: 'chiller_start'             
-        startup:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: 5.0
-                    cond: '<'
-            sundir: 0
-            repeat_on_restart: False
-            #cmd: 'total_startup --cameras'
-            cmd: 'do_startup --cameras'
-            #cmd: 'do_startup'
+        # startup:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 5.0
+        #             cond: '<'
+        #     sundir: 0
+        #     repeat_on_restart: False
+        #     #cmd: 'total_startup --cameras'
+        #     #cmd: 'do_startup --cameras'
+        #     cmd: 'do_startup'
         load_schedule:
             conds:
                 cond1:
@@ -215,8 +232,15 @@ robotic_manager_triggers:
             conds:
                cond1:
                    type: 'sun'
-                   val: -7.0
+                   #val: -7.0
+                   val: 5.0
                    cond: '<'
+               # make sure we start after the purge starts
+               cond2:
+                   type: 'time'
+                   #val: '18:45:0.0'
+                   val: '16:15:0.0'
+                   cond: '>'
             repeat_on_restart: True
             sundir: 0
             cmd: 'robo_run'
@@ -259,16 +283,18 @@ robotic_manager_triggers:
             nextmorning: True
             sundir: 0
             cmd: 'robo_run'
-        stop_obs:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val:  -12.0
-                    cond: '>'
-            nextmorning: True
-            sundir: 1
-            repeat_on_restart: False
-            cmd: 'robo_stop'
+        # stop_obs:
+        #     conds:
+        #         # cond1:
+        #         #     type: 'sun'
+        #         #     val:  -12.0
+        #         #     cond: '>'
+        #         cond1:
+        #             type: 'time'
+        #     nextmorning: True
+        #     sundir: 1
+        #     repeat_on_restart: False
+        #     cmd: 'robo_stop'
         # morning_flats:
         #     conds:
         #         cond1:
@@ -284,16 +310,16 @@ robotic_manager_triggers:
         #     sundir: 1
         #     cmd: 'robo_do_calibration -f'
         #     #cmd: 'robo_do_darks'
-        shutdown:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: 0
-                    cond: '>'
-            nextmorning: True
-            repeat_on_restart: False
-            sundir: 1
-            cmd: 'stow_observatory --cameras'
+        # shutdown:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 0
+        #             cond: '>'
+        #     nextmorning: True
+        #     repeat_on_restart: False
+        #     sundir: 1
+        #     cmd: 'stow_observatory --cameras'
         fans_off:
             conds:
                 cond1:
@@ -862,12 +888,12 @@ pointing_model:
 
 observing_parameters:
     winter:
-        offset_pointings:
-            - coords:
-                dRA: 500
-                dDec: 1000
+        #offset_pointings:
+        #    - coords:
+        #        dRA: 500
+        #        dDec: 1000
         dithers: 
-            ditherNumber: 5
+            ditherNumber: 10 #5
             ditherMinStep_as: 10
             ditherMaxStep_as: 15
         best_position:
@@ -3040,6 +3066,13 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['doing_exposure']
+    winter_camera_connected:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['is_connected']
     winter_camera_command_timeout:
         ftype: raw
         label: 'Time'
@@ -3061,6 +3094,34 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['command_elapsed_dt']
+    winter_camera_autostart_requested:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['autoStartRequested']
+    winter_camera_autostart_complete:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['autoStartComplete']
+    winter_camera_autoshutdown_requested:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['autoShutdownRequested']
+    winter_camera_autoshutdown_complete:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['autoShutdownComplete']
         
 ########### HOUSEKEEPING WINTER SENSORS ##########
 # Bench Sensor        
@@ -3253,6 +3314,27 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['bench_T_pid_slope'] 
+    bench_pid_at_setpoint:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_pid_at_setpoint']
+    bench_pid_ramp_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_pid_ramp_status']  
+    bench_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_pid_init_timestamp']
     bench_Kp:
         ftype: raw
         label: 'Coeff'
@@ -3281,7 +3363,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['bench_max_dacV'] 
-    bench_V_tec_status:
+    bench_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -3302,6 +3384,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['bench_connected']
+    bench_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_sensor_daemon_connected']
+    bench_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_startup_validated']
     bench_new_img_flag:
         ftype: raw
         label: 'status'
@@ -3547,7 +3643,28 @@ fields:
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sa_T_pid_slope']  
+        var: camdict['winter'].state['sa_T_pid_slope'] 
+    sa_pid_at_setpoint:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_pid_at_setpoint']
+    sa_pid_ramp_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_pid_ramp_status'] 
+    sa_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_pid_init_timestamp']
     sa_Kp:
         ftype: raw
         label: 'Coeff'
@@ -3576,7 +3693,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sa_max_dacV'] 
-    sa_V_tec_status:
+    sa_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -3597,6 +3714,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sa_connected']
+    sa_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_sensor_daemon_connected']
+    sa_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sa_startup_validated']
     sa_new_img_flag:
         ftype: raw
         label: 'status'
@@ -3842,7 +3973,28 @@ fields:
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sb_T_pid_slope']   
+        var: camdict['winter'].state['sb_T_pid_slope']  
+    sb_pid_at_setpoint:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_pid_at_setpoint']
+    sb_pid_ramp_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_pid_ramp_status'] 
+    sb_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_pid_init_timestamp']
     sb_Kp:
         ftype: raw
         label: 'Coeff'
@@ -3871,7 +4023,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sb_max_dacV'] 
-    sb_V_tec_status:
+    sb_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -3892,6 +4044,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sb_connected']
+    sb_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_sensor_daemon_connected']
+    sb_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sb_startup_validated']
     sb_new_img_flag:
         ftype: raw
         label: 'status'
@@ -4137,7 +4303,28 @@ fields:
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['sc_T_pid_slope'] 
+        var: camdict['winter'].state['sc_T_pid_slope']
+    sc_pid_at_setpoint:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_pid_at_setpoint']
+    sc_pid_ramp_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_pid_ramp_status'] 
+    sc_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_pid_init_timestamp']
     sc_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4166,7 +4353,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['sc_max_dacV'] 
-    sc_V_tec_status:
+    sc_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -4187,6 +4374,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['sc_connected']
+    sc_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_sensor_daemon_connected']
+    sc_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['sc_startup_validated']
     sc_new_img_flag:
         ftype: raw
         label: 'status'
@@ -4433,6 +4634,27 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pa_T_pid_slope'] 
+    pa_pid_at_setpoint:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_pid_at_setpoint']
+    pa_pid_ramp_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_pid_ramp_status']
+    pa_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_pid_init_timestamp']
     pa_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4461,7 +4683,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pa_max_dacV'] 
-    pa_V_tec_status:
+    pa_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -4482,6 +4704,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pa_connected']
+    pa_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_sensor_daemon_connected']
+    pa_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pa_startup_validated']
     pa_new_img_flag:
         ftype: raw
         label: 'status'
@@ -4728,6 +4964,27 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pb_T_pid_slope'] 
+    pb_pid_at_setpoint:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_pid_at_setpoint']
+    pb_pid_ramp_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_pid_ramp_status']
+    pb_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_pid_init_timestamp']
     pb_Kp:
         ftype: raw
         label: 'Coeff'
@@ -4756,7 +5013,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pb_max_dacV']   
-    pb_V_tec_status:
+    pb_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -4777,6 +5034,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pb_connected']
+    pb_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_sensor_daemon_connected']
+    pb_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pb_startup_validated']
     pb_new_img_flag:
         ftype: raw
         label: 'status'
@@ -5022,7 +5293,28 @@ fields:
         units: 'Cps'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['pc_T_pid_slope']  
+        var: camdict['winter'].state['pc_T_pid_slope'] 
+    pc_pid_at_setpoint:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_pid_at_setpoint']
+    pc_pid_ramp_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_pid_ramp_status'] 
+    pc_pid_init_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_pid_init_timestamp']
     pc_Kp:
         ftype: raw
         label: 'Coeff'
@@ -5051,7 +5343,7 @@ fields:
         dtype: float64
         rate: 'hk'
         var: camdict['winter'].state['pc_max_dacV'] 
-    pc_V_tec_status:
+    pc_tec_status:
         ftype: raw
         label: 'status'
         units: None
@@ -5072,6 +5364,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: camdict['winter'].state['pc_connected']
+    pc_sensor_daemon_connected:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_sensor_daemon_connected']
+    pc_startup_validated:
+        ftype: raw
+        label: 'status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['winter'].state['pc_startup_validated']
     pc_new_img_flag:
         ftype: raw
         label: 'status'

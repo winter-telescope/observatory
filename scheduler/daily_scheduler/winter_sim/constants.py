@@ -126,7 +126,7 @@ class Site:
 
 
 SNR = 5.
-EXPOSURE_TIME = 150. * u.second
+EXPOSURE_TIME = 90. * u.second
 #READOUT_TIME = 2.1 * u.second
             
 #READOUT_TIME = [0* u.second , 40 * u.second]  # [WINTER, SUMMER]

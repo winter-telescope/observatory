@@ -7,17 +7,19 @@ Notes on how the WSP robotic mode (the `-r` option which can be called when laun
 ## Hows does the robitic mode work?
 There are four main pieces of code which define the robotic operations of WSP:
 ### 1. The "Robotic Operator": [`roboOperator.py'](https://magellomar-gitlab.mit.edu/WINTER/code/-/blob/sunsim/wsp/control/roboOperator.py). 
-This script contains a class called `RoboOperator` which defines all (well, there are a few exceptions) of the main methods which define complex observing operations and sequences. Some major examples used nightly:
+This script contains a class called `RoboOperator` which defines all (well, there are a few exceptions) of the main methods which define complex observing operations and sequences. The observing sequence (eg, the "robot") is defined in roboOperator.py. This file defines a `RoboOperator` class (which is instantiated in its own dedicated thread in `systemControl.py` as `self.roboThread.robo`. All observatory sequences are executed in this thread by this class. That is, while individual subsystems can be commanded directly through the `wintercmd` interface, (eg, sending a `dome_goto <az>` command), but sequenced commands (eg `robo_observe object M31`) are handled by the roboOperator which manages the sequencing and commanding of the various subsystems.
+
+Some major examples used nightly:
 
 - `do_observation`: a generic observing method that handles observation of a variety of target types ("targtypes") including alt/az, ra/dec or catalog object. It handles slewing/enabling tracking of the dome, telescope, rotator, triggering the CCD exposure, etc. 
 - `do_calibration`: a method which executes the full sequence of calibration operations which ideally is execute at the start and end of the night. It points to 75 deg elevation, and opposite the sun (ie either due east or west depending if it is sunrise or sunset) takes 5 flats using an empirical model to set the exposure time (currently only in r-band), 5 darks, and then 5 biases. 
 - `do_currentObs`: this method gets handles executing the observation of the current line in the schedule file. It uses the `do_observation` method. After completing the observation it triggers the following: 
-- `log_observation_and_gotoNext`: this adds the finished observation to the ongoing observation log of ALL observations. The log is also a SQLite database at ~/data/WINTER_ObsLog.db. After logging the completed observation, it gets the next one from the schedule file. NOTE: it gets the next one in the database sequentially, NOT the next one by time. So if it's observing an old schedule, or a schedule at the wrong time of night the targets may not be at favorable locations. If there is an error during the observation, or if there is a change in observatory status that makes it not okay to observe, the image may still get saved, but it will *not* get logged before going to the next in the queue.
 - `handle_wrap_warning`: if at any time the rotator goes outside of it's allowed range, a PyQt signal will be emitted which triggers this method to be called. It errors out of the current observation (triggering the gotoNext function above) and resets the rotator to its safe posistion (mechanical angle = -25 deg) and stops it from tracking.
-- `restart_robo`: this method triggers an event-driven loop of sorts, which checks if its okay to observe (using the `okay_to_observe` method), inititiates a few startup commands, and then begins stepping through the schedule.
+- `restart_robo`: this method triggers an event-driven loop of sorts, which checks if its okay to observe (using the `okay_to_observe` method), inititiates a few startup commands, and then begins stepping through the schedule. This observing sequence is described in further detail in the observatory operations sequences file.
 
 There are other complex sequences in the robotic operator which are not used regularly, but still are helpful for debugging, or are critical but used only infrequently, including:
 - `remakePointingModel`: a method which starts up a sequence which will observe a number of alt/az targets, platesolve them, and update their (alt/az) --> (ra/dec) mapping to the Planewave PWI4 interface to add to the pointing model.
+
 
 ### 2. The wintercmd interface: [`wintercmd.py`](https://magellomar-gitlab.mit.edu/WINTER/code/-/blob/sunsim/wsp/command/wintercmd.py)
 

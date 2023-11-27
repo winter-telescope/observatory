@@ -340,7 +340,7 @@ class ImageHandler(QtCore.QObject):
         
         # post to slack
         self.post_results_to_slack(image_output_filepath)
-    
+        self.log(results)
         return results
     
     @Pyro5.server.expose
@@ -350,7 +350,9 @@ class ImageHandler(QtCore.QObject):
         QtCore.QCoreApplication.quit()
 
 
-
+    @Pyro5.server.expose
+    def getStatus(self):
+        return self.status
         
         
         
@@ -368,7 +370,7 @@ class PyroGUI(QtCore.QObject):
         
         self.imageHandler = ImageHandler(logger = logger)
                 
-        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.imageHandler, name = 'WINTERimage', ns_host = ns_host)
+        self.pyro_thread = daemon_utils.PyroDaemon(obj = self.imageHandler, name = 'WINTERImageDaemon', ns_host = ns_host)
         self.pyro_thread.start()
         
         

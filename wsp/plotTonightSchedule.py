@@ -100,7 +100,6 @@ for idx, prog in enumerate(programs):
     #print('dec', dec[0:10])
     plt.scatter(ra,dec,alpha=0.1,label="history: "+prog, color = colors[idx])
 #plt.legend(loc='lower right',frameon=True)
-
 """
 jet = plt.get_cmap('jet') 
 fig2 = plt.figure(figsize=(8,6), dpi=1200)
@@ -136,7 +135,6 @@ fig2.legend(loc="right")
 figname = os.path.join(os.getenv("HOME"),'data','molly_skymap_tonight.jpg')
 fig2.savefig(figname, bbox_inches='tight')
 """
-
 ################# Tonight ##################
 ################ (Red dots) #################
 

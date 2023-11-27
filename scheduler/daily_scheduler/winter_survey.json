@@ -2,7 +2,7 @@
 
 	"queue_name": "default",
         "queue_description": "WINTER Overhead Survey",
-        "queue_manager": "greedy",
+        "queue_manager": "gurobi",
         "block_programs": false,
 	"observing_programs": [
 		{"program_name": "Survey",
@@ -37,7 +37,7 @@
 		 "active_months": "all"},
         {"program_name": "Survey",
          "subprogram_name": "2023A013",
-         "subprogram_title": "neargal_25Mpc",
+         "subprogram_title": "nearby_galaxy_25Mpc",
          "program_pi": "Frostig",
          "program_observing_fraction": 1.0,
          "subprogram_fraction": 0.4,

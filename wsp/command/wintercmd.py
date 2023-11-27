@@ -91,6 +91,16 @@ LOGGER = logging_setup.setup_logger(wsp_path, CONFIG)
 class WrapError(Exception):
     pass
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 class ArgumentParser(argparse.ArgumentParser):
     '''
     Subclass the exiting/error methods from argparse.ArgumentParser
@@ -192,6 +202,7 @@ class Wintercmd(QtCore.QObject):
                  #wintercamera,
                  camdict,
                  fwdict,
+                 imghandlerdict,
                  ephem,
                  verbose = False):
         # init the parent class
@@ -220,6 +231,7 @@ class Wintercmd(QtCore.QObject):
         #self.wintercamera = wintercamera
         self.camdict = camdict
         self.fwdict = fwdict
+        self.imghandlerdict = imghandlerdict
         self.mirror_cover = mirror_cover
         self.ephem = ephem
         
@@ -4275,7 +4287,7 @@ class Wintercmd(QtCore.QObject):
         
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
-        timeout = 90
+        timeout = 60 * 5
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
@@ -4987,7 +4999,48 @@ class Wintercmd(QtCore.QObject):
     
     
     ####### End Camera API Methods #######
-    
+    @cmd
+    def updateSensorValidation(self):
+        self.defineCmdParser('updating sensor validation')
+        
+        self.cmdparser.add_argument('validatation',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str2bool,
+                                    help = '<sensor_okay>')
+        
+        self.cmdparser.add_argument('-n', '--addrs',
+                                    nargs = '+',
+                                    type = str,
+                                    default = None,
+                                    action = None,
+                                    help = "<sensor_address>")
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        self.getargs()
+
+        self.logger.info(f'updateWINTERSensorValidation: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+        
+        validatation = self.args.validatation[0]
+        addrs = self.args.addrs
+        
+        sigcmd = signalCmd('updateStartupValidation', validatation, addrs = addrs)
+        
+        self.logger.info(f'wintercmd: setting sensor validation voltage on {camera.daemonname}: {addrs} to {validatation} ')
+        
+        camera.newCommand.emit(sigcmd)
+        
     @cmd
     def checkCamera(self):
         self.defineCmdParser('check the camera')
@@ -5012,11 +5065,83 @@ class Wintercmd(QtCore.QObject):
         camera = self.camdict[camname]
            
         if camname == 'winter':
-            sigcmd = signalCmd('WINTER_bias_image_is_okay')
-            self.roboThread.newCommand.emit(sigcmd)
+            #sigcmd = signalCmd('checkWINTERCamera')
+            #self.roboThread.newCommand.emit(sigcmd)
+            
+            sigcmd = signalCmd('checkCamera')
+            camera = self.camdict[camname]
+            camera.newCommand.emit(sigcmd)
+            
         else:
             self.logger.info(f'wintercmd: checkCamera only defined for WINTER')
     
+    @cmd
+    def autoStartupCamera(self):
+        self.defineCmdParser('run the autostart sequence')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        
+        
+        self.getargs()
+
+        self.logger.info(f'autoStartupCamera: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+           
+        if camname == 'winter':
+            #sigcmd = signalCmd('checkWINTERCamera')
+            #self.roboThread.newCommand.emit(sigcmd)
+            
+            sigcmd = signalCmd('autoStartupCamera')
+            camera = self.camdict[camname]
+            camera.newCommand.emit(sigcmd)
+            
+        else:
+            self.logger.info(f'wintercmd: autoStartupCamera only defined for WINTER')
+    
+    @cmd
+    def autoShutdownCamera(self):
+        self.defineCmdParser('run the auto shutdown sequence')
+        
+        
+        # argument to hold the observation type
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
+        
+        
+        self.getargs()
+
+        self.logger.info(f'autoShutdownCamera: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
+        
+        camera = self.camdict[camname]
+           
+        if camname == 'winter':
+            #sigcmd = signalCmd('checkWINTERCamera')
+            #self.roboThread.newCommand.emit(sigcmd)
+            
+            sigcmd = signalCmd('autoShutdownCamera')
+            camera = self.camdict[camname]
+            camera.newCommand.emit(sigcmd)
+            
+        else:
+            self.logger.info(f'wintercmd: autoShutdownCamera only defined for WINTER')
     
     @cmd
     def generate_supernovae_db(self):
