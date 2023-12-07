@@ -93,7 +93,17 @@ big_i.append('    88888     ')
 big_i.append('8888888888888 ')
 big_i.append('8888888888888 ')
 
-big_letter = dict({'m' : big_m, 'r' : big_r, 'i':big_i})
+big_b = []
+big_b.append('88888888ba    ')
+big_b.append('88      "8b   ')
+big_b.append('88      ,8P   ')
+big_b.append('88aaaaaa8P    ')
+big_b.append('88""""""8b    ')
+big_b.append('88      `8b   ')
+big_b.append('88      a8P   ')
+big_b.append('88888888P"    ')
+
+big_letter = dict({'m' : big_m, 'r' : big_r, 'i':big_i, 'b':big_b})
 #########################################################################
 def numbered_menu(captions, options):
     """Creates menu for terminal interface
@@ -165,8 +175,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     print(f'wsp.py: args = {args}')
 
-    options = "rimvn:s"
-    long_options = ["robo", "instrument", "manual", "verbose", "ns_host=", 
+    options = "rimbvn:s"
+    long_options = ["robo", "instrument", "manual", "bench", "verbose", "ns_host=", 
                     "smallchiller", "nochiller",
                     "sunsim", "domesim", "dometest", "mountsim",
                     "shell"]
@@ -186,12 +196,15 @@ if __name__ == "__main__":
         elif currentArgument in ("-m", "--manual"):
             mode = 'm'
             
+        elif currentArgument in ("-b", "--bench"):
+            mode = 'b'
+            
         
     modes = dict()
     modes.update({'r' : "Entering [R]obotic schedule file mode (will initiate observations!)"})
     modes.update({'i' : "Entering [I]nstrument mode: initializing instrument subsystems and waiting for commands"})
     modes.update({'m' : "Entering fully [M]anual mode: initializing all subsystems and waiting for commands"})
-    
+    modes.update({'b' : "Entering fully [B]ench mode: initializing benchtop testing systems and waiting for commands"})
     opts = arguments
     
     printlogo()

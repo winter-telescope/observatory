@@ -3190,7 +3190,14 @@ fields:
         units: 'C'
         dtype: float64
         rate: 'hk'
-        var: camdict['winter'].state['bench_tec_setpoint']  
+        var: camdict['winter'].state['bench_tec_setpoint'] 
+    bench_tec_interim_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['winter'].state['bench_tec_interim_setpoint'] 
     bench_T_pid:
         ftype: raw
         label: 'T'

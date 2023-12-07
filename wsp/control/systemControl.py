@@ -209,6 +209,13 @@ class control(QtCore.QObject):
             nameserverd.launch()
             #Pyro5.nameserver.start_ns_loop(host = self.ns_host) # this will hang here.
         
+        # ALWAYS load the housekeeping daemon. It is the heart of WSP:
+        # housekeeping data logging daemon (hkd = housekeeping daemon)
+        self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py", 
+                                         args = ['-n', self.ns_host]) #change to dirfiled.py if you want to use the version that uses easygetdata
+        self.daemonlist.add_daemon(self.hkd)
+        
+        
         if mode in ['r', 'i', 'm']:
             # test daemon
             self.testd = daemon_utils.PyDaemon(name = 'test', filepath = f"{wsp_path}/daemon/test_daemon.py")
@@ -224,10 +231,7 @@ class control(QtCore.QObject):
             else:
                 pass
         
-            # housekeeping data logging daemon (hkd = housekeeping daemon)
-            self.hkd = daemon_utils.PyDaemon(name = 'hkd', filepath = f"{wsp_path}/housekeeping/pydirfiled.py", 
-                                             args = ['-n', self.ns_host]) #change to dirfiled.py if you want to use the version that uses easygetdata
-            self.daemonlist.add_daemon(self.hkd)
+            
             
             # power (PDU/NPS) daemon
             self.powerd = daemon_utils.PyDaemon(name = 'power', filepath = f"{wsp_path}/power/powerd.py",
@@ -238,7 +242,7 @@ class control(QtCore.QObject):
             # labjack daemon
             self.labjackd = daemon_utils.PyDaemon(name = 'labjacks', filepath = f"{wsp_path}/housekeeping/labjackd.py", args = ['-n', self.ns_host])
             self.daemonlist.add_daemon(self.labjackd)
-            
+        
             
         if mode in ['i']:
             
