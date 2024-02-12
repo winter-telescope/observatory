@@ -3411,6 +3411,15 @@ class Wintercmd(QtCore.QObject):
                                     default = 'radec',
                                     help = '<comment> ')
         
+        # should we offset the pointing center?
+        self.cmdparser.add_argument('--offset',
+                                    action = None,
+                                    type = str,
+                                    choices = ['best', 'center', 'none'],
+                                    nargs = 1,
+                                    default = 'best',
+                                    help = '<pointing_center_offset> ')
+        
         # by default it assumes manual mode. 
         obsmode_group = self.cmdparser.add_mutually_exclusive_group()
         obsmode_group.add_argument('-man', '--manual',      action = 'store_true', default = False)
@@ -3426,6 +3435,8 @@ class Wintercmd(QtCore.QObject):
         group.add_argument('-t',    '--test',      action = 'store_true', default = False)
         group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
         group.add_argument('-p',    '--pointing',  action = 'store_true', default = False)
+        
+        
         
         self.getargs()
         
@@ -3459,6 +3470,10 @@ class Wintercmd(QtCore.QObject):
             # SET THE DEFAULT
             obsmode = 'UNKNOWN'
         
+        # pointing center offset
+        offset = self.args.offset
+        
+        
         #print(f'robo_observe: args = {self.args}')
         comment = self.args.comment
 
@@ -3472,7 +3487,8 @@ class Wintercmd(QtCore.QObject):
                                tracking = 'auto',
                                field_angle = 'auto',
                                obstype = obstype,
-                               comment = comment)
+                               comment = comment,
+                               offset = offset)
         
         elif targtype == 'radec':
             # allow the RA and DEC to be specified in multiple ways:
@@ -3496,7 +3512,8 @@ class Wintercmd(QtCore.QObject):
                                field_angle = 'auto',
                                obstype = obstype,
                                comment = comment,
-                               obsmode = obsmode)
+                               obsmode = obsmode,
+                               offset = offset)
         
         elif targtype == 'object':
             obj = self.args.target[0]
@@ -3507,7 +3524,8 @@ class Wintercmd(QtCore.QObject):
                                field_angle = 'auto',
                                obstype = obstype,
                                comment = comment,
-                               obsmode = obsmode)
+                               obsmode = obsmode,
+                               offset = offset)
         else:
             msg = f'wintercmd: target type not allowed!'
             self.logger.info(msg)

@@ -1402,7 +1402,122 @@ class RoboOperator(QtCore.QObject):
         self.schedule.updateCurrentObs(currentObs, obstime_mjd)
         return
         
+    
+    def get_center_offset_coords(self,
+                ra_hours: float, dec_deg: float,
+                pa: float = 90.0,
+                offsettype = 'best',
+                ):
+        """
+        Calculate the pointing ra/dec required to put the desired ra/dec at the given pixel
+        position of the given board.
+        :param ra: ra of the target in hours
+        :param dec: dec of the target in degrees
+        :param pa: where is north with respect to top of detector, positive (same as target_field_angle)
+        is counter-clockwise
+        :return: new_base_ra required for the board pointing
+        :return: new_base_dec required for the board pointing
+        """
+        
+        if (offsettype is None) or (offsettype.lower() == 'none'):
+            # just return the input parameters
+            return ra_hours, dec_deg
+        
+        elif offsettype == 'center':
+            x_pixel = 0
+            y_pixel = 0
+            
+        elif offsettype == 'best':
+            # what is the pixel where the observation should be centered on the best detector?
+                # x_pixel: x pixel position on requested board. This assumes the X pixel value
+                # when an individual board image is opened in DS9. Default is slightly lower of center.
+            x_pixel = self.config['observing_parameters'][self.camname]['best_position']['x_pixel']
+            y_pixel = self.config['observing_parameters'][self.camname]['best_position']['y_pixel']
+            
+        else:
+            # invalid offset type
+            self.log(f'invalid offset type selected, defaulting to no offset')
+            return ra_hours, dec_deg
+        # where does the center of pointing land by default
+        base_pointing_x_pixel = self.config['observing_parameters'][self.camname]['base_position']['x_pixel']
+        base_pointing_y_pixel = self.config['observing_parameters'][self.camname]['base_position']['y_pixel']
+        
+        # what is the shape of the detector?
+        x_pixels = self.config['observing_parameters'][self.camname]['x_pixels']
+        y_pixels = self.config['observing_parameters'][self.camname]['y_pixels']
+        
+        
+        
+        if self.camname == 'winter':
+            
+            # get the board id of the best detector
+            board_id = self.config['observing_parameters'][self.camname]['best_position']['board_id']
+            
+            y_board_id_mapping = {4: 0, 2: 0,
+                                  3: 1, 0: 1,
+                                  1: 2, 5: 2}
+    
+            x_board_id_mapping = {4: 1, 2: 0,
+                                  3: 1, 0: 0,
+                                  1: 1, 5: 0}
+    
+            if board_id in [1, 3, 4]:
+                x_pixel = x_pixels - x_pixel
+                y_pixel = y_pixels - y_pixel
+    
+            base_pointing_board = self.config['observing_parameters'][self.camname]['base_position']['board_id']
 
+            base_board_x = x_board_id_mapping[base_pointing_board]
+            base_board_y = y_board_id_mapping[base_pointing_board]
+            requested_board_x = x_board_id_mapping[board_id]
+            requested_board_y = y_board_id_mapping[board_id]
+            
+            # Calculate the offset in pixels from the base pointing
+            x_offset_pixels = (requested_board_x - base_board_x) * x_pixels + x_pixel \
+                              - base_pointing_x_pixel
+            y_offset_pixels = (requested_board_y - base_board_y) * y_pixels + y_pixel \
+                              - base_pointing_y_pixel
+            
+        else:
+            # eg, for summer or any normal non mosaic focal plane
+            x_offset_pixels =  x_pixel - base_pointing_x_pixel
+            y_offset_pixels =  y_pixel - base_pointing_y_pixel
+            
+        pixel_scale_arcsec = self.config['observing_parameters'][self.camname]['pixscale']
+                    
+        
+
+        # Calculate the offset in arcseconds
+        x_offset_arcsec = x_offset_pixels * pixel_scale_arcsec
+        y_offset_arcsec = y_offset_pixels * pixel_scale_arcsec
+
+        # Calculate the offset in degrees
+        x_offset_deg = x_offset_arcsec / 3600.0  # * np.cos(np.deg2rad(dec))
+        y_offset_deg = y_offset_arcsec / 3600.0
+
+        # Calculate the new ra/dec at the base pointing if the requested coordinates
+        # need to be at the requested pixels, using the offset and PA,
+        # but with astronomy parity
+            # Note: viraj points out this might have to be flipped for SUMMER
+        parity = 1
+        ra_offset = (-1 ** parity) * (x_offset_deg * np.cos(np.deg2rad(pa)) \
+                                      - y_offset_deg * np.sin(np.deg2rad(pa)))
+        dec_offset = (-1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
+                                       + y_offset_deg * np.cos(np.deg2rad(pa)))
+
+        # convert RA to deg
+        ra_deg = ra_hours * 15.0
+        new_base_ra_deg = ra_deg - ra_offset / np.cos(np.deg2rad(dec_deg))
+
+        # convert back to hours
+        new_base_ra_hours = new_base_ra_deg/15.0
+        
+        # calculate the new dec 
+        new_base_dec_deg = dec_deg - dec_offset
+        
+        
+        
+        return new_base_ra_hours, new_base_dec_deg
     
         
     def get_observatory_ready_status(self):
@@ -2866,7 +2981,8 @@ class RoboOperator(QtCore.QObject):
         try:
            
             filterpos = self.fw.state['filter_pos']
-            pixscale = self.config['focus_loop_param']['pixscale'][self.camname]
+            #pixscale = self.config['focus_loop_param']['pixscale'][self.camname]
+            pixscale = self.config['observing_parameters'][self.camname]['pixscale']
                 
             
             filterID = self.config['filter_wheels'][self.camname]['positions'][filterpos] # eg. 'r'
@@ -3484,6 +3600,13 @@ class RoboOperator(QtCore.QObject):
         self.scheduleType = str(currentObs.get('scheduleType', ''))
         self.qcomment = ''
         self.obstype = 'SCIENCE'
+        self.bestDetector = bool(currentObs.get('bestDetector', 1)) # should we center the field on the best detector
+        
+        
+        if self.bestDetector:
+            center_offset = 'best'
+        else:
+            center_offset = 'center'
         
         # which camera should be used for the observation?
         cam_to_use = self.getWhichCameraToUse(filterID = self.filter_scheduled)
@@ -3522,6 +3645,8 @@ class RoboOperator(QtCore.QObject):
         #self.exptime = 45.0 #120.0
         # start the dither number at 1, it gets incremented after the exposure is complete.
         self.dithnum = 1
+        
+        
         
         for pointing_num, pointing_offset in enumerate(pointing_offsets, 1):
             
@@ -3665,12 +3790,12 @@ class RoboOperator(QtCore.QObject):
                             if self.test_mode:
                                 self.announce(f'>> RUNNING IN TEST MODE: JUST OBSERVING THE ALT/AZ FROM SCHEDULE DIRECTLY')
                                 #self.do(f'robo_observe altaz {self.target_alt} {self.target_az} --test --schedule')
-                                self.do(f'robo_observe altaz {self.pointing_alt} {self.pointing_az} --test --schedule')
+                                self.do(f'robo_observe altaz {self.pointing_alt} {self.pointing_az} --test --schedule --offset {center_offset}')
                             else:
                                 
                                 # now do the observation
                                 #self.do(f'robo_observe radec {self.target_ra_j2000_hours} {self.target_dec_j2000_deg} --science --schedule')
-                                self.do(f'robo_observe radec {self.pointing_ra_j2000_hours} {self.pointing_dec_j2000_deg} --science --schedule')
+                                self.do(f'robo_observe radec {self.pointing_ra_j2000_hours} {self.pointing_dec_j2000_deg} --science --schedule --offset {center_offset}')
                             
                             
                             
@@ -3929,7 +4054,7 @@ class RoboOperator(QtCore.QObject):
     
     def do_observation(self, targtype, target = None, tracking = 'auto', 
                        field_angle = 'auto', obstype = 'TEST', comment = '',
-                       obsmode = 'SCHEDULE'):
+                       obsmode = 'SCHEDULE', offset = 'best'):
         """
         A GENERIC OBSERVATION FUNCTION
         
@@ -4127,6 +4252,10 @@ class RoboOperator(QtCore.QObject):
                 obj = target
                 
                 j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
+                
+                
+                
+                
                 self.target_ra_j2000_hours = j2000_coords.ra.hour
                 self.target_dec_j2000_deg = j2000_coords.dec.deg
                 ra_deg = j2000_coords.ra.deg
@@ -4157,9 +4286,12 @@ class RoboOperator(QtCore.QObject):
             return
         
         
+        
+        
         # handle the field angle
         if field_angle.lower() == 'auto':
-            self.target_field_angle = self.config['telescope']['rotator_field_angle_zeropoint']
+            #self.target_field_angle = self.config['telescope'] # this is wrong :D will give 155 instead of 65
+            self.target_field_angle = self.config['telescope']['rotator']['winter']['rotator_field_angle_zeropoint']['rotator_field_angle_zeropoint']
         else:
             self.target_field_angle = field_angle
 
@@ -4192,6 +4324,8 @@ class RoboOperator(QtCore.QObject):
                                         self.target_field_angle - 180.0,
                                         self.target_field_angle + 180.0]
         
+        
+        
         # NPL updated this formula, there was a bug here that's been around for a while.
         # copied the formula from Kevin Ivarsen's (Planewave) predict_pw1000_rotator_mech.py
         # script:
@@ -4222,7 +4356,15 @@ class RoboOperator(QtCore.QObject):
                 print(f"New target mech angle = {self.target_mech_angle}")
                 break
         print("##########################################")
-
+        
+        # adjust the pointing center based on the offset
+        # pass self.target_field_angle, the one that it chooses, and pass that to PA in the get_center_offset_coords function
+        self.target_ra_j2000_hours, self.target_dec_j2000_deg = self.get_center_offset_coords(
+                                        ra_hours = self.target_ra_j2000_hours,
+                                        dec_deg = self.target_dec_j2000_deg,
+                                        pa = self.target_field_angle,
+                                        offsettype = offset)
+        
         
         """
         # Rob's original version based on Viraj's memo
