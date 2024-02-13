@@ -4421,7 +4421,7 @@ class RoboOperator(QtCore.QObject):
                                         self.target_field_angle - 180.0,
                                         self.target_field_angle + 180.0]
         
-        
+        self.log(f'possible target field angles = {possible_target_field_angles}')
         
         # NPL updated this formula, there was a bug here that's been around for a while.
         # copied the formula from Kevin Ivarsen's (Planewave) predict_pw1000_rotator_mech.py
@@ -4430,6 +4430,8 @@ class RoboOperator(QtCore.QObject):
 
         possible_target_mech_angles = [(target_field_angle - parallactic_angle -self.target_alt) 
                                       for target_field_angle in possible_target_field_angles]
+        
+        self.log(f'possible target mech angles = {possible_target_mech_angles}')
         
         messages = ["No rotator wrap predicted",
                     "Rotator wrapping < min, adjusting by -360 deg.",
