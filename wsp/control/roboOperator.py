@@ -4285,7 +4285,7 @@ class RoboOperator(QtCore.QObject):
                 pass
         elif targtype == 'radec':
             try:
-                self.log(f'vetting target: {target} ')
+                self.log(f'vetting target: {target}, targtype = {targtype}')
                 # make sure it's a tuple
                 assert (type(target) is tuple), f'for {targtype} observation, target must be a tuple. got type = {type(target)}'
                 
@@ -4382,7 +4382,7 @@ class RoboOperator(QtCore.QObject):
             return
         
         
-        
+        self.log('getting correct field angle to stay within rotator limits')
         
         # handle the field angle
         if field_angle.lower() == 'auto':
