@@ -4382,8 +4382,7 @@ class RoboOperator(QtCore.QObject):
             return
         
         
-        self.log('getting correct field angle to stay within rotator limits')
-        
+        self.log(f'vetting field angle: {field_angle}')
         # handle the field angle
         if field_angle.lower() == 'auto':
             #self.target_field_angle = self.config['telescope'] # this is wrong :D will give 155 instead of 65
@@ -4391,70 +4390,76 @@ class RoboOperator(QtCore.QObject):
         else:
             self.target_field_angle = field_angle
         
+        self.log('getting correct field angle to stay within rotator limits')
         
-        ####### Check if field angle will violate cable wrap limits
-        #                 and adjust as needed.
-        # Viraj's field rotation checker 6-11-23
-        # allows pointing to north up (preference) or north down
-        # handle the field angle
+        try:
         
-        lat = astropy.coordinates.Angle(self.config['site']['lat']).rad
-        dec = self.target_dec_j2000_deg * np.pi / 180.0
-        lst = obstime.sidereal_time('mean').rad
-        hour_angle = lst - ra_deg * np.pi / 180.0
-        if (hour_angle < -1 * np.pi):
-            hour_angle += 2 * np.pi
-        if (hour_angle > np.pi):
-            hour_angle -= 2 * np.pi
-
-        parallactic_angle = np.arctan2(np.sin(hour_angle), \
-                                       np.tan(lat) * np.cos(dec) - \
-                                       np.sin(dec) * np.cos(hour_angle)) * \
-                            180 / np.pi
-
+            ####### Check if field angle will violate cable wrap limits
+            #                 and adjust as needed.
+            # Viraj's field rotation checker 6-11-23
+            # allows pointing to north up (preference) or north down
+            # handle the field angle
+            
+            lat = astropy.coordinates.Angle(self.config['site']['lat']).rad
+            dec = self.target_dec_j2000_deg * np.pi / 180.0
+            lst = obstime.sidereal_time('mean').rad
+            hour_angle = lst - ra_deg * np.pi / 180.0
+            if (hour_angle < -1 * np.pi):
+                hour_angle += 2 * np.pi
+            if (hour_angle > np.pi):
+                hour_angle -= 2 * np.pi
+    
+            parallactic_angle = np.arctan2(np.sin(hour_angle), \
+                                           np.tan(lat) * np.cos(dec) - \
+                                           np.sin(dec) * np.cos(hour_angle)) * \
+                                180 / np.pi
+    
+            
+    
+    
+            possible_target_field_angles = [self.target_field_angle,
+                                            self.target_field_angle - 360.0,
+                                            self.target_field_angle + 360.0,
+                                            self.target_field_angle - 180.0,
+                                            self.target_field_angle + 180.0]
+            
+            self.log(f'possible target field angles = {possible_target_field_angles}')
+            
+            # NPL updated this formula, there was a bug here that's been around for a while.
+            # copied the formula from Kevin Ivarsen's (Planewave) predict_pw1000_rotator_mech.py
+            # script:
+                # mech_degs = target_field_angle_degs - status.mount.altitude_degs - status.mount.field_angle_at_target_degs
+    
+            possible_target_mech_angles = [(target_field_angle - parallactic_angle -self.target_alt) 
+                                          for target_field_angle in possible_target_field_angles]
+            
+            self.log(f'possible target mech angles = {possible_target_mech_angles}')
+            
+            messages = ["No rotator wrap predicted",
+                        "Rotator wrapping < min, adjusting by -360 deg.",
+                        "Rotator wrapping > max, adjusting by +360 deg.",
+                        "Rotator wrapping < min, adjusting by -180 deg.",
+                        "Rotator wrapping > max, adjusting by +180 deg.",
+                        ]
+    
+            self.log("\n##########################################")
+            for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
+                if self.is_rotator_mech_angle_possible(
+                        predicted_rotator_mechangle=possible_target_mech_angle,
+                        rotator_min_degs=self.config['telescope']['rotator'][self.camname][
+                            'rotator_min_degs'],
+                        rotator_max_degs=self.config['telescope']['rotator'][self.camname][
+                            'rotator_max_degs']):
+                    self.target_mech_angle = possible_target_mech_angle
+                    self.target_field_angle = possible_target_field_angles[ind]
+                    self.log(messages[ind])
+                    self.log(f"Adjusted field angle --> {self.target_field_angle}")
+                    self.log(f"New target mech angle = {self.target_mech_angle}")
+                    break
+            self.log("##########################################")
         
-
-
-        possible_target_field_angles = [self.target_field_angle,
-                                        self.target_field_angle - 360.0,
-                                        self.target_field_angle + 360.0,
-                                        self.target_field_angle - 180.0,
-                                        self.target_field_angle + 180.0]
-        
-        self.log(f'possible target field angles = {possible_target_field_angles}')
-        
-        # NPL updated this formula, there was a bug here that's been around for a while.
-        # copied the formula from Kevin Ivarsen's (Planewave) predict_pw1000_rotator_mech.py
-        # script:
-            # mech_degs = target_field_angle_degs - status.mount.altitude_degs - status.mount.field_angle_at_target_degs
-
-        possible_target_mech_angles = [(target_field_angle - parallactic_angle -self.target_alt) 
-                                      for target_field_angle in possible_target_field_angles]
-        
-        self.log(f'possible target mech angles = {possible_target_mech_angles}')
-        
-        messages = ["No rotator wrap predicted",
-                    "Rotator wrapping < min, adjusting by -360 deg.",
-                    "Rotator wrapping > max, adjusting by +360 deg.",
-                    "Rotator wrapping < min, adjusting by -180 deg.",
-                    "Rotator wrapping > max, adjusting by +180 deg.",
-                    ]
-
-        self.log("\n##########################################")
-        for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
-            if self.is_rotator_mech_angle_possible(
-                    predicted_rotator_mechangle=possible_target_mech_angle,
-                    rotator_min_degs=self.config['telescope']['rotator'][self.camname][
-                        'rotator_min_degs'],
-                    rotator_max_degs=self.config['telescope']['rotator'][self.camname][
-                        'rotator_max_degs']):
-                self.target_mech_angle = possible_target_mech_angle
-                self.target_field_angle = possible_target_field_angles[ind]
-                self.log(messages[ind])
-                self.log(f"Adjusted field angle --> {self.target_field_angle}")
-                self.log(f"New target mech angle = {self.target_mech_angle}")
-                break
-        self.log("##########################################")
+        except Exception as e:
+            self.log(f'error calculating field and mechanical angles: {e}')
         
         # adjust the pointing center based on the offset
         self.log(f'calculating the new coordinates to center the field with offset type: {offset}')
