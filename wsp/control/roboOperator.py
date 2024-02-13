@@ -4386,7 +4386,7 @@ class RoboOperator(QtCore.QObject):
         # handle the field angle
         if field_angle.lower() == 'auto':
             #self.target_field_angle = self.config['telescope'] # this is wrong :D will give 155 instead of 65
-            self.target_field_angle = self.config['telescope']['rotator']['winter']['rotator_field_angle_zeropoint']['rotator_field_angle_zeropoint']
+            self.target_field_angle = self.config['telescope']['rotator']['winter']['rotator_field_angle_zeropoint']
         else:
             self.target_field_angle = field_angle
         
