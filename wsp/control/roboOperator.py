@@ -1506,6 +1506,10 @@ class RoboOperator(QtCore.QObject):
         dec_offset = (-1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
                                        + y_offset_deg * np.cos(np.deg2rad(pa)))
 
+        self.log(f'calculated field offsets:')
+        self.log(f'ra_offset = {ra_offset*60} arcmin')
+        self.log(f'dec_offset = {dec_offset*60} arcmin')
+
         # convert RA to deg
         ra_deg = ra_hours * 15.0
         new_base_ra_deg = ra_deg - ra_offset / np.cos(np.deg2rad(dec_deg))
