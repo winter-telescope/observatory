@@ -4467,6 +4467,7 @@ class RoboOperator(QtCore.QObject):
         except Exception as e:
             self.log(f'error calculating field and mechanical angles: {e}')
         
+        
         # adjust the pointing center based on the offset
         self.log(f'calculating the new coordinates to center the field with offset type: {offset}')
         try:
