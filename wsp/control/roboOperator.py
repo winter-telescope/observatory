@@ -4285,6 +4285,7 @@ class RoboOperator(QtCore.QObject):
                 pass
         elif targtype == 'radec':
             try:
+                self.log(f'vetting target: {target} ')
                 # make sure it's a tuple
                 assert (type(target) is tuple), f'for {targtype} observation, target must be a tuple. got type = {type(target)}'
                 
