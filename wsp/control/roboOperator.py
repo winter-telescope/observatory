@@ -1503,7 +1503,8 @@ class RoboOperator(QtCore.QObject):
         parity = 1
         ra_offset = (-1 ** parity) * (x_offset_deg * np.cos(np.deg2rad(pa)) \
                                       - y_offset_deg * np.sin(np.deg2rad(pa)))
-        dec_offset = (-1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
+        # nate changed the multiplier for the parity below:
+        dec_offset = (1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
                                        + y_offset_deg * np.cos(np.deg2rad(pa)))
 
         self.log(f'calculated field offsets:')
@@ -1512,13 +1513,13 @@ class RoboOperator(QtCore.QObject):
 
         # convert RA to deg
         ra_deg = ra_hours * 15.0
-        new_base_ra_deg = ra_deg - ra_offset / np.cos(np.deg2rad(dec_deg))
+        new_base_ra_deg = ra_deg + ra_offset / np.cos(np.deg2rad(dec_deg)) #changing viraj's minus sign to plus sign
 
         # convert back to hours
         new_base_ra_hours = new_base_ra_deg/15.0
         
         # calculate the new dec 
-        new_base_dec_deg = dec_deg - dec_offset
+        new_base_dec_deg = dec_deg + dec_offset #changing viraj's minus sign to plus sign
         
         
         
