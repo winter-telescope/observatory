@@ -2679,7 +2679,7 @@ class Wintercmd(QtCore.QObject):
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
         nominal_timeout = drivetime * 1.5 # give the drivetime some overhead
-        timeout = 300
+        timeout = 600 #300
         
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get('cmd_satisfied_N_samples')
@@ -3471,7 +3471,7 @@ class Wintercmd(QtCore.QObject):
             obsmode = 'UNKNOWN'
         
         # pointing center offset
-        offset = self.args.offset
+        offset = self.args.offset[0]
         
         
         #print(f'robo_observe: args = {self.args}')

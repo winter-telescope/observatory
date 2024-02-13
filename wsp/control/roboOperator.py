@@ -4442,7 +4442,7 @@ class RoboOperator(QtCore.QObject):
                         "Rotator wrapping > max, adjusting by +180 deg.",
                         ]
     
-            self.log("\n##########################################")
+            self.log("##########################################")
             for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
                 if self.is_rotator_mech_angle_possible(
                         predicted_rotator_mechangle=possible_target_mech_angle,
