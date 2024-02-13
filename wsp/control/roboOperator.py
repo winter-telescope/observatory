@@ -1498,6 +1498,7 @@ class RoboOperator(QtCore.QObject):
         # Calculate the new ra/dec at the base pointing if the requested coordinates
         # need to be at the requested pixels, using the offset and PA,
         # but with astronomy parity
+            # For WINTER: parity = 1 
             # Note: viraj points out this might have to be flipped for SUMMER
         parity = 1
         ra_offset = (-1 ** parity) * (x_offset_deg * np.cos(np.deg2rad(pa)) \
