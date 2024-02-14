@@ -1424,8 +1424,12 @@ class RoboOperator(QtCore.QObject):
             return ra_hours, dec_deg
         
         elif offsettype == 'center':
-            x_pixel = 0
-            y_pixel = 0
+            # NPL 2/13/24: it seems like no offset is actually properly aligned
+            # and the below stuff isn't putting it in the center, either bc
+            # the math is wrong, or bc the coordinates are incorrect.
+            #x_pixel = 0
+            #y_pixel = 0
+            return ra_hours, dec_deg
             
         elif offsettype == 'best':
             # what is the pixel where the observation should be centered on the best detector?

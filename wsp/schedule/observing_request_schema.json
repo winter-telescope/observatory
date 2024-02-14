@@ -17,7 +17,8 @@
     "ditherNumber": {"type": "integer", "default": 1},
     "ditherStepSize": {"type": "number", "comment": "arcsec", "default": 30.0},
     "fieldID": {"type": "integer", "default": 999999999},
-    "targName": {"type": ["string", "null"], "comment": "Target name e.g. GW170817", "default": null}
+    "targName": {"type": ["string", "null"], "comment": "Target name e.g. GW170817", "default": null},
+    "bestDetector": {"type": "boolean", "comment": "Center Ra/Dec of target on best detector", "default": true}
   },
   "required": [
     "obsHistID",
