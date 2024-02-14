@@ -43,8 +43,8 @@ config = dict({"observing_parameters":
                             },
                         "best_position":
                             {"board_id": 4,
-                            "x_pixel": 600, #987, #600
-                            "y_pixel": 530, #570, #530
+                            "x_pixel": 1200, #600, #987, #600
+                            "y_pixel": 545, #530, #570, #530
                             },
                         "base_position":
                             {"board_id": 0,

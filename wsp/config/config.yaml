@@ -896,8 +896,8 @@ observing_parameters:
             ditherMaxStep_as: 15
         best_position:
             board_id: 4
-            x_pixel: 600
-            y_pixel: 530
+            x_pixel: 1200 #600
+            y_pixel: 545 #530
         base_position:
             board_id: 0
             x_pixel: 1788
