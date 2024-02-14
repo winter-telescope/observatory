@@ -43,13 +43,13 @@ config = dict({"observing_parameters":
                             },
                         "best_position":
                             {"board_id": 4,
-                            "x_pixel": 987, #600
-                            "y_pixel": 570, #530
+                            "x_pixel": 600, #987, #600
+                            "y_pixel": 530, #570, #530
                             },
                         "base_position":
                             {"board_id": 0,
-                            "x_pixel": 1900, #1788
-                            "y_pixel": 449, #533
+                            "x_pixel": 1788, #1900, #1788
+                            "y_pixel": 533, #449, #533
                             },
                         "pixscale": 1.11,
                         "x_pixels": 1984,
