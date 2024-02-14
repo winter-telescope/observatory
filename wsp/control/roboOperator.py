@@ -1508,7 +1508,7 @@ class RoboOperator(QtCore.QObject):
         ra_offset = (-1 ** parity) * (x_offset_deg * np.cos(np.deg2rad(pa)) \
                                       - y_offset_deg * np.sin(np.deg2rad(pa)))
         # nate changed the multiplier for the parity below:
-        dec_offset = (1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
+        dec_offset = (-1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
                                        + y_offset_deg * np.cos(np.deg2rad(pa)))
 
         self.log(f'calculated field offsets:')
@@ -4091,11 +4091,11 @@ class RoboOperator(QtCore.QObject):
         ra_deg = j2000_coords.ra.deg    
                 
         
-        lat = astropy.coordinates.Angle(self.config['site']['lat'])
-        lon = astropy.coordinates.Angle(self.config['site']['lon'])
-        height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
+        #lat = astropy.coordinates.Angle(self.config['site']['lat'])
+        #lon = astropy.coordinates.Angle(self.config['site']['lon'])
+        #height = self.config['site']['height'] * u.Unit(self.config['site']['height_units'])
                                         
-        site = astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
+        site = self.ephem.site#astropy.coordinates.EarthLocation(lat = lat, lon = lon, height = height)
         frame = astropy.coordinates.AltAz(obstime = obstime, location = site)
         local_coords = j2000_coords.transform_to(frame)
         self.target_alt = local_coords.alt.deg
@@ -4108,7 +4108,9 @@ class RoboOperator(QtCore.QObject):
             hour_angle += 2 * np.pi
         if (hour_angle > np.pi):
             hour_angle -= 2 * np.pi
-
+        
+        lat = astropy.coordinates.Angle(self.config['site']['lat']).rad
+        
         parallactic_angle = np.arctan2(np.sin(hour_angle), \
                                        np.tan(lat) * np.cos(dec) - \
                                        np.sin(dec) * np.cos(hour_angle)) * \
@@ -4403,6 +4405,7 @@ class RoboOperator(QtCore.QObject):
         self.log('getting correct field angle to stay within rotator limits')
         
         try:
+            """
         
             ####### Check if field angle will violate cable wrap limits
             #                 and adjust as needed.
@@ -4467,7 +4470,15 @@ class RoboOperator(QtCore.QObject):
                     self.log(f"New target mech angle = {self.target_mech_angle}")
                     break
             self.log("##########################################")
-        
+            """
+            
+            self.target_field_angle, self.target_mech_angle = self.get_safe_rotator_angle(
+                        ra_hours = self.target_ra_j2000_hours, 
+                        dec_deg = self.target_dec_j2000_deg, 
+                        target_field_angle = self.target_field_angle, 
+                        obstime = obstime, 
+                        verbose = True)
+            
         except Exception as e:
             self.log(f'error calculating field and mechanical angles: {e}')
         
@@ -4479,7 +4490,7 @@ class RoboOperator(QtCore.QObject):
             self.target_ra_j2000_hours, self.target_dec_j2000_deg = self.get_center_offset_coords(
                                             ra_hours = self.target_ra_j2000_hours,
                                             dec_deg = self.target_dec_j2000_deg,
-                                            pa = self.target_field_angle,
+                                            pa = self.target_field_angle - self.config['telescope']['rotator']['winter']['rotator_field_angle_zeropoint'],
                                             offsettype = offset)
         except Exception as e:
             self.log(f'error calculating new pointing center offset: {e}')

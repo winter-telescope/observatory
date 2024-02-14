@@ -19,18 +19,66 @@ import astropy.coordinates
 import astropy.time
 from datetime import datetime
 
-# add the wsp directory to the PATH
-wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
-# switch to this when ported to wsp
-#wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# # add the wsp directory to the PATH
+# wsp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'wsp')
+# # switch to this when ported to wsp
+# #wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-sys.path.insert(1, wsp_path)
-#print(f'wsp_path = {wsp_path}')
+# sys.path.insert(1, wsp_path)
+# #print(f'wsp_path = {wsp_path}')
 
-from utils import utils
-# load the config
-config_file = wsp_path + '/config/config.yaml'
-config = utils.loadconfig(config_file)
+# from utils import utils
+# # load the config
+# config_file = wsp_path + '/config/config.yaml'
+# config = utils.loadconfig(config_file)
+
+# minimum working config file except for standalone running
+config = dict({"observing_parameters":
+                    {"winter":
+                        {
+                        "dithers": 
+                            {"ditherNumber": 10,
+                            "ditherMinStep_as": 10,
+                            "ditherMaxStep_as": 15,
+                            },
+                        "best_position":
+                            {"board_id": 4,
+                            "x_pixel": 987, #600
+                            "y_pixel": 570, #530
+                            },
+                        "base_position":
+                            {"board_id": 0,
+                            "x_pixel": 1900, #1788
+                            "y_pixel": 449, #533
+                            },
+                        "pixscale": 1.11,
+                        "x_pixels": 1984,
+                        "y_pixels": 1096,
+                        }
+                     },
+                "site":
+                    {
+                    # lat/lon. expects a format that can be read with astropy.coordinates.Angle()
+                    "lat" : '33d21m21.6s',
+                    "lon": '-116d51m46.8s',
+                    # height (site altitude). height is a number, units are something that can be parsed with astropy.units.Unit()
+                    "height": 1706,
+                    "height_units": 'm',
+                    "timezone": 'America/Los_Angeles'
+                    },
+                "telescope":
+                    {"rotator":
+                        {"winter":
+                            {"rotator_field_angle_zeropoint": 65.0 ,
+                            "rotator_home_degs": 65.5,
+                            "rotator_max_degs": 120.0,
+                            "rotator_min_degs": -90.0,
+                            }
+                        },
+                    },
+                            
+                })
+
 
 camname = 'winter'
 
@@ -142,7 +190,7 @@ def get_center_offset_coords(
     ra_offset = (-1 ** parity) * (x_offset_deg * np.cos(np.deg2rad(pa)) \
                                   - y_offset_deg * np.sin(np.deg2rad(pa)))
     # nate changed the multiplier for the parity below:
-    dec_offset = (1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
+    dec_offset = (-1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
                                    + y_offset_deg * np.cos(np.deg2rad(pa)))
 
     log(f'calculated field offsets:')
@@ -210,7 +258,7 @@ def get_safe_rotator_angle(ra_hours, dec_deg, target_field_angle, obstime = None
     target_az = local_coords.az.deg
     
     
-    lat = astropy.coordinates.Angle(config['site']['lat']).rad
+    #lat = astropy.coordinates.Angle(config['site']['lat']).rad
     dec = dec_deg * np.pi / 180.0
     lst = obstime.sidereal_time('mean').rad
     hour_angle = lst - ra_deg * np.pi / 180.0
@@ -224,7 +272,7 @@ def get_safe_rotator_angle(ra_hours, dec_deg, target_field_angle, obstime = None
     #print(f'dec = {dec}')
 
     parallactic_angle = np.arctan2(np.sin(hour_angle), \
-                                   np.tan(lat) * np.cos(dec) - \
+                                   np.tan(lat.rad) * np.cos(dec) - \
                                    np.sin(dec) * np.cos(hour_angle)) * \
                         180 / np.pi
 
@@ -252,7 +300,7 @@ def get_safe_rotator_angle(ra_hours, dec_deg, target_field_angle, obstime = None
                 ]
 
     if verbose:
-        print("\n##########################################")
+        print("##########################################")
     for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
         if is_rotator_mech_angle_possible(
                 predicted_rotator_mechangle=possible_target_mech_angle,
@@ -269,6 +317,7 @@ def get_safe_rotator_angle(ra_hours, dec_deg, target_field_angle, obstime = None
             break
     if verbose:
         print("##########################################")
+        print()
     
     return target_field_angle, target_mech_angle
 
@@ -304,18 +353,21 @@ local_az_deg = local_coords.az.deg
 
 target_ra_j2000_hours = j2000_ra_hours
 target_dec_j2000_deg = j2000_dec_deg
-goal_field_angle = config['telescope']['rotator']['winter']['rotator_field_angle_zeropoint']
+field_angle_zp = config['telescope']['rotator']['winter']['rotator_field_angle_zeropoint']
+
 
 
 target_field_angle, target_mech_angle = get_safe_rotator_angle(
             ra_hours = target_ra_j2000_hours, 
             dec_deg = target_dec_j2000_deg, 
-            target_field_angle = goal_field_angle, 
+            target_field_angle = field_angle_zp, 
             obstime = obstime, 
             verbose = True)
+
+pa_goal = target_field_angle - field_angle_zp
 
 target_ra_j2000_hours, target_dec_j2000_deg = get_center_offset_coords(
                                 ra_hours = target_ra_j2000_hours,
                                 dec_deg = target_dec_j2000_deg,
-                                pa = target_field_angle,
+                                pa = pa_goal,
                                 offsettype = 'best')
