@@ -731,9 +731,7 @@ focus_loop_param:
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
     #file_type: '\*fits'
-    pixscale: # arcseconds
-        summer: 0.466
-        winter: 1.11
+    
     #current_filter: 'rband'
     #save_dir: '/home/winter/data/images/focusing/'
     image_log_path: '/home/winter/data/plots_focuser/img_logs/'
@@ -898,14 +896,25 @@ observing_parameters:
             ditherMaxStep_as: 15
         best_position:
             board_id: 4
-            x_pixel: 600
-            y_pixel: 530
+            x_pixel: 1200 #600
+            y_pixel: 545 #530
+        base_position:
+            board_id: 0
+            x_pixel: 1788
+            y_pixel: 533
+        pixscale: 1.11
+        x_pixels: 1984
+        y_pixels: 1096
             
     summer:
         best_position:
-            board_id: None
-            x_pixel: None
-            y_pixel: None
+            x_pixel: 0
+            y_pixel: 0
+        base_position:
+            x_pixel: 0
+            y_pixel: 0
+            
+        pixscale: 0.466
         
 
 ###############################################################################    
