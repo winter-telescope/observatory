@@ -244,45 +244,45 @@ robotic_manager_triggers:
             repeat_on_restart: True
             sundir: 0
             cmd: 'robo_run'
-        pause_obs:
-            conds:
-               cond1:
-                   type: 'time'
-                   val: '0:0:0.0'
-                   cond: '>'
-               cond1:
-                   type: 'time'
-                   val: '0:15:0.0'
-                   cond: '<'
-            repeat_on_restart: False
-            nextmorning: True
-            sundir: 0
-            cmd: 'robo_stop'
-        do_night_darks:
-            conds:
-               cond1:
-                   type: 'time'
-                   val: '0:05:0.0'
-                   cond: '>'
-               cond1:
-                   type: 'time'
-                   val: '0:20:0.0'
-                   cond: '<'
-            repeat_on_restart: False
-            nextmorning: True
-            sundir: 0
-            cmd: 'robo_do_darks'
-        restart_obs:
-            conds:
-               cond1:
-                   type: 'time'
-                   val: '0:30:0.0'
-                   cond: '>'
+        # pause_obs:
+        #     conds:
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:0:0.0'
+        #            cond: '>'
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:15:0.0'
+        #            cond: '<'
+        #     repeat_on_restart: False
+        #     nextmorning: True
+        #     sundir: 0
+        #     cmd: 'robo_stop'
+        # do_night_darks:
+        #     conds:
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:05:0.0'
+        #            cond: '>'
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:20:0.0'
+        #            cond: '<'
+        #     repeat_on_restart: False
+        #     nextmorning: True
+        #     sundir: 0
+        #     cmd: 'robo_do_darks'
+        # restart_obs:
+        #     conds:
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:30:0.0'
+        #            cond: '>'
                
-            repeat_on_restart: False
-            nextmorning: True
-            sundir: 0
-            cmd: 'robo_run'
+        #     repeat_on_restart: False
+        #     nextmorning: True
+        #     sundir: 0
+        #     cmd: 'robo_run'
         # stop_obs:
         #     conds:
         #         # cond1:
@@ -587,16 +587,27 @@ ephem:
 
 ########### CALIBRATION DEFAULTS ###########
 cal_params:
+    prog_params:
+        # parameters for tagging the cals with a trackable 
+        focus:
+            progID: 4
+            progName: 2024A015
+            progPI: Lourie
+        cals:
+            progID: 4
+            progName: 2023A014
+            progPI: Lourie
+            
     winter:
         dark:
             n_imgs: 5
             exptimes:
                 #- 2.5
-                - 5
-                - 10
-                - 15
-                - 30
-                - 45
+                #- 5
+                #- 10
+                #- 15
+                #- 30
+                #- 45
                 - 60
                 #- 100
                 - 120

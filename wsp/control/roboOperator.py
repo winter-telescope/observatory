@@ -3448,8 +3448,10 @@ class RoboOperator(QtCore.QObject):
                 """
                 #elif self.focus_attempt_number == 1:
                 #if self.focus_attempt_number < self.config['focus_loop_param']['max_focus_attempts']:
-                total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
-                nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
+                
+                sweeptype = 'narrow' # one of 'narrow' or 'wide'
+                total_throw = self.config['focus_loop_param']['sweep_param'][sweeptype]['total_throw']
+                nsteps = self.config['focus_loop_param']['sweep_param'][sweeptype]['nsteps']
                 #nom_focus = 'default'
                 nom_focus = 'last'
                 #nom_focus = 'model'
