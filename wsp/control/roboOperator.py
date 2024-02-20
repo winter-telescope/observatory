@@ -272,7 +272,7 @@ class RoboOperator(QtCore.QObject):
         self.focus_attempt_number = 0
         
         ### A class to keep track of the calibration sequences
-        self.caltracker = cal_tracker.calTracker(config = self.config, 
+        self.caltracker = cal_tracker.CalTracker(config = self.config, 
                                                  active_cams = self.camdict.keys(), 
                                                  logger = self.logger, 
                                                  sunsim = self.sunsim, 
