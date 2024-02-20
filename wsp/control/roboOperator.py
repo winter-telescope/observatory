@@ -1066,7 +1066,13 @@ class RoboOperator(QtCore.QObject):
                                 for cal_desc, cal_cmd in cals_to_do:
                                     self.announce(f'dispatching first cal sequence on the list: {cals_to_do[0]}')
                                     
+                                    # log that we are attempting the cal sequence
+                                    self.caltracker.logCommand(trigname = cal_desc, 
+                                                               sun_alt = self.state['sun_alt'], 
+                                                               timestamp = self.state['timestamp'])
+                                    
                                     self.doTry(cal_cmd)
+                                    
                                     
                                     self.log(f'finished executing cal sequence {cal_desc}:')
                                     QtCore.QCoreApplication.processEvents()
