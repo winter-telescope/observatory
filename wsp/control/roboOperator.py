@@ -1051,16 +1051,20 @@ class RoboOperator(QtCore.QObject):
                             self.announce(f'required cals: {cals_to_do}')
                             
                             # announce that we're going to dispatch the first cal to do:
-                            cal_desc = cals_to_do[0]
-                            cal_cmd = cals_to_do[0]
-                            self.announce(f'dispatching first cal sequence on the list: {cals_to_do[0]}')
+                            if len(cals_to_do) > 0:
+                                cal_desc = cals_to_do[0]
+                                cal_cmd = cals_to_do[0]
+                                self.announce(f'dispatching first cal sequence on the list: {cals_to_do[0]}')
+                                
+                                self.doTry(cal_cmd)
+                                
+                                self.log(f'finished executing cal sequence {cal_desc}, checking what to do next:')
+                                self.checktimer.start()
+                                return
                             
-                            self.doTry(cal_cmd)
-                            
-                            self.log(f'finished executing cal sequence {cal_desc}, checking what to do next:')
-                            self.checktimer.start()
-                            return
-                            
+                            else:
+                                self.log(f'no required cals, proceeding to observing sequence')
+                                pass
                             
                             #---------------------------------------------------------------------
                             # check what we should be observing NOW
