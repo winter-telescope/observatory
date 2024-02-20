@@ -157,8 +157,8 @@ class CalTracker(object):
             validity of the cal_log.
 
         """
-
-        with open('cal_log_schema.json', "rb") as f:
+        schemapath = os.path.join(wsp_path, 'cal', 'cal_log_schema.json')
+        with open(schemapath, "rb") as f:
             cal_log_schema = json.load(f)
         
         try:
