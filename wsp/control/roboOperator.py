@@ -276,7 +276,7 @@ class RoboOperator(QtCore.QObject):
                                                  active_cams = self.camdict.keys(), 
                                                  logger = self.logger, 
                                                  sunsim = self.sunsim, 
-                                                 verbose = self.verbose)
+                                                 verbose = False)
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
