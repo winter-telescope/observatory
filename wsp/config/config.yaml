@@ -597,23 +597,19 @@ cal_params:
             progID: 4
             progName: 2023A014
             progPI: Lourie
-            
+    cal_log:
+        dirname: 'data/cals'
+        filename: 'cal_log'   
+        linkdir: 'data'
+        linkname: 'cal_log.lnk'    
     winter:
         dark:
             n_imgs: 5
             exptimes:
-                #- 2.5
-                #- 5
-                #- 10
-                #- 15
-                #- 30
-                #- 45
                 - 60
-                #- 100
                 - 120
-                #- 150
-                #- 180
             filterID: 'dark'
+            
         bias:
             n_imgs: 0
             filterID: 'dark'
@@ -652,7 +648,21 @@ cal_params:
                     a: 343.62927408
                     n: -2.19398583
                     scale: 1.5
-                
+        triggers:
+            midnight_darks:
+                conds:
+                    cond1:
+                        type: 'time'
+                        val: '0:00:0.1'
+                        cond: '>'
+                    cond2:
+                        type: 'sun'
+                        val: -20.0
+                        cond: '<'
+                repeat_on_restart: False
+                nextmorning: True
+                sundir: 0
+                cmd: 'dark'
     summer:
         dark:
             n_imgs: 5
