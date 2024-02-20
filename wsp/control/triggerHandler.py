@@ -177,95 +177,97 @@ class TriggerHandler(QtCore.QObject):
     # 2-20-24: for the moment, leaving out the logging portion of this
     """
     
-    # @Pyro5.server.expose
-    # def resetTrigLog(self, updateFile = True):
-    #     # make this exposed on the pyro server so we can externally reset the triglog
+    def resetTrigLog(self, updateFile = True):
+        # make this exposed on the pyro server so we can externally reset the triglog
         
-    #     # overwrites the triglog with all False, ie none of the commands have been sent
-    #     for trigname in self.triggers.keys():
-    #             #self.triglog.update({trigname : False})
-    #             self.triglog.update({trigname : {'sent' : False, 'sun_alt_sent' : '', 'time_sent' : ''}})
-    #     if updateFile:
-    #         self.updateTrigLogFile()
+        # overwrites the triglog with all False, ie none of the commands have been sent
+        for trigname in self.triggers.keys():
+                #self.triglog.update({trigname : False})
+                self.triglog.update({trigname : {'sent' : False, 'sun_alt_sent' : '', 'time_sent' : ''}})
+        if updateFile:
+            self.updateTrigLogFile()
     
-    # def updateTrigLogFile(self):
+    def updateTrigLogFile(self):
         
-    #     # saves the current value of the self.triglog to the self.triglog_filepath file
-    #     # dump the yaml file
-    #     with open(self.triglog_filepath, 'w+') as file:
-    #         #yaml.dump(self.triglog, file)#, default_flow_style = False)
-    #         json.dump(self.triglog, file, indent = 2)
+        # saves the current value of the self.triglog to the self.triglog_filepath file
+        # dump the yaml file
+        with open(self.triglog_filepath, 'w+') as file:
+            #yaml.dump(self.triglog, file)#, default_flow_style = False)
+            json.dump(self.triglog, file, indent = 2)
         
     
-    # def HandleUpdateTrigLog(self, cmdRequest):
-    #     """
-    #     This handles updating the triglog and triglog file when requests
-    #     are sent and properly received by WSP. It is triggered by the CommandHandler
-    #     """
-    #     self.log(f'Main: caught signal to update triglog for {cmdRequest.trigname}')
+    #def HandleUpdateTrigLog(self, trigname, sun_alt, timestamp):
+    def logCommand(self, trigname, sun_alt, timestamp):
+        """
+        This handles updating the triglog and triglog file when requests
+        are sent and properly received by WSP. It is triggered by the CommandHandler
+        """
+        #self.log(f'Main: caught signal to update triglog for {cmdRequest.trigname}')
+        self.log(f'got request to log sequence for {trigname}')
         
-    #     trigname = cmdRequest.trigname
-    #     sun_alt = cmdRequest.sun_alt
-    #     time_string = cmdRequest.time_string
+        time_string = datetime.fromtimestamp(timestamp).isoformat(sep = ' ')
         
-    #     self.triglog.update({trigname : {'sent' : True, 
-    #                                          'sun_alt_sent' : sun_alt, 
-    #                                          'time_sent' : time_string}})
-    #     # update the triglog file
-    #     self.updateTrigLogFile()
-    #     pass
+        
+        self.triglog.update({trigname : {'sent' : True, 
+                                              'sun_alt_sent' : sun_alt, 
+                                              'time_sent' : time_string}})
+        # update the triglog file
+        self.updateTrigLogFile()
+        pass
     
-    # def setupTrigLog(self):
-    #     """
-    #     set up a yaml log file which records whether the command for each trigger
-    #     has already been sent tonight.
+    def setupTrigLog(self, logpath, linkpath):
+        """
+        set up a yaml log file which records whether the command for each trigger
+        has already been sent tonight.
         
-    #     checks to see if tonight's triglog already exists. if not it makes a new one.
-    #     """
-    #     # file
-    #     self.triglog_dir = os.path.join(os.getenv("HOME"),'data','triglogs')
-    #     #self.triglog_filename = f'triglog_{utils.tonight()}.json'
-    #     self.triglog_filename = f'triglog_{utils.tonight_local()}.json'
-    #     self.triglog_filepath = os.path.join(self.triglog_dir, self.triglog_filename)
+        checks to see if tonight's triglog already exists. if not it makes a new one.
+        """
+        # file
+        #self.triglog_dir = os.path.join(os.getenv("HOME"),'data','triglogs')
+        #self.triglog_filename = f'triglog_{utils.tonight_local()}.json'
+        self.triglog_filepath = logpath
+        self.triglog_dir = os.path.dirname(self.triglog_filepath)
 
-    #     self.triglog_linkdir = os.path.join(os.getenv("HOME"),'data')
-    #     self.triglog_linkname = 'triglog_tonight.lnk'
-    #     self.triglog_linkpath = os.path.join(self.triglog_linkdir, self.triglog_linkname)
+        #self.triglog_linkdir = os.path.join(os.getenv("HOME"),'data')
+        #self.triglog_linkname = 'triglog_tonight.lnk'
+        #self.triglog_linkpath = os.path.join(self.triglog_linkdir, self.triglog_linkname)
+        self.triglog_linkpath = linkpath
+        self.triglog_linkdir = os.path.dirname(self.triglog_linkpath)
         
-    #     # create the data directory if it doesn't exist already
-    #     pathlib.Path(self.triglog_dir).mkdir(parents = True, exist_ok = True)
-    #     self.log(f'ensuring directory exists: {self.triglog_dir}')
+        # create the data directory if it doesn't exist already
+        pathlib.Path(self.triglog_dir).mkdir(parents = True, exist_ok = True)
+        self.log(f'ensuring directory exists: {self.triglog_dir}')
                 
-    #     # create the data link directory if it doesn't exist already
-    #     pathlib.Path(self.triglog_linkdir).mkdir(parents = True, exist_ok = True)
-    #     self.log(f'ensuring directory exists: {self.triglog_linkdir}')
+        # create the data link directory if it doesn't exist already
+        pathlib.Path(self.triglog_linkdir).mkdir(parents = True, exist_ok = True)
+        self.log(f'ensuring directory exists: {self.triglog_linkdir}')
         
-    #     # check if the file exists
-    #     try:
-    #         # assume file exists and try to load triglog from file
-    #         self.log(f'loading triglog from file')
-    #         self.triglog = json.load(open(self.triglog_filepath))
+        # check if the file exists
+        try:
+            # assume file exists and try to load triglog from file
+            self.log(f'loading triglog from file')
+            self.triglog = json.load(open(self.triglog_filepath))
             
 
-    #     except FileNotFoundError:
-    #         # file does not exist: create it
-    #         self.log('no triglog found: creating new one')
+        except FileNotFoundError:
+            # file does not exist: create it
+            self.log('no triglog found: creating new one')
             
-    #         # create the default triglog: no cmds have been sent
-    #         self.resetTrigLog()
+            # create the default triglog: no cmds have been sent
+            self.resetTrigLog()
             
             
-    #     # recreate a symlink to tonights trig log file
-    #     self.log(f'trying to create link at {self.triglog_linkpath}')
+        # recreate a symlink to tonights trig log file
+        self.log(f'trying to create link at {self.triglog_linkpath}')
 
-    #     try:
-    #         os.symlink(self.triglog_filepath, self.triglog_linkpath)
-    #     except FileExistsError:
-    #         self.log('deleting existing symbolic link')
-    #         os.remove(self.triglog_linkpath)
-    #         os.symlink(self.triglog_filepath, self.triglog_linkpath)
+        try:
+            os.symlink(self.triglog_filepath, self.triglog_linkpath)
+        except FileExistsError:
+            self.log('deleting existing symbolic link')
+            os.remove(self.triglog_linkpath)
+            os.symlink(self.triglog_filepath, self.triglog_linkpath)
         
-    #     print(f'\ntriglog = {json.dumps(self.triglog, indent = 2)}')
+        print(f'\ntriglog = {json.dumps(self.triglog, indent = 2)}')
     
     def getTrigCurVals(self, triggercond, sun_alt, timestamp, nextmorning = False):
         """:
@@ -488,7 +490,62 @@ class TriggerHandler(QtCore.QObject):
     
     
     
-    
-    
-    
+    def getActiveTriggers(self, sun_alt, timestamp, sun_rising):
+        """
+        This is the main meat of this program. It checks the sun alt and time against a
+        set of predefined tasks and then submits commands to the WSP wintercmd TCP/IP
+        command interface.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        active_triggers = []
+        
+        try:
+            #for trigname in ['startup']:
+            for trigname in self.triggers.keys():
+                if self.verbose:
+                        self.log(f'evaluating trigger: {trigname}')
+                # load up the trigger object
+                trig = self.triggers[trigname]
+                
+
+                if self.triglog[trigname]['sent']:
+                    # check to see if the trigger has already been executed
+                    if self.verbose:
+                        self.log('\tcmd already sent')
+                        
+                    
+                    if self.first_time:
+                        # if it's the first time we may want to trigger the cmd anyway
+                        if trig.repeat_on_restart:
+                            if self.verbose:
+                                print('\tsending trigger anyway since it is the first time after restart')
+                            #self.handleTrigger(trigname)
+                            
+                            if self.triggerReady(trigname, sun_alt, timestamp, sun_rising):
+                                active_triggers.append((trigname, self.triggers[trigname].cmd))
+                            
+                            
+                    else:
+                        # the trigger cmd has already been sent. do nothing.
+                        pass
+                else:
+                    #self.handleTrigger(trigname)
+                    if self.triggerReady(trigname, sun_alt, timestamp, sun_rising):
+                        active_triggers.append((trigname, self.triggers[trigname].cmd))
+            # change the first time flag
+            self.first_time = False
+            
+        except Exception as e:
+            if self.verbose:
+                print(f'could not check what to do: {e}')
+                print(traceback.format_exc())
+            pass
+        
+        return active_triggers
+
     
