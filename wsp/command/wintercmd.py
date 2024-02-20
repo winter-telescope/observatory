@@ -3223,6 +3223,33 @@ class Wintercmd(QtCore.QObject):
             self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
+    def autostart_override(self):
+        self.defineCmdParser('start the robotic operator')
+        self.cmdparser.add_argument('action',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    choices = ['on', 'off'],
+                                    )
+
+        self.getargs()
+        if self.verbose:
+            print(self.args)
+        
+        action = self.args.action[0]
+        
+        if action.lower() == 'on':
+            override = True
+        elif action.lower() == 'off':
+            override = False
+        else:
+            self.logger.info(f'invalid action: {action}. returning')
+            return
+        
+        sigcmd = signalCmd('toggle_autostart_override', state = override)
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
     def robo_run_test(self):
         self.defineCmdParser('start the robotic operator')
         if self.roboThread.isRunning():

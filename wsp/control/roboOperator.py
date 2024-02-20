@@ -292,6 +292,10 @@ class RoboOperator(QtCore.QObject):
         self.ok_to_observe = False
         self.estop_active = False
     
+        # an override which will make the observatory keep running even if the autoStart is not fully complete
+        # eg if the temps are not stablizing but you still want to observe NOW
+        self.autostart_override = False
+    
         # a flag to indicate we're in a daylight test mode which will spoof some observations and trigger
         ## off of schedule alt/az rather than ra/dec
         #NPL 1-12-21: making it so that if we are in dometest or sunsim mode that we turn on test_mode
@@ -568,7 +572,14 @@ class RoboOperator(QtCore.QObject):
             self.doTry('rotator_home')
             # turn on wrap check again
             self.doTry('rotator_wrap_check_enable')
-        
+    
+    def toggle_autostart_override(self, state:bool):
+        """
+        set the autostart override to the desired state
+
+        """
+        self.autostart_override = state
+    
     def handle_wrap_warning(self, angle):
         
         # create a notification
@@ -914,7 +925,7 @@ class RoboOperator(QtCore.QObject):
                     # the camera should be on
                     
                     
-                    if self.camdict['winter'].state['autoStartComplete']:
+                    if self.camdict['winter'].state['autoStartComplete'] or self.autostart_override:
                         
                         self.log(f'autostart requested but not complete.')
                         # the startup is complete!
