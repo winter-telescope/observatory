@@ -949,11 +949,12 @@ class RoboOperator(QtCore.QObject):
                                                                      timestamp = self.state['timestamp'],
                                                                      sun_rising = self.state['sun_rising'])
                             
-                            # announce the list of cals to do:
-                            self.announce(f'required cals: {cals_to_do}')
                             
                             # announce that we're going to dispatch the first cal to do:
                             if len(cals_to_do) > 0:
+                                # announce the list of cals to do:
+                                self.announce(f'required cals: {cals_to_do}')
+                                
                                 for cal_desc, cal_cmd in cals_to_do:
                                     self.announce(f'dispatching first cal sequence on the list: {cals_to_do[0]}')
                                     
