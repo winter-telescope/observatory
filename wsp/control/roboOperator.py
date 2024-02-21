@@ -939,6 +939,43 @@ class RoboOperator(QtCore.QObject):
                             ### OBSERVING SEQUENCE ###
                             #---------------------------------------------------------------------
                             
+                            
+                            #---------------------------------------------------------------------
+                            # check if we need to do any cals
+                            #---------------------------------------------------------------------
+                            # note this needs to go first, otherwise cals won't happen if the weather is bad!
+                            
+                            cals_to_do = self.caltracker.getCalsToDo(sun_alt = self.state['sun_alt'],
+                                                                     timestamp = self.state['timestamp'],
+                                                                     sun_rising = self.state['sun_rising'])
+                            
+                            # announce the list of cals to do:
+                            self.announce(f'required cals: {cals_to_do}')
+                            
+                            # announce that we're going to dispatch the first cal to do:
+                            if len(cals_to_do) > 0:
+                                for cal_desc, cal_cmd in cals_to_do:
+                                    self.announce(f'dispatching first cal sequence on the list: {cals_to_do[0]}')
+                                    
+                                    # log that we are attempting the cal sequence
+                                    self.caltracker.logCommand(trigname = cal_desc, 
+                                                               sun_alt = self.state['sun_alt'], 
+                                                               timestamp = self.state['timestamp'])
+                                    
+                                    self.doTry(cal_cmd)
+                                    
+                                    
+                                    self.log(f'finished executing cal sequence {cal_desc}:')
+                                    QtCore.QCoreApplication.processEvents()
+
+                                self.announce(f'finished executing all active requests for cal sequences, going to check what to do next')
+                                self.checktimer.start()
+                                return
+                            
+                            else:
+                                self.log(f'no required cals, proceeding to observing sequence')
+                                pass
+                            
                             #---------------------------------------------------------------------
                             ### check the dome
                             #---------------------------------------------------------------------
@@ -1051,39 +1088,6 @@ class RoboOperator(QtCore.QObject):
                             
                             # here we should check if the temperature has changed by some amount and nudge the focus if need be
                             
-                            #---------------------------------------------------------------------
-                            # check if we need to do any cals
-                            #---------------------------------------------------------------------
-                            cals_to_do = self.caltracker.getCalsToDo(sun_alt = self.state['sun_alt'],
-                                                                     timestamp = self.state['timestamp'],
-                                                                     sun_rising = self.state['sun_rising'])
-                            
-                            # announce the list of cals to do:
-                            self.announce(f'required cals: {cals_to_do}')
-                            
-                            # announce that we're going to dispatch the first cal to do:
-                            if len(cals_to_do) > 0:
-                                for cal_desc, cal_cmd in cals_to_do:
-                                    self.announce(f'dispatching first cal sequence on the list: {cals_to_do[0]}')
-                                    
-                                    # log that we are attempting the cal sequence
-                                    self.caltracker.logCommand(trigname = cal_desc, 
-                                                               sun_alt = self.state['sun_alt'], 
-                                                               timestamp = self.state['timestamp'])
-                                    
-                                    self.doTry(cal_cmd)
-                                    
-                                    
-                                    self.log(f'finished executing cal sequence {cal_desc}:')
-                                    QtCore.QCoreApplication.processEvents()
-
-                                self.announce(f'finished executing all active requests for cal sequences, going to check what to do next')
-                                self.checktimer.start()
-                                return
-                            
-                            else:
-                                self.log(f'no required cals, proceeding to observing sequence')
-                                pass
                             
                             #---------------------------------------------------------------------
                             # check what we should be observing NOW
