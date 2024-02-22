@@ -974,6 +974,13 @@ fields:
         dtype: float64
         rate: slow
         var: 'timestamp'
+    timestamp_local:
+        ftype: raw
+        label: 'time'
+        units: ctime
+        dtype: float64
+        rate: slow
+        var: 'timestamp_local'
     testcount:
         ftype: raw
         label: 'count'
