@@ -2918,6 +2918,20 @@ class RoboOperator(QtCore.QObject):
         context = 'do_darks'
         self.log(f'starting dark sequence')
         
+        
+        # set the progID info here for the headers
+        self.resetObsValues()
+        try:
+            self.programPI = self.config['cal_params']['prog_params']['cals']['progPI']
+            self.programID = self.config['cal_params']['prog_params']['cals']['progID']
+            self.programName = self.config['cal_params']['prog_params']['cals']['progName']
+            self.obstype = 'DARK'
+            self.obsmode = 'CALIBRATION'
+        except Exception as e:
+            self.log(f'could not update the header values for the dark sequence: {e}')
+        
+        
+        
         # How many images do you want to take at each exposure time?
         if n_imgs is None:
             n_imgs = self.config['cal_params'][self.camname]['dark']['n_imgs']
@@ -3006,7 +3020,7 @@ class RoboOperator(QtCore.QObject):
                         self.announce(f'Executing Auto Darks {i+1}/{n_imgs} at exptime = {exptime} s')
                         qcomment = f"Auto Darks {i+1}/{n_imgs}"
             
-                        self.do(f'robo_do_exposure -d')
+                        self.do(f'robo_do_exposure -d --calibration')
                 except Exception as e:
                     msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
                     self.log(msg)
@@ -3058,6 +3072,22 @@ class RoboOperator(QtCore.QObject):
         """        
         self.announce('running focus loop!')
         context = 'do_focusLoop'
+        
+        
+        # set the progID info here for the headers
+        self.resetObsValues()
+        try:
+            self.programPI = self.config['cal_params']['prog_params']['focus']['progPI']
+            self.programID = self.config['cal_params']['prog_params']['focus']['progID']
+            self.programName = self.config['cal_params']['prog_params']['focus']['progName']
+            self.obstype = 'FOCUS'
+            self.obsmode = 'CALIBRATION'
+        except Exception as e:
+            self.log(f'could not update the header field values in the focus loop: {e}')
+            
+        
+        
+        
         # get the current filter
 
         try:
