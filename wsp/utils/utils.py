@@ -48,6 +48,85 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 
+
+
+
+def offset_coordinates_to_detector_position(
+        ra: float, dec: float,
+        board_id: int = 4,
+        x_pixel: float = 600,
+        y_pixel: float = 530,
+        pa: float = 90.0,
+        winter_x_pixels = 1984,
+        winter_y_pixels = 1096,
+):
+    """
+    Calculate the pointing ra/dec required to put the desired ra/dec at the given pixel
+    position of the given board.
+    :param ra: ra of the target
+    :param dec: dec of the target
+    :param board_id: board id of the requested board, by default our best board
+    :param x_pixel: x pixel position on requested board. This assumes the X pixel value
+    when an individual board image is opened in DS9. Default is slightly lower of center.
+    :param y_pixel: y pixel position on requested board. This assumes the Y pixel value
+    when an individual board image is opened in DS9. Default is slightly lower of center.
+    :param pa: where is north with respect to top of detector, positive
+    is counter-clockwise
+    :return: new_base_ra required for the board pointing
+    :return: new_base_dec required for the board pointing
+    """
+
+    y_board_id_mapping = {4: 0, 2: 0,
+                          3: 1, 0: 1,
+                          1: 2, 5: 2}
+
+    x_board_id_mapping = {4: 1, 2: 0,
+                          3: 1, 0: 0,
+                          1: 1, 5: 0}
+
+    if board_id in [1, 3, 4]:
+        x_pixel = winter_x_pixels - x_pixel
+        y_pixel = winter_y_pixels - y_pixel
+
+    base_pointing_board = 0
+    base_pointing_x_pixel = 992 + 796
+    base_pointing_y_pixel = 533
+
+    base_board_x = x_board_id_mapping[base_pointing_board]
+    base_board_y = y_board_id_mapping[base_pointing_board]
+    requested_board_x = x_board_id_mapping[board_id]
+    requested_board_y = y_board_id_mapping[board_id]
+
+    WINTER_PIXEL_SCALE_ARCSEC = 1.1
+    # Calculate the offset in pixels from the base pointing
+    x_offset_pixels = (requested_board_x - base_board_x) * winter_x_pixels + x_pixel \
+                      - base_pointing_x_pixel
+    y_offset_pixels = (requested_board_y - base_board_y) * winter_y_pixels + y_pixel \
+                      - base_pointing_y_pixel
+
+    # Calculate the offset in arcseconds
+    x_offset_arcsec = x_offset_pixels * WINTER_PIXEL_SCALE_ARCSEC
+    y_offset_arcsec = y_offset_pixels * WINTER_PIXEL_SCALE_ARCSEC
+
+    # Calculate the offset in degrees
+    x_offset_deg = x_offset_arcsec / 3600.0  # * np.cos(np.deg2rad(dec))
+    y_offset_deg = y_offset_arcsec / 3600.0
+
+    # Calculate the new ra/dec at the base pointing if the requested coordinates
+    # need to be at the requested pixels, using the offset and PA,
+    # but with astronomy parity
+
+    parity = 1
+    ra_offset = (-1 ** parity) * (x_offset_deg * np.cos(np.deg2rad(pa)) \
+                                  - y_offset_deg * np.sin(np.deg2rad(pa)))
+    dec_offset = (-1 ** parity) * (x_offset_deg * np.sin(np.deg2rad(pa)) \
+                                   + y_offset_deg * np.cos(np.deg2rad(pa)))
+
+    new_base_ra = ra - ra_offset / np.cos(np.deg2rad(dec))
+    new_base_dec = dec - dec_offset
+
+    return new_base_ra, new_base_dec
+
     
     
 def loadconfig(config_file):

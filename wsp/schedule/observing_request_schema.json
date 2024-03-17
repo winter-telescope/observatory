@@ -4,7 +4,7 @@
     "obsHistID": {"type": "integer"},
     "raDeg": {"type": "number", "comment": "Degrees (decimal)"},
     "decDeg": {"type": "number", "comment": "Degrees (decimal)"},
-    "filter": {"type": "string", "comment": "'u'/'g'/'r'/'i'/'Y'/'J'/'H'"},
+    "filter": {"type": "string", "comment": "'u'/'g'/'r'/'i'/'Y'/'J'/'H'/'dark'"},
     "visitExpTime": {"type": "number", "comment": "Total observation time (seconds)", "default": 30.0},
     "priority": {"type": "number", "comment": "Priority of observation"},
     "progPI": {"type": "string", "comment": "PI of observation"},
@@ -15,9 +15,10 @@
     "observed": {"anyOf": [{"type":  "boolean", "default":  false}, {"type" : "integer", "minimum" : 0, "maximum" : 1}]},
     "maxAirmass": {"type":  "number", "comment": "Maximum airmass for observation", "default":  2.0},
     "ditherNumber": {"type": "integer", "default": 1},
-    "ditherStepSize": {"type": "number", "comment": "arcsec", "default": 15.0},
+    "ditherStepSize": {"type": "number", "comment": "arcsec", "default": 30.0},
     "fieldID": {"type": "integer", "default": 999999999},
-    "targName": {"type": "string", "comment": "Target name e.g. GW170817"}
+    "targName": {"type": ["string", "null"], "comment": "Target name e.g. GW170817", "default": null},
+    "bestDetector": {"type": "boolean", "comment": "Center Ra/Dec of target on best detector", "default": true}
   },
   "required": [
     "obsHistID",
