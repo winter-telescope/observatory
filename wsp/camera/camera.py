@@ -297,7 +297,7 @@ class local_camera(QtCore.QObject):
         self.imtype = imtype
         
         if mode is None:
-            mode = 'cds'
+            mode = 'iwr'
         self.mode = mode
         
         
