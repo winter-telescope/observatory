@@ -3223,6 +3223,33 @@ class Wintercmd(QtCore.QObject):
             self.roboThread.newCommand.emit(sigcmd)
     
     @cmd
+    def autostart_override(self):
+        self.defineCmdParser('start the robotic operator')
+        self.cmdparser.add_argument('action',
+                                    nargs = 1,
+                                    action = None,
+                                    type = str,
+                                    choices = ['on', 'off'],
+                                    )
+
+        self.getargs()
+        if self.verbose:
+            print(self.args)
+        
+        action = self.args.action[0]
+        
+        if action.lower() == 'on':
+            override = True
+        elif action.lower() == 'off':
+            override = False
+        else:
+            self.logger.info(f'invalid action: {action}. returning')
+            return
+        
+        sigcmd = signalCmd('toggle_autostart_override', state = override)
+        self.roboThread.newCommand.emit(sigcmd)
+    
+    @cmd
     def robo_run_test(self):
         self.defineCmdParser('start the robotic operator')
         if self.roboThread.isRunning():
@@ -3288,7 +3315,20 @@ class Wintercmd(QtCore.QObject):
                                     default = [],
                                     action = None,
                                     help = "<exposure_time_list>")
+        
+        # argument to hold the camera name
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
+        group.add_argument('-c',    '--summer',      action = 'store_true', default = False)
+        
         self.getargs()
+
+        self.logger.info(f'fw_goto: args = {self.args}')
+        
+        if self.args.winter:
+            camname = 'winter'
+        elif self.args.summer:
+            camname = 'summer'
         
         # You call this function like this:
             # robo_do_darks -n 3 -e 1 5 10
@@ -3307,7 +3347,7 @@ class Wintercmd(QtCore.QObject):
         if exptimes == []:
             exptimes = None
         
-        sigcmd = signalCmd('do_darks', n_imgs = nimgs, exptimes = exptimes)
+        sigcmd = signalCmd('do_darks', n_imgs = nimgs, exptimes = exptimes, camname = camname)
         
         self.roboThread.newCommand.emit(sigcmd)
     

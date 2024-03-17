@@ -56,6 +56,7 @@ class hk_loop(QtCore.QThread):
         # loop execution number
         self.index = 0
         self.timestamp = datetime.utcnow().timestamp()
+        self.timestamp_local = datetime.now().timestamp()
 
         # subclass the methods passed in (ie, the hardware systems)
         self.telescope = telescope
@@ -166,13 +167,16 @@ class hk_loop(QtCore.QThread):
                 sunsim_timestamp = self.get_sunsim_timestamp()
                 self.timestamp = sunsim_timestamp
                 
+                
                 #print(f'sunsim_timestamp = {sunsim_timestamp}')
             except Exception as e:
                 self.timestamp = -888
                 print(f'could not get sunsim timestamp: {e}')
         else:
             self.timestamp = datetime.utcnow().timestamp()
+            self.timestamp_local = datetime.now().timestamp()
         self.state.update({'timestamp' : self.timestamp})
+        self.state.update({'timestamp_local' : self.timestamp_local})
         
         
         # is it faster to put the labjack poll here?

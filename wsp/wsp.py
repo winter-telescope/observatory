@@ -169,7 +169,7 @@ if __name__ == "__main__":
     long_options = ["robo", "instrument", "manual", "verbose", "ns_host=", 
                     "smallchiller", "nochiller",
                     "sunsim", "domesim", "dometest", "mountsim",
-                    "shell"]
+                    "shell", "disablewatchdog"]
     arguments, values = getopt.getopt(args, options, long_options)
     # checking each argument
     print()

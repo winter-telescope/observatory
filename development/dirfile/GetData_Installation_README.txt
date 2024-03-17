@@ -120,6 +120,18 @@ Most users should be able to build the package by simply executing:
 # IMPORTANT: also had to properly specify where to put the python modules with this:
 # ./configure --with-python-module-dir=/Users/nlourie/anaconda3/lib/python3.7/site-packages
 
+#NPL: Update: installing on Mac with apple silicon and OS14:
+# installed lib tool with brew: "brew install lib tool"
+# also installed Xcode and Xcode command line tools from here, version 15.3 Beta: https://developer.apple.com/download/all/?q=xcode, but unclear if this was required
+# had lots of lib tool issues until I figured out how to point it to the location of the brew installation:
+# ./configure --with-python-module-dir=/Users/nlourie/anaconda3/envs/wsp/lib/python3.11/site-packages --with-python=/Users/nlourie/anaconda3/envs/wsp/bin/python --with-ltdl=/opt/homebrew/opt/libtool
+
+# then to get it to make, had to do a manual copy since something was not working right. It was looking for this shared object at [GETDATADIR]/bindings/python/build/lib.macosx-11.1-arm64-3.1/pygetdata.cpython-311-darwin.so.
+# IT WAS NOT THERE! That folder didn't exist, so I copied it from the existing folder which DID have the .so file in it:
+	# from [GETDATADIR]/bindings/python/build:
+		# sudo cp -r lib.macosx-11.1-arm64-cpython-311 lib.macosx-11.1-arm64-3.1
+# then I reran sudo make and it worked finallllllly.
+
 
 
   $ ./configure

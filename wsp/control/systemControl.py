@@ -140,6 +140,7 @@ class control(QtCore.QObject):
         self.mountsim   = False
         self.nochiller  = False
         self.interactive_mode = False
+        self.disable_watchdog = False
         
         print('sysControl: Parsing opts...')
         for currentArgument, currentValue in opts:
@@ -172,6 +173,10 @@ class control(QtCore.QObject):
             # start in interactive mode with command line interface shell started
             if currentArgument in ['-s', '--shell']:
                 self.interactive_mode = True
+                
+            # disable the watchdog monitor which shuts down the system if the temps/flow look like failures
+            if currentArgument in ['--disablewatchdog']:
+                self.disable_watchdog = True
 
         print(f'sysControl: ns_host = {self.ns_host}')
         print(f'sysControl: verbose = {self.verbose}')
@@ -180,6 +185,8 @@ class control(QtCore.QObject):
         print(f'sysControl: dometest = {self.dometest}')
         print(f'sysControl: mountsim = {self.mountsim}')
         print(f'sysControl: nochiller = {self.nochiller}')
+        print(f'sysControl: disable_watchdog = {self.disable_watchdog}')
+
 
         try:
             nameserverd = Pyro5.core.locate_ns(host = self.ns_host)
@@ -306,11 +313,15 @@ class control(QtCore.QObject):
             self.daemonlist.add_daemon(self.winterfwd)
             
             # watchdog monitor daemon
-            self.watchdog = daemon_utils.PyDaemon(name = 'watchdog', 
-                                                 filepath = f"{wsp_path}/watchdog/watchdogd.py", 
-                                                 args = ['-n', self.ns_host])
-            self.daemonlist.add_daemon(self.watchdog)
-            
+            if self.disable_watchdog:
+                self.alertHandler.slack_log(f':rediren: *WARNING* :redsiren: *Safety watchdog disabled!*', group = 'operator')
+                self.alertHandler.slack_log(f'somebody is running WSP with the safety watchdog disabled. This is a deliberate choice, but could have severe consequences if not properly monitored')
+            else:
+                self.watchdog = daemon_utils.PyDaemon(name = 'watchdog', 
+                                                     filepath = f"{wsp_path}/watchdog/watchdogd.py", 
+                                                     args = ['-n', self.ns_host])
+                self.daemonlist.add_daemon(self.watchdog)
+                
         if mode in ['r']:
             # ROBOTIC OPERATION MODE!
             # ROBO MANAGER DAEMON

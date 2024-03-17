@@ -41,16 +41,13 @@ import sqlalchemy as db
 wsp_path = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(1, wsp_path)
 
-#from utils import utils
-#from schedule import schedule
-from schedule import ObsWriter
 from ephem import ephem_utils
 from telescope import pointingModelBuilder
 from housekeeping import data_handler
 from focuser import focusing
 from focuser import focus_tracker
-from viscam import summerRebootTracker
 from schedule import wintertoo_validate
+from cal import cal_tracker
 
 # print all the columns
 pd.set_option('display.max_columns', None)
@@ -274,9 +271,12 @@ class RoboOperator(QtCore.QObject):
         # a variable to keep track of how many times we've attempted to focus. different numbers have different affects on focus routine
         self.focus_attempt_number = 0
         
-        ### A class to keep track of how often buggy systems have been rebooted
-        self.SUMMERrebootTracker = summerRebootTracker.SUMMERrebootTracker(self.config)
-        
+        ### A class to keep track of the calibration sequences
+        self.caltracker = cal_tracker.CalTracker(config = self.config, 
+                                                 active_cams = self.camdict.keys(), 
+                                                 logger = self.logger, 
+                                                 sunsim = self.sunsim, 
+                                                 verbose = False)
         
         # keep track of the last command executed so it can be broadcast as an error if needed
         self.lastcmd = None
@@ -291,6 +291,10 @@ class RoboOperator(QtCore.QObject):
         ## ie, if startup is complete, the calibration is complete, and the weather/dome is okay
         self.ok_to_observe = False
         self.estop_active = False
+    
+        # an override which will make the observatory keep running even if the autoStart is not fully complete
+        # eg if the temps are not stablizing but you still want to observe NOW
+        self.autostart_override = False
     
         # a flag to indicate we're in a daylight test mode which will spoof some observations and trigger
         ## off of schedule alt/az rather than ra/dec
@@ -568,7 +572,14 @@ class RoboOperator(QtCore.QObject):
             self.doTry('rotator_home')
             # turn on wrap check again
             self.doTry('rotator_wrap_check_enable')
-        
+    
+    def toggle_autostart_override(self, state:bool):
+        """
+        set the autostart override to the desired state
+
+        """
+        self.autostart_override = state
+    
     def handle_wrap_warning(self, angle):
         
         # create a notification
@@ -914,7 +925,7 @@ class RoboOperator(QtCore.QObject):
                     # the camera should be on
                     
                     
-                    if self.camdict['winter'].state['autoStartComplete']:
+                    if self.camdict['winter'].state['autoStartComplete'] or self.autostart_override:
                         
                         self.log(f'autostart requested but not complete.')
                         # the startup is complete!
@@ -927,6 +938,44 @@ class RoboOperator(QtCore.QObject):
                             #---------------------------------------------------------------------
                             ### OBSERVING SEQUENCE ###
                             #---------------------------------------------------------------------
+                            
+                            
+                            #---------------------------------------------------------------------
+                            # check if we need to do any cals
+                            #---------------------------------------------------------------------
+                            # note this needs to go first, otherwise cals won't happen if the weather is bad!
+                            
+                            cals_to_do = self.caltracker.getCalsToDo(sun_alt = self.state['sun_alt'],
+                                                                     timestamp = self.state['timestamp'],
+                                                                     sun_rising = self.state['sun_rising'])
+                            
+                            
+                            # announce that we're going to dispatch the first cal to do:
+                            if len(cals_to_do) > 0:
+                                # announce the list of cals to do:
+                                self.announce(f'required cals: {cals_to_do}')
+                                
+                                for cal_desc, cal_cmd in cals_to_do:
+                                    self.announce(f'dispatching first cal sequence on the list: {cals_to_do[0]}')
+                                    
+                                    # log that we are attempting the cal sequence
+                                    self.caltracker.logCommand(trigname = cal_desc, 
+                                                               sun_alt = self.state['sun_alt'], 
+                                                               timestamp = self.state['timestamp'])
+                                    
+                                    self.doTry(cal_cmd)
+                                    
+                                    
+                                    self.log(f'finished executing cal sequence {cal_desc}:')
+                                    QtCore.QCoreApplication.processEvents()
+
+                                self.announce(f'finished executing all active requests for cal sequences, going to check what to do next')
+                                self.checktimer.start()
+                                return
+                            
+                            else:
+                                self.log(f'no required cals, proceeding to observing sequence')
+                                pass
                             
                             #---------------------------------------------------------------------
                             ### check the dome
@@ -1039,7 +1088,6 @@ class RoboOperator(QtCore.QObject):
                                         return
                             
                             # here we should check if the temperature has changed by some amount and nudge the focus if need be
-                            
                             
                             
                             #---------------------------------------------------------------------
@@ -2857,13 +2905,32 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
         
-    def do_darks(self, n_imgs = None, exptimes = None):
+    def do_darks(self, n_imgs = None, exptimes = None, camname = 'winter'):
         """
         do a series of dark exposures in all active filteres
         
         """
+        # change the camera to the specified camera for the darks
+        if camname != self.camname:
+            self.camname = camname
+            self.switchCamera(self.camname)     
+            
         context = 'do_darks'
         self.log(f'starting dark sequence')
+        
+        
+        # set the progID info here for the headers
+        self.resetObsValues()
+        try:
+            self.programPI = self.config['cal_params']['prog_params']['cals']['progPI']
+            self.programID = self.config['cal_params']['prog_params']['cals']['progID']
+            self.programName = self.config['cal_params']['prog_params']['cals']['progName']
+            self.obstype = 'DARK'
+            self.obsmode = 'CALIBRATION'
+        except Exception as e:
+            self.log(f'could not update the header values for the dark sequence: {e}')
+        
+        
         
         # How many images do you want to take at each exposure time?
         if n_imgs is None:
@@ -2871,6 +2938,19 @@ class RoboOperator(QtCore.QObject):
         # What exposure times should we take darks at?
         if (exptimes is None) or (exptimes == []):
             exptimes = self.config['cal_params'][self.camname]['dark']['exptimes']
+            
+            try:
+                # try to run a query of scheduled exposure times:
+                scheduled_exptimes = self.caltracker.getScheduledExptimes(self.camname)
+                for exptime in scheduled_exptimes:
+                    if exptime not in exptimes:
+                        exptimes.append(exptime)
+            except Exception as e:
+                msg = f'could not run query on scheduled exposure times for {self.camname}: {e}'
+                self.announce(msg, group = 'operator')
+            # now order the exposure times?
+            
+            
             
         
         
@@ -2940,7 +3020,7 @@ class RoboOperator(QtCore.QObject):
                         self.announce(f'Executing Auto Darks {i+1}/{n_imgs} at exptime = {exptime} s')
                         qcomment = f"Auto Darks {i+1}/{n_imgs}"
             
-                        self.do(f'robo_do_exposure -d')
+                        self.do(f'robo_do_exposure -d --calibration')
                 except Exception as e:
                     msg = f'roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}'
                     self.log(msg)
@@ -2959,6 +3039,10 @@ class RoboOperator(QtCore.QObject):
             
 
         self.announce(':greentick: auto darks sequence completed successfully!')
+        
+        # # if the robot is running, check what to do
+        # if self.running:
+        #     self.checkWhatToDo()
     
     def do_focusLoop(self, nom_focus = 'model', total_throw = 'default', nsteps = 'default', updateFocusTracker = True, focusType = 'Vcurve'):
         """
@@ -2988,6 +3072,22 @@ class RoboOperator(QtCore.QObject):
         """        
         self.announce('running focus loop!')
         context = 'do_focusLoop'
+        
+        
+        # set the progID info here for the headers
+        self.resetObsValues()
+        try:
+            self.programPI = self.config['cal_params']['prog_params']['focus']['progPI']
+            self.programID = self.config['cal_params']['prog_params']['focus']['progID']
+            self.programName = self.config['cal_params']['prog_params']['focus']['progName']
+            self.obstype = 'FOCUS'
+            self.obsmode = 'CALIBRATION'
+        except Exception as e:
+            self.log(f'could not update the header field values in the focus loop: {e}')
+            
+        
+        
+        
         # get the current filter
 
         try:
@@ -3448,8 +3548,10 @@ class RoboOperator(QtCore.QObject):
                 """
                 #elif self.focus_attempt_number == 1:
                 #if self.focus_attempt_number < self.config['focus_loop_param']['max_focus_attempts']:
-                total_throw = self.config['focus_loop_param']['sweep_param']['wide']['total_throw']
-                nsteps = self.config['focus_loop_param']['sweep_param']['wide']['nsteps']
+                
+                sweeptype = 'narrow' # one of 'narrow' or 'wide'
+                total_throw = self.config['focus_loop_param']['sweep_param'][sweeptype]['total_throw']
+                nsteps = self.config['focus_loop_param']['sweep_param'][sweeptype]['nsteps']
                 #nom_focus = 'default'
                 nom_focus = 'last'
                 #nom_focus = 'model'
