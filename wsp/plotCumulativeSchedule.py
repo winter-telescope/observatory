@@ -69,7 +69,7 @@ except Exception as e:
                                     'ExpTime', 'airmass', 'progid', 'progname', 'progtitle'])
     print("Failed to grab history: ", e)
 
-
+history = history[history['expMJD']>60310]
 #ra  = np.array(qresult[:,27],dtype=np.float32)
 ra = np.array(history['ra'], dtype=np.float32)#[0:100]
 #ra = ra / 24.0 * 360.0 * np.pi/180.0

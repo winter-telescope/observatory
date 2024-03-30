@@ -154,7 +154,10 @@ class local_dome(QtCore.QObject):
         #self.state.update({'UTC_timestamp' : timestamp})
         self.state.update({'timestamp' : timestamp})
         
-        self.state.update({'Telescope_Power'                :   self.remote_state.get('Telescope_Power',                  self.default)})
+        self.Telescope_Power = self.remote_state.get('Telescope_Power', 'FAULT')
+        self.state.update({'Telescope_Power'                :   self.config['Dome_Status_Dict']['Telescope_Power'].get(self.Telescope_Power,       self.default) })
+        #self.state.update({'Telescope_Power'                :   self.remote_state.get('Telescope_Power',                  self.default)})
+        
         self.state.update({'Dome_Azimuth'                   :   self.remote_state.get('Dome_Azimuth',                     self.default)})
         
         self.Dome_Status = self.remote_state.get('Dome_Status', 'FAULT')               # status of observatory dome

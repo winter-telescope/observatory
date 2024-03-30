@@ -496,6 +496,11 @@ Dome_Status_Dict:
         'READY': 1
         'NOT_READY': 0
         
+    Telescope_Power:
+        'ON' : 1
+        'OFF': 0
+        'FAULT': -1
+        
     Faults:
         0x1:
             msg: 'Dome Drive Communication Lost'
