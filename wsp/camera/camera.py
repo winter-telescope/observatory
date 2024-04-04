@@ -294,15 +294,19 @@ class local_camera(QtCore.QObject):
         
         if imtype is None:
             imtype = 'test'
-        self.imtype = imtype
         
         if mode is None:
             mode = 'ndr'
             #mode = 'iwr'
+        
+        # a little kluge to make the focus images iwr or cds
+        if (mode.lower() == 'ndr') & (imtype.lower() == 'focus'):
+            mode = 'cds'
+        
+        self.imtype = imtype
         self.mode = mode
-        
-        
-        
+
+
         self.log(f'updating state dictionaries')
         # make sure all the state dictionaries are up-to-date
         # update the camera state by querying the camera daemon

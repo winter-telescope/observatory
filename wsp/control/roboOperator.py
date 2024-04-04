@@ -1046,6 +1046,7 @@ class RoboOperator(QtCore.QObject):
                                     self.doTry(f'fw_home --{camname}')
                                     
                                     self.checktimer.start()
+                                    return
                                 else:
                                     pass
                             
@@ -1062,6 +1063,13 @@ class RoboOperator(QtCore.QObject):
                             #---------------------------------------------------------------------
                             # check if we need to focus the telescope
                             #---------------------------------------------------------------------
+                            
+                            if self.state['sun_alt'] >= self.config['max_sun_alt_for_observing']:
+                                self.log(f"sun alt = {self.state['sun_alt']:.2f}, not yet ready for observing...")
+                                self.checktimer.start()
+                                return
+                            else:
+                                pass
                             
                             graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
                             if self.test_mode == True:
@@ -2936,6 +2944,9 @@ class RoboOperator(QtCore.QObject):
         if n_imgs is None:
             n_imgs = self.config['cal_params'][self.camname]['dark']['n_imgs']
         # What exposure times should we take darks at?
+        exptimes = [360.0]
+        """
+        # commenting this out for the moment to get things working in ndr-slope mode
         if (exptimes is None) or (exptimes == []):
             exptimes = self.config['cal_params'][self.camname]['dark']['exptimes']
             
@@ -2949,7 +2960,7 @@ class RoboOperator(QtCore.QObject):
                 msg = f'could not run query on scheduled exposure times for {self.camname}: {e}'
                 self.announce(msg, group = 'operator')
             # now order the exposure times?
-            
+        """
             
             
         
@@ -3040,6 +3051,8 @@ class RoboOperator(QtCore.QObject):
 
         self.announce(':greentick: auto darks sequence completed successfully!')
         
+        
+        self.announce('running the dark exposure scaling script to produce darks at shorter exposure times')
         # # if the robot is running, check what to do
         # if self.running:
         #     self.checkWhatToDo()
@@ -3549,7 +3562,7 @@ class RoboOperator(QtCore.QObject):
                 #elif self.focus_attempt_number == 1:
                 #if self.focus_attempt_number < self.config['focus_loop_param']['max_focus_attempts']:
                 
-                sweeptype = 'narrow' # one of 'narrow' or 'wide'
+                sweeptype = 'wide' # one of 'narrow' or 'wide'
                 total_throw = self.config['focus_loop_param']['sweep_param'][sweeptype]['total_throw']
                 nsteps = self.config['focus_loop_param']['sweep_param'][sweeptype]['nsteps']
                 #nom_focus = 'default'

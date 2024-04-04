@@ -4614,7 +4614,7 @@ class Wintercmd(QtCore.QObject):
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
         #timeout = self.state[f'{camname}_camera_command_timeout']
-        timeout = self.state[f'{camname}_camera_exptime'] + 10.0
+        timeout = 2*self.state[f'{camname}_camera_exptime'] #+ 10.0
         # create a buffer list to hold several samples over which the stop condition must be true
         
         
@@ -4631,13 +4631,13 @@ class Wintercmd(QtCore.QObject):
             
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
-            #print(f'wintercmd: wait time so far = {dt}')
+            print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
                 raise TimeoutError(f'doExposure command timed out after {timeout} seconds before completing')
             
             stop_condition = ( (self.state[f'{camname}_camera_doing_exposure'] == False) & 
                               (self.state[f'{camname}_camera_command_pass'] == 1))
-           
+            print(stop_condition)
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
