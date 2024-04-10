@@ -230,6 +230,7 @@ class local_camera(QtCore.QObject):
                            'imname'       : self.imname,
                            'imstarttime'  : self.imstarttime,
                            'imtype'       : self.imtype,
+                           #'immode'       : self.mode,
                            })
         
     def getFITSheader(self):
