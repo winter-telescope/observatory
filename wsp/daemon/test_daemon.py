@@ -60,7 +60,7 @@ class TimerThread(QtCore.QThread):
 
 
 
-@Pyro5.server.expose
+#@Pyro5.server.expose
 class Counter(QtCore.QObject):
     def __init__(self, start = 0, step = 10, dt = 1000, name = 'counter', verbose = False):
         
@@ -102,6 +102,7 @@ class Counter(QtCore.QObject):
     def getMsg(self):
         return self.msg
     
+    @Pyro5.server.expose
     def getCount(self):
         return self.count
     
