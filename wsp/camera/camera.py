@@ -304,7 +304,7 @@ class local_camera(QtCore.QObject):
             #mode = 'ndr_full_text'
         
         # a little kluge to make the focus images iwr or cds
-        if (mode.lower() == 'ndr') & (imtype.lower() == 'focus'):
+        if (mode.lower() in ['ndr', 'ndr_slope']) & (imtype.lower() == 'focus'):
             mode = 'cds'
         
         self.imtype = imtype
