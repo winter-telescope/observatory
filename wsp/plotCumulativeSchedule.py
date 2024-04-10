@@ -69,7 +69,7 @@ except Exception as e:
                                     'ExpTime', 'airmass', 'progid', 'progname', 'progtitle'])
     print("Failed to grab history: ", e)
 
-history = history[history['expMJD']>60310]
+#history = history[history['expMJD']>60310]
 #ra  = np.array(qresult[:,27],dtype=np.float32)
 ra = np.array(history['ra'], dtype=np.float32)#[0:100]
 #ra = ra / 24.0 * 360.0 * np.pi/180.0
@@ -92,6 +92,22 @@ print(ra_deg, dec_deg)
 # Calculate number of instances per field
 unique_positions, counts = np.unique(np.vstack((ra_deg, dec_deg)).T, axis=0, return_counts=True)
 
+print(len(history), len(unique_positions), np.median(counts), np.max(counts))
+
+# Round RA and DEC to the nearest degree to group observations into 1-degree squares
+ra_rounded = np.round(ra_deg)
+dec_rounded = np.round(dec_deg)
+
+# Calculate the number of unique rounded positions
+unique_positions_rounded, counts_rounded = np.unique(np.vstack((ra_rounded, dec_rounded)).T, axis=0, return_counts=True)
+
+# The number of unique positions gives an estimate of the covered area in square degrees
+estimated_covered_area = len(unique_positions_rounded)
+
+print(f"Estimated covered area: {estimated_covered_area} square degrees")
+
+#%%
+
 # Setup plot
 fig2 = plt.figure(figsize=(8,6), dpi=1200)
 ax2 = fig2.add_axes([0.05,0.05,0.8,0.8], projection='aitoff')
@@ -100,7 +116,7 @@ half_size = field_size / 2
 
 # Create a colormap based on the number of instances
 norm = plt.Normalize(vmin=np.min(counts), vmax=np.max(counts))
-cmap = cm.Reds
+cmap = cm.autumn
 
 for pos, count in zip(unique_positions, counts):
     rad_dec = pos[1] * np.pi / 180

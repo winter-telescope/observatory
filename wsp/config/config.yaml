@@ -828,7 +828,7 @@ filters:
     winter:
         J:
             name: "MKO J-band (Asahi)"
-            nominal_focus: 11820
+            nominal_focus: 11700
             active: True
             focus_exptime: 30
         Y:  

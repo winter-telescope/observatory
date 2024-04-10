@@ -2944,8 +2944,8 @@ class RoboOperator(QtCore.QObject):
         if n_imgs is None:
             n_imgs = self.config['cal_params'][self.camname]['dark']['n_imgs']
         # What exposure times should we take darks at?
-        exptimes = [360.0]
-        """
+        #exptimes = [360.0, 180.0]
+        
         # commenting this out for the moment to get things working in ndr-slope mode
         if (exptimes is None) or (exptimes == []):
             exptimes = self.config['cal_params'][self.camname]['dark']['exptimes']
@@ -2960,7 +2960,7 @@ class RoboOperator(QtCore.QObject):
                 msg = f'could not run query on scheduled exposure times for {self.camname}: {e}'
                 self.announce(msg, group = 'operator')
             # now order the exposure times?
-        """
+        
             
             
         
@@ -3565,8 +3565,8 @@ class RoboOperator(QtCore.QObject):
                 sweeptype = 'wide' # one of 'narrow' or 'wide'
                 total_throw = self.config['focus_loop_param']['sweep_param'][sweeptype]['total_throw']
                 nsteps = self.config['focus_loop_param']['sweep_param'][sweeptype]['nsteps']
-                #nom_focus = 'default'
-                nom_focus = 'last'
+                nom_focus = 'default'
+                #nom_focus = 'last'
                 #nom_focus = 'model'
                 #nom_focus = 12000 #NPL 7-1-23 using this for now
                 focusType = 'Vcurve'
