@@ -65,7 +65,8 @@ def GetHeader(config, state, imageinfo):
     #add the filename to the header
     header.append(('FILENAME', imageinfo.get('imname', ''), 'File name'))
     header.append(('ORIGNAME', imageinfo.get('imname', ''), 'Original filename'))
-    
+    # add the image readout mode
+    header.append(('READOUTM', imageinfo.get('immode', ''), 'Image readout mode (eg cds, iwr)'))
     
     ###### TELESCOPE PARAMETERS ######
     # Site lon/lat/height

@@ -230,7 +230,7 @@ class local_camera(QtCore.QObject):
                            'imname'       : self.imname,
                            'imstarttime'  : self.imstarttime,
                            'imtype'       : self.imtype,
-                           #'immode'       : self.mode,
+                           'immode'       : self.mode,
                            })
         
     def getFITSheader(self):
@@ -304,7 +304,7 @@ class local_camera(QtCore.QObject):
             #mode = 'ndr_full_text'
         
         # a little kluge to make the focus images iwr or cds
-        if (mode.lower() in ['ndr', 'ndr_slope']) & (imtype.lower() == 'focus'):
+        if (mode.lower() in ['ndr', 'ndr_slope','ndr-slope']) & (imtype.lower() == 'focus'):
             mode = 'cds'
         
         self.imtype = imtype
