@@ -3267,17 +3267,24 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument('-d',    '--dark',      action = 'store_true', default = False)
         self.cmdparser.add_argument('-b',    '--bias',      action = 'store_true', default = False)
         self.cmdparser.add_argument('-f',    '--flat',      action = 'store_true', default = False)
-
+        self.cmdparser.add_argument('-df',   '--domeflat',      action = 'store_true', default = False)
         self.getargs()
         
         if self.args.dark:
             do_darks = True
         else:
             do_darks = False
+            
         if self.args.flat:
             do_flats = True
         else:
             do_flats = False
+            
+        if self.args.domeflat:
+            do_domeflats = True
+        else:
+            do_domeflats = False
+            
         if self.args.bias:
             do_bias = True
         else:
@@ -3288,6 +3295,7 @@ class Wintercmd(QtCore.QObject):
         
         sigcmd = signalCmd('do_calibration',
                            do_flats = do_flats,
+                           do_domeflats = do_domeflats,
                            do_darks = do_darks, 
                            do_bias = do_bias)
         
@@ -3374,6 +3382,7 @@ class Wintercmd(QtCore.QObject):
         group.add_argument('-s',    '--science',   action = 'store_true', default = False)
         group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
         group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-df',   '--domeflat',  action = 'store_true', default = False)
         group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
         group.add_argument('-t',    '--test',      action = 'store_true', default = False)
         group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
@@ -3387,6 +3396,8 @@ class Wintercmd(QtCore.QObject):
             obstype = 'DARK'
         elif self.args.flat:
             obstype = 'FLAT'
+        elif self.args.domeflat:
+            obstype = 'DOMEFLAT'
         elif self.args.focus:
             obstype = 'FOCUS'
         elif self.args.bias:
@@ -3471,6 +3482,7 @@ class Wintercmd(QtCore.QObject):
         group.add_argument('-s',    '--science',   action = 'store_true', default = False)
         group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
         group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-df',   '--domeflat',  action = 'store_true', default = False)
         group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
         group.add_argument('-t',    '--test',      action = 'store_true', default = False)
         group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
@@ -3487,6 +3499,8 @@ class Wintercmd(QtCore.QObject):
             obstype = 'DARK'
         elif self.args.flat:
             obstype = 'FLAT'
+        elif self.args.domeflat:
+            obstype = 'DOMEFLAT'
         elif self.args.focus:
             obstype = 'FOCUS'
         elif self.args.bias:
@@ -4139,6 +4153,7 @@ class Wintercmd(QtCore.QObject):
         group.add_argument('-s',    '--science',   action = 'store_true', default = False)
         group.add_argument('-d',    '--dark',      action = 'store_true', default = False)
         group.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        group.add_argument('-df',    '--domeflat', action = 'store_true', default = False)
         group.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
         group.add_argument('-t',    '--test',      action = 'store_true', default = False)
         group.add_argument('-b',    '--bias',      action = 'store_true', default = False)
@@ -4154,6 +4169,9 @@ class Wintercmd(QtCore.QObject):
             dark = True
         elif self.args.flat:
             obstype = 'FLAT'
+            dark = False
+        elif self.args.domeflat:
+            obstype = 'DOMEFLAT'
             dark = False
         elif self.args.focus:
             obstype = 'FOCUS'
@@ -4498,6 +4516,7 @@ class Wintercmd(QtCore.QObject):
         imtypegroup.add_argument('-s',    '--science',   action = 'store_true', default = False)
         imtypegroup.add_argument('-d',    '--dark',      action = 'store_true', default = False)
         imtypegroup.add_argument('-f',    '--flat',      action = 'store_true', default = False)
+        imtypegroup.add_argument('-df',    '--domeflat', action = 'store_true', default = False)
         imtypegroup.add_argument('-foc',  '--focus',     action = 'store_true', default = False)
         imtypegroup.add_argument('-t',    '--test',      action = 'store_true', default = False)
         imtypegroup.add_argument('-b',    '--bias',      action = 'store_true', default = False)
@@ -4544,6 +4563,8 @@ class Wintercmd(QtCore.QObject):
             imtype = 'DARK'
         elif self.args.flat:
             imtype = 'FLAT'
+        elif self.args.domeflat:
+            imtype = 'DOMEFLAT'
         elif self.args.focus:
             imtype = 'FOCUS'
         elif self.args.bias:
@@ -4614,7 +4635,7 @@ class Wintercmd(QtCore.QObject):
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
         #timeout = self.state[f'{camname}_camera_command_timeout']
-        timeout = 2*self.state[f'{camname}_camera_exptime'] #+ 10.0
+        timeout = self.state[f'{camname}_camera_exptime'] + 10.0
         # create a buffer list to hold several samples over which the stop condition must be true
         
         
@@ -4631,13 +4652,13 @@ class Wintercmd(QtCore.QObject):
             
             timestamp = datetime.utcnow().timestamp()
             dt = (timestamp - start_timestamp)
-            print(f'wintercmd: wait time so far = {dt}')
+            #print(f'wintercmd: wait time so far = {dt}')
             if dt > timeout:
                 raise TimeoutError(f'doExposure command timed out after {timeout} seconds before completing')
             
             stop_condition = ( (self.state[f'{camname}_camera_doing_exposure'] == False) & 
                               (self.state[f'{camname}_camera_command_pass'] == 1))
-            print(stop_condition)
+           
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element

@@ -657,6 +657,19 @@ cal_params:
                     a: 343.62927408
                     n: -2.19398583
                     scale: 1.5
+        domeflats:
+            target:
+                az: 90.0
+                alt: 75.0
+            n_imgs: 5
+            filterIDs:
+                - 'J'
+                - 'Y'
+                - 'Hs'
+            exptime:
+                J: 1.0
+                Y: 1.5
+                Hs: 1.5
         triggers:
             midnight_darks:
                 conds:
@@ -671,6 +684,20 @@ cal_params:
                 repeat_on_restart: False
                 nextmorning: True
                 sundir: 0
+                cmd: 'robo_do_darks --winter'
+            twilight_domeflat:
+                conds:
+                    cond1:
+                        type: 'time'
+                        val: '0:00:0.1'
+                        cond: '>'
+                    cond2:
+                        type: 'sun'
+                        val: -20.0
+                        cond: '<'
+                repeat_on_restart: False
+                nextmorning: False
+                sundir: -1
                 cmd: 'robo_do_darks --winter'
     summer:
         dark:
