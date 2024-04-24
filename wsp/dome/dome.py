@@ -211,9 +211,9 @@ class local_dome(QtCore.QObject):
                 self.state.update({self.config['Dome_Status_Dict']['Faults'][fault_code]['field'] : 0})
         
         self.dome_ok = (
-                                (self.Dome_Status != 'UNKNOWN') 
+                                (self.Dome_Status != 'FAULT') # NPL 4-22-24 changed to avoid FAULT not UNKNOWN since we had false alarms
                             and (self.Home_Status == 'READY') 
-                            and (self.Shutter_Status != 'UNKNOWN') 
+                            and (self.Shutter_Status != 'FAULT') # NPL 4-22-24 changed this too from UNKNOWN --> FAULT
                             and (self.Control_Status in ['REMOTE', 'AVAILABLE']) 
                             and (self.Close_Status == 'READY')
                         )

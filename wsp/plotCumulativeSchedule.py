@@ -116,21 +116,37 @@ half_size = field_size / 2
 
 # Create a colormap based on the number of instances
 norm = plt.Normalize(vmin=np.min(counts), vmax=np.max(counts))
-cmap = cm.autumn
+cmap = cm.jet
 
-for pos, count in zip(unique_positions, counts):
+# Sort positions by number of visits (ascending order)
+sorted_indices = np.argsort(counts_rounded)
+sorted_positions = unique_positions_rounded[sorted_indices]
+sorted_counts = counts_rounded[sorted_indices]
+
+# Plot each position
+for pos, count in zip(sorted_positions, sorted_counts):
     rad_dec = pos[1] * np.pi / 180
     rad_ra = pos[0] * np.pi / 180
-    decsB = pos[1] - half_size
-    decsT = pos[1] + half_size
-    radiffB = (half_size*np.pi/180)/np.cos(decsB*np.pi/180)
-    radiffT = (half_size*np.pi/180)/np.cos(decsT*np.pi/180)
-    ra1 = rad_ra - radiffB
-    ra2 = rad_ra + radiffB
-    ra4 = rad_ra - radiffT
-    ra3 = rad_ra + radiffT
+    decsB, decsT = pos[1] - half_size, pos[1] + half_size
+    radiffB = (half_size * np.pi / 180) / np.cos(decsB * np.pi / 180)
+    radiffT = (half_size * np.pi / 180) / np.cos(decsT * np.pi / 180)
+    ra1, ra2, ra3, ra4 = rad_ra - radiffB, rad_ra + radiffB, rad_ra + radiffT, rad_ra - radiffT
     color = cmap(norm(count))
-    ax2.fill([ra1, ra2, ra3, ra4], [rad_dec - half_size*np.pi/180, rad_dec - half_size*np.pi/180, rad_dec + half_size*np.pi/180, rad_dec + half_size*np.pi/180], color=color, alpha=0.5, edgecolor='none')
+    ax2.fill([ra1, ra2, ra3, ra4], [rad_dec - half_size * np.pi / 180, rad_dec - half_size * np.pi / 180, rad_dec + half_size * np.pi / 180, rad_dec + half_size * np.pi / 180], color=color, alpha=1, edgecolor='none')
+
+# for pos, count in zip(unique_positions, counts):
+#     rad_dec = pos[1] * np.pi / 180
+#     rad_ra = pos[0] * np.pi / 180
+#     decsB = pos[1] - half_size
+#     decsT = pos[1] + half_size
+#     radiffB = (half_size*np.pi/180)/np.cos(decsB*np.pi/180)
+#     radiffT = (half_size*np.pi/180)/np.cos(decsT*np.pi/180)
+#     ra1 = rad_ra - radiffB
+#     ra2 = rad_ra + radiffB
+#     ra4 = rad_ra - radiffT
+#     ra3 = rad_ra + radiffT
+#     color = cmap(norm(count))
+#     ax2.fill([ra1, ra2, ra3, ra4], [rad_dec - half_size*np.pi/180, rad_dec - half_size*np.pi/180, rad_dec + half_size*np.pi/180, rad_dec + half_size*np.pi/180], color=color, alpha=0.5, edgecolor='none')
 
 # Add color bar
 sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -141,4 +157,3 @@ cbar.set_label('Number of Visits')
 
 figname = os.path.join(os.getenv("HOME"),'data','skymap_cumulative.jpg')
 plt.savefig(figname, bbox_inches='tight')
-

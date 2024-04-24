@@ -299,8 +299,8 @@ class local_camera(QtCore.QObject):
         if mode is None:
             #mode = 'cds'
             #mode = 'ndr_slope'
-            #mode = 'iwr'
-            mode = 'ndr_last'
+            mode = 'iwr'
+            #mode = 'ndr_last'
             #mode = 'ndr_full_text'
         
         # a little kluge to make the focus images iwr or cds
