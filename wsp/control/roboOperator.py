@@ -775,7 +775,10 @@ class RoboOperator(QtCore.QObject):
             if self.get_dome_status():
             
                 # Check if the dome is open:
-                if self.dome.Shutter_Status == 'OPEN':
+                #if self.dome.Shutter_Status == 'OPEN':
+                # NPL 4-23-23 this is a kluge to avoid issues when shutter status is "UNKNOWN"
+                # eventually we want to move to smarter handling of these bad reads from the shutter
+                if self.dome.Shutter_Status in ['OPEN', 'UNKNOWN']:
                     if logcheck:
                         self.logger.info(f'robo: okay to observe check passed')
                     
@@ -1046,6 +1049,7 @@ class RoboOperator(QtCore.QObject):
                                     self.doTry(f'fw_home --{camname}')
                                     
                                     self.checktimer.start()
+                                    return
                                 else:
                                     pass
                             
@@ -1062,6 +1066,13 @@ class RoboOperator(QtCore.QObject):
                             #---------------------------------------------------------------------
                             # check if we need to focus the telescope
                             #---------------------------------------------------------------------
+                            
+                            if self.state['sun_alt'] >= self.config['max_sun_alt_for_observing']:
+                                self.log(f"sun alt = {self.state['sun_alt']:.2f}, not yet ready for observing...")
+                                self.checktimer.start()
+                                return
+                            else:
+                                pass
                             
                             graceperiod_hours = self.config['focus_loop_param']['focus_graceperiod_hours']
                             if self.test_mode == True:
@@ -1418,11 +1429,15 @@ class RoboOperator(QtCore.QObject):
             else:
                 
                 # now do the sorting
+                
                 # now sort by priority (highest to lowest)
-                full_df = full_df.sort_values(['priority'],ascending=False)
+                #full_df = full_df.sort_values(['priority'],ascending=False)
                 
                 # now sort by validStop (earliest to latest)
-                full_df = full_df.sort_values(['validStop'],ascending=True)
+                #full_df = full_df.sort_values(['validStop'],ascending=True)
+                
+                # THIS HAS TO BE IN ONE LINE OTHERWISE IT WILL RE-SORT NOT SORT WITHIN VALS!
+                full_df = full_df.sort_values(by = ['priority', 'validStop'], ascending = [False, True])
                 
                 # save the dataframe to csv for realtime reference
                 rankedSummary = full_df[['obsHistID', 'priority', 'validStop', 'origin_filename']]
@@ -2936,6 +2951,9 @@ class RoboOperator(QtCore.QObject):
         if n_imgs is None:
             n_imgs = self.config['cal_params'][self.camname]['dark']['n_imgs']
         # What exposure times should we take darks at?
+        #exptimes = [360.0, 180.0]
+        
+        # commenting this out for the moment to get things working in ndr-slope mode
         if (exptimes is None) or (exptimes == []):
             exptimes = self.config['cal_params'][self.camname]['dark']['exptimes']
             
@@ -2949,7 +2967,7 @@ class RoboOperator(QtCore.QObject):
                 msg = f'could not run query on scheduled exposure times for {self.camname}: {e}'
                 self.announce(msg, group = 'operator')
             # now order the exposure times?
-            
+        
             
             
         
@@ -2963,9 +2981,7 @@ class RoboOperator(QtCore.QObject):
             self.do(f'dome_tracking_off')
             system = 'telescope'
             self.do(f'mount_tracking_off')
-            
-            self.log(f'starting the darks sequence')
-        
+                    
         except Exception as e:
             msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
             self.log(msg)
@@ -2973,9 +2989,29 @@ class RoboOperator(QtCore.QObject):
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             return
+        
+        try:
+            # slew the dome
+            system = 'dome'
+            self.announce('closing dome...')
+            self.do('dome_close')
+            self.announce(':greentick: dome closed')
+            system = 'telescope'
+            self.announce(f'closing mirror covers...')
+            self.do('mirror_cover_close')
+            self.announce(':greentick: mirror covers closed!')            
+            
+        
+        except Exception as e:
+            msg = f'roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}'
+            self.log(msg)
+            self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+            self.announce(f'continuuing with dark sequence anyway')
+            #err = roboError(context, self.lastcmd, system, msg)
+            #self.hardware_error.emit(err)
         #cycle through all the active filters:for filterID in 
         #filterIDs = self.focusTracker.getActiveFilters()
-        
+        self.log(f'starting the darks sequence')
         
         # just pick the first of the active filters to do the darks in
         try:
@@ -3040,6 +3076,8 @@ class RoboOperator(QtCore.QObject):
 
         self.announce(':greentick: auto darks sequence completed successfully!')
         
+        
+        self.announce('running the dark exposure scaling script to produce darks at shorter exposure times')
         # # if the robot is running, check what to do
         # if self.running:
         #     self.checkWhatToDo()
@@ -3552,8 +3590,8 @@ class RoboOperator(QtCore.QObject):
                 sweeptype = 'narrow' # one of 'narrow' or 'wide'
                 total_throw = self.config['focus_loop_param']['sweep_param'][sweeptype]['total_throw']
                 nsteps = self.config['focus_loop_param']['sweep_param'][sweeptype]['nsteps']
-                #nom_focus = 'default'
-                nom_focus = 'last'
+                nom_focus = 'default'
+                #nom_focus = 'last'
                 #nom_focus = 'model'
                 #nom_focus = 12000 #NPL 7-1-23 using this for now
                 focusType = 'Vcurve'

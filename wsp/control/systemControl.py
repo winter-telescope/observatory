@@ -93,7 +93,12 @@ class control(QtCore.QObject):
         
         print(f'\nsystemControl: running with opts = {opts}')
         
-        
+        # init the alert handler
+        auth_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['auth_config_file'] )) , Loader = yaml.FullLoader)
+        user_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['user_config_file'] )) , Loader = yaml.FullLoader)
+        alert_config = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['alert_config_file'])) , Loader = yaml.FullLoader)
+
+        self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
         
         ### ADD HARDWARE DAEMONS TO THE DAEMON LAUNCHER ###
         # init the list of hardware daemons
@@ -436,12 +441,7 @@ class control(QtCore.QObject):
         self.imghandlerdict = dict({'winter' : self.winter_image_handler,
                                         })
         
-        # init the alert handler
-        auth_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['auth_config_file'] )) , Loader = yaml.FullLoader)
-        user_config  = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['user_config_file'] )) , Loader = yaml.FullLoader)
-        alert_config = yaml.load(open(os.path.join(wsp_path,self.config['alert_handler']['alert_config_file'])) , Loader = yaml.FullLoader)
-
-        self.alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config)
+        
         if mode == 'r':        
 
             # send a signal that we've started up wsp!

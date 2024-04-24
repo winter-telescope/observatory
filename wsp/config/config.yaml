@@ -352,7 +352,8 @@ robotic_manager_triggers:
             conds:
                 cond1:
                     type: 'time'
-                    val: '7:59:30.0'
+                    #val: '7:59:30.0'
+                    val: '7:59:54.0'
                     cond: '>'
                 cond2:
                     type: 'sun'
@@ -379,7 +380,8 @@ telescope:
     home_alt_degs: 45.0
     #home_az_degs: 349.0
     home_az_degs: 0
-    min_alt: 30
+    #min_alt: 30
+    min_alt: 15
     max_alt: 85.0
     #TODO deprecate this and move to the port-specific values below...
     # WINTER Values: 
@@ -496,6 +498,11 @@ Dome_Status_Dict:
         'READY': 1
         'NOT_READY': 0
         
+    Telescope_Power:
+        'ON' : 1
+        'OFF': 0
+        'FAULT': -1
+        
     Faults:
         0x1:
             msg: 'Dome Drive Communication Lost'
@@ -606,6 +613,8 @@ cal_params:
         dark:
             n_imgs: 5
             exptimes:
+                - 2
+                - 3
                 - 60
                 - 120
             filterID: 'dark'
@@ -712,8 +721,8 @@ cal_params:
 focus_loop_param:
     sweep_param:
         narrow:
-            total_throw: 400
-            nsteps: 5
+            total_throw: 500
+            nsteps: 6
         wide:
             total_throw: 800
             nsteps: 12
@@ -747,7 +756,7 @@ focus_loop_param:
             target: '40 304'
     focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
-    focus_graceperiod_hours: 3
+    focus_graceperiod_hours: 6
     max_focus_attempts: 2
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
@@ -823,7 +832,7 @@ filters:
     winter:
         J:
             name: "MKO J-band (Asahi)"
-            nominal_focus: 11820
+            nominal_focus: 11838.0
             active: True
             focus_exptime: 30
         Y:  

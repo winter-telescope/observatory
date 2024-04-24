@@ -60,6 +60,18 @@
                     "_format": "%0.2f ",
                     "_source": "sun_alt",
                     "type": "PNDI"
+                },
+                {
+                    "PObject": {
+                        "_id": "883507224"
+                    },
+                    "_caption": "MJD",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_extrema": false,
+                    "_format": "",
+                    "_source": "ephem_mjd",
+                    "type": "PNDI"
                 }
             ],
             "geometryHeight": 90,
@@ -1698,7 +1710,7 @@
                     "_extrema": true,
                     "_extremaID": "(P2106806408)",
                     "_format": "%.1f C",
-                    "_source": "pb_T_sb",
+                    "_source": "pa_T_sb",
                     "type": "PNDI"
                 },
                 {
@@ -1894,7 +1906,7 @@
                         "_map": {
                             "-999": "N/C[style=greyed (P1521393217)]",
                             "0": "OFF",
-                            "1": "ON[style=No style (P110455305)]"
+                            "1": "ON[style=Important (P564751211)]"
                         }
                     },
                     "PObject": {

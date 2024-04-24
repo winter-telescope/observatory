@@ -154,7 +154,10 @@ class local_dome(QtCore.QObject):
         #self.state.update({'UTC_timestamp' : timestamp})
         self.state.update({'timestamp' : timestamp})
         
-        self.state.update({'Telescope_Power'                :   self.remote_state.get('Telescope_Power',                  self.default)})
+        self.Telescope_Power = self.remote_state.get('Telescope_Power', 'FAULT')
+        self.state.update({'Telescope_Power'                :   self.config['Dome_Status_Dict']['Telescope_Power'].get(self.Telescope_Power,       self.default) })
+        #self.state.update({'Telescope_Power'                :   self.remote_state.get('Telescope_Power',                  self.default)})
+        
         self.state.update({'Dome_Azimuth'                   :   self.remote_state.get('Dome_Azimuth',                     self.default)})
         
         self.Dome_Status = self.remote_state.get('Dome_Status', 'FAULT')               # status of observatory dome
@@ -208,9 +211,9 @@ class local_dome(QtCore.QObject):
                 self.state.update({self.config['Dome_Status_Dict']['Faults'][fault_code]['field'] : 0})
         
         self.dome_ok = (
-                                (self.Dome_Status != 'UNKNOWN') 
+                                (self.Dome_Status != 'FAULT') # NPL 4-22-24 changed to avoid FAULT not UNKNOWN since we had false alarms
                             and (self.Home_Status == 'READY') 
-                            and (self.Shutter_Status != 'UNKNOWN') 
+                            and (self.Shutter_Status != 'FAULT') # NPL 4-22-24 changed this too from UNKNOWN --> FAULT
                             and (self.Control_Status in ['REMOTE', 'AVAILABLE']) 
                             and (self.Close_Status == 'READY')
                         )
