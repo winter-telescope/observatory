@@ -661,6 +661,7 @@ cal_params:
             target:
                 az: 90.0
                 alt: 75.0
+                
             n_imgs: 5
             filterIDs:
                 - 'J'
