@@ -205,15 +205,16 @@ robotic_manager_triggers:
         #     repeat_on_restart: False
         #     #cmd: 'robo_do_calibration -d -b'
         #     cmd: 'robo_do_darks'
-        open_dome:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: '-4.5'
-                    cond: '<'
-            repeat_on_restart: False
-            sundir: -1
-            cmd: 'dome_open'
+        # getting rid of the dome_open call to keep the sequence smoother
+        # open_dome:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: '-4.5'
+        #             cond: '<'
+        #     repeat_on_restart: False
+        #     sundir: -1
+        #     cmd: 'dome_open'
         # evening_flats:
         #     conds:
         #         cond1:
@@ -233,14 +234,15 @@ robotic_manager_triggers:
                cond1:
                    type: 'sun'
                    #val: -7.0
-                   val: 5.0
+                   #val: 5.0
+                   val: 10.0
                    cond: '<'
                # make sure we start after the purge starts
-               cond2:
-                   type: 'time'
-                   #val: '18:45:0.0'
-                   val: '16:15:0.0'
-                   cond: '>'
+               # cond2:
+               #     type: 'time'
+               #     #val: '18:45:0.0'
+               #     val: '16:15:0.0'
+               #     cond: '>'
             repeat_on_restart: True
             sundir: 0
             cmd: 'robo_run'
@@ -690,13 +692,13 @@ cal_params:
             twilight_domeflat:
                 conds:
                     cond1:
-                        type: 'time'
-                        val: '0:00:0.1'
-                        cond: '>'
-                    cond2:
                         type: 'sun'
-                        val: -20.0
+                        val: 5.0
                         cond: '<'
+                    # cond2:
+                    #     type: 'sun'
+                    #     val: -10.0
+                    #     cond: '>'
                 repeat_on_restart: False
                 nextmorning: False
                 sundir: -1
