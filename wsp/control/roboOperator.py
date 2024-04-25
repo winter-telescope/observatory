@@ -2881,6 +2881,15 @@ class RoboOperator(QtCore.QObject):
         context = 'do_calibration'
         
         #---------------------------------------------------------------------        
+        # turn on the cal lamp
+        #---------------------------------------------------------------------
+        
+        self.announce(':lightbulb-happy: Turning on the cal lamp!')
+        self.doTry('pdu on callamp')
+        time.sleep(2)
+        
+        
+        #---------------------------------------------------------------------        
         # check the dome
         #---------------------------------------------------------------------
         if self.dome.Shutter_Status == 'CLOSED':
@@ -2908,9 +2917,9 @@ class RoboOperator(QtCore.QObject):
             # if True, then the observatory is ready (eg successful startup and focus sequence)
             pass
         else:
-            self.announce(f'the observatory is not ready to observe! running startup calibration routine...')
+            self.announce(f'The observatory is not ready to observe! running startup calibration routine...')
             
-            self.log(f'need to start up observatory')
+            self.log(f'Need to start up observatory')
             # we need to (re)run do_startup
             self.do_startup()
             
@@ -2919,7 +2928,7 @@ class RoboOperator(QtCore.QObject):
             
         # if we made it to here, we're good to do the auto calibration
         
-        self.announce('starting auto calibration sequence.')
+        self.announce('Starting auto dome flats sequence.')
         #self.logger.info('robo: doing calibration routine. for now this does nothing.')
         
         ### TAKE DOME FLATS ###
@@ -2969,78 +2978,78 @@ class RoboOperator(QtCore.QObject):
         # start a loop to take flats as long as we're within the allowed limits
         #while ((self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt']) & 
         #(self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])): 
-        while True:    
+         
             
             
-            # step through each filter
-            for filterID in filterIDs:
-                
-                self.log(f'setting up flat for filterID: {filterID}')
-                # go to the specified filter
-                system = 'filter wheel'
-                try:
-                    # get filter number
-                    for position in self.config['filter_wheels'][camname]['positions']:
-                        if self.config['filter_wheels'][camname]['positions'][position].lower() == filterID.lower():
-                            filter_num = position
-                        else:
-                            pass
-                    if filter_num == self.fw.state['filter_pos']:
-                        self.log('requested filter matches current, no further action taken')
+        # step through each filter
+        for filterID in filterIDs:
+            
+            self.log(f'setting up flat for filterID: {filterID}')
+            # go to the specified filter
+            system = 'filter wheel'
+            try:
+                # get filter number
+                for position in self.config['filter_wheels'][camname]['positions']:
+                    if self.config['filter_wheels'][camname]['positions'][position].lower() == filterID.lower():
+                        filter_num = position
                     else:
-                        self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
-                        #self.do(f'fw_goto {filter_num} --{self.camname}')
-                        self.do(f'fw_goto {filter_num} --{camname}')
-                except Exception as e:
-                    msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
-                    self.log(msg)
-                    self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                    err = roboError(context, self.lastcmd, system, msg)
-                    self.hardware_error.emit(err) 
-                    return
+                        pass
+                if filter_num == self.fw.state['filter_pos']:
+                    self.log('requested filter matches current, no further action taken')
+                else:
+                    self.log(f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}')
+                    #self.do(f'fw_goto {filter_num} --{self.camname}')
+                    self.do(f'fw_goto {filter_num} --{camname}')
+            except Exception as e:
+                msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err) 
+                return
+            
+            # Get/Set the Exposure Time
+            flat_exptime = self.config['cal_params'][self.camname]['domeflats']['exptime'][filterID]
+            
+            try:
                 
-                # Get/Set the Exposure Time
-                flat_exptime = self.config['cal_params'][self.camname]['domeflats']['exptime'][filterID]
+                # set the exposure time                    
+                system = 'camera'
+                self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
+            except Exception as e:
+                msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                self.log(msg)
+                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                err = roboError(context, self.lastcmd, system, msg)
+                self.hardware_error.emit(err) 
+                return
+            
+            # take the specified number of images
+            for i in range(nflats):
+                    
+                # check for events. do we need this? unclear
+                QtCore.QCoreApplication.processEvents()
                 
+                # do the exposure!
                 try:
-                    
-                    # set the exposure time                    
-                    system = 'camera'
-                    self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
+                    comment = f"Auto Dome Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az})"
+                    # now trigger the actual observation. this also starts the mount tracking
+                    self.announce(f'Executing {filterID}: {comment}, exptime = {flat_exptime:.1f} s')
+                    system = 'robo routine'
+                    self.do('doExposure -df')
+               
                 except Exception as e:
                     msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
                     self.log(msg)
                     self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                     err = roboError(context, self.lastcmd, system, msg)
-                    self.hardware_error.emit(err) 
-                    return
-                
-                # take the specified number of images
-                for i in range(nflats):
-                        
-                    # check for events. do we need this? unclear
-                    QtCore.QCoreApplication.processEvents()
-                    
-                    # do the exposure!
-                    try:
-                        comment = f"Auto Dome Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az})"
-                        # now trigger the actual observation. this also starts the mount tracking
-                        self.announce(f'Executing {filterID}: {comment}, exptime = {flat_exptime:.1f} s')
-                        if i==0:
-                            self.log('handling the i=0 case')
-                            system = 'robo routine'
-                            self.do(f'robo_observe altaz {flat_alt} {flat_az} -df --calibration')
-                        else:
-                            system = 'camera'
-                            self.do('robo_do_exposure -df')
-                   
-                    except Exception as e:
-                        msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
-                        self.log(msg)
-                        self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                        err = roboError(context, self.lastcmd, system, msg)
-                        self.hardware_error.emit(err)
-                                
+                    self.hardware_error.emit(err)
+        
+        
+        self.announce('Turning OFF the cal lamp!')
+        self.doTry('pdu off callamp', context = 'dome flats', system = 'pdu')
+        time.sleep(2)
+        
         self.announce('Dome flats sequence complete!')
     
     def do_bias(self):
