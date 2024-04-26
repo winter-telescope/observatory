@@ -702,7 +702,7 @@ cal_params:
                 repeat_on_restart: False
                 nextmorning: False
                 sundir: -1
-                cmd: 'robo_do_darks --winter'
+                cmd: 'robo_do_calibration -df'
     summer:
         dark:
             n_imgs: 5
