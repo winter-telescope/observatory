@@ -3273,11 +3273,28 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
             
+        self.announce(':greentick: auto darks image sequence completed successfully!')
+        self.announce('setting system back up for observing')
 
-        self.announce(':greentick: auto darks sequence completed successfully!')
         
         
-        self.announce('running the dark exposure scaling script to produce darks at shorter exposure times')
+        
+        system = 'telescope'
+        self.announce(f'opening mirror covers...')
+        self.doTry('mirror_cover_open', context = context, system = system)
+        self.announce(':greentick: mirror covers open!') 
+
+        system = 'dome'
+        self.announce('opening dome...')
+        self.doTry('dome_open', context = context, system = system)
+        self.announce(':greentick: dome opened')
+
+        
+        #cycle through all the active filters:for filterID in 
+        #filterIDs = self.focusTracker.getActiveFilters()
+        self.announce('auto darks completed, continuuing with observations!')
+        
+        #self.announce('running the dark exposure scaling script to produce darks at shorter exposure times')
         # # if the robot is running, check what to do
         # if self.running:
         #     self.checkWhatToDo()
