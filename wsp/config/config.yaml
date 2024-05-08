@@ -618,6 +618,9 @@ cal_params:
                 - 1.0
                 - 1.35
                 - 1.6
+                - 3.0
+                - 4.0
+                - 4.8
                 - 60
                 - 120
             filterID: 'dark'
@@ -671,9 +674,15 @@ cal_params:
                 - 'Y'
                 - 'Hs'
             exptime:
-                J: 1.0
-                Y: 1.6
-                Hs: 1.35
+                J: 
+                    - 1.0
+                    - 3.0
+                Y: 
+                    - 1.6
+                    - 4.8
+                Hs: 
+                    - 1.35
+                    - 4.0
         triggers:
             midnight_darks:
                 conds:
@@ -957,8 +966,10 @@ observing_parameters:
             ditherMaxStep_as: 15
         best_position:
             board_id: 4
-            x_pixel: 750
-            y_pixel: 750
+            x_pixel: 800
+            y_pixel: 500
+            #x_pixel: 750
+            #y_pixel: 750
             #x_pixel: 1200 #600
             #y_pixel: 545 #530
         base_position:

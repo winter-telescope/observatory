@@ -3009,41 +3009,43 @@ class RoboOperator(QtCore.QObject):
                 return
             
             # Get/Set the Exposure Time
-            flat_exptime = self.config['cal_params'][self.camname]['domeflats']['exptime'][filterID]
+            flat_exptimes = self.config['cal_params'][self.camname]['domeflats']['exptime'][filterID]
             
-            try:
-                
-                # set the exposure time                    
-                system = 'camera'
-                self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
-            except Exception as e:
-                msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
-                self.log(msg)
-                self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
-                err = roboError(context, self.lastcmd, system, msg)
-                self.hardware_error.emit(err) 
-                return
+            for flat_exptime in flat_exptimes:
             
-            # take the specified number of images
-            for i in range(nflats):
-                    
-                # check for events. do we need this? unclear
-                QtCore.QCoreApplication.processEvents()
-                
-                # do the exposure!
                 try:
-                    comment = f"Auto Dome Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az})"
-                    # now trigger the actual observation. this also starts the mount tracking
-                    self.announce(f'Executing {filterID}: {comment}, exptime = {flat_exptime:.1f} s')
-                    system = 'robo routine'
-                    self.do('doExposure -df')
-               
+                    
+                    # set the exposure time                    
+                    system = 'camera'
+                    self.do(f'setExposure {flat_exptime:0.3f} --{self.camname}')
                 except Exception as e:
                     msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
                     self.log(msg)
                     self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
                     err = roboError(context, self.lastcmd, system, msg)
-                    self.hardware_error.emit(err)
+                    self.hardware_error.emit(err) 
+                    return
+                
+                # take the specified number of images
+                for i in range(nflats):
+                        
+                    # check for events. do we need this? unclear
+                    QtCore.QCoreApplication.processEvents()
+                    
+                    # do the exposure!
+                    try:
+                        comment = f"Auto Dome Flats {i+1}/{nflats} Alt/Az = ({flat_alt}, {flat_az})"
+                        # now trigger the actual observation. this also starts the mount tracking
+                        self.announce(f'Executing {filterID}: {comment}, exptime = {flat_exptime:.1f} s')
+                        system = 'robo routine'
+                        self.do('doExposure -df')
+                   
+                    except Exception as e:
+                        msg = f'roboOperator: could not run flat loop instance due to error with {system}: due to {e.__class__.__name__}, {e}'
+                        self.log(msg)
+                        self.alertHandler.slack_log(f'*ERROR:* {msg}', group = None)
+                        err = roboError(context, self.lastcmd, system, msg)
+                        self.hardware_error.emit(err)
         
         
         self.announce('Turning OFF the cal lamp!')
