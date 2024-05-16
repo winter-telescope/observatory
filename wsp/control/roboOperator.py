@@ -3197,9 +3197,11 @@ class RoboOperator(QtCore.QObject):
             self.do('dome_close')
             self.announce(':greentick: dome closed')
             system = 'telescope'
-            self.announce(f'closing mirror covers...')
-            self.do('mirror_cover_close')
-            self.announce(':greentick: mirror covers closed!')            
+            
+            # as usual the mirror covers are a flaky mess
+            #self.announce(f'closing mirror covers...')
+            #self.do('mirror_cover_close')
+            #self.announce(':greentick: mirror covers closed!')            
             
         
         except Exception as e:
