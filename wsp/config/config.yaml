@@ -205,15 +205,16 @@ robotic_manager_triggers:
         #     repeat_on_restart: False
         #     #cmd: 'robo_do_calibration -d -b'
         #     cmd: 'robo_do_darks'
-        open_dome:
-            conds:
-                cond1:
-                    type: 'sun'
-                    val: '-4.5'
-                    cond: '<'
-            repeat_on_restart: False
-            sundir: -1
-            cmd: 'dome_open'
+        # getting rid of the dome_open call to keep the sequence smoother
+        # open_dome:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: '-4.5'
+        #             cond: '<'
+        #     repeat_on_restart: False
+        #     sundir: -1
+        #     cmd: 'dome_open'
         # evening_flats:
         #     conds:
         #         cond1:
@@ -233,14 +234,15 @@ robotic_manager_triggers:
                cond1:
                    type: 'sun'
                    #val: -7.0
-                   val: 5.0
+                   #val: 5.0
+                   val: 10.0
                    cond: '<'
                # make sure we start after the purge starts
-               cond2:
-                   type: 'time'
-                   #val: '18:45:0.0'
-                   val: '16:15:0.0'
-                   cond: '>'
+               # cond2:
+               #     type: 'time'
+               #     #val: '18:45:0.0'
+               #     val: '16:15:0.0'
+               #     cond: '>'
             repeat_on_restart: True
             sundir: 0
             cmd: 'robo_run'
@@ -613,8 +615,12 @@ cal_params:
         dark:
             n_imgs: 5
             exptimes:
-                - 2
-                - 3
+                - 1.0
+                - 1.35
+                - 1.6
+                - 3.0
+                - 4.0
+                - 4.8
                 - 60
                 - 120
             filterID: 'dark'
@@ -657,6 +663,26 @@ cal_params:
                     a: 343.62927408
                     n: -2.19398583
                     scale: 1.5
+        domeflats:
+            target:
+                az: 90.0
+                alt: 75.0
+                
+            n_imgs: 10
+            filterIDs:
+                - 'J'
+                - 'Y'
+                - 'Hs'
+            exptime:
+                J: 
+                    - 1.0
+                    - 3.0
+                Y: 
+                    - 1.6
+                    - 4.8
+                Hs: 
+                    - 1.35
+                    - 4.0
         triggers:
             midnight_darks:
                 conds:
@@ -672,6 +698,20 @@ cal_params:
                 nextmorning: True
                 sundir: 0
                 cmd: 'robo_do_darks --winter'
+            twilight_domeflat:
+                conds:
+                    cond1:
+                        type: 'sun'
+                        val: 5.0
+                        cond: '<'
+                    # cond2:
+                    #     type: 'sun'
+                    #     val: -10.0
+                    #     cond: '>'
+                repeat_on_restart: False
+                nextmorning: False
+                sundir: -1
+                cmd: 'robo_do_calibration -df'
     summer:
         dark:
             n_imgs: 5
@@ -926,8 +966,10 @@ observing_parameters:
             ditherMaxStep_as: 15
         best_position:
             board_id: 4
-            x_pixel: 750
-            y_pixel: 750
+            x_pixel: 800
+            y_pixel: 500
+            #x_pixel: 750
+            #y_pixel: 750
             #x_pixel: 1200 #600
             #y_pixel: 545 #530
         base_position:
