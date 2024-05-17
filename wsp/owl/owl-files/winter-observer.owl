@@ -210,8 +210,10 @@
                             "_id": "2137027853"
                         },
                         "_map": {
-                            "0": "OPEN[style=Important (P564751211)]",
-                            "1": "CLOSED[style=Important (P564751211)]"
+                            "0": "OPEN[style=No style (P1635187746)]",
+                            "1": "CLOSED[style=Important (P564751211)]",
+                            "2": "OPENING",
+                            "3": "CLOSING[style=No style (P1635187746)]"
                         }
                     },
                     "PObject": {
@@ -219,7 +221,7 @@
                     },
                     "_caption": "Mirror Cover",
                     "_captionStyle": "noStyle",
-                    "_defaultStyle": "noStyle",
+                    "_defaultStyle": "(P2017040817)",
                     "_source": "Mirror_Cover_State",
                     "type": "PMDI"
                 },
