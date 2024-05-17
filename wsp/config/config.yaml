@@ -5543,5 +5543,7 @@ header_fields:
         var: telescope.state["pwi4.version"]
     mount_model_filename:
         var: telescope.state["mount.model.filename"]
+    mirror_cover_state_str:
+        var: mirror_cover.state["mirror_cover_state_str"]
     
    

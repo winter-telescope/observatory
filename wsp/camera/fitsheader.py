@@ -78,6 +78,10 @@ def GetHeader(config, state, imageinfo):
     header.append(('TELLAT',   state.get('mount_latitude_degs', ''),   'Telescope latitude (deg)'))
     header.append(('TELLON',   state.get('mount_longitude_degs', ''),  'Telescope longitude (deg)'))
     header.append(('TELALT',   state.get('mount_height_meters', ''),   'Telescope altitude (m)'))
+    
+    # mirror cover status
+    header.append(('MIRCOVER', state.get('mirror_cover_state_str', ''), 'Mirror cover status'))
+    
     # target RA/DEC
 
     # RA
