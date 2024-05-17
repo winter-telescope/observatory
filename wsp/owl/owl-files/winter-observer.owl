@@ -207,6 +207,25 @@
                 {
                     "PMDI": {
                         "PObject": {
+                            "_id": "2137027853"
+                        },
+                        "_map": {
+                            "0": "OPEN[style=Important (P564751211)]",
+                            "1": "CLOSED[style=Important (P564751211)]"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "911857609"
+                    },
+                    "_caption": "Mirror Cover",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "Mirror_Cover_State",
+                    "type": "PMDI"
+                },
+                {
+                    "PMDI": {
+                        "PObject": {
                             "_id": "1553281512"
                         },
                         "_map": {
