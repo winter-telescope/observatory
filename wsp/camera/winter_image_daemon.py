@@ -72,7 +72,7 @@ class BiasChecker(object):
             raise ValueError('combined template data option not yet implemented')
     
     
-    def validate_image(self, mef_file_path, comment = '', plot = True, savepath = None):
+    def validate_image(self, mef_file_path, addrs = None, comment = '', plot = True, savepath = None):
         """
         compare the image specified to the template images and decide if it is
         in good shape. return a dictionary of the addresses and whether they're
@@ -90,9 +90,11 @@ class BiasChecker(object):
         data_imgs = np.abs(1 - (testdata.imgs/self.template_data.imgs))
         data = WinterImage(data_imgs)
         
+        if addrs is None:
+            addrs = self.template_data._layer_by_addr
         
         # now loop through all the images and evaluate
-        for addr in self.template_data._layer_by_addr:
+        for addr in addrs:
             std = np.std(data.get_img(addr))
             mean = np.average(data.get_img(addr))
             
