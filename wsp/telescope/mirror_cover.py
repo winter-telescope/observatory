@@ -14,6 +14,16 @@ import io
 import time
 from datetime import datetime
 
+
+MIRROR_COVER_STATUS_DICT = dict({0  : 'OPEN',
+                                 1  : 'CLOSED',
+                                 2  : 'OPENING',
+                                 3  : 'CLOSING',
+                                 4  : 'ERROR',
+                                 5  : 'STUCK',
+                                 255: 'CONNERR'})
+
+
 class MirrorCovers:
 
     # initialize
@@ -57,6 +67,7 @@ class MirrorCovers:
             (code, text) = self.sendreceive( "shutterstate")
             if (code == 0 or code == 1 or code == 2 or code == 3 or code == 4 or code == 5 or code == 255):  
                 self.state.update({'mirror_cover_state' : code})
+                
                 self.state.update({'mirror_cover_state_last_timestamp'  : now_timestamp})
                 self.state.update({'mirror_cover_connected' : self.connected})
                 self.state.update({'mirror_cover_connected_last_timestamp': now_timestamp})
@@ -69,7 +80,12 @@ class MirrorCovers:
                 self.sock.close()
                 self.open_mirror_cover_socket(self.addr, self.port)
             pass
-
+            
+        
+        self.state.update({'mirror_cover_state_str' : MIRROR_COVER_STATUS_DICT.get(code, 'ERROR')})
+        
+        
+        
     def readline(self):
         """
         Utility function for reading from a socket until a

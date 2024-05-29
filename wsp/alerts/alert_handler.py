@@ -265,9 +265,9 @@ if __name__ == '__main__':
     message += f' you have been tagged due to membership in the group: "{group}"'
     #alertHandler.email_group(group, subject, message)
     #alertHandler.text_group(group,subject, message)
-    #alertHandler.slack_message_group(group, message)
+    alertHandler.slack_message_group(group, message)
     #alertHandler.slack_log('just logging a normal old message', group = None)
-    alertHandler.slack_log(message, group = group)
+    #alertHandler.slack_log(message, group = group)
     
     """
     group = 'announcements'

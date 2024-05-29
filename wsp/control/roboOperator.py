@@ -105,7 +105,7 @@ class RoboOperatorThread(QtCore.QThread):
     """
     
     # this signal is connected to the RoboOperator's start_robo method
-    restartRoboSignal = QtCore.pyqtSignal(str)
+    restartRoboSignal = QtCore.pyqtSignal(str) 
     
     # this signal is typically emitted by wintercmd, and is connected to the RoboOperators change_schedule method
     changeSchedule = QtCore.pyqtSignal(object)
@@ -1624,7 +1624,9 @@ class RoboOperator(QtCore.QObject):
         #NPL: commenting out so that we can observe even though mirror cover is stuck open
         # 7-3-23
         #if not self.test_mode:
-        #    conds.append(self.state['Mirror_Cover_State'] == 0)
+        if not self.mountsim:
+
+            conds.append(self.state['Mirror_Cover_State'] == 0)
         
         #TODO: add something about the focus here
         
@@ -2923,7 +2925,14 @@ class RoboOperator(QtCore.QObject):
             # we need to (re)run do_startup
             self.do_startup()
             
-            #return
+            # did it work?
+            if self.startup_complete:
+                pass
+            else:
+                self.announce('exited the domeflats routine because startup was not completed properly')
+                operator_msg = ':redsiren: There was a startup issue preventing dome flats, please investigate!'
+                self.alertHandler.slack_message_group('operator', operator_msg)
+                return
         
             
         # if we made it to here, we're good to do the auto calibration
