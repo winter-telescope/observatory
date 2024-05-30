@@ -363,8 +363,8 @@ class local_camera(QtCore.QObject):
     def updateStartupValidation(self, startupValidation, addrs = None):
         self.remote_object.updateStartupValidation(startupValidation = startupValidation, addrs = addrs)
     
-    def checkCamera(self):
-        self.remote_object.checkCamera()
+    def checkCamera(self, addrs = None):
+        self.remote_object.checkCamera(addrs = addrs)
     
     def autoStartupCamera(self):
         self.remote_object.autoStartup()

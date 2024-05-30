@@ -72,7 +72,7 @@ class BiasChecker(object):
             raise ValueError('combined template data option not yet implemented')
     
     
-    def validate_image(self, mef_file_path, comment = '', plot = True, savepath = None):
+    def validate_image(self, mef_file_path, addrs = None, comment = '', plot = True, savepath = None):
         """
         compare the image specified to the template images and decide if it is
         in good shape. return a dictionary of the addresses and whether they're
@@ -90,26 +90,33 @@ class BiasChecker(object):
         data_imgs = np.abs(1 - (testdata.imgs/self.template_data.imgs))
         data = WinterImage(data_imgs)
         
+        all_addrs = self.template_data._layer_by_addr
+        
+        if addrs is None:
+            addrs = all_addrs
         
         # now loop through all the images and evaluate
-        for addr in self.template_data._layer_by_addr:
-            std = np.std(data.get_img(addr))
-            mean = np.average(data.get_img(addr))
-            
-            if (std > 0.5) or (mean > 0.1):
-                # image is likely bad!!
-                okay = False
-                cmaps.append('Reds')
-                bad_chans.append(addr)
-            else:
-                okay = True
-                cmaps.append('gray')
-                good_chans.append(addr)
+        for addr in all_addrs:
+            if addr in addrs:
+                std = np.std(data.get_img(addr))
+                mean = np.average(data.get_img(addr))
                 
-            results.update({addr : {'okay' : okay,
-                                    'mean' : float(mean),
-                                    'std'  : float(std),
-                                    }})
+                if (std > 0.5) or (mean > 0.1):
+                    # image is likely bad!!
+                    okay = False
+                    cmaps.append('Reds')
+                    bad_chans.append(addr)
+                else:
+                    okay = True
+                    cmaps.append('gray')
+                    good_chans.append(addr)
+                    
+                results.update({addr : {'okay' : okay,
+                                        'mean' : float(mean),
+                                        'std'  : float(std),
+                                        }})
+            else:
+                cmaps.append('gray')
         
         # make an easy place to grab all the good and bad channels
         results.update({'bad_chans'  : bad_chans,
@@ -309,7 +316,7 @@ class ImageHandler(QtCore.QObject):
     
     ### BIAS CHECKING METHODS ###
     @Pyro5.server.expose
-    def validate_bias(self, bias_image_path, comment = '', template_path = None, savedir = None):
+    def validate_bias(self, bias_image_path, addrs = None, comment = '', template_path = None, savedir = None):
         # take in a bias path image and assess the state of the sensors
         
         # load the bias template image
@@ -335,6 +342,7 @@ class ImageHandler(QtCore.QObject):
         
         # assesss the bias image
         results = self.bias_checker.validate_image(mef_file_path = bias_image_path,
+                                                   addrs = addrs,
                                                    comment = comment, plot = True,
                                                    savepath = image_output_filepath)
         
