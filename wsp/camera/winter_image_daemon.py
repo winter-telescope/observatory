@@ -316,7 +316,7 @@ class ImageHandler(QtCore.QObject):
     
     ### BIAS CHECKING METHODS ###
     @Pyro5.server.expose
-    def validate_bias(self, bias_image_path, comment = '', template_path = None, savedir = None):
+    def validate_bias(self, bias_image_path, addrs = None, comment = '', template_path = None, savedir = None):
         # take in a bias path image and assess the state of the sensors
         
         # load the bias template image
@@ -342,6 +342,7 @@ class ImageHandler(QtCore.QObject):
         
         # assesss the bias image
         results = self.bias_checker.validate_image(mef_file_path = bias_image_path,
+                                                   addrs = addrs,
                                                    comment = comment, plot = True,
                                                    savepath = image_output_filepath)
         
