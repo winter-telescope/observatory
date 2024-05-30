@@ -5150,7 +5150,7 @@ class Wintercmd(QtCore.QObject):
         camera = self.camdict[camname]
         
         addrs = self.args.addrs
-        self.log(f'addrs = {addrs}')
+        self.logger.info(f'addrs = {addrs}')
            
         if camname == 'winter':
             #sigcmd = signalCmd('checkWINTERCamera')
