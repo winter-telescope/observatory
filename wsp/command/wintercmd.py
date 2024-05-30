@@ -5150,12 +5150,13 @@ class Wintercmd(QtCore.QObject):
         camera = self.camdict[camname]
         
         addrs = self.args.addrs
+        self.log(f'addrs = {addrs}')
            
         if camname == 'winter':
             #sigcmd = signalCmd('checkWINTERCamera')
             #self.roboThread.newCommand.emit(sigcmd)
             
-            sigcmd = signalCmd('checkCamera', addrs)
+            sigcmd = signalCmd('checkCamera', addrs = addrs)
             camera = self.camdict[camname]
             camera.newCommand.emit(sigcmd)
             
