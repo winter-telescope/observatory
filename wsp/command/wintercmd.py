@@ -5124,6 +5124,12 @@ class Wintercmd(QtCore.QObject):
     def checkCamera(self):
         self.defineCmdParser('check the camera')
         
+        self.cmdparser.add_argument('-n', '--addrs',
+                                    nargs = '+',
+                                    type = str,
+                                    default = None,
+                                    action = None,
+                                    help = "<sensor_address>")
         
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
@@ -5142,12 +5148,14 @@ class Wintercmd(QtCore.QObject):
             camname = 'summer'
         
         camera = self.camdict[camname]
+        
+        addrs = self.args.addrs
            
         if camname == 'winter':
             #sigcmd = signalCmd('checkWINTERCamera')
             #self.roboThread.newCommand.emit(sigcmd)
             
-            sigcmd = signalCmd('checkCamera')
+            sigcmd = signalCmd('checkCamera', addrs)
             camera = self.camdict[camname]
             camera.newCommand.emit(sigcmd)
             

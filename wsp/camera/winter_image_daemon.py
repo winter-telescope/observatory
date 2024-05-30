@@ -90,28 +90,33 @@ class BiasChecker(object):
         data_imgs = np.abs(1 - (testdata.imgs/self.template_data.imgs))
         data = WinterImage(data_imgs)
         
+        all_addrs = self.template_data._layer_by_addr
+        
         if addrs is None:
-            addrs = self.template_data._layer_by_addr
+            addrs = all_addrs
         
         # now loop through all the images and evaluate
-        for addr in addrs:
-            std = np.std(data.get_img(addr))
-            mean = np.average(data.get_img(addr))
-            
-            if (std > 0.5) or (mean > 0.1):
-                # image is likely bad!!
-                okay = False
-                cmaps.append('Reds')
-                bad_chans.append(addr)
-            else:
-                okay = True
-                cmaps.append('gray')
-                good_chans.append(addr)
+        for addr in all_addrs:
+            if addr in addrs:
+                std = np.std(data.get_img(addr))
+                mean = np.average(data.get_img(addr))
                 
-            results.update({addr : {'okay' : okay,
-                                    'mean' : float(mean),
-                                    'std'  : float(std),
-                                    }})
+                if (std > 0.5) or (mean > 0.1):
+                    # image is likely bad!!
+                    okay = False
+                    cmaps.append('Reds')
+                    bad_chans.append(addr)
+                else:
+                    okay = True
+                    cmaps.append('gray')
+                    good_chans.append(addr)
+                    
+                results.update({addr : {'okay' : okay,
+                                        'mean' : float(mean),
+                                        'std'  : float(std),
+                                        }})
+            else:
+                cmaps.append('gray')
         
         # make an easy place to grab all the good and bad channels
         results.update({'bad_chans'  : bad_chans,
