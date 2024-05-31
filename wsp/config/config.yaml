@@ -613,16 +613,16 @@ cal_params:
         linkname: 'cal_log.lnk'    
     winter:
         dark:
-            n_imgs: 5
+            n_imgs: 1 #5
             exptimes:
                 - 1.0
-                - 1.35
-                - 1.6
-                - 3.0
-                - 4.0
-                - 4.8
-                - 60
-                - 120
+                #- 1.35
+                #- 1.6
+                #- 3.0
+                #- 4.0
+                #- 4.8
+                #- 60
+                #- 120
             filterID: 'dark'
             
         bias:
