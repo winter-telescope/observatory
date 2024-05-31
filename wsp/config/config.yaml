@@ -961,9 +961,9 @@ observing_parameters:
         #        dRA: 500
         #        dDec: 1000
         dithers: 
-            ditherNumber: 10 #5
-            ditherMinStep_as: 10
-            ditherMaxStep_as: 15
+            ditherNumber: 8 #10 #5
+            ditherMinStep_as: 75 #10
+            ditherMaxStep_as: 90 #15
         best_position:
             board_id: 4
             x_pixel: 800
