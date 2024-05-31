@@ -476,7 +476,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # tell the dome to move over the server
         az_goal = np.mod(az_goal,360.0)
         # standin function to simulate movement
-        self.log(f" Requested dome move from Az = {az} to {az_goal}")
+        #self.log(f" Requested dome move from Az = {az} to {az_goal}")
 
         try:
             if np.abs(az_goal - az)>=self.allowed_error:
@@ -500,7 +500,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 drivetime = np.abs(dist_to_go)/self.az_speed # total time to move
                 # now start "moving the dome" it stays moving for an amount of time
                     # based on the dome speed and distance to move
-                self.log(f' Estimated Drivetime = {drivetime} s')
+                #self.log(f' Estimated Drivetime = {drivetime} s')
                 dt = drivetime/numsteps #0.1 #increment time for updating position
                 N_steps = int(drivetime/dt)
                 #daz = delta/N_steps
@@ -540,7 +540,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 progress_callback.emit(az_goal)
                 
             else:
-                self.log(f" Not moving. Dome Az within allowed error: {self.allowed_error} deg")
+                pass
+                # self.log(f" Not moving. Dome Az within allowed error: {self.allowed_error} deg")
         except KeyboardInterrupt:
             print(f" User interrupted dome move. Stopping!")
             return
@@ -554,7 +555,8 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def thread_complete(self):
         # this is triggered when the worker emits the finished signal
-        self.log("domesim: WORKER THREAD COMPLETE!")
+        #self.log("domesim: WORKER THREAD COMPLETE!")
+        pass
         
     def handle_cmd_request(self, cmd_request):
         
