@@ -401,7 +401,7 @@ class MainWindow(QtWidgets.QMainWindow):
             
     
     def godome(self, az, homing = False):
-        self.log(f'domesim: moving fake dome to az = {az} deg')
+        #self.log(f'domesim: moving fake dome to az = {az} deg')
         if self.state['Control_Status'] in ['REMOTE']:
             if homing != True:
                 # First indicate that the dome is moving
