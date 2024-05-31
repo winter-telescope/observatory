@@ -601,8 +601,8 @@ class RoboOperator(QtCore.QObject):
         self.rotator_stop_and_reset()
         
         # got to the next observation
-        #self.gotoNext()
-        self.checkWhatToDo()
+        # NPL: comment this out while hunting the 
+        # self.checkWhatToDo()
         
     def updateOperator(self, operator_name):
         if type(operator_name) is str:
@@ -1133,8 +1133,19 @@ class RoboOperator(QtCore.QObject):
                                 else:
                                     # if we got an observation, then let's go do it!!
                                     # log the observation to note that we ATTEMPTED the observation
+                                    
+                                    # for now, still logging the observation first. 
+                                    # next step is to move it to after.
+                                    
                                     self.schedule.log_observation()
+                                    
                                     self.do_currentObs(self.schedule.currentObs)
+                                    
+                                    # if we get here, then the observation is complete, either bc it's done or there was an error
+                                    
+                                    # now immediatly check what we should do now (eg don't wait)
+                                    self.checkWhatToDo()
+
                             
                             else:
                                 # if we are here then the sun is not low enough to observe, stand by
@@ -3304,11 +3315,6 @@ class RoboOperator(QtCore.QObject):
         #cycle through all the active filters:for filterID in 
         #filterIDs = self.focusTracker.getActiveFilters()
         self.announce('auto darks completed, continuuing with observations!')
-        
-        #self.announce('running the dark exposure scaling script to produce darks at shorter exposure times')
-        # # if the robot is running, check what to do
-        # if self.running:
-        #     self.checkWhatToDo()
     
     def do_focusLoop(self, nom_focus = 'model', total_throw = 'default', nsteps = 'default', updateFocusTracker = True, focusType = 'Vcurve'):
         """
@@ -3941,7 +3947,8 @@ class RoboOperator(QtCore.QObject):
             
             self.handle_end_of_schedule()
             """
-            self.checkWhatToDo()
+            # NPL: comment this out while hunting the cause of skipped observations
+            # self.checkWhatToDo()
             return
         
         # reset all the header stuff
@@ -3992,7 +3999,8 @@ class RoboOperator(QtCore.QObject):
         cam_to_use = self.getWhichCameraToUse(filterID = self.filter_scheduled)
         if cam_to_use is None:
             self.log(f'not sure which camera to use! aborting current observation.')
-            self.checkWhatToDo()
+            # NPL: comment this out while hunting the cause of skipped observations
+            # self.checkWhatToDo()
             return
         
         # if we're in the right camera just continue, otherwise switch cameras
@@ -4089,10 +4097,6 @@ class RoboOperator(QtCore.QObject):
                 # for each dither, execute the observation
                 if self.running & self.ok_to_observe:
                     
-                    
-                    
-                    
-                    
                     #msg = f'executing observation of obsHistID = {self.lastSeen} at (alt, az) = ({self.alt_scheduled:0.2f}, {self.az_scheduled:0.2f})'
                     
                     # force the state to update so it has all the observation parameters
@@ -4104,18 +4108,9 @@ class RoboOperator(QtCore.QObject):
                     if dithnum_in_this_pointing == 1:
                         msg = f'Executing observation of obsHistID = {self.obsHistID}'
                         self.announce(msg)
-                        #self.announce(f'>> Target (RA, DEC) = ({self.ra_radians_scheduled:0.2f} rad, {self.dec_radians_scheduled:0.2f} rad)')
-                        
                         self.announce(f'>> Target (RA, DEC) = ({self.j2000_ra_scheduled.hour} h, {self.j2000_dec_scheduled.deg} deg)')
-                        
                         self.announce(f'>> Target Current (ALT, AZ) = ({self.target_alt} deg, {self.target_az} deg)')
                     
-                    
-                    
-                    # Do one last housekeeping check to make sure the camera is happy
-                    #if self.camname == 'summer':
-                        # this should make sure that we get a ccd timestamp update between exposures? NPL 8-19-22
-                        #self.ccd.pollTECTemp()
                         
                     # Do the observation
                     
@@ -4228,15 +4223,23 @@ class RoboOperator(QtCore.QObject):
                         self.dithnum += 1
                         
                         
-                        # it is now okay to trigger going to the next observation
-                        # always log observation, but only gotoNext if we're on the last TOTAL dither
-                        if self.dithnum == self.num_dithers+1:
-                            gotoNext = True
-                            self.log_observation_and_gotoNext(gotoNext = gotoNext, logObservation = True)
-                        else:
-                            gotoNext = False
-                            self.log_observation_and_gotoNext(gotoNext = gotoNext, logObservation = False)
-                        #return #<- NPL 1/19/22 this return should never get executed, the log_observation_and_gotoNext call should handle exiting
+                        # NPL: comment this out while hunting the cause of skipped observations
+                        # it is not clear to me that we need to keep any of this mess:
+                        # instead! we should just put a call to something like:
+                            # self.schedule.log_dither() 
+                        # which would write down that we've completed a dither
+                        # if we get here, either it'll just loop back up and finish the dithers,
+                        # or if there are no more dithers then will exit the loop and hit the bottom return
+                        
+                        # # it is now okay to trigger going to the next observation
+                        # # always log observation, but only gotoNext if we're on the last TOTAL dither
+                        # if self.dithnum == self.num_dithers+1:
+                        #     gotoNext = True
+                        #     self.log_observation_and_gotoNext(gotoNext = gotoNext, logObservation = True)
+                        # else:
+                        #     gotoNext = False
+                        #     self.log_observation_and_gotoNext(gotoNext = gotoNext, logObservation = False)
+                        # #return #<- NPL 1/19/22 this return should never get executed, the log_observation_and_gotoNext call should handle exiting
                         
                     except Exception as e:
                         
@@ -4257,8 +4260,8 @@ class RoboOperator(QtCore.QObject):
                     # 5: exit
                     
                     
-                    
-                else:
+                # (self.running) & (self.ok_to_observe) is false:    
+                else: 
                     # if it's not okay to observe, then restart the robo loop to wait for conditions to change
                     #self.restart_robo()
                     # NPL 1/19/22: replacing call to self.checkWhatToDo() with break to handle dither loop
@@ -4272,7 +4275,9 @@ class RoboOperator(QtCore.QObject):
             
         # if we got here, then we are out of the loop, either because we did all the dithers, or there was a problem
         self.resetObsValues()
-        self.checkWhatToDo()
+        # NPL: comment this out while hunting the cause of skipped observations
+        # self.checkWhatToDo()
+        return
     
     def log_observation_and_gotoNext(self, gotoNext = True, logObservation = True):
         self.announce(f'robo: handling end of observation with options gotoNext = {gotoNext}, logObservation = {logObservation}')
