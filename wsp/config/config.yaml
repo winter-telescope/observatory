@@ -616,13 +616,13 @@ cal_params:
             n_imgs: 1 #5
             exptimes:
                 - 1.0
-                #- 1.35
-                #- 1.6
-                #- 3.0
-                #- 4.0
-                #- 4.8
-                #- 60
-                #- 120
+                - 1.35
+                - 1.6
+                - 3.0
+                - 4.0
+                - 4.8
+                - 60
+                - 120
             filterID: 'dark'
             
         bias:
@@ -681,8 +681,17 @@ cal_params:
                     - 1.6
                     - 4.8
                 Hs: 
+                    # temp for danielle's testing
+                    - 0.140
+                    - 0.5
+                    # regular
+                    - 1.0
                     - 1.35
                     - 4.0
+                    # temp for danielle's testing
+                    - 6.0
+                    - 8.0
+                    - 10.0
         triggers:
             midnight_darks:
                 conds:
