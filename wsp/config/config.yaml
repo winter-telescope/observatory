@@ -613,7 +613,7 @@ cal_params:
         linkname: 'cal_log.lnk'    
     winter:
         dark:
-            n_imgs: 1 #5
+            n_imgs: 5
             exptimes:
                 - 1.0
                 - 1.35
