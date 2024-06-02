@@ -2998,7 +2998,17 @@ class RoboOperator(QtCore.QObject):
         # start a loop to take flats as long as we're within the allowed limits
         #while ((self.state['sun_alt'] > self.config['cal_params'][camname]['flats']['min_sunalt']) & 
         #(self.state['sun_alt'] < self.config['cal_params'][camname]['flats']['max_sunalt'])): 
-         
+        
+        # set the progID info here for the headers
+        self.resetObsValues()
+        try:
+            self.programPI = self.config['cal_params']['prog_params']['cals']['progPI']
+            self.programID = self.config['cal_params']['prog_params']['cals']['progID']
+            self.programName = self.config['cal_params']['prog_params']['cals']['progName']
+            self.obstype = 'DOMEFLAT'
+            self.obsmode = 'CALIBRATION'
+        except Exception as e:
+            self.log(f'could not update the header values for the dark sequence: {e}')    
             
             
         # step through each filter
