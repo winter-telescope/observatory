@@ -681,17 +681,8 @@ cal_params:
                     - 1.6
                     - 4.8
                 Hs: 
-                    # temp for danielle's testing
-                    - 0.140
-                    - 0.5
-                    # regular
-                    - 1.0
                     - 1.35
                     - 4.0
-                    # temp for danielle's testing
-                    - 6.0
-                    - 8.0
-                    - 10.0
         triggers:
             midnight_darks:
                 conds:
