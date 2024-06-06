@@ -153,5 +153,5 @@ prestart_conditions:
         # ###########################################################
         Tdp_outside_pcs:
             min: None
-            max: 12.5
+            max: 17.5
     
