@@ -1,9 +1,9 @@
 {
 	"run_name": "1_night_test",
 	"queues": [
-		{"config_file": "winter_survey.json",
+		{"config_file": "winter_survey_Summer2024_test.json",
 			"queue_name": "default"},
-        {"config_file": "winter_fallback.json",
+        {"config_file": "winter_fallback_Summer2024.json",
         "queue_name": "fallback"}
 	]
 }	
