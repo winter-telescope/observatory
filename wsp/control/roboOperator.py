@@ -2187,7 +2187,7 @@ class RoboOperator(QtCore.QObject):
             
             self.do('chiller_start')
             time.sleep(2)
-            self.do('chiller_set_setpoint 10')
+            self.do('chiller_set_setpoint 15')
             
             self.announce(':greentick: chiller startup complete')
             systems_started.append(True)
