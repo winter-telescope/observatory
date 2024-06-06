@@ -3,7 +3,7 @@
 	"queue_name": "default",
         "queue_description": "WINTER Overhead Survey",
         "queue_manager": "greedy",
-        "block_programs": true,
+        "block_programs": false,
 	"observing_programs": [
 				{"program_name": "Survey",
 		 "subprogram_name": "2023A013",
