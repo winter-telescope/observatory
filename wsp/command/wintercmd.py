@@ -4690,6 +4690,11 @@ class Wintercmd(QtCore.QObject):
                                     action = None,
                                     help = "<sensor_address>")
         
+        self.cmdparser.add_argument('-h', '--humid',
+                                    default = False,
+                                    action = 'store_true',
+                                    )
+        
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument('-w',    '--winter',      action = 'store_true', default = True)
@@ -4710,9 +4715,15 @@ class Wintercmd(QtCore.QObject):
             temp = None
         else:
             temp = self.args.temp[0]
+            
+        if self.args.humid:
+            humid = True
+        else:
+            humid = False
+            
         addrs = self.args.addrs
         
-        sigcmd = signalCmd('tecSetSetpoint', temp, addrs = addrs)
+        sigcmd = signalCmd('tecSetSetpoint', temp, addrs = addrs, humid = humid)
         
         msg = f'wintercmd: setting TEC setpoint on {camera.daemonname}'
         if addrs is not None:

@@ -332,8 +332,17 @@ class local_camera(QtCore.QObject):
         except Exception as e:
             print(f'Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}')
     
-    def tecSetSetpoint(self, temp, addrs = None):
+    def tecSetSetpoint(self, temp, addrs = None, humid = False):
         self.remote_object.tecSetSetpoint(temp, addrs = addrs)
+        
+        if (humid == False) & (temp is None) & (addrs is None):
+            # kludge for humid setpoints at T chiller = 15C
+            self.remote_object.tecSetSetpoint(-27.5, addrs = 'pa')
+            self.remote_object.tecSetSetpoint(-14.0, addrs = 'pb')
+            self.remote_object.tecSetSetpoint(-30.0, addrs = 'pc')
+            self.remote_object.tecSetSetpoint(-22.0, addrs = 'sa')
+            self.remote_object.tecSetSetpoint(-20.0, addrs = 'sb')
+            self.remote_object.tecSetSetpoint(-25.0, addrs = 'sc')
         
     def setDetbias(self, detbias, addrs = None):
         self.remote_object.setDetbias(detbias, addrs = addrs)

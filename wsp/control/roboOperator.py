@@ -2242,6 +2242,7 @@ class RoboOperator(QtCore.QObject):
             system = 'camera'
             msg = f':cold_face: running autostart routine on {camname}!'
             self.announce(msg)
+            self.do(f'tecSetSetpoint --humid')
             self.do(f'autoStartupCamera --{camname}')
             
             self.announce(':greentick: camera power startup complete')
