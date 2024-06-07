@@ -335,7 +335,7 @@ class local_camera(QtCore.QObject):
     def tecSetSetpoint(self, temp, addrs = None, humid = False):
         self.remote_object.tecSetSetpoint(temp, addrs = addrs)
         
-        if (humid == False) & (temp is None) & (addrs is None):
+        if (humid == True) & (temp is None) & (addrs is None):
             # kludge for humid setpoints at T chiller = 15C
             self.remote_object.tecSetSetpoint(-27.5, addrs = 'pa')
             self.remote_object.tecSetSetpoint(-14.0, addrs = 'pb')
