@@ -4690,7 +4690,7 @@ class Wintercmd(QtCore.QObject):
                                     action = None,
                                     help = "<sensor_address>")
         
-        self.cmdparser.add_argument('-h', '--humid',
+        self.cmdparser.add_argument('--humid',
                                     default = False,
                                     action = 'store_true',
                                     )
