@@ -91,7 +91,7 @@ prestart_conditions:
             max: 45
         pb_T_sb:
             min: None
-            max: 45
+            max: None
         pc_T_sb:
             min: None
             max: 45
