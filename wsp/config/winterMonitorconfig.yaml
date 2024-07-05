@@ -67,22 +67,22 @@ prestart_conditions:
         ###########################################################
         pa_T_pb:
             min: None
-            max: 55
+            max: 60
         pb_T_pb:
             min: None
-            max: 55
+            max: 60
         pc_T_pb:
             min: None
-            max: 55
+            max: 60
         sa_T_pb:
             min: None
-            max: 55
+            max: 60
         sb_T_pb:
             min: None
-            max: 55
+            max: 60
         sc_T_pb:
             min: None
-            max: 55
+            max: 60
         ###########################################################
         # Sensor Boards
         ###########################################################
