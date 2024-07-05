@@ -3233,8 +3233,7 @@ class Wintercmd(QtCore.QObject):
                                     )
 
         self.getargs()
-        if self.verbose:
-            print(self.args)
+        print(self.args)
         
         action = self.args.action[0]
         
