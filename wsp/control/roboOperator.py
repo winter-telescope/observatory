@@ -929,11 +929,12 @@ class RoboOperator(QtCore.QObject):
                     
                     
                     if self.camdict['winter'].state['autoStartComplete'] or self.autostart_override:
-                        
-                        self.log(f'autostart requested but not complete.')
+                        if self.autostart_override:
+                            self.log(f'autostart override is ON')
+                        self.log(f'autostart requested and complete.')
                         # the startup is complete!
                         # double check it
-                        if self.get_winter_camera_ready_to_observe_status():
+                        if True: #self.get_winter_camera_ready_to_observe_status(): #NPL 7/3/24
                             self.log(f'camera is okay to observe!')
                             self.cameras_ready = True
                             # the camera is confirmed good to observe
@@ -3681,7 +3682,8 @@ class RoboOperator(QtCore.QObject):
                     
                 if image_daemon_connected:
                     #board_ids_to_use = [4, 3, 2]
-                    board_ids_to_use = [4, 3]
+                    #board_ids_to_use = [4, 3]
+                    board_ids_to_use = [4] # NL updated during the troubles with PB 7/2/24
                     x0_fit = self.image_daemon.get_focus_from_imgpathlist(images, 
                                                                           board_ids_to_use = board_ids_to_use,
                                                                           plot_all = False)
