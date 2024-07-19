@@ -341,8 +341,10 @@ class local_camera(QtCore.QObject):
             self.remote_object.tecSetSetpoint(-14.0, addrs = 'pb')
             self.remote_object.tecSetSetpoint(-30.0, addrs = 'pc')
             self.remote_object.tecSetSetpoint(-22.0, addrs = 'sa')
-            self.remote_object.tecSetSetpoint(-20.0, addrs = 'sb')
-            self.remote_object.tecSetSetpoint(-25.0, addrs = 'sc')
+            #self.remote_object.tecSetSetpoint(-20.0, addrs = 'sb')
+            self.remote_object.tecSetSetpoint(-19.5, addrs = 'sb')
+            #self.remote_object.tecSetSetpoint(-25.0, addrs = 'sc')
+            self.remote_object.tecSetSetpoint(-24.5, addrs = 'sc')
         
     def setDetbias(self, detbias, addrs = None):
         self.remote_object.setDetbias(detbias, addrs = addrs)
