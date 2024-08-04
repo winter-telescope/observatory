@@ -665,8 +665,8 @@ cal_params:
                     scale: 1.5
         domeflats:
             target:
-                az: 90.0
-                alt: 75.0
+                az: 270 #90.0
+                alt: 35 #75.0
                 
             n_imgs: 10
             filterIDs:
@@ -676,13 +676,17 @@ cal_params:
             exptime:
                 J: 
                     #- 1.0
-                    - 3.0
+                    #- 3.0
+                    - 0.35
                 Y: 
                     #- 1.6
-                    - 4.8
+                    #- 4.8
+                    - 0.57
                 Hs: 
                     #- 1.35
-                    - 4.0
+                    #- 4.0
+                    - 0.46
+                    
         triggers:
             midnight_darks:
                 conds:
