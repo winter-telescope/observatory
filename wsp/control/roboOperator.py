@@ -487,8 +487,13 @@ class RoboOperator(QtCore.QObject):
         fields = ['ok_to_observe', 
                   'target_alt', 
                   'target_az',
-                  'target_ra_j2000_hours',
-                  'target_dec_j2000_deg',
+                  #'target_ra_j2000_hours',
+                  #'target_dec_j2000_deg',
+                  'j2000_ra_scheduled_hours',
+                  'j2000_ra_scheduled_deg',
+                  'j2000_dec_scheduled_deg',
+                  'pointing_ra_j2000_hours',
+                  'pointing_dec_j2000_deg',
                   'visitExpTime',
                   'obsHistID',
                   'targetPriority',
@@ -4056,9 +4061,13 @@ class RoboOperator(QtCore.QObject):
             self.j2000_ra_scheduled = astropy.coordinates.Angle(self.ra_deg_scheduled * u.deg)
             self.j2000_dec_scheduled = astropy.coordinates.Angle(self.dec_deg_scheduled * u.deg)
             
+            self.j2000_ra_scheduled_hours = self.j2000_ra_scheduled.hour
+            self.j2000_ra_scheduled_deg = self.j2000_ra_scheduled.deg
+            self.j2000_dec_scheduled_deg = self.j2000_dec_scheduled.deg
+            
             # get the target RA (hours) and DEC (degs) in units we can pass to the telescope
-            self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
-            self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
+            #self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
+            #self.target_dec_j2000_deg  = self.j2000_dec_scheduled.deg
                             
             # calculate the current Alt and Az of the target 
             if self.sunsim:
