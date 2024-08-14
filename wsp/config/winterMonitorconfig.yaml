@@ -17,7 +17,7 @@ preset_temp_modes:
         cold:
             description: 'Normal baseline operating mode with coldest temperatures'
             trig_min: None
-            trig_max: 12.5
+            trig_max: 15.0 #12.5
             chiller_setpoint: 10.0
         warm:
             description: 'High setpoint mode for operating in humid conditions'
@@ -61,7 +61,7 @@ prestart_conditions:
         ###########################################################
         T_fpga_sb:
             min: None
-            max: 50
+            max: 55
         ###########################################################
         # Power Boards
         ###########################################################
@@ -153,5 +153,5 @@ prestart_conditions:
         # ###########################################################
         Tdp_outside_pcs:
             min: None
-            max: 12.5
+            max: 15.5
     

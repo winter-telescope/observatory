@@ -920,8 +920,8 @@ class RoboOperator(QtCore.QObject):
             if self.get_camera_should_be_running_status():
                 self.log(f'the camera should be on!')
                 
-                self.log(f"autoStartRequested = {self.camdict['winter'].state['autoStartRequested']}")
-                self.log(f"autoStartComplete = {self.camdict['winter'].state['autoStartComplete']}")
+                self.log(f"autoStartRequested = {self.camdict['winter'].state.get('autoStartRequested','?')}")
+                self.log(f"autoStartComplete = {self.camdict['winter'].state.get('autoStartComplete','?')}")
                 
                 # the camera should be running! make sure it is.
                 if self.camdict['winter'].state['autoStartRequested']:
@@ -1677,8 +1677,8 @@ class RoboOperator(QtCore.QObject):
         """
         
         # For now do the easy thing:
-        #if self.state['sun_alt'] <= 10.0: #-5.0:
-        if self.state['sun_alt'] <= -12.0:
+        if self.state['sun_alt'] <= 10.0: #-5.0:
+        #if self.state['sun_alt'] <= -12.0:
             return True
         
         else:
