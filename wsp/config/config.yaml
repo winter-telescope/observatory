@@ -586,7 +586,7 @@ weather_limits:
 ephem:
     # note that changing these will not update the housekeeping fields, that must be done manually
     min_target_separation:
-        moon: 25.0
+        moon: 10.0
         mercury: 5
         venus: 5
         mars: 5
