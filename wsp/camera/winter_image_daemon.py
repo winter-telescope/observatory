@@ -99,7 +99,7 @@ class BiasChecker(object):
         
         # instead:
         # cycle through all layers in the test data. ignore any offline sensors
-        all_addrs = self.testdata.imgs.keys()
+        all_addrs = testdata.imgs.keys()
 
         if addrs is None:
             addrs = all_addrs
