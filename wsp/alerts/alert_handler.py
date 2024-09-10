@@ -13,9 +13,11 @@ import sys
 import logging
 
 # needed for email
+import datetime
 import smtplib, ssl
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from email.message import EmailMessage
+#from email.mime.text import MIMEText
+#from email.mime.multipart import MIMEMultipart
 
 # needed for slack
 import requests
@@ -129,16 +131,25 @@ class EmailDispatcher(object):
         for receiver_email in recipient_list:
             try:
                 # set up the email
-                email = MIMEMultipart("alternative")
-                email["Subject"] = subject
-                email["From"] = self.sender_email
-                email["To"] = receiver_email
+                dt = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                
+                msg = EmailMessage()
+                msg['To'] = receiver_email
+                msg['Subject'] = subject
+                msg['From'] = self.sender_email
+                msg.set_content(dt + ": " + message)
+                
+                #email = MIMEMultipart("alternative")
+                #email["Subject"] = subject
+                #email["From"] = self.sender_email
+                #email["To"] = receiver_email
                 # add the body of the email
-                email.attach(MIMEText(message, "plain"))
+                #email.attach(MIMEText(message, "plain"))
     
-                # Create secure connection with server and send email
+                # Create secure connection with server and send email from local SMTP server
                 context = ssl.create_default_context()
-                with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+                # with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+                with smtplib.SMTP_SSL("smtp-server.astro.caltech.edu", 465, context=context) as server:
                     server.login(self.sender_email, self.__password__)
                     server.sendmail(
                         self.sender_email, receiver_email, email.as_string()
@@ -149,7 +160,7 @@ class EmailDispatcher(object):
             except Exception as e:
                 self.log(f'Could not send alert email to user {receiver_email}: {e}')
 
-
+                
 class AlertHandler(object):
     
     def __init__(self, user_config, alert_config, auth_config):
@@ -265,9 +276,9 @@ if __name__ == '__main__':
     message += f' you have been tagged due to membership in the group: "{group}"'
     #alertHandler.email_group(group, subject, message)
     #alertHandler.text_group(group,subject, message)
-    alertHandler.slack_message_group(group, message)
+    #alertHandler.slack_message_group(group, message)
     #alertHandler.slack_log('just logging a normal old message', group = None)
-    #alertHandler.slack_log(message, group = group)
+    alertHandler.slack_log(message, group = group)
     
     """
     group = 'announcements'
