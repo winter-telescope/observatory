@@ -4042,6 +4042,13 @@ class RoboOperator(QtCore.QObject):
                     # board_ids_to_use = [4, 3]
                     # board_ids_to_use = [4] # NL updated during the troubles with PB 7/2/24
                     board_ids_to_use = [1]
+                    board_ids_to_use = [#2, #SA
+                                        ##6, #SB
+                                        #5, #SC
+                                        1, #PA
+                                        #3, #PB
+                                        ##4, #PC
+                                        ] 
                     x0_fit = self.image_daemon.get_focus_from_imgpathlist(
                         images,
                         board_ids_to_use=board_ids_to_use,
