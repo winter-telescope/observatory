@@ -1135,6 +1135,26 @@ class RoboOperator(QtCore.QObject):
                                     pass
 
                             # ---------------------------------------------------------------------
+                            # check the cal lamp
+                            # ---------------------------------------------------------------------
+                            # TODO make this not hard coded
+                            if self.state["pdu_1_1"] == 1:
+                                # the cal lamp is on! turn it off
+                                self.announce("the cal lamp is on!")
+                                self.announce(
+                                    ":off_lightbulb: turning off the cal lamp!"
+                                )
+                                self.doTry(
+                                    "pdu off callamp",
+                                    context="dome flats",
+                                    system="pdu",
+                                )
+                                self.checktimer.start()
+                                return
+                            else:
+                                pass
+
+                            # ---------------------------------------------------------------------
                             # get the current timestamp and MJD
                             # ---------------------------------------------------------------------
                             # turn the timestamp into mjd
@@ -3235,6 +3255,9 @@ class RoboOperator(QtCore.QObject):
                 )
                 operator_msg = ":redsiren: There was a startup issue preventing dome flats, please investigate!"
                 self.alertHandler.slack_message_group("operator", operator_msg)
+                self.announce(":off_lightbulb: turning off the cal lamp!")
+                self.doTry("pdu off callamp", context="dome flats", system="pdu")
+                time.sleep(2)
                 return
 
         # if we made it to here, we're good to do the auto calibration
@@ -3277,6 +3300,9 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
+            self.announce(":off_lightbulb: turning off the cal lamp!")
+            self.doTry("pdu off callamp", context="dome flats", system="pdu")
+            time.sleep(2)
             return
 
         # get the filters to cycle through
@@ -3337,6 +3363,11 @@ class RoboOperator(QtCore.QObject):
                 self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
+
+                self.announce(":off_lightbulb: turning off the cal lamp!")
+                self.doTry("pdu off callamp", context="dome flats", system="pdu")
+                time.sleep(2)
+
                 return
 
             # Get/Set the Exposure Time
@@ -3357,6 +3388,10 @@ class RoboOperator(QtCore.QObject):
                     self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
                     err = roboError(context, self.lastcmd, system, msg)
                     self.hardware_error.emit(err)
+
+                    self.announce(":off_lightbulb: turning off the cal lamp!")
+                    self.doTry("pdu off callamp", context="dome flats", system="pdu")
+                    time.sleep(2)
                     return
 
                 # take the specified number of images
@@ -3382,7 +3417,7 @@ class RoboOperator(QtCore.QObject):
                         err = roboError(context, self.lastcmd, system, msg)
                         self.hardware_error.emit(err)
 
-        self.announce("Turning OFF the cal lamp!")
+        self.announce(":off_lightbulb: Turning OFF the cal lamp!")
         self.doTry("pdu off callamp", context="dome flats", system="pdu")
         time.sleep(2)
 
