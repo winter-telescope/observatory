@@ -278,7 +278,8 @@ if __name__ == '__main__':
     """
     winter_image_handler = WINTERImageHandler(wsp_path, config, camname = 'winter',
                        daemon_pyro_name = 'WINTERImageDaemon',
-                       ns_host = '192.168.1.10', logger = logger, verbose = verbose)
+                       ns_host = '192.168.1.10', 
+                       logger = logger, verbose = verbose)
     
     winter_image_handler.print_state()
     print()

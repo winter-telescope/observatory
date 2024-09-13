@@ -79,7 +79,7 @@ class BiasChecker(object):
             raise ValueError("combined template data option not yet implemented")
 
     def validate_image(
-        self, mef_file_path, addrs=None, comment="", plot=True, savepath=None
+        mef_file_path, template_path, addrs=None, comment="", plot=True, savepath=None
     ):
         """
         compare the image specified to the template images and decide if it is
@@ -87,19 +87,21 @@ class BiasChecker(object):
         "okay" or suspicious and a reboot is merited.
         """
         results = dict()
-        cmaps = []
+        cmaps = dict()
         bad_chans = []
         good_chans = []
 
         # load the data
-        testdata = WinterImage(mef_file_path)
+        test_data = WinterImage(mef_file_path)
+
+        template_data = WinterImage(template_path)
 
         # this was the old way: cycle through all layers in the template
-        #all_addrs = self.template_data._layer_by_addr
-        
+        # all_addrs = self.template_data._layer_by_addr
+
         # instead:
         # cycle through all layers in the test data. ignore any offline sensors
-        all_addrs = testdata.imgs.keys()
+        all_addrs = test_data.imgs.keys()
 
         if addrs is None:
             addrs = all_addrs
@@ -107,20 +109,20 @@ class BiasChecker(object):
         # now loop through all the images and evaluate
         for addr in all_addrs:
             if addr in addrs:
-                
-                data = np.abs(1 - (testdata.imgs[addr] / self.template_data.imgs[addr]))
-                
+
+                data = np.abs(1 - (test_data.imgs[addr] / template_data.imgs[addr]))
+
                 std = np.std(data)
                 mean = np.average(data)
 
                 if (std > 0.5) or (mean > 0.1):
                     # image is likely bad!!
                     okay = False
-                    cmaps.append("Reds")
+                    cmaps.update({addr: "Reds"})
                     bad_chans.append(addr)
                 else:
                     okay = True
-                    cmaps.append("gray")
+                    cmaps.update({addr: "gray"})
                     good_chans.append(addr)
 
                 results.update(
@@ -133,7 +135,10 @@ class BiasChecker(object):
                     }
                 )
             else:
-                cmaps.append("gray")
+                # cmaps.append("gray")
+                pass
+
+        # print(f'cmaps = {cmaps}')
 
         # make an easy place to grab all the good and bad channels
         results.update({"bad_chans": bad_chans, "good_chans": good_chans})
@@ -145,10 +150,10 @@ class BiasChecker(object):
             else:
                 suptitle = f"Bad Channel(s): {bad_chans}"
             # title= f"\Huge{{{suptitle}}}\n{testdata.filename}"
-            title = f"{suptitle}\n{testdata.filename}"
+            title = f"{suptitle}\n{test_data.filename}"
             if comment != "":
                 title += f"\n{comment}"
-            testdata.plot_mosaic(
+            test_data.plot_mosaic(
                 cmap=cmaps, title=title, norm_by="chan", savepath=savepath
             )
 
@@ -347,7 +352,7 @@ class ImageHandler(QtCore.QObject):
             template_path = os.path.join(MASTERBIAS_DIR, "master_bias.fits")
         else:
             template_path = template_path
-        self.bias_checker.load_template_data(template_path)
+        # self.bias_checker.load_template_data(template_path)
 
         bias_image_filename = pathlib.Path(
             bias_image_path
@@ -372,6 +377,7 @@ class ImageHandler(QtCore.QObject):
         # assesss the bias image
         results = self.bias_checker.validate_image(
             mef_file_path=bias_image_path,
+            template_path=template_path,
             addrs=addrs,
             comment=comment,
             plot=True,
