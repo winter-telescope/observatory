@@ -35,10 +35,15 @@ wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 print(f"telescope: wsp_path = {wsp_path}")
 
-from utils import utils
+
+def log(logger, msg, level=logging.INFO):
+    if logger is None:
+        print(msg)
+    else:
+        logger.log(level=level, msg=msg)
 
 
-def GetHeader(config, state, imageinfo):
+def GetHeader(config, state, imageinfo, logger=None):
 
     # state is the WSP housekeeping state metadata
     # imageinfo is specific information about the image
@@ -256,7 +261,7 @@ def GetHeader(config, state, imageinfo):
     # except Exception as e:
     #     objra_str = ''
     #     objdec_str = ''
-    #     print(f'header creator: could not form object ra/dec strings: {e}')
+    #     log(logger,(f'header creator: could not form object ra/dec strings: {e}'))
 
     # header.append(('OBJRA', objra_str,     'Object right ascension (deg:m:s)'))
     # header.append(('OBJDEC', objdec_str,   'Object declination (deg:m:s)'))
@@ -265,6 +270,10 @@ def GetHeader(config, state, imageinfo):
     header.append(("OBJDEC", None, "DEPRECATED - Object DEC"))
 
     # Update the headers with the Scheduled Target RA/Dec
+    targ_ra_comment = "Target RA (J2000)"
+    targ_dec_comment = "Target DEC (J2000)"
+    targ_ra_value = None
+    targ_dec_value = None
     try:
         # if there is no target ra, don't stuff with garbage (eg -999)
         assert state.get("robo_target_ra_j2000_hours", -999) != -999
@@ -277,18 +286,21 @@ def GetHeader(config, state, imageinfo):
 
         targ_ra_comment = f"Target RA {targ_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"
         targ_dec_comment = f"Target DEC {targ_dec.to_string(unit = u.deg, sep = ':', precision = 1)} (J2000)"
-
-        header.append(("TARGRA", targ_ra.deg, targ_ra_comment))
-        header.append(("TARGDEC", targ_dec.deg, targ_dec_comment))
-
+        targ_ra_value = targ_ra.deg
+        targ_dec_value = targ_dec.deg
+    except AssertionError:
+        # No need to do anything, fallback values will be used
+        pass
     except Exception as e:
-        targ_ra_comment = "Target RA (J2000)"
-        targ_dec_comment = "Target DEC (J2000)"
-        header.append(("TARGRA", None, targ_ra_comment))
-        header.append(("TARGDEC", None, targ_dec_comment))
-        print(f"header creator: could not form target ra/dec strings: {e}")
+        log(logger, f"header creator: could not form target ra/dec strings: {e}")
+    header.append(("TARGRA", targ_ra_value, targ_ra_comment))
+    header.append(("TARGDEC", targ_dec_value, targ_dec_comment))
 
     # Update the headers with the pointing center RA/Dec
+    pointing_ra_comment = "Target RA (J2000)"
+    pointing_dec_comment = "Target DEC (J2000)"
+    pointing_ra_value = None
+    pointing_dec_value = None
     try:
         # if there is no target ra, don't stuff with garbage (eg -999)
         assert state.get("robo_pointing_ra_j2000_hours", -999) != -999
@@ -301,17 +313,16 @@ def GetHeader(config, state, imageinfo):
 
         pointing_ra_comment = f"Pointing Center RA {pointing_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"
         pointing_dec_comment = f"Pointing Center DEC {pointing_dec.to_string(unit = u.deg, sep = ':', precision = 1)} (J2000)"
-
-        header.append(("POINTRA", pointing_ra.deg, pointing_ra_comment))
-        header.append(("POINTDEC", pointing_dec.deg, pointing_dec_comment))
-
+        pointing_ra_value = pointing_ra.deg
+        pointing_dec_value = pointing_dec.deg
+    except AssertionError:
+        # No need to do anything, fallback values will be used
+        pass
     except Exception as e:
-        pointing_ra_comment = "Target RA (J2000)"
-        pointing_dec_comment = "Target DEC (J2000)"
-        header.append(("POINTRA", None, pointing_ra_comment))
-        header.append(("POINTDEC", None, pointing_dec_comment))
-        print(f"header creator: could not form pointing ra/dec strings: {e}")
+        log(logger, f"header creator: could not form pointing ra/dec strings: {e}")
 
+    header.append(("POINTRA", pointing_ra_value, pointing_ra_comment))
+    header.append(("POINTDEC", pointing_dec_value, pointing_dec_comment))
     # target type: altaz, radec, schedule
     header.append(("TARGTYPE", state.get("targtype", ""), "Target Type"))
 
@@ -395,7 +406,7 @@ def GetHeader(config, state, imageinfo):
         )
 
     except Exception as e:
-        print(f"could not make the time entries: {e}")
+        log(logger, f"could not make the time entries: {e}")
         header.append(("UTC", "", "Time of observation "))
         header.append(("UTCISO", "", "Time of observation in ISO format"))
         header.append(("UTCSHUT", "", "UTC time shutter open"))
@@ -416,8 +427,8 @@ def GetHeader(config, state, imageinfo):
         weather_datetime = datetime.fromtimestamp(state["dome_timestamp"])
         ut_weath = weather_datetime.strftime("%Y-%m-%d %H%M%S.%f")
     except Exception as e:
-        print(f'state["dome_timestamp"] = {state.get("dome_timestamp", "?")}')
-        print(f"could not get dome time, {e}")
+        log(logger, (f'state["dome_timestamp"] = {state.get("dome_timestamp", "?")}'))
+        log(logger, (f"could not get dome time, {e}"))
         ut_weath = ""
 
     header.append(("UT_WEATH", ut_weath, "UT of weather data"))
@@ -545,7 +556,7 @@ if __name__ == "__main__":
         p = Pyro5.client.Proxy(uri)
         state = p.GetStatus()
     except Exception as e:
-        print(f"could not get WSP state: {e}")
+        log(logger, (f"could not get WSP state: {e}"))
         state = {}
 
     # load the config
@@ -574,16 +585,16 @@ if __name__ == "__main__":
         for element in header:
 
             try:
-                print(element)
+                log(logger, (element))
                 card = fits.Card(*element)
                 hdu.header.append(card)
             except Exception as e:
-                print(f"could not add {card[0]} to header: {e}")
+                log(logger, (f"could not add {card[0]} to header: {e}"))
     elif type(header) is dict:
         for key in header:
             try:
                 hdu.header[key] = header[key]
             except Exception as e:
-                print(f"could not add {key} to header: {e}")
+                log(logger, (f"could not add {key} to header: {e}"))
 
     hdu.writeto(os.path.join(os.getenv("HOME"), "data", "test.fits"), overwrite=True)
