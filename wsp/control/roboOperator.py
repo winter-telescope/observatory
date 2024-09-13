@@ -522,8 +522,13 @@ class RoboOperator(QtCore.QObject):
             "ok_to_observe",
             "target_alt",
             "target_az",
-            "target_ra_j2000_hours",
-            "target_dec_j2000_deg",
+            #'target_ra_j2000_hours',
+            #'target_dec_j2000_deg',
+            "j2000_ra_scheduled_hours",
+            "j2000_ra_scheduled_deg",
+            "j2000_dec_scheduled_deg",
+            "pointing_ra_j2000_hours",
+            "pointing_dec_j2000_deg",
             "visitExpTime",
             "obsHistID",
             "targetPriority",
@@ -4042,13 +4047,13 @@ class RoboOperator(QtCore.QObject):
                     # board_ids_to_use = [4, 3]
                     # board_ids_to_use = [4] # NL updated during the troubles with PB 7/2/24
                     board_ids_to_use = [1]
-                    board_ids_to_use = [#2, #SA
-                                        ##6, #SB
-                                        #5, #SC
-                                        1, #PA
-                                        #3, #PB
-                                        ##4, #PC
-                                        ] 
+                    board_ids_to_use = [  # 2, #SA
+                        ##6, #SB
+                        # 5, #SC
+                        1,  # PA
+                        # 3, #PB
+                        ##4, #PC
+                    ]
                     x0_fit = self.image_daemon.get_focus_from_imgpathlist(
                         images,
                         board_ids_to_use=board_ids_to_use,
@@ -4470,9 +4475,16 @@ class RoboOperator(QtCore.QObject):
                 self.dec_deg_scheduled * u.deg
             )
 
+            # get the scheduled ra and dec in hours and degrees to eventually log to header
+            self.j2000_ra_scheduled_hours = self.j2000_ra_scheduled.hour
+            self.j2000_ra_scheduled_deg = self.j2000_ra_scheduled.deg
+            self.j2000_dec_scheduled_deg = self.j2000_dec_scheduled.deg
+
+            # TODO delete: this is being removed here because these attributes are set directly within the
+            # do_observation method:
             # get the target RA (hours) and DEC (degs) in units we can pass to the telescope
-            self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
-            self.target_dec_j2000_deg = self.j2000_dec_scheduled.deg
+            # self.target_ra_j2000_hours = self.j2000_ra_scheduled.hour
+            # self.target_dec_j2000_deg = self.j2000_dec_scheduled.deg
 
             # calculate the current Alt and Az of the target
             if self.sunsim:

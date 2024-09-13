@@ -2398,14 +2398,38 @@ fields:
         dtype: float64
         rate: slow
         var: robostate["target_az"]
-    robo_target_ra_j2000:
+    robo_target_ra_j2000_hours:
+        ftype: raw
+        label: 'RA'
+        units: 'Hours'
+        dtype: float64
+        rate: slow
+        #var: robostate["target_ra_j2000_hours"]
+        var: robostate["j2000_ra_scheduled_hours"]
+    robo_target_ra_j2000_deg:
+        ftype: raw
+        label: 'RA'
+        units: 'Hours'
+        dtype: float64
+        rate: slow
+        #var: robostate["target_ra_j2000_hours"]
+        var: robostate["j2000_ra_scheduled_deg"]
+    robo_target_dec_j2000_deg:
+        ftype: raw
+        label: 'DEC'
+        units: 'Deg'
+        dtype: float64
+        rate: slow
+        #var: robostate["target_dec_j2000_deg"]
+        var: robostate["j2000_dec_scheduled_deg"]
+    robo_pointing_ra_j2000_hours:
         ftype: raw
         label: 'RA'
         units: 'Hours'
         dtype: float64
         rate: slow
         var: robostate["target_ra_j2000_hours"]
-    robo_target_dec_j2000:
+    robo_pointing_dec_j2000_deg:
         ftype: raw
         label: 'DEC'
         units: 'Deg'
