@@ -6,41 +6,19 @@ Created on Mon Jul 17 11:12:45 2023
 @author: nlourie
 """
 
-# import subprocess
 import getopt
 import logging
 import os
 import pathlib
 import signal
-
-# from astropy.io import fits
 import sys
 import threading
 from datetime import datetime
 
-import numpy as np
 import Pyro5.core
 import Pyro5.server
-import winter_utils.utils
 import yaml
 from PyQt5 import QtCore
-from winter_utils import focusloop_winter as foc
-from winter_utils.paths import (
-    DEFAULT_OUTPUT_DIR,
-    MASK_DIR,
-    MASTERBIAS_DIR,
-    MASTERDARK_DIR,
-    MASTERFLAT_DIR,
-    astrom_filter,
-    astrom_nnw,
-    astrom_param,
-    astrom_sex,
-)
-from winter_utils.winter_image import WinterImage
-
-# from winter_utils.io import get_focus_images_in_directory
-# from winter_utils import quick_combine_images
-
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -49,115 +27,10 @@ print(f"wsp_path = {wsp_path}")
 
 from alerts import alert_handler
 from daemon import daemon_utils
+from focus_utils import focusloop_winter as foc
+from focus_utils.bias_checker import BiasChecker
+from focus_utils.paths import DEFAULT_OUTPUT_DIR, MASTERBIAS_DIR
 from utils import logging_setup, utils
-
-
-class BiasChecker(object):
-    """
-    a helper class to analyze a winter bias image and decide whether each
-    sensor seems in good working order
-    """
-
-    def __init__(self):
-
-        self.layer_ok = [False for i in range(6)]
-        pass
-
-    def load_template_data(self, paths):
-        """
-        load in the path or list of paths corresponding to "good" bias
-        images.
-        """
-
-        if type(paths) is str:
-            # there is just one path provided
-            self.template_imagepath = paths
-            self.template_data = WinterImage(self.template_imagepath)
-            return
-
-        else:
-            raise ValueError("combined template data option not yet implemented")
-
-    def validate_image(
-        mef_file_path, template_path, addrs=None, comment="", plot=True, savepath=None
-    ):
-        """
-        compare the image specified to the template images and decide if it is
-        in good shape. return a dictionary of the addresses and whether they're
-        "okay" or suspicious and a reboot is merited.
-        """
-        results = dict()
-        cmaps = dict()
-        bad_chans = []
-        good_chans = []
-
-        # load the data
-        test_data = WinterImage(mef_file_path)
-
-        template_data = WinterImage(template_path)
-
-        # this was the old way: cycle through all layers in the template
-        # all_addrs = self.template_data._layer_by_addr
-
-        # instead:
-        # cycle through all layers in the test data. ignore any offline sensors
-        all_addrs = test_data.imgs.keys()
-
-        if addrs is None:
-            addrs = all_addrs
-
-        # now loop through all the images and evaluate
-        for addr in all_addrs:
-            if addr in addrs:
-
-                data = np.abs(1 - (test_data.imgs[addr] / template_data.imgs[addr]))
-
-                std = np.std(data)
-                mean = np.average(data)
-
-                if (std > 0.5) or (mean > 0.1):
-                    # image is likely bad!!
-                    okay = False
-                    cmaps.update({addr: "Reds"})
-                    bad_chans.append(addr)
-                else:
-                    okay = True
-                    cmaps.update({addr: "gray"})
-                    good_chans.append(addr)
-
-                results.update(
-                    {
-                        addr: {
-                            "okay": okay,
-                            "mean": float(mean),
-                            "std": float(std),
-                        }
-                    }
-                )
-            else:
-                # cmaps.append("gray")
-                pass
-
-        # print(f'cmaps = {cmaps}')
-
-        # make an easy place to grab all the good and bad channels
-        results.update({"bad_chans": bad_chans, "good_chans": good_chans})
-
-        # now plot the result
-        if plot:
-            if len(bad_chans) == 0:
-                suptitle = "No Bad Channels!"
-            else:
-                suptitle = f"Bad Channel(s): {bad_chans}"
-            # title= f"\Huge{{{suptitle}}}\n{testdata.filename}"
-            title = f"{suptitle}\n{test_data.filename}"
-            if comment != "":
-                title += f"\n{comment}"
-            test_data.plot_mosaic(
-                cmap=cmaps, title=title, norm_by="chan", savepath=savepath
-            )
-
-        return results
 
 
 class ImageHandler(QtCore.QObject):
@@ -173,9 +46,6 @@ class ImageHandler(QtCore.QObject):
         self.logger = logger
         # init the state dictionary
         self.state = dict()
-
-        # set up the bias analyzer
-        self.bias_checker = BiasChecker()
 
         # init the connection to the nameserver
 
@@ -352,16 +222,14 @@ class ImageHandler(QtCore.QObject):
             template_path = os.path.join(MASTERBIAS_DIR, "master_bias.fits")
         else:
             template_path = template_path
-        # self.bias_checker.load_template_data(template_path)
 
         bias_image_filename = pathlib.Path(
             bias_image_path
         ).stem  # strips the directory and extension
-        tonight_local_str = winter_utils.utils.tonight_local()
         if savedir is None:
             image_output_dir = os.path.join(
                 os.getenv("HOME"), "data", "images", "bias"
-            )  # , tonight_local_str)
+            )  # default to this directory
         else:
             image_output_dir = savedir
         image_output_filepath = os.path.join(
@@ -375,7 +243,7 @@ class ImageHandler(QtCore.QObject):
         self.log(f"will save result plot to {image_output_filepath}")
 
         # assesss the bias image
-        results = self.bias_checker.validate_image(
+        results = BiasChecker.validate_image(
             mef_file_path=bias_image_path,
             template_path=template_path,
             addrs=addrs,
@@ -438,7 +306,7 @@ if __name__ == "__main__":
     arguments, values = getopt.getopt(args, options, long_options)
     # checking each argument
     print()
-    print(f"Parsing sys.argv...")
+    print("Parsing sys.argv...")
     print(f"arguments = {arguments}")
     print(f"values = {values}")
     for currentArgument, currentValue in arguments:
