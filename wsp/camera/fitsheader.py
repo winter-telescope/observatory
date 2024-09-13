@@ -12,11 +12,7 @@ a full FITS header
 """
 import logging
 import os
-import pathlib
-import signal
 import sys
-import threading
-import time
 from datetime import datetime
 
 import astropy.coordinates
@@ -25,15 +21,14 @@ import astropy.units as u
 import numpy as np
 import Pyro5.core
 import Pyro5.server
-import pytz
-import yaml
 from astropy.time import Time
-from PyQt5 import QtCore
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 print(f"telescope: wsp_path = {wsp_path}")
+
+from utils import utils
 
 
 def log(logger, msg, level=logging.INFO):
@@ -550,6 +545,7 @@ def GetHeader(config, state, imageinfo, logger=None):
 
 
 if __name__ == "__main__":
+    logger = None
     try:
         ns = Pyro5.core.locate_ns("192.168.1.10")
         uri = ns.lookup("state")
