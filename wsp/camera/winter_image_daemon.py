@@ -216,12 +216,13 @@ class ImageHandler(QtCore.QObject):
         self, bias_image_path, addrs=None, comment="", template_path=None, savedir=None
     ):
         # take in a bias path image and assess the state of the sensors
-
+        self.log(f"answering request to validate bias at {bias_image_path}")
         # load the bias template image
         if template_path is None:
             template_path = os.path.join(MASTERBIAS_DIR, "master_bias.fits")
         else:
             template_path = template_path
+        self.log(f"using template bias image at: {template_path}")
 
         bias_image_filename = pathlib.Path(
             bias_image_path

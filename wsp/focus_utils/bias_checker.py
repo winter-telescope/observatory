@@ -38,9 +38,9 @@ class BiasChecker:
 
         # load the data
         test_data = WinterImage(mef_file_path)
-
+        print("loaded test data")
         template_data = WinterImage(template_path)
-
+        print("loaded template data")
         # this was the old way: cycle through all layers in the template
         # all_addrs = self.template_data._layer_by_addr
 
