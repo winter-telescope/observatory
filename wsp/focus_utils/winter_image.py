@@ -193,9 +193,7 @@ class WinterImage:
         w = 3
         h = w / aspect_ratio
 
-        fig, axarr = plt.subplots(3, 2, figsize=(4 * h, 2.0 * w))
-        dpi = fig.dpi
-        print(dpi)
+        fig, axarr = plt.subplots(3, 2, figsize=(4 * h, 2.0 * w), dpi = 200)
         # Combine all the data to figure out the full-image normalization
         alldata = np.concatenate([img.flatten() for img in self.imgs.values()])
 
@@ -205,24 +203,29 @@ class WinterImage:
                 # Rotate starboard images by 180 degrees
                 if addr.startswith("s"):
                     image = np.rot90(image, 2)
+                    
+                # set the normalization
+                if norm_by.lower() == "full":
+                    normdata = alldata
+                elif norm_by.lower() in ["sensor", "chan"]:
+                    normdata = image
+                else:
+                    normdata = alldata
+
+                norm = astropy.visualization.ImageNormalize(
+                    normdata,
+                    interval=astropy.visualization.ZScaleInterval(),
+                    stretch=astropy.visualization.SqrtStretch(),
+                )
             else:
                 image = np.zeros((1081, 1921))
+                # this none helps it render better on some machines
+                norm = None
 
             rowcol = self._rowcol_locs_by_addr[addr]
             row, col = rowcol
 
-            if norm_by.lower() == "full":
-                normdata = alldata
-            elif norm_by.lower() in ["sensor", "chan"]:
-                normdata = image
-            else:
-                normdata = alldata
-
-            norm = astropy.visualization.ImageNormalize(
-                normdata,
-                interval=astropy.visualization.ZScaleInterval(),
-                stretch=astropy.visualization.SqrtStretch(),
-            )
+            
             ax0 = axarr[row, col]
 
             if isinstance(cmap, str):
@@ -262,7 +265,7 @@ class WinterImage:
             fig.colorbar(individual_plot, cax=cax, orientation="vertical")
 
         if savepath is not None:
-            plt.savefig(savepath)
+            plt.savefig(savepath, dpi = 500)
         plt.show()
 
     def get_img(self, chan: Union[str, int], index_by: str = "addr") -> np.ndarray:

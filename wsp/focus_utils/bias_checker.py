@@ -151,8 +151,8 @@ def validate_image(
         if addr in addrs:
             if addr not in template_data.imgs:
                 # Template data missing for this address
-                test_data.log(
-                    f"Address '{addr}' not found in template data.", logging.WARNING
+                print(
+                    f"Address '{addr}' not found in template data."
                 )
                 results[addr] = {
                     "okay": False,
@@ -217,16 +217,16 @@ def validate_image(
 
 if __name__ == "__main__":
 
-    # Data directory
-    data_dir = os.path.join(os.getenv("HOME"), "data", "images", "test")
+    
 
-    # Template image
-    template_data_path = os.path.join(data_dir, "bias", "master_bias.fits")
+    # template image
+    template_data_path = os.path.join(MASTERBIAS_DIR, "master_bias.fits")
     template_im = WinterImage(data=template_data_path)
     template_im.plot_mosaic()
 
-    # Full image
-    imgpath = os.path.join(data_dir, "bias", "test_bias.fits")
+    # test image
+    test_data_dir = os.path.join(os.getenv("HOME"), "data", "images", "test")
+    imgpath = os.path.join(test_data_dir, "bias", "test_bias.fits")
     im = WinterImage(data=imgpath)
     result = BiasChecker.validate_image(
         mef_file_path=imgpath,
