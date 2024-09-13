@@ -586,7 +586,7 @@ weather_limits:
 ephem:
     # note that changing these will not update the housekeeping fields, that must be done manually
     min_target_separation:
-        moon: 25.0
+        moon: 10.0
         mercury: 5
         venus: 5
         mars: 5
@@ -969,13 +969,9 @@ observing_parameters:
             ditherMinStep_as: 75 #10
             ditherMaxStep_as: 90 #15
         best_position:
-            board_id: 4
+            board_id: 1
             x_pixel: 800
             y_pixel: 500
-            #x_pixel: 750
-            #y_pixel: 750
-            #x_pixel: 1200 #600
-            #y_pixel: 545 #530
         base_position:
             board_id: 0
             x_pixel: 1788
