@@ -47,7 +47,7 @@ class BiasChecker:
         # instead:
         # cycle through all layers in the test data. ignore any offline sensors
         all_addrs = test_data.imgs.keys()
-
+        print(f"found data at addresses: {all_addrs}")
         if addrs is None:
             addrs = all_addrs
 
