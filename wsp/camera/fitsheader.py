@@ -156,18 +156,62 @@ def GetHeader(config, state, imageinfo):
     header.append(('SCHDTYPE',     state.get('scheduleType', ''),                   'schedule type (eg nightly or target)'))
     ### qcomment
     header.append(('QCOMMENT',     state.get('qcomment',''),                       'Queue comment (general comment)'))
-    try:
-        objra = astropy.coordinates.Angle(state.get('robo_target_ra_j2000', 0)*u.hour)
-        objdec = astropy.coordinates.Angle(state.get('robo_target_dec_j2000', 0)*u.deg)
-        objra_str = str(objra.to_string(unit = u.deg, sep = ':'))
-        objdec_str = str(objdec.to_string(unit = u.deg, sep = ':'))
-    except Exception as e:
-        objra_str = ''
-        objdec_str = ''
-        print(f'ccd_daemon: could not form object ra/dec strings: {e}')
+    # try:
+    #     objra = astropy.coordinates.Angle(state.get('robo_target_ra_j2000', 0)*u.hour)
+    #     objdec = astropy.coordinates.Angle(state.get('robo_target_dec_j2000', 0)*u.deg)
+    #     objra_str = str(objra.to_string(unit = u.deg, sep = ':'))
+    #     objdec_str = str(objdec.to_string(unit = u.deg, sep = ':'))
+    # except Exception as e:
+    #     objra_str = ''
+    #     objdec_str = ''
+    #     print(f'header creator: could not form object ra/dec strings: {e}')
         
-    header.append(('OBJRA', objra_str,     'Object right ascension (deg:m:s)'))
-    header.append(('OBJDEC', objdec_str,   'Object declination (deg:m:s)'))
+    # header.append(('OBJRA', objra_str,     'Object right ascension (deg:m:s)'))
+    # header.append(('OBJDEC', objdec_str,   'Object declination (deg:m:s)'))
+    
+    header.append(('OBJRA', None,     'DEPRECATED - Object RA'))
+    header.append(('OBJDEC', None,    'DEPRECATED - Object DEC'))
+    
+    # Update the headers with the Scheduled Target RA/Dec
+    try:
+        
+        targ_ra = astropy.coordinates.Angle(state.get('robo_target_ra_j2000_hours', 0)*u.hour)
+        targ_dec = astropy.coordinates.Angle(state.get('robo_target_dec_j2000', 0)*u.deg)
+        
+        targ_ra_comment =   f"Target RA {targ_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"
+        targ_dec_comment = f"Target DEC {targ_dec.to_string(unit = u.deg, sep = ':', precision = 1)} (J2000)"
+        
+        header.append(('TARGRA', targ_ra.deg,     targ_ra_comment))
+        header.append(('TARGDEC', targ_dec.deg,     targ_dec_comment))
+        
+    except Exception as e:
+        targ_ra_comment = 'Target RA (J2000)'
+        targ_dec_comment = 'Target DEC (J2000)'
+        header.append(('TARGRA', None,     targ_ra_comment))
+        header.append(('TARGDEC', None,     targ_dec_comment))
+        print(f'header creator: could not form target ra/dec strings: {e}')
+        
+
+    
+    # Update the headers with the pointing center RA/Dec
+    try:
+        
+        pointing_ra = astropy.coordinates.Angle(state.get('robo_pointing_ra_j2000_hours', 0)*u.hour)
+        pointing_dec = astropy.coordinates.Angle(state.get('robo_pointing_dec_j2000_deg', 0)*u.deg)
+        
+        pointing_ra_comment =   f"Pointing Center RA {pointing_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"
+        pointing_dec_comment = f"Pointing Center DEC {pointing_dec.to_string(unit = u.deg, sep = ':', precision = 1)} (J2000)"
+        
+        header.append(('POINTRA', pointing_ra.deg,     pointing_ra_comment))
+        header.append(('POINTDEC', pointing_dec.deg,     pointing_dec_comment))
+        
+    except Exception as e:
+        pointing_ra_comment = 'Target RA (J2000)'
+        pointing_dec_comment = 'Target DEC (J2000)'
+        header.append(('POINTRA', None,     pointing_ra_comment))
+        header.append(('POINTDEC', None,     pointing_dec_comment))
+        print(f'header creator: could not form pointing ra/dec strings: {e}')
+    
     
     # target type: altaz, radec, schedule
     header.append(('TARGTYPE', state.get('targtype',''),           'Target Type'))
