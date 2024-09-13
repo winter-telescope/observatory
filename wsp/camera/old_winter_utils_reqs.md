@@ -3,7 +3,7 @@
 
 Direct dependencies in winter_image_daemon.py:
 - [x] focuslooop_winter.py
-- [ ] winter_image
+- [x] winter_image
 - [x] paths.DEFAULT_OUTPUT_DIR 
 - [x] paths.MASTERBIAS_DIR
 
