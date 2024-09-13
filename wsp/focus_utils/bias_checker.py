@@ -229,7 +229,10 @@ if __name__ == "__main__":
     imgpath = os.path.join(data_dir, "bias", "test_bias.fits")
     im = WinterImage(data=imgpath)
     result = BiasChecker.validate_image(
-        mef_file_path=imgpath, template_path=template_data_path, plot=True
+        mef_file_path=imgpath,
+        template_path=template_data_path,
+        plot=True,
+        savepath=os.path.join(DEFAULT_OUTPUT_DIR, "bias_validation.png"),
     )
     print(f"bad chans:  {result['bad_chans']}")
     print(f"good chans: {result['good_chans']}")

@@ -194,7 +194,8 @@ class WinterImage:
         h = w / aspect_ratio
 
         fig, axarr = plt.subplots(3, 2, figsize=(4 * h, 2.0 * w))
-
+        dpi = fig.dpi
+        print(dpi)
         # Combine all the data to figure out the full-image normalization
         alldata = np.concatenate([img.flatten() for img in self.imgs.values()])
 
