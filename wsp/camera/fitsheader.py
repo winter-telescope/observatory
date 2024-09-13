@@ -267,7 +267,7 @@ def GetHeader(config, state, imageinfo):
     # Update the headers with the Scheduled Target RA/Dec
     try:
         # if there is no target ra, don't stuff with garbage (eg -999)
-        assert state.get("robo_target_ra_j2000_hours", 0) != -999
+        assert state.get("robo_target_ra_j2000_hours", -999) != -999
         targ_ra = astropy.coordinates.Angle(
             state.get("robo_target_ra_j2000_hours", 0) * u.hour
         )
@@ -291,7 +291,7 @@ def GetHeader(config, state, imageinfo):
     # Update the headers with the pointing center RA/Dec
     try:
         # if there is no target ra, don't stuff with garbage (eg -999)
-        assert state.get("robo_pointing_ra_j2000_hours", 0) != -999
+        assert state.get("robo_pointing_ra_j2000_hours", -999) != -999
         pointing_ra = astropy.coordinates.Angle(
             state.get("robo_pointing_ra_j2000_hours", 0) * u.hour
         )
