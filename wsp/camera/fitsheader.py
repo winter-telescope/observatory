@@ -276,7 +276,7 @@ def GetHeader(config, state, imageinfo, logger=None):
             state.get("robo_target_ra_j2000_hours", 0) * u.hour
         )
         targ_dec = astropy.coordinates.Angle(
-            state.get("robo_target_dec_j2000", 0) * u.deg
+            state.get("robo_target_dec_j2000_deg", 0) * u.deg
         )
 
         targ_ra_comment = f"Target RA {targ_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"

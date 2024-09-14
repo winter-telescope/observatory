@@ -522,13 +522,14 @@ class RoboOperator(QtCore.QObject):
             "ok_to_observe",
             "target_alt",
             "target_az",
-            #'target_ra_j2000_hours',
-            #'target_dec_j2000_deg',
+            # TODO: do we need all of these? NPL 9-13-24
+            "target_ra_j2000_hours" "target_dec_j2000_deg",
             "j2000_ra_scheduled_hours",
             "j2000_ra_scheduled_deg",
             "j2000_dec_scheduled_deg",
             "pointing_ra_j2000_hours",
             "pointing_dec_j2000_deg",
+            ####
             "visitExpTime",
             "obsHistID",
             "targetPriority",
