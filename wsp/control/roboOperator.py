@@ -4008,17 +4008,16 @@ class RoboOperator(QtCore.QObject):
             #          '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
 
             imnames = [
-                "WINTERcamera_20230711-051746-285",
-                "WINTERcamera_20230711-051825-746",
-                "WINTERcamera_20230711-051905-364",
-                "WINTERcamera_20230711-051944-958",
-                "WINTERcamera_20230711-052025-470",
-                "WINTERcamera_20230711-052104-426",
-                "WINTERcamera_20230711-052143-925",
+                "WINTERcamera_20240913-090922-224",
+                "WINTERcamera_20240913-091001-328",
+                "WINTERcamera_20240913-091041-369",
+                "WWINTERcamera_20240913-091120-508",
+                "WINTERcamera_20240913-091159-246",
+                "WINTERcamera_20240913-091238-784",
             ]
 
             images = [
-                "/home/winter/data/images/20230710/" + imname + "_mef.fits"
+                "/home/winter/data/images/sample_focusloop/" + imname + "_mef.fits"
                 for imname in imnames
             ]
 
