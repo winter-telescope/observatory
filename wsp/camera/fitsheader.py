@@ -281,8 +281,8 @@ def GetHeader(config, state, imageinfo, logger=None):
 
         targ_ra_comment = f"Target RA {targ_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"
         targ_dec_comment = f"Target DEC {targ_dec.to_string(unit = u.deg, sep = ':', precision = 1)} (J2000)"
-        targ_ra_value = targ_ra.deg
-        targ_dec_value = targ_dec.deg
+        targ_ra_value = np.round(targ_ra.deg, 6)
+        targ_dec_value = np.round(targ_dec.deg, 6)
     except AssertionError:
         # No need to do anything, fallback values will be used
         pass
@@ -308,8 +308,8 @@ def GetHeader(config, state, imageinfo, logger=None):
 
         pointing_ra_comment = f"Pointing Center RA {pointing_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"
         pointing_dec_comment = f"Pointing Center DEC {pointing_dec.to_string(unit = u.deg, sep = ':', precision = 1)} (J2000)"
-        pointing_ra_value = pointing_ra.deg
-        pointing_dec_value = pointing_dec.deg
+        pointing_ra_value = np.round(pointing_ra.deg, 6)
+        pointing_dec_value = np.round(pointing_dec.deg, 6)
     except AssertionError:
         # No need to do anything, fallback values will be used
         pass
