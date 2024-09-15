@@ -5,6 +5,7 @@ Module for doing a focus loop with the WINTER camera.
 import argparse
 import os
 import subprocess
+import sys
 import warnings
 from contextlib import redirect_stdout
 from glob import glob
@@ -17,23 +18,46 @@ import pandas as pd
 from astropy.io import fits
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table, vstack
-from data_io import get_focus_images_in_directory
-from ldactools import get_table_from_ldac
-from mask import make_mask
 from matplotlib.gridspec import GridSpec
-from paths import (
-    DEFAULT_OUTPUT_DIR,
-    MASK_DIR,
-    MASTERDARK_DIR,
-    MASTERFLAT_DIR,
-    astrom_filter,
-    astrom_nnw,
-    astrom_param,
-    astrom_sex,
-)
-from quick_calibrate_images import flat_correct, subtract_dark
 from scipy.optimize import curve_fit
 
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, wsp_path)
+print(f"camera: wsp_path = {wsp_path}")
+
+try:
+    from data_io import get_focus_images_in_directory
+    from ldactools import get_table_from_ldac
+    from mask import make_mask
+    from matplotlib.gridspec import GridSpec
+    from paths import (
+        DEFAULT_OUTPUT_DIR,
+        MASK_DIR,
+        MASTERDARK_DIR,
+        MASTERFLAT_DIR,
+        astrom_filter,
+        astrom_nnw,
+        astrom_param,
+        astrom_sex,
+    )
+    from quick_calibrate_images import flat_correct, subtract_dark
+except Exception as e:
+    print(f"Could not import from focus_utils: {e}")
+    from focus_utils.data_io import get_focus_images_in_directory
+    from focus_utils.ldactools import get_table_from_ldac
+    from focus_utils.mask import make_mask
+    from focus_utils.paths import (
+        DEFAULT_OUTPUT_DIR,
+        MASK_DIR,
+        MASTERDARK_DIR,
+        MASTERFLAT_DIR,
+        astrom_filter,
+        astrom_nnw,
+        astrom_param,
+        astrom_sex,
+    )
+    from focus_utils.quick_calibrate_images import flat_correct, subtract_dark
 print(f"MASTERDARK_DIR = {MASTERDARK_DIR}")
 
 matplotlib.use("Agg")
