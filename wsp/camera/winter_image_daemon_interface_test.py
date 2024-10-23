@@ -10,11 +10,10 @@ just a test script to debug the winter image daemon functionality
 import Pyro5.core
 import Pyro5.client
 import os
-import winter_utils.utils
 
 try:
     ns = Pyro5.core.locate_ns(host = '192.168.1.10')
-    uri = ns.lookup('WINTERimage')
+    uri = ns.lookup('WINTERImageDaemon')
     image_daemon = Pyro5.client.Proxy(uri)
     image_daemon_connected = True
 except Exception as e:
@@ -25,8 +24,8 @@ except Exception as e:
 #%% Test the bias validation
 #tonight_local_str = winter_utils.utils.tonight_local()
 image_output_dir = os.path.join(os.getenv("HOME"), 'data', 'images', 'bias')
-bias_dir = os.path.join(os.getenv("HOME"), 'data', 'images', 'bias_test_imgs')
-biases = ['bad-sb.fits', 'good.fits']
+bias_dir = os.path.join(os.getenv("HOME"), 'data', 'images', 'test', 'bias')
+biases = ['test_bias.fits']
 for bias in biases:
     bias_image_path = os.path.join(bias_dir, bias)
     #    def validate_bias(self, bias_image_path, comment = '', template_path = None, savepath = None):

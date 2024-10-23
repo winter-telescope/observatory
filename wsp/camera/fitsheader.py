@@ -12,11 +12,7 @@ a full FITS header
 """
 import logging
 import os
-import pathlib
-import signal
 import sys
-import threading
-import time
 from datetime import datetime
 
 import astropy.coordinates
@@ -25,15 +21,14 @@ import astropy.units as u
 import numpy as np
 import Pyro5.core
 import Pyro5.server
-import pytz
-import yaml
 from astropy.time import Time
-from PyQt5 import QtCore
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
 print(f"telescope: wsp_path = {wsp_path}")
+
+from utils import utils
 
 
 def log(logger, msg, level=logging.INFO):
@@ -281,13 +276,13 @@ def GetHeader(config, state, imageinfo, logger=None):
             state.get("robo_target_ra_j2000_hours", 0) * u.hour
         )
         targ_dec = astropy.coordinates.Angle(
-            state.get("robo_target_dec_j2000", 0) * u.deg
+            state.get("robo_target_dec_j2000_deg", 0) * u.deg
         )
 
         targ_ra_comment = f"Target RA {targ_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"
         targ_dec_comment = f"Target DEC {targ_dec.to_string(unit = u.deg, sep = ':', precision = 1)} (J2000)"
-        targ_ra_value = targ_ra.deg
-        targ_dec_value = targ_dec.deg
+        targ_ra_value = np.round(targ_ra.deg, 6)
+        targ_dec_value = np.round(targ_dec.deg, 6)
     except AssertionError:
         # No need to do anything, fallback values will be used
         pass
@@ -313,8 +308,8 @@ def GetHeader(config, state, imageinfo, logger=None):
 
         pointing_ra_comment = f"Pointing Center RA {pointing_ra.to_string(unit = u.hour, sep = ':', precision = 1)} (J2000)"
         pointing_dec_comment = f"Pointing Center DEC {pointing_dec.to_string(unit = u.deg, sep = ':', precision = 1)} (J2000)"
-        pointing_ra_value = pointing_ra.deg
-        pointing_dec_value = pointing_dec.deg
+        pointing_ra_value = np.round(pointing_ra.deg, 6)
+        pointing_dec_value = np.round(pointing_dec.deg, 6)
     except AssertionError:
         # No need to do anything, fallback values will be used
         pass
@@ -550,6 +545,7 @@ def GetHeader(config, state, imageinfo, logger=None):
 
 
 if __name__ == "__main__":
+    logger = None
     try:
         ns = Pyro5.core.locate_ns("192.168.1.10")
         uri = ns.lookup("state")

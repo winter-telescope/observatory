@@ -621,8 +621,9 @@ cal_params:
                 - 3.0
                 - 4.0
                 - 4.8
-                - 60
-                - 120
+                - 30.0
+                - 60.0
+                - 120.0
             filterID: 'dark'
             
         bias:
@@ -2428,13 +2429,15 @@ fields:
         units: 'Hours'
         dtype: float64
         rate: slow
-        var: robostate["target_ra_j2000_hours"]
+        #var: robostate["pointing_ra_j2000_hours"] # this isn't the dithered pointing
+        var: robostate["target_ra_j2000_hours"] 
     robo_pointing_dec_j2000_deg:
         ftype: raw
         label: 'DEC'
         units: 'Deg'
         dtype: float64
         rate: slow
+        #var: robostate["pointing_dec_j2000_deg"] # this isn't the dithered pointing
         var: robostate["target_dec_j2000_deg"]
     robo_obsHistID:
         ftype: raw

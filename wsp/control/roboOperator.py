@@ -522,13 +522,15 @@ class RoboOperator(QtCore.QObject):
             "ok_to_observe",
             "target_alt",
             "target_az",
-            #'target_ra_j2000_hours',
-            #'target_dec_j2000_deg',
+            # TODO: do we need all of these? NPL 9-13-24
+            "target_ra_j2000_hours",
+            "target_dec_j2000_deg",
             "j2000_ra_scheduled_hours",
             "j2000_ra_scheduled_deg",
             "j2000_dec_scheduled_deg",
             "pointing_ra_j2000_hours",
             "pointing_dec_j2000_deg",
+            ####
             "visitExpTime",
             "obsHistID",
             "targetPriority",
@@ -1138,7 +1140,7 @@ class RoboOperator(QtCore.QObject):
                             # check the cal lamp
                             # ---------------------------------------------------------------------
                             # TODO make this not hard coded
-                            if self.state["pdu_1_1"] == 1:
+                            if self.state["pdu1_1"] == 1:
                                 # the cal lamp is on! turn it off
                                 self.announce("the cal lamp is on!")
                                 self.announce(
@@ -4008,17 +4010,16 @@ class RoboOperator(QtCore.QObject):
             #          '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
 
             imnames = [
-                "WINTERcamera_20230711-051746-285",
-                "WINTERcamera_20230711-051825-746",
-                "WINTERcamera_20230711-051905-364",
-                "WINTERcamera_20230711-051944-958",
-                "WINTERcamera_20230711-052025-470",
-                "WINTERcamera_20230711-052104-426",
-                "WINTERcamera_20230711-052143-925",
+                "WINTERcamera_20240913-090922-224",
+                "WINTERcamera_20240913-091001-328",
+                "WINTERcamera_20240913-091041-369",
+                "WWINTERcamera_20240913-091120-508",
+                "WINTERcamera_20240913-091159-246",
+                "WINTERcamera_20240913-091238-784",
             ]
 
             images = [
-                "/home/winter/data/images/20230710/" + imname + "_mef.fits"
+                "/home/winter/data/images/sample_focusloop/" + imname + "_mef.fits"
                 for imname in imnames
             ]
 
