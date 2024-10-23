@@ -102,6 +102,7 @@ class ObsLogger(object):
             self.history.rename(columns = {'fieldid':'fieldID'}, inplace = True)
         if 'fid' in self.history.columns:
             self.history.rename(columns = {'fid':'filter'}, inplace = True)
+            self.history['filter'] = self.history['filter'].map(FILTER_ID_TO_NAME)
         if 'ExpTime' in self.history.columns:
             self.history.rename(columns = {'ExpTime':'visitExpTime'}, inplace = True)
     
@@ -196,6 +197,7 @@ class ObsLogger(object):
             validStart         REAL,
             validStop          REAL, 
             ditherNumber       INTEGER,
+            bestDetector       INTEGER,
             night              INTEGER,
             visitTime          REAL,
             visitExpTime       REAL,
@@ -243,6 +245,7 @@ class ObsLogger(object):
                     record['progPI'] = program.program_pi
                     record['progTitle'] = program.subprogram_title
                     record['ditherNumber'] = program.dither
+                    record['bestDetector'] = program.best_detector
         
         record['fieldID'] = request['target_field_id']
         record['raDeg'] = request['target_ra']

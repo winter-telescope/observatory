@@ -17,7 +17,8 @@ class ObservingProgram(object):
                  nobs_range=None,
                  filter_choice='rotate', 
                  active_months='all',
-                 dither='N'):
+                 dither='N',
+                 best_detector=0):
 
         self.program_id = program_id
         self.subprogram_name = subprogram_name
@@ -28,6 +29,7 @@ class ObservingProgram(object):
         self.field_ids = field_ids
         self.filter_ids = filter_ids
         self.dither = dither
+        self.best_detector = best_detector
 
         self.internight_gap = internight_gap
         self.intranight_gap = intranight_gap
