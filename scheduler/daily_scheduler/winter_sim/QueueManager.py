@@ -421,6 +421,7 @@ class QueueManager(object):
         # compute seeing at each pointing
         df.loc[wup, 'seeing'] = seeing_at_pointing(df.loc[wup,'altitude'])
         # W
+        #print(f"lim mag filt {df.loc[wup,'filter_id']}")
         df.loc[wup, 'limiting_mag'] = limiting_mag(EXPOSURE_TIME, 
             df.loc[wup, 'seeing'],
             df.loc[wup, 'sky_brightness'],
