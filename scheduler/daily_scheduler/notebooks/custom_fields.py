@@ -23,7 +23,9 @@ def load_field_txt(file_path):
     column_names = ['ID', 'RA', 'Dec', 'EBV', 'Gal Long', 'Gal Lat', 'Ecl Long', 'Ecl Lat', 'Entry']
     
     # Load text file as CSV with specified column names if necessary
-    df = pd.read_csv(file_path, delim_whitespace=True, comment='#', names=column_names)
+    df = pd.read_csv(file_path, delim_whitespace=True, comment='#', names=column_names, skiprows=1)
+    df['ID'] = df['ID'].astype(int)
+    df['Entry'] = df['Entry'].astype(int)
     return df
 
 # Function to compute Galactic and Ecliptic coordinates using astropy
@@ -65,15 +67,32 @@ def add_m31_fields(df_csv, start_id, start_entry):
         start_entry += 1
     return df_csv, start_id, start_entry
 
-# Function to load the CSV files, append new IDs and Entries, and track the new field numbers for each file
 def load_and_append_csv_files(df, csv_files, start_id, start_entry):
     new_field_numbers = {}  # Dictionary to store new field numbers for each CSV file
+    desired_columns = ['ID', 'RA', 'Dec', 'EBV', 'Gal Long', 'Gal Lat', 'Ecl Long', 'Ecl Lat', 'Entry']
     
     for file in csv_files:
         # Load the CSV file
         df_csv = pd.read_csv(file)
-        # Select the required columns
-        df_csv = df_csv[['ID', 'RA', 'Dec', 'EBV', 'Gal Long', 'Gal Lat', 'Ecl Long', 'Ecl Lat', 'Entry']]
+        
+        # Filter rows where ref_exists is True, if the column exists
+        if 'ref_exists' in df_csv.columns:
+            df_csv = df_csv[df_csv['ref_exists'] == True]
+        
+        # Ensure all desired columns are present
+        df_csv = df_csv.reindex(columns=desired_columns)
+        
+        # Fill missing values in EBV with a default, e.g., 1.0
+        df_csv['EBV'] = df_csv['EBV'].fillna(1.0)
+        
+        # For rows missing Gal Long, Gal Lat, Ecl Long, Ecl Lat, compute using RA and Dec
+        for index, row in df_csv.iterrows():
+            if pd.isna(row['Gal Long']) or pd.isna(row['Gal Lat']) or pd.isna(row['Ecl Long']) or pd.isna(row['Ecl Lat']):
+                gal_long, gal_lat, ecl_long, ecl_lat = compute_coordinates(row['RA'], row['Dec'])
+                df_csv.at[index, 'Gal Long'] = gal_long
+                df_csv.at[index, 'Gal Lat'] = gal_lat
+                df_csv.at[index, 'Ecl Long'] = ecl_long
+                df_csv.at[index, 'Ecl Lat'] = ecl_lat
         
         # If it's the very_nearby_galaxies_winter_fields.csv file, add the M31 fields
         if 'very_nearby_galaxies_winter_fields.csv' in file:
@@ -100,18 +119,18 @@ def load_and_append_csv_files(df, csv_files, start_id, start_entry):
     return df, new_field_numbers
 
 # Define paths
-txt_file_path = '/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/WINTER_fields_orig.txt'  # Replace with actual path
-csv_file_paths = ['/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/very_nearby_galaxies_winter_fields.csv',
-                  '/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/winter_fields_nearby.csv',
-                  '/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/winter_fields_ulirgs.csv']  # Replace with actual CSV paths
+txt_file_path = '/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/WINTER_fields.txt'  # Replace with actual path
+csv_file_paths = ['/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/winter_very_nearby_galaxies_coordinates.csv_with_references.csv',
+                  '/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/winter_nearby_galaxies_coordinates.csv_with_references.csv',
+                  '/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/winter_ulirgs_coordinates.csv_with_references.csv']  # Replace with actual CSV paths
 output_txt_file = '/home/winter/WINTER_GIT/observatory/scheduler/daily_scheduler/data/WINTER_fields_mod.txt'  # Replace with desired output file path
 
 # Load the original fields from the text file using pandas
 df_fields = load_field_txt(txt_file_path)
 
 # Get the max ID and Entry from the original dataframe
-max_id = df_fields['ID'].max()
-max_entry = df_fields['Entry'].max()
+max_id = int(df_fields['ID'].max())
+max_entry = int(df_fields['Entry'].max())
 
 # Load the CSV files, append new IDs and Entries, and track new field numbers
 df_fields, new_field_numbers = load_and_append_csv_files(df_fields, csv_file_paths, max_id, max_entry)
