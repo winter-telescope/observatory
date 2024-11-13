@@ -376,11 +376,13 @@ class QueueManager(object):
 
     def compute_limiting_mag(self, df, time, filter_id=None):
         """compute limiting magnitude based on sky brightness and seeing"""
-
+        print(f"FID into compute_limiting_mag {filter_id},")
         # copy df so we can edit the filter id if desired
         if filter_id is not None:
             df = df.copy()
             df['filter_id'] = filter_id
+        #else:
+        #    print(f" df['filter_id'] { df['filter_id']}")
 
         # compute inputs for sky brightness
         sc = coord.SkyCoord(df['ra'], df['dec'], frame='icrs', unit='deg')
@@ -403,11 +405,12 @@ class QueueManager(object):
         # only have values for reasonable altitudes (set by R20_absorbed...)
         wup = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
             (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) ))
-        
+        print(f"what's up for all {wup.sum()} ")
         # winter sky brightness
         wup_tmp = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
                    (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) )) & \
                     df['filter_id'].isin(WINTER_FILTERS) 
+        #print(f"what's up for WINTER {wup_tmp.sum()} {wup_tmp}")
         df.loc[wup_tmp, 'sky_brightness'] = airglow_by_altitude(\
                                         altitude = df.loc[wup_tmp,'altitude'],
                                         filter_id = df.loc[wup_tmp,'filter_id'])
@@ -416,12 +419,15 @@ class QueueManager(object):
         wup_tmp = ((df['altitude'] >= airmass_to_altitude(MAX_AIRMASS) ) & \
                    (df['altitude'] <= airmass_to_altitude(MIN_AIRMASS) )) & \
                     df['filter_id'].isin(SUMMER_FILTERS) 
+        #print(f"what's up for SUMMER {wup_tmp.sum()} {wup_tmp}")
         df.loc[wup_tmp, 'sky_brightness'] = self.VisibleSky.predict(df[wup_tmp])
 
         # compute seeing at each pointing
         df.loc[wup, 'seeing'] = seeing_at_pointing(df.loc[wup,'altitude'])
         # W
+        #print(f"FID into compute_limiting_mag {filter_id},")
         #print(f"lim mag filt {df.loc[wup,'filter_id']}")
+        #print(f"lim mag request {df} \n fid={filter_id} ")
         df.loc[wup, 'limiting_mag'] = limiting_mag(EXPOSURE_TIME, 
             df.loc[wup, 'seeing'],
             df.loc[wup, 'sky_brightness'],

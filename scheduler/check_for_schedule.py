@@ -30,6 +30,7 @@ if file_exists == True:
         alertHandler.slack_log(msg, 'operator')
     else:
         msg = f"Nightly schedule file exists at {schedule_path} and is {file_size} bytes large"
+        alertHandler.slack_log(msg)
 else:
      msg = f"ERROR! No nightly schedule file exist at {schedule_path}"
      alertHandler.slack_log(msg, 'operator')
