@@ -124,6 +124,21 @@ class QueueConfiguration(Configuration):
             else:
                 # make it a quantity
                 prog['exposure_time'] = prog['exposure_time'] * u.second
+            print("Observing program requested:", PROGRAM_NAME_TO_ID[prog['program_name']],
+                                  prog['subprogram_name'], 
+                                  prog['subprogram_title'],
+                                  prog['program_pi'])
+            print(prog['program_observing_fraction'],
+                                  prog['subprogram_fraction'])
+            print(prog['filter_ids'],
+                                  prog['internight_gap_days'] * u.day,
+                                  prog['intranight_gap_min'],
+                                  prog['n_visits_per_night'])
+            print(prog['exposure_time'],
+                                  prog['nobs_range'],
+                                  prog['filter_choice'],
+                                  prog['active_months'])
+            print(prog['dither'], prog['best_detector'])
             OP = ObservingProgram(PROGRAM_NAME_TO_ID[prog['program_name']],
                                   prog['subprogram_name'], 
                                   prog['subprogram_title'],

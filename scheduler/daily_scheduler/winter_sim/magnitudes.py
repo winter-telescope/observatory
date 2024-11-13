@@ -20,7 +20,7 @@ def limiting_mag(exposure_time, seeing_fwhm, sky_brightness,
     if len(filter_id) > 1:
         mag = pd.Series(-90, index=filter_id.index)        
         # check for winter obs
-        #print(f"\n \n \n FILTERS id={filter_id}, filters={WINTER_FILTERS}")
+        #print(f"\n \n \n 1. FILTERS id={filter_id}, filters={WINTER_FILTERS}")
         ww = filter_id.isin(WINTER_FILTERS)
         mag.loc[ww] = limiting_mag_winter(exposure_time, seeing_fwhm[ww], sky_brightness[ww],
                      filter_id[ww], altitude[ww])
@@ -29,12 +29,12 @@ def limiting_mag(exposure_time, seeing_fwhm, sky_brightness,
         mag.loc[ws] = limiting_mag_summer(exposure_time, seeing_fwhm[ws], sky_brightness[ws],
                      filter_id[ws], altitude[ws], SNR)
     else:
-        #print(f"\n \n \n FILTERS id={filter_id}, filters={WINTER_FILTERS}")
-        #if filter_id in WINTER_FILTERS:
-        if filter_id.isin(WINTER_FILTERS).any():
+        #print(f"\n \n \n 2. FILTERS id={filter_id}, filters={WINTER_FILTERS}")
+        if filter_id.item() in WINTER_FILTERS:
+        #if filter_id.isin(WINTER_FILTERS).any():
             mag = limiting_mag_winter(exposure_time, seeing_fwhm, sky_brightness,
                   filter_id, altitude)
-        elif filter_id in SUMMER_FILTERS:
+        elif filter_id.item() in SUMMER_FILTERS:
             mag = limiting_mag_summer(exposure_time, seeing_fwhm, sky_brightness,
                   filter_id, altitude, SNR)
         else:
