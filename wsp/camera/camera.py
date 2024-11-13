@@ -261,6 +261,17 @@ class local_camera(QtCore.QObject):
             self.log(f"could not build default header: {e}")
             header = []
 
+        # get the board ID of the best sensor from the config file
+        try:
+            best_board_id = self.config["observing_parameters"]["winter"][
+                "best_position"
+            ]["board_id"]
+        except Exception as e:
+            self.log(f"could not get best board ID from config: {e}")
+            best_board_id = ""
+
+        header.append(("BESTBRD", best_board_id, "Best Board ID"))
+
         # self.log('now adding sensor specific fields')
         # now add some sensor specific stuff
         for addr in self.state.get("addrs", ["sa", "sb", "sc", "pa", "pb", "pc"]):
