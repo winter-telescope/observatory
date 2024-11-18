@@ -17,7 +17,7 @@
 		 "n_visits_per_night": 1,
 		 "dither": 8,
                  "best_detector": 0,
-		 "nobs_range": {"filter_id":1,"min_obs":0,"max_obs":2},
+		 "nobs_range": {"filter_id":2,"min_obs":0,"max_obs":2},
 		 "active_months": "all"}
 	]
 }
