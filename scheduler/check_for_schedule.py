@@ -1,9 +1,10 @@
+#!/home/winter/anaconda3/envs/wspV0/bin/python
 import yaml
 import sys
 from datetime import datetime
 from os.path import exists, getsize
 
-wsp_path = '../wsp'
+wsp_path = '/home/winter/WINTER_GIT/observatory/wsp'
 sys.path.insert(0, wsp_path)
 from alerts import alert_handler
 from utils import utils
