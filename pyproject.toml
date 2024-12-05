@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wsp"
+version = "0.1.0"
+authors = [
+  { name="Nathan Lourie", email="nlourie@mit.edu" },
+]
+description = "The WINTER Supervisor Program (WSP)"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "scipy",
+    "astropy",
+    "pyside6",
+    "pyro5",
+    "sqlalchemy",
+    "pytz",
+    "pyyaml",
+    "pymodbus",
+    "requests",
+    "slack_sdk",
+    "labjack_ljm",
+    "pyserial",
+
+
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "black",
+    "isort",
+    "spyder",
+]
+
+[tool.setuptools]
+packages = ["wsp"]
+
+    
