@@ -26,8 +26,8 @@ alertHandler = alert_handler.AlertHandler(user_config, alert_config, auth_config
 
 if file_exists == True:
     file_size = getsize(schedule_path)
-    if file_size < 5000: # 5 kB
-        msg = f"WARNING! Nightly schedule file exists at {schedule_path} but is only {file_size} bytes large"
+    if file_size < 10000: # 10 kB
+        msg = f"WARNING! Nightly schedule file exists at {schedule_path} but is only {file_size} bytes large. This is oddly small."
         alertHandler.slack_log(msg, 'operator')
     else:
         msg = f"Nightly schedule file exists at {schedule_path} and is {file_size} bytes large"
