@@ -136,7 +136,7 @@ FILTER_CHANGE_TIME = 25. * u.second # [10. * u.second, 5. * u.second ]# W [WINTE
 MIRROR_CHANGE_TIME = 300 * u.second # big penalty for switching between winter and summer 
 SETTLE_TIME = 1. * u.second
 
-TIME_BLOCK_SIZE = 30. * u.min
+TIME_BLOCK_SIZE = 52. * u.min
 
 PROGRAM_NAME_TO_ID = {'Calibration': 0,
                       'Survey':1, 'MIT': 2, 'Caltech': 3, 'Engineering' :4 }
