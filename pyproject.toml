@@ -21,7 +21,7 @@ dependencies = [
     "matplotlib",
     "scipy",
     "astropy",
-    "PySide6",
+    # "PySide6",
     "pyro5",
     "sqlalchemy",
     "pytz",
