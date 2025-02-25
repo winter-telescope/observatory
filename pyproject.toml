@@ -10,7 +10,7 @@ authors = [
 ]
 description = "The WINTER Supervisor Program (WSP)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
