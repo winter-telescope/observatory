@@ -31,6 +31,7 @@ dependencies = [
     "slack_sdk",
     "labjack_ljm",
     "pyserial",
+    "getopt",
 
 
 ]

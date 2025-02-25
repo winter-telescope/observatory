@@ -22,76 +22,80 @@ the extra functionality we need.
 
 @author: nlourie
 """
-import time
-import numpy as np
-import sys
-import os
-from datetime import datetime
-from PyQt5 import QtCore
-import yaml
 import logging
+import os
+import sys
+import time
+from datetime import datetime
+
+import numpy as np
+import yaml
+from PyQt5 import QtCore
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, wsp_path)
-print(f'telescope: wsp_path = {wsp_path}')
+print(f"telescope: wsp_path = {wsp_path}")
 
 # winter modules
-from telescope import pwi4_client
+
+try:
+    from telescope.pwi4_client import PWI4
+except:
+    from pwi4_client import PWI4
 from utils import utils
 
+
 class TelescopeSignals(QtCore.QObject):
-    
-    wrapWarning = QtCore.pyqtSignal(object) 
-        
-        
+
+    wrapWarning = QtCore.pyqtSignal(object)
 
 
-class Telescope(pwi4_client.PWI4):
-    
+class Telescope(PWI4):
     """
     This inherits from pwi4_client.PWI4
     """
-    
-    
-    def __init__(self, config, host="localhost", port=8220, mountsim = False, logger = None):
-    
-        super(Telescope, self).__init__(host = host, port = port)
-    
-        # create an empty state dictionary that will be updated 
+
+    def __init__(
+        self, config, host="localhost", port=8220, mountsim=False, logger=None
+    ):
+
+        super(Telescope, self).__init__(host=host, port=port)
+
+        # create an empty state dictionary that will be updated
         self.state = dict()
         self.config = config
         self.signals = TelescopeSignals()
-        self.wrap_check_enabled = True#False
+        self.wrap_check_enabled = True  # False
         self.wrap_status = False
         self.mountsim = mountsim
         self.logger = logger
-        
+
         # put things in a safe position on startup
         try:
             self.mount_connect()
             time.sleep(1)
         except Exception as e:
-            self.log(f'could not connect to telescope! error: {e}')
+            self.log(f"could not connect to telescope! error: {e}")
         try:
             self.mount_stop()
             time.sleep(1)
         except Exception as e:
-            self.log(f'could not stop mount! error: {e}')
+            self.log(f"could not stop mount! error: {e}")
         try:
             self.mount_tracking_off()
             time.sleep(1)
         except Exception as e:
-            self.log(f'could not turn mount tracking off! error: {e}')
-        
+            self.log(f"could not turn mount tracking off! error: {e}")
+
         if not self.mountsim:
             try:
                 self.rotator_stop()
                 time.sleep(1)
             except Exception as e:
-                self.log(f'could not stop rotator! error: {e}')
+                self.log(f"could not stop rotator! error: {e}")
             # DO NOT MOVE THE ROTATOR UNTIL WE FIGURE OUT HOW IT MOVES!!!!!!!
-            #TODO: remove when we've tested the telescope motion with winter
+            # TODO: remove when we've tested the telescope motion with winter
             # NPL 6-9-23
             """
             try:
@@ -100,13 +104,14 @@ class Telescope(pwi4_client.PWI4):
             except Exception as e:
                 self.log(f'could not send rotator to home position! error: {e}')
             """
+
     def log(self, msg):
-        msg = f'telescope: {msg}'
+        msg = f"telescope: {msg}"
         if self.logger is None:
             print(msg)
         else:
             self.logger.warning(msg)
-        
+
     def status_text_to_dict_parse(self, response):
         """
         Given text with keyword=value pairs separated by newlines,
@@ -116,18 +121,18 @@ class Telescope(pwi4_client.PWI4):
         # In Python 3, response is of type "bytes".
         # Convert it to a string for processing below
         if type(response) == bytes:
-            response = response.decode('utf-8')
+            response = response.decode("utf-8")
 
         response_dict = {}
 
         lines = response.split("\n")
-        
+
         for line in lines:
             fields = line.split("=", 1)
             if len(fields) == 2:
                 name = fields[0]
                 value = fields[1]
-                '''
+                """
                 # NL: this is a departure from the planewave code.
                 The idea is that instead of making a dictionary of just values
                 directily it's a mixed type dictionary, so that if some value is False,
@@ -141,15 +146,15 @@ class Telescope(pwi4_client.PWI4):
                 separately, and any ints will become floats, but can always
                 be changed back to ints by data_handler. Strings that can't
                 be turned into floats will stay strings, like the pwi4.version field. 
-                '''
-                
-                if value.lower() == 'true':
+                """
+
+                if value.lower() == "true":
                     value = True
-                elif value.lower() == 'false':
+                elif value.lower() == "false":
                     value = False
-                elif 'timestamp' in name:
+                elif "timestamp" in name:
                     # if timestampt is in the name the format is YYYY-MM-DD HH:MM:SS.S
-                    datetime_obj = datetime.strptime(value,'%Y-%m-%d %H:%M:%S.%f')
+                    datetime_obj = datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
                     value = datetime_obj.timestamp()
                 else:
                     try:
@@ -158,98 +163,111 @@ class Telescope(pwi4_client.PWI4):
                         pass
                 # this is the normal thing:
                 response_dict[name] = value
-        
+
         return response_dict
-    
-    def update_state(self, verbose = False):
+
+    def update_state(self, verbose=False):
         # written by NPL
         # poll telescope status
         try:
-            #self.state = self.status()
-            #self.state = self.status_text_to_dict_parse(self.request("/status"))
+            # self.state = self.status()
+            # self.state = self.status_text_to_dict_parse(self.request("/status"))
             # get the mount status
             status = self.getStatus()
             # get the mirror temperatures
             mirror_temps = self.getMirrorTemps()
             # merge all status dictionaries into single self.state dictionary
             self.state = {**status, **mirror_temps}
-            self.state.update({'rotator_wrap_check_enabled' : self.wrap_check_enabled})
+            self.state.update({"rotator_wrap_check_enabled": self.wrap_check_enabled})
             self.check_for_wrap()
-            
+
         except Exception as e:
-            '''
+            """
             do nothing here. this avoids flooding the log with errors if
             the system is disconnected. Instead, this should be handled by the
-            watchdog to signal/log when the system is offline at a reasonable 
+            watchdog to signal/log when the system is offline at a reasonable
             cadance.
-            
+
             if desired, we could set self.state_dict back to an empty dictionary.
             This would make housekeeping get the default values back, but otherwise
             let's just set mount.is_connected to False.
-            '''
+            """
             # for now if the state can't update, then set the connected key to false:
-            self.state.update({'mount.is_connected' : False})
-            
+            self.state.update({"mount.is_connected": False})
+
             if verbose:
-                print(f'could not update telescope status: {type(e)}: {e}')
-    
+                print(f"could not update telescope status: {type(e)}: {e}")
+
     def enable_wrap_check(self):
         self.wrap_check_enabled = True
+
     def disable_wrap_check(self):
         self.wrap_check_enabled = False
-        
+
     def check_for_wrap(self):
-        
-        angle = self.state['rotator.mech_position_degs']
-        #print(f'rotator angle = {angle}')
-        active_port = int(self.state['m3.port'])
-        camname = self.config['telescope']['port'][active_port]
-        min_angle = self.config['telescope']['rotator'][camname]['rotator_min_degs']
-        max_angle = self.config['telescope']['rotator'][camname]['rotator_max_degs']
+
+        angle = self.state["rotator.mech_position_degs"]
+        # print(f'rotator angle = {angle}')
+        active_port = int(self.state["m3.port"])
+        camname = self.config["telescope"]["port"][active_port]
+        min_angle = self.config["telescope"]["rotator"][camname]["rotator_min_degs"]
+        max_angle = self.config["telescope"]["rotator"][camname]["rotator_max_degs"]
         self.wrap_status = (angle <= min_angle) or (angle >= max_angle)
-        #print(f'Wrap Check: Current Field Angle {angle} outside range ({min_angle}, {max_angle})? {self.wrap_status}')
-        
-        self.state.update({'wrap_status' : self.wrap_status})
+        # print(f'Wrap Check: Current Field Angle {angle} outside range ({min_angle}, {max_angle})? {self.wrap_status}')
+
+        self.state.update({"wrap_status": self.wrap_status})
         if self.wrap_check_enabled:
             if self.wrap_status:
-                
-                self.log('WRAP WARNING')
+
+                self.log("WRAP WARNING")
                 # we're in danger of wrapping!!
                 self.signals.wrapWarning.emit(angle)
                 # set the flag to false so we don't send a billion signals
                 self.wrap_check_enabled = False
-              
-    def fans_on(self): 
+
+    def fans_on(self):
         self.request_with_status("/fans/on")
-        
-    def fans_off(self): 
+
+    def fans_off(self):
         self.request_with_status("/fans/off")
-    
+
     def getStatus(self):
         response = self.request("/status")
         status_dict = self.status_text_to_dict_parse(response)
         return status_dict
-        
+
     def getMirrorTemps(self):
         response = self.request("/temperatures/pw1000")
         temp_dict = self.status_text_to_dict_parse(response)
         return temp_dict
 
-    
 
-    
-if __name__ == '__main__':
-        
+if __name__ == "__main__":
+
     # load the config
-    config_file = wsp_path + '/config/config.yaml'
+    config_file = wsp_path + "/config/config.yaml"
     config = utils.loadconfig(config_file)
-    host = 'thor'
-    #host = '192.168.1.106'
-    telescope = Telescope(config, host, logger = None)
-    print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
-    #%%
-    print(f'Getting Updated State from Telescope:')
-    telescope.update_state(verbose = True)
-    print(f'Mount Is Connected: {telescope.state.get("mount.is_connected",-999)} ')
-    #telescope.signals.wrapWarning.emit()
-    print(f'Wrap Status = {telescope.state.get("wrap_status", -999)}')
+    host = "thor"
+    host = "192.168.1.106"
+    host = "localhost"
+    telescope = Telescope(config, host, logger=None)
+    telescope.update_state()
+    print(f"telescope state = {telescope.state}")
+    print(f"mount.is_connected = {telescope.state['mount.is_connected']}")
+    print(f"rotator field angle = {telescope.state['rotator.field_angle_degs']}")
+    print(f"connecting mount:")
+    telescope.mount_connect()
+    print()
+    print("updating state: ")
+    telescope.update_state()
+    print(f"mount.is_connected = {telescope.state['mount.is_connected']}")
+    print(f"rotator field angle = {telescope.state['rotator.field_angle_degs']}")
+    print()
+    target_field_angle = 45
+    print(f"rotator slewing to field angle: {target_field_angle}")
+    telescope.rotator_goto_field(target_field_angle)
+    print()
+    print("updating state: ")
+    telescope.update_state()
+    print(f"mount.is_connected = {telescope.state['mount.is_connected']}")
+    print(f"rotator field angle = {telescope.state['rotator.field_angle_degs']}")
