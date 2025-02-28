@@ -12,13 +12,13 @@ pdus:
         outlets:
             1: 'Callamp'
             2: 'Empty'
-            3: 'Empty'
+            3: 'PurgeFlow'
             4: 'Empty'
             5: 'Switch'
             6: 'Router'
             7: 'Dead'
             8: 'Dead'
-        startup: 21111111
+        startup: 21211111
     pdu2:
         pdu_number: 2
         ip: 192.168.1.75

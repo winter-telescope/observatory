@@ -69,7 +69,7 @@ except Exception as e:
                                     'ExpTime', 'airmass', 'progid', 'progname', 'progtitle'])
     print("Failed to grab history: ", e)
 
-#history = history[history['expMJD']>60310]
+history = history[history['expMJD']>60105]
 #ra  = np.array(qresult[:,27],dtype=np.float32)
 ra = np.array(history['ra'], dtype=np.float32)#[0:100]
 #ra = ra / 24.0 * 360.0 * np.pi/180.0
@@ -115,8 +115,12 @@ field_size = 1 # degree on sky
 half_size = field_size / 2
 
 # Create a colormap based on the number of instances
-norm = plt.Normalize(vmin=np.min(counts), vmax=np.max(counts))
-cmap = cm.jet
+vmin = np.min(counts)
+vmax = np.max(counts)
+vmin_adjusted = vmin + (vmax - vmin) / 3  # Start a third of the way
+
+norm = colors.Normalize(vmin=vmin, vmax=vmax)
+cmap = cm.cool
 
 # Sort positions by number of visits (ascending order)
 sorted_indices = np.argsort(counts_rounded)
@@ -147,12 +151,13 @@ for pos, count in zip(sorted_positions, sorted_counts):
 #     ra3 = rad_ra + radiffT
 #     color = cmap(norm(count))
 #     ax2.fill([ra1, ra2, ra3, ra4], [rad_dec - half_size*np.pi/180, rad_dec - half_size*np.pi/180, rad_dec + half_size*np.pi/180, rad_dec + half_size*np.pi/180], color=color, alpha=0.5, edgecolor='none')
-
 # Add color bar
 sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
 sm.set_array([])
 cbar = fig2.colorbar(sm, ax=ax2, orientation='vertical', fraction=0.02, pad=0.04)
 cbar.set_label('Number of Visits')
+ax2.set_xlabel('Right Ascension')
+ax2.set_ylabel('Declination')
 
 
 figname = os.path.join(os.getenv("HOME"),'data','skymap_cumulative.jpg')
