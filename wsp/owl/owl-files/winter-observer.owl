@@ -1964,14 +1964,14 @@
                             "_id": "729063006"
                         },
                         "_map": {
-                            "0": "OFF",
-                            "1": "ON[style=No style (P258035071)]"
+                            "0": "HIGH",
+                            "1": "LOW[style=No style (P1110536263)]"
                         }
                     },
                     "PObject": {
                         "_id": "1911987376"
                     },
-                    "_caption": "3. Empty",
+                    "_caption": "3. PurgeFlow",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_3",
