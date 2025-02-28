@@ -1517,12 +1517,13 @@ class RoboOperator(QtCore.QObject):
                     self.log(f"df['raDeg'] = {df['raDeg']}")
                     self.log(f"df['decDeg'] = {df['decDeg']}")
 
+                    # make a list of the j2000 coords
                     j2000_coords = astropy.coordinates.SkyCoord(
-                        ra=df["raDeg"] * u.deg,
-                        dec=df["decDeg"] * u.deg,
+                        ra=df["raDeg"].values * u.deg,
+                        dec=df["decDeg"].values * u.deg,
                         frame="icrs",
                     )
-                    self.log("made the j2000 coords?")
+                    self.log(f"made the j2000 coords: {j2000_coords}")
 
                     local_coords = j2000_coords.transform_to(frame)
                     local_alt_deg = local_coords.alt.deg
