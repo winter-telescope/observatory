@@ -16,10 +16,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numpy==1.21.2",
+    "numpy",
     "pandas==1.4.1",
-    "matplotlib==3.5.1",
-    "scipy==1.7.3",
+    "matplotlib",
+    "scipy",
     "astropy==5.0.2",
     # "PySide6",
     "pyro5==5.13.1",
