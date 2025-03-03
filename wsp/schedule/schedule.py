@@ -54,22 +54,23 @@ It loads in a csv file with the following columns:
 @author: nlourie
 """
 # system packages
+# import ObsWriter
+import logging
 import os
+import shutil
+import subprocess
 import sys
-import numpy as np
-from datetime import datetime,timedelta
+import traceback as tb
+from datetime import datetime, timedelta
+
 #from astropy.time import Time
 import astropy.time
 import astropy.units as u
-import pytz
-import shutil
 import matplotlib.pyplot as plt
-import traceback as tb
-import sqlalchemy as db
+import numpy as np
 import pandas as pd
-# import ObsWriter
-import logging
-import subprocess
+import pytz
+import sqlalchemy as db
 
 #import wintertoo.validate
 
@@ -78,8 +79,7 @@ wsp_path = os.path.dirname(os.getcwd())
 sys.path.insert(1, wsp_path)
 
 # winter Modules
-from utils import utils
-from utils import logging_setup
+from utils import logging_setup, utils
 
 try:
     import wintertoo_validate
@@ -481,7 +481,7 @@ if __name__ == '__main__':
     logger = None
     schedule = Schedule(base_directory, config, logger, verbose = True)
     
-    obstime_mjd = 59804.1530797029
+    obstime_mjd = 60737.0
 
 
     schedulefile_path = os.readlink(os.path.join(os.getenv("HOME"), 'data','nightly_schedule.lnk'))
@@ -495,7 +495,7 @@ if __name__ == '__main__':
     #schedule.loadSchedule('nightly')
     #schedule.loadSchedule(schedulefile_name)
     #schedule.loadSchedule(None)
-    schedulefile = '/home/winter/data/schedules/ToO/testcrab.db'
+    schedulefile = 'ToO/test.db'
     """
     print(f'scheduler: attempting to create sql engine to schedule file at {schedulefile}')
     engine = db.create_engine('sqlite:///' + schedulefile)    
@@ -530,8 +530,11 @@ if __name__ == '__main__':
     
     schedule.log('all done with schedule!')
     
-    # reset the schedule to fully unobserved
-    schedule.log('resetting observed to false again')
-    schedule._reset_observation_log()
+    reset_schedules = True
+    if reset_schedules:
+        # reset the schedule to fully unobserved
+        schedule.log('resetting observed to false again')
+        schedule._reset_observation_log()
+ 
     
     
