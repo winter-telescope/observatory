@@ -153,7 +153,7 @@ if __name__ == "__main__":
                 "summer": {
                     "rotator_field_angle_zeropoint": 155.0,
                     "rotator_home_degs": -25.0,
-                    "rotator_max_degs": 120.0,
+                    "rotator_max_degs": 160.0,
                     "rotator_min_degs": -120.0,
                 },
         },
@@ -161,9 +161,10 @@ if __name__ == "__main__":
 
     rotator = Rotator(config)
     ra, dec = "4:29:19", "43:54:23"
+    ra, dec = "5:52:17.76", "32:32:42.0"
     ra_hours = astropy.coordinates.Angle(ra, unit=u.hour).value
     dec_deg = astropy.coordinates.Angle(dec, unit=u.deg).value
-    target_field_angle = 155.0
+    target_field_angle = -24.5
     obstime = astropy.time.Time(datetime.utcnow(), location=rotator.site)
     rotator.get_safe_rotator_angle(ra_hours, dec_deg, target_field_angle, obstime, verbose=True)
     

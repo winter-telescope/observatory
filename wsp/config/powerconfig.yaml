@@ -11,14 +11,14 @@ pdus:
         brand: 'Digital Loggers'
         outlets:
             1: 'Callamp'
-            2: 'Empty'
+            2: 'SUMMERcam'
             3: 'PurgeFlow'
             4: 'Empty'
             5: 'Switch'
             6: 'Router'
             7: 'Dead'
             8: 'Dead'
-        startup: 21211111
+        startup: 22211111
     pdu2:
         pdu_number: 2
         ip: 192.168.1.75
@@ -29,7 +29,7 @@ pdus:
             3: 'Empty'
             4: 'Empty'
             5: 'Odin'
-            6: 'SUMMER'
+            6: 'SUMMERacc'
             7: 'Thor'
             8: 'Freya'
-        startup: 22111111
+        startup: 22111211
