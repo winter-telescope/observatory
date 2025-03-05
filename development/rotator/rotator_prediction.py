@@ -5,13 +5,14 @@ Created on Sun Jun 11 16:28:33 2023
 
 @author: winter
 """
-import astropy.coordinates
-import astropy.units as u
-import yaml
 import os
-import numpy as np
 import sys
 from datetime import datetime
+
+import astropy.coordinates
+import astropy.units as u
+import numpy as np
+import yaml
 
 config = dict({'site': {
                    # lat/lon. expects a format that can be read with astropy.coordinates.Angle()
@@ -40,23 +41,27 @@ config = dict({'site': {
                              'rotator_field_angle_zeropoint': 155.0,
                              'rotator_home_degs': -25.0,
                              'rotator_max_degs': 160.0,
-                             'rotator_min_degs': -210.0}
+                             'rotator_min_degs': -120.0}
                          }
                         }
         })
 
 
-camname = 'winter'
+camname = 'summer'
 
 
-obj = 'm94'
-
-
-        
+obj = 'm37'
 j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
+
+ra, dec = "5:52:17.76", "32:32:42.0"
+ra_hours = astropy.coordinates.Angle(ra, unit=u.hour)
+dec_deg = astropy.coordinates.Angle(dec, unit=u.deg)
+j2000_coords = astropy.coordinates.SkyCoord(ra_hours, dec_deg, frame='icrs')
+        
 target_ra_j2000_hours = j2000_coords.ra.hour
 target_dec_j2000_deg = j2000_coords.dec.deg
 ra_deg = j2000_coords.ra.deg
+
 
 
 
@@ -106,7 +111,8 @@ if (predicted_rotator_mechangle > \
     config['telescope']['rotator'][camname]['rotator_max_degs']):
     print("No rotator wrap predicted")
     target_mech_angle = predicted_rotator_mechangle
-    
+    print(f"Target field angle --> {target_field_angle}")
+    print(f"Target mech angle = {target_mech_angle}")    
 if (predicted_rotator_mechangle < \
     config['telescope']['rotator'][camname]['rotator_min_degs']):
     print("Rotator wrapping < min, adjusting")
