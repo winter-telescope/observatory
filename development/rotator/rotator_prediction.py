@@ -96,7 +96,7 @@ config = dict({'site': {
                             'rotator_max_degs': 120.0,
                             'rotator_min_degs': -50.0},
                          'summer': { 
-                             'rotator_field_angle_zeropoint': 155.0,
+                             'rotator_field_angle_zeropoint': -24.5,
                              'rotator_home_degs': -25.0,
                              'rotator_max_degs': 160.0,
                              'rotator_min_degs': -120.0}
@@ -112,6 +112,9 @@ obj = 'm37'
 j2000_coords = astropy.coordinates.SkyCoord.from_name(obj, frame = 'icrs')
 
 ra, dec = "5:52:17.76", "32:32:42.0"
+ra, dec = "4:29:59.14"," 43:24:24.4" 
+ra, dec = "13:03:46.0 ", "26:21:55.6"
+ra, dec = "12:59:36", "27:57:33"
 ra_hours = astropy.coordinates.Angle(ra, unit=u.hour)
 dec_deg = astropy.coordinates.Angle(dec, unit=u.deg)
 j2000_coords = astropy.coordinates.SkyCoord(ra_hours, dec_deg, frame='icrs')
