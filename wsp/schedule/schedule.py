@@ -489,13 +489,13 @@ if __name__ == '__main__':
     #schedulefile_path = os.path.join(os.getenv("HOME"), 'data', 'schedules','ToO', 'timed_requests_08_15_2022_15_1660601716_.db')
     schedulefile_dir = os.path.dirname(schedulefile_path)
     schedulefile_name = schedulefile_path.split('/')[-1]
-    
+    schedulefile = schedulefile_name
     
     #schedule.loadSchedule(os.path.join(schedulefile_dir, schedulefile_name))
     #schedule.loadSchedule('nightly')
     #schedule.loadSchedule(schedulefile_name)
     #schedule.loadSchedule(None)
-    schedulefile = 'ToO/test.db'
+    #schedulefile = 'ToO/test.db'
     """
     print(f'scheduler: attempting to create sql engine to schedule file at {schedulefile}')
     engine = db.create_engine('sqlite:///' + schedulefile)    
@@ -510,6 +510,8 @@ if __name__ == '__main__':
     conn.close()
     
     """
+    
+    print(f"schedule file name: {schedulefile_name}")
     schedule.loadSchedule(schedulefile)
     
     # reset the schedule to fully unobserved
