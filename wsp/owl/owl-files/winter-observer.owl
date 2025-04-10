@@ -1964,8 +1964,8 @@
                             "_id": "729063006"
                         },
                         "_map": {
-                            "0": "OFF",
-                            "1": "ON[style=No style (P258035071)]"
+                            "0": "HIGH",
+                            "1": "LOW[style=No style (P1110536263)]"
                         }
                     },
                     "PObject": {

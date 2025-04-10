@@ -8,10 +8,11 @@
            /import-urllib-parse-fails-when-python-run-from-command-line>>
 """
 import urllib
-import urllib.parse
 import urllib.error
+import urllib.parse
 import urllib.request
-#NPL 12/27/19 Got rid of all calls to urllib2 which is not available in py3
+
+# NPL 12/27/19 Got rid of all calls to urllib2 which is not available in py3
 
 
 class PWI4:
@@ -25,6 +26,7 @@ class PWI4:
         self.comm = PWI4HttpCommunicator(host, port)
         # NPL: Initialize the status with a default status
         self.state = defaultPWI4Status()
+
     ### High-level methods #################################
 
     def status(self):
@@ -49,13 +51,19 @@ class PWI4:
         return self.request_with_status("/mount/stop")
 
     def mount_goto_ra_dec_apparent(self, ra_hours, dec_degs):
-        return self.request_with_status("/mount/goto_ra_dec_apparent", ra_hours=ra_hours, dec_degs=dec_degs)
+        return self.request_with_status(
+            "/mount/goto_ra_dec_apparent", ra_hours=ra_hours, dec_degs=dec_degs
+        )
 
     def mount_goto_ra_dec_j2000(self, ra_hours, dec_degs):
-        return self.request_with_status("/mount/goto_ra_dec_j2000", ra_hours=ra_hours, dec_degs=dec_degs)
+        return self.request_with_status(
+            "/mount/goto_ra_dec_j2000", ra_hours=ra_hours, dec_degs=dec_degs
+        )
 
     def mount_goto_alt_az(self, alt_degs, az_degs):
-        return self.request_with_status("/mount/goto_alt_az", alt_degs=alt_degs, az_degs=az_degs)
+        return self.request_with_status(
+            "/mount/goto_alt_az", alt_degs=alt_degs, az_degs=az_degs
+        )
 
     def mount_offset(self, **kwargs):
         """
@@ -70,9 +78,9 @@ class PWI4:
 
         ra: Offset the target Right Ascension coordinate
         dec: Offset the target Declination coordinate
-        axis0: Offset the mount's primary axis position 
+        axis0: Offset the mount's primary axis position
                (roughly Azimuth on an Alt-Az mount, or RA on In equatorial mount)
-        axis1: Offset the mount's secondary axis position 
+        axis1: Offset the mount's secondary axis position
                (roughly Altitude on an Alt-Az mount, or Dec on an equatorial mount)
         path: Offset along the direction of travel for a moving target
         transverse: Offset perpendicular to the direction of travel for a moving target
@@ -100,10 +108,16 @@ class PWI4:
         return self.request_with_status("/mount/tracking_off")
 
     def mount_follow_tle(self, tle_line_1, tle_line_2, tle_line_3):
-        return self.request_with_status("/mount/follow_tle", line1=tle_line_1, line2=tle_line_2, line3=tle_line_3)
+        return self.request_with_status(
+            "/mount/follow_tle", line1=tle_line_1, line2=tle_line_2, line3=tle_line_3
+        )
 
     def mount_model_add_point(self, ra_j2000_hours, dec_j2000_degs):
-        return self.request_with_status("/mount/model/add_point", ra_j2000_hours=ra_j2000_hours, dec_j2000_degs=dec_j2000_degs)
+        return self.request_with_status(
+            "/mount/model/add_point",
+            ra_j2000_hours=ra_j2000_hours,
+            dec_j2000_degs=dec_j2000_degs,
+        )
 
     def mount_model_clear_points(self):
         return self.request_with_status("/mount/model/clear_points")
@@ -134,7 +148,7 @@ class PWI4:
 
     def rotator_disable(self):
         return self.request_with_status("/rotator/disable")
-        
+
     def rotator_goto_mech(self, target_degs):
         return self.request_with_status("/rotator/goto_mech", degs=target_degs)
 
@@ -159,7 +173,7 @@ class PWI4:
         at the current telescope position
         """
         return self.request("/virtualcamera/take_image")
-    
+
     def virtualcamera_take_image_and_save(self, filename):
         """
         Request a fake FITS image from PWI4.
@@ -187,7 +201,7 @@ class PWI4:
         Useful for testing how the library will respond.
         """
         return self.request_with_status("/internal/crash")
-    
+
     def test_invalid_parameters(self):
         """
         Try making a request with intentionally missing parameters.
@@ -203,7 +217,7 @@ class PWI4:
     def request_with_status(self, command, **kwargs):
         response_text = self.request(command, **kwargs)
         return self.parse_status(response_text)
-    
+
     ### Status parsing utilities ################################
 
     def status_text_to_dict(self, response):
@@ -211,13 +225,17 @@ class PWI4:
         Given text with keyword=value pairs separated by newlines,
         return a dictionary with the equivalent contents.
         """
-        
+
         response_dict = {}
 
-        lines = response.split(b"\n") #NPL 12/27/19 added the b to make this a byte-like check to work in py3
-        
+        lines = response.split(
+            b"\n"
+        )  # NPL 12/27/19 added the b to make this a byte-like check to work in py3
+
         for line in lines:
-            fields = line.split(b"=", 1) #NPL 12/27/19 added the b to make this a byte-like check to work in py3
+            fields = line.split(
+                b"=", 1
+            )  # NPL 12/27/19 added the b to make this a byte-like check to work in py3
             if len(fields) == 2:
                 name = fields[0]
                 value = fields[1]
@@ -228,26 +246,25 @@ class PWI4:
     def parse_status(self, response_text):
         response_dict = self.status_text_to_dict(response_text)
         return PWI4Status(response_dict)
-    
-    def update_state(self, verbose = False):
+
+    def update_state(self, verbose=False):
         # written by NPL
         # poll telescope status
         try:
             self.state = self.status()
         except Exception as e:
-            '''
+            """
             do nothing here. this avoids flooding the log with errors if
             the system is disconnected. Instead, this should be handled by the
-            watchdog to signal/log when the system is offline at a reasonable 
+            watchdog to signal/log when the system is offline at a reasonable
             cadance.
-            '''
+            """
             self.state = defaultPWI4Status()
             if verbose:
-                print(f'could not update telescope status: {type(e)}: {e}')
+                print(f"could not update telescope status: {type(e)}: {e}")
 
-    
-    
-class Section(object): 
+
+class Section(object):
     """
     Simple object for collecting properties in PWI4Status
     """
@@ -260,8 +277,9 @@ class defaultPWI4Status:
     this is a class that just defines default values for all the status fields
     this can be returned if the status cannot be obtained from the telescope
     """
-    def __init__(self, default_val = -999):
-        
+
+    def __init__(self, default_val=-999):
+
         self.raw = default_val  # Allow direct access to raw entries as needed
 
         self.site = Section()
@@ -284,14 +302,14 @@ class defaultPWI4Status:
         self.mount.field_angle_here_degs = default_val
         self.mount.field_angle_at_target_degs = default_val
         self.mount.field_angle_rate_at_target_degs_per_sec = default_val
-        
+
         self.mount.axis0 = Section()
         self.mount.axis0.is_enabled = default_val
         self.mount.axis0.rms_error_arcsec = default_val
         self.mount.axis0.dist_to_target_arcsec = default_val
         self.mount.axis0.servo_error_arcsec = default_val
         self.mount.axis0.position_degs = default_val
-        
+
         self.mount.axis1 = Section()
         self.mount.axis1.is_enabled = default_val
         self.mount.axis1.rms_error_arcsec = default_val
@@ -310,7 +328,7 @@ class defaultPWI4Status:
         self.focuser.is_enabled = default_val
         self.focuser.position = default_val
         self.focuser.is_moving = default_val
-        
+
         self.rotator = Section()
         self.rotator.is_connected = default_val
         self.rotator.is_enabled = default_val
@@ -321,10 +339,6 @@ class defaultPWI4Status:
 
         self.m3 = Section()
         self.m3.port = default_val
-
-
-
-
 
 
 class PWI4Status:
@@ -353,35 +367,55 @@ class PWI4Status:
         self.mount.is_slewing = self.get_bool("mount.is_slewing")
         self.mount.is_tracking = self.get_bool("mount.is_tracking")
         self.mount.field_angle_here_degs = self.get_float("mount.field_angle_here_degs")
-        self.mount.field_angle_at_target_degs = self.get_float("mount.field_angle_at_target_degs")
-        self.mount.field_angle_rate_at_target_degs_per_sec = self.get_float("mount.field_angle_rate_at_target_degs_per_sec")
-        
+        self.mount.field_angle_at_target_degs = self.get_float(
+            "mount.field_angle_at_target_degs"
+        )
+        self.mount.field_angle_rate_at_target_degs_per_sec = self.get_float(
+            "mount.field_angle_rate_at_target_degs_per_sec"
+        )
+
         self.mount.axis0 = Section()
         self.mount.axis0.is_enabled = self.get_bool("mount.axis0.is_enabled")
-        self.mount.axis0.rms_error_arcsec = self.get_bool("mount.axis0.rms_error_arcsec")
-        self.mount.axis0.dist_to_target_arcsec = self.get_float("mount.axis0.dist_to_target_arcsec")
-        self.mount.axis0.servo_error_arcsec = self.get_float("mount.axis0.servo_error_arcsec")
+        self.mount.axis0.rms_error_arcsec = self.get_bool(
+            "mount.axis0.rms_error_arcsec"
+        )
+        self.mount.axis0.dist_to_target_arcsec = self.get_float(
+            "mount.axis0.dist_to_target_arcsec"
+        )
+        self.mount.axis0.servo_error_arcsec = self.get_float(
+            "mount.axis0.servo_error_arcsec"
+        )
         self.mount.axis0.position_degs = self.get_float("mount.axis0.position_degs")
-        
+
         self.mount.axis1 = Section()
         self.mount.axis1.is_enabled = self.get_bool("mount.axis1.is_enabled")
-        self.mount.axis1.rms_error_arcsec = self.get_bool("mount.axis1.rms_error_arcsec")
-        self.mount.axis1.dist_to_target_arcsec = self.get_float("mount.axis1.dist_to_target_arcsec")
-        self.mount.axis1.servo_error_arcsec = self.get_float("mount.axis1.servo_error_arcsec")
+        self.mount.axis1.rms_error_arcsec = self.get_bool(
+            "mount.axis1.rms_error_arcsec"
+        )
+        self.mount.axis1.dist_to_target_arcsec = self.get_float(
+            "mount.axis1.dist_to_target_arcsec"
+        )
+        self.mount.axis1.servo_error_arcsec = self.get_float(
+            "mount.axis1.servo_error_arcsec"
+        )
         self.mount.axis1.position_degs = self.get_float("mount.axis1.position_degs")
 
         self.mount.model = Section()
         self.mount.model.filename = self.get_string("mount.model.filename")
         self.mount.model.num_points_total = self.get_int("mount.model.num_points_total")
-        self.mount.model.num_points_enabled = self.get_int("mount.model.num_points_enabled")
-        self.mount.model.rms_error_arcsec = self.get_float("mount.model.rms_error_arcsec")
+        self.mount.model.num_points_enabled = self.get_int(
+            "mount.model.num_points_enabled"
+        )
+        self.mount.model.rms_error_arcsec = self.get_float(
+            "mount.model.rms_error_arcsec"
+        )
 
         self.focuser = Section()
         self.focuser.is_connected = self.get_bool("focuser.is_enabled")
         self.focuser.is_enabled = self.get_bool("focuser.is_enabled")
         self.focuser.position = self.get_float("focuser.position")
         self.focuser.is_moving = self.get_bool("focuser.is_moving")
-        
+
         self.rotator = Section()
         self.rotator.is_connected = self.get_bool("rotator.is_connected")
         self.rotator.is_enabled = self.get_bool("rotator.is_enabled")
@@ -393,20 +427,22 @@ class PWI4Status:
         self.m3 = Section()
         self.m3.port = self.get_int("m3.port")
 
-    #NPL to get these get_XXX functions to work, had to convert "name" to bytes
-        #Replaced all self.raw[name] calls with self.raw[bytes(name,'utf-8')]
-    
+    # NPL to get these get_XXX functions to work, had to convert "name" to bytes
+    # Replaced all self.raw[name] calls with self.raw[bytes(name,'utf-8')]
+
     def get_bool(self, name):
-        return self.raw[bytes(name,'utf-8')].lower() == b"true" # also have to change "true" to b"true" to make sure this works byte-wise
+        return (
+            self.raw[bytes(name, "utf-8")].lower() == b"true"
+        )  # also have to change "true" to b"true" to make sure this works byte-wise
 
     def get_float(self, name):
-        return float(self.raw[bytes(name,'utf-8')])
+        return float(self.raw[bytes(name, "utf-8")])
 
     def get_int(self, name):
-        return int(self.raw[bytes(name,'utf-8')])
-    
+        return int(self.raw[bytes(name, "utf-8")])
+
     def get_string(self, name):
-        return self.raw[bytes(name,'utf-8')]
+        return self.raw[bytes(name, "utf-8")]
 
     def __repr__(self):
         """
@@ -423,6 +459,7 @@ class PWI4Status:
             value = self.raw[key]
             lines.append(line_format % (key, value))
         return "\n".join(lines)
+
 
 class PWI4HttpCommunicator:
     """
@@ -450,9 +487,11 @@ class PWI4HttpCommunicator:
 
         # For every keyword=value argument given to this function,
         # construct a string of the form "key1=val1&key2=val2".
-        #print('The Keyword Items are: ',kwargs) #NPL this was just to check what kwargs put out
-        #urlparams = urllib.parse.urlencode(kwargs.items()) #NPL this doesn't play well with the py3 urllib
-        urlparams = urllib.parse.urlencode(kwargs) #NPL kwargs is a dict, which is what urlencode wants, not dictionary items 
+        # print('The Keyword Items are: ',kwargs) #NPL this was just to check what kwargs put out
+        # urlparams = urllib.parse.urlencode(kwargs.items()) #NPL this doesn't play well with the py3 urllib
+        urlparams = urllib.parse.urlencode(
+            kwargs
+        )  # NPL kwargs is a dict, which is what urlencode wants, not dictionary items
 
         # In URLs, spaces can be encoded as "+" characters or as "%20".
         # This will convert plus symbols to percent encoding for improved compatibility.
@@ -470,7 +509,7 @@ class PWI4HttpCommunicator:
 
         Example:
           pwi_request("/mount/gotoradec2000", ra=10.123, dec="15 30 45")
-        
+
         will construct the appropriate URL and issue the request to the server.
 
         The server response payload will be returned, or an exception will be thrown
@@ -496,14 +535,15 @@ class PWI4HttpCommunicator:
                 error_message = str(e)
 
             try:
-                error_details = e.read()  # Try to read the payload of the response for error information
+                error_details = (
+                    e.read()
+                )  # Try to read the payload of the response for error information
                 error_message = error_message + ": " + error_details
             except:
-                pass # If that failed, we won't include any further details
-            
-            raise Exception(error_message) # TODO: Consider a custom exception here
+                pass  # If that failed, we won't include any further details
 
-            
+            raise Exception(error_message)  # TODO: Consider a custom exception here
+
         except Exception as e:
             # This will often be a urllib2.URLError to indicate that a connection
             # could not be made to the server, but we'll handle any exception here
@@ -513,15 +553,30 @@ class PWI4HttpCommunicator:
         return payload
 
 
-if __name__ == '__main__':
-    
-    host = 'thor'
-    host = '192.168.1.106'
+if __name__ == "__main__":
+
+    host = "thor"
+    host = "192.168.1.106"
+    host = "localhost"
     telescope = PWI4(host)
-    print(f'site.lmst_hours = {telescope.state.site.lmst_hours}')
-    print(f'mount.is_connected = {telescope.state.mount.is_connected}')
+    print(f"site.lmst_hours = {telescope.state.site.lmst_hours}")
+    print(f"mount.is_connected = {telescope.state.mount.is_connected}")
+    print(f"rotator field angle = {telescope.state.rotator.field_angle_degs}")
+    print(f"connecting mount:")
+    telescope.mount_connect()
     print()
-    print('updating state: ')
+    print("updating state: ")
     telescope.update_state()
-    print(f'site.lmst_hours = {telescope.state.site.lmst_hours}')
-    print(f'mount.is_connected = {telescope.state.mount.is_connected}')
+    print(f"site.lmst_hours = {telescope.state.site.lmst_hours}")
+    print(f"mount.is_connected = {telescope.state.mount.is_connected}")
+    print(f"rotator field angle = {telescope.state.rotator.field_angle_degs}")
+    print()
+    target_field_angle = 45
+    print(f"rotator slewing to field angle: {target_field_angle}")
+    telescope.rotator_goto_field(target_field_angle)
+    print()
+    print("updating state: ")
+    telescope.update_state()
+    print(f"site.lmst_hours = {telescope.state.site.lmst_hours}")
+    print(f"mount.is_connected = {telescope.state.mount.is_connected}")
+    print(f"rotator field angle = {telescope.state.rotator.field_angle_degs}")

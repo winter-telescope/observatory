@@ -377,7 +377,7 @@ robotic_manager_triggers:
 ########### TELESCOPE SET UP ##########
 telescope:
     host: "thor"
-    simhost: '192.168.1.106'
+    simhost: "localhost"
     comm_port: 8220
     home_alt_degs: 45.0
     #home_az_degs: 349.0
@@ -874,7 +874,7 @@ filters:
     winter:
         J:
             name: "MKO J-band (Asahi)"
-            nominal_focus: 11687.0
+            nominal_focus: 11900.0 #11687.0
             active: True
             focus_exptime: 30
         Y:  

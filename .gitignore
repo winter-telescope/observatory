@@ -14,4 +14,9 @@ __pycache__/
 *.dm
 *dm.lnk
 *data.json
+*.conda*
+*.env*
+*.venv*
+*.vscode*
+*.egg-info*
 
