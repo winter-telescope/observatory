@@ -28,6 +28,7 @@ import astropy.time
 import astropy.units as u
 import numpy as np
 import pandas as pd
+import Pyro5.api
 import Pyro5.client
 import Pyro5.core
 import pytz
@@ -4206,10 +4207,14 @@ class RoboOperator(QtCore.QObject):
             if self.camname == "winter":
                 # make this better and less specific if possible...
                 try:
-                    ns = Pyro5.core.locate_ns(host="192.168.1.10")
+                    ns = Pyro5.api.locate_ns(host="192.168.1.10")
+
                     # uri = ns.lookup("WINTERImageDaemon")
-                    uri = ns.lookup("winter_daemon")
-                    self.image_daemon = Pyro5.client.Proxy(uri)
+                    # uri = ns.lookup("winter_daemon")
+                    # self.image_daemon = Pyro5.client.Proxy(uri)
+                    self.image_daemon = Pyro5.api.Proxy(
+                        ns.lookup(f"{self.camname}_daemon")
+                    )
                     image_daemon_connected = True
                 except Exception as e:
                     image_daemon_connected = False
@@ -5901,7 +5906,10 @@ class RoboOperator(QtCore.QObject):
 
                 # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
                 # if self.exptime == self.state['exptime']:
-                if self.exptime == self.camera.state["exptime"]:
+                # for now we'll just set it to 30s, but this should be set in the config file on a per-camera basis
+                exptime = 30.0
+
+                if exptime == self.camera.state["exptime"]:
                     self.log(
                         "requested exposure time matches current setting, no further action taken"
                     )
@@ -5954,10 +5962,11 @@ class RoboOperator(QtCore.QObject):
             # if we get here, the observation was successful
             # try to solve the astrometry
             try:
-                ns = Pyro5.core.locate_ns(host="192.168.1.10")
+                # ns = Pyro5.core.locate_ns(host="192.168.1.10")
+                ns = Pyro5.api.locate_ns(host="192.168.1.10")
+
                 if self.camname == "winter":
-                    daemon_uri = ns.lookup("winter_daemon")
-                    daemon = Pyro5.core.Proxy(daemon_uri)
+                    daemon = Pyro5.api.Proxy(ns.lookup(f"{camname}_daemon"))
 
                     science_image = images[-1]
                     addr = "pb"
