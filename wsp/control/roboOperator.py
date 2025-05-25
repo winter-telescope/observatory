@@ -5845,6 +5845,7 @@ class RoboOperator(QtCore.QObject):
 
     def remakePointingModel(self, camname, append=False, firstpoint=0):
         context = "Pointing Model"
+        self.log("setting up a new pointing model")
         self.alertHandler.slack_log("Setting Up a New Pointing Model!", group=None)
         if append:
             # if in append mode, don't clear the old points
