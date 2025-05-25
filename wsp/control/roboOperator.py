@@ -5917,13 +5917,13 @@ class RoboOperator(QtCore.QObject):
                 else:
                     # self.log(f'current exptime = {self.state["exptime"]}, changing to {self.exptime}')
                     self.log(
-                        f'current exptime = {self.camera.state["exptime"]}, changing to {self.exptime}'
+                        f'current exptime = {self.camera.state["exptime"]}, changing to {exptime}'
                     )
-                    self.do(f"setExposure {self.exptime} --{self.camname}")
+                    self.do(f"setExposure {exptime} --{camname}")
 
                 # set up the first observation
                 system = "camera"
-                if self.camname == "winter":
+                if camname == "winter":
                     num_dithers = 4
                 else:
                     num_dithers = 1
