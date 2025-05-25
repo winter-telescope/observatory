@@ -5909,6 +5909,9 @@ class RoboOperator(QtCore.QObject):
                 # for now we'll just set it to 30s, but this should be set in the config file on a per-camera basis
                 exptime = 30.0
 
+                # set the filter wheel to J-band
+                self.do(f"fw_goto 2")
+
                 if exptime == self.camera.state["exptime"]:
                     self.log(
                         "requested exposure time matches current setting, no further action taken"
