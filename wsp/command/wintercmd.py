@@ -3876,6 +3876,7 @@ class Wintercmd(QtCore.QObject):
         firstpoint = self.args.firstline
 
         sigcmd = signalCmd("remakePointingModel", append=append, firstpoint=firstpoint)
+        print(f"wintercmd: sending command = {sigcmd.cmd}")
 
         self.roboThread.newCommand.emit(sigcmd)
 
