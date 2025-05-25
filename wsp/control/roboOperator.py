@@ -6001,7 +6001,7 @@ class RoboOperator(QtCore.QObject):
                     )
 
                     platescale = astrom_info["pixel_scale"]
-                    field_angle = astrom_info["field_angle"]
+                    field_angle = astrom_info["rotation_deg"]
 
                     self.announce(
                         f"solved image: {science_image}, (RA, Dec) deg = ({ra_j2000.deg:0.2f}, {dec_j2000.deg:0.2f}), platescale = {platescale:0.2f}, field angle = {field_angle:0.2f}"
