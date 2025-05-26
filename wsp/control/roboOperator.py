@@ -5977,7 +5977,7 @@ class RoboOperator(QtCore.QObject):
                         addr=addr,
                         science_image=science_image,
                         background_image_list=images,
-                        output_dir="tmp",
+                        output_dir="/home/winter/data/tmp/",
                         pix_coords=(1864, 530),
                         timeout=10,
                     )
