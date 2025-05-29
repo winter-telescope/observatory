@@ -5875,7 +5875,8 @@ class RoboOperator(QtCore.QObject):
         npoints = len(self.pointingModelBuilder.altaz_points)
 
         # make a list of all the points to step through
-        indices = np.arange(firstpoint - 1, npoints, 1)
+        # indices = np.arange(firstpoint - 1, npoints, 1)
+        indices = np.arange(firstpoint, npoints)  # -> simpler version of above
 
         # randomly shuffle the indices so that we slowly fill out a full model in random order
         np.random.shuffle(indices)
@@ -5934,7 +5935,7 @@ class RoboOperator(QtCore.QObject):
                 for dither_number in range(num_dithers):
                     if dither_number == 0:
                         self.do(
-                            f"robo_observe altaz {target_alt} {target_az} --pointing --calibration"
+                            f"robo_observe altaz {target_alt} {target_az} --pointing --calibration --offset center"
                         )
 
                     else:
@@ -6015,27 +6016,30 @@ class RoboOperator(QtCore.QObject):
             except Exception as e:
                 msg = f"error while running astrometry with {system} due to {e.__class__.__name__}, {e}"
                 self.announce(msg)
-                raise  # re-raise the exception
+                continue  # don't bail out, just go to the next point
+            else:
+                self.log("COMPLETED ASTROMETRY ON LAST IMAGE")
+                self.log(
+                    f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}'
+                )
+                self.log(
+                    f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}'
+                )
+                self.log(
+                    f"Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg"
+                )
 
-            self.log("COMPLETED ASTROMETRY ON LAST IMAGE")
-            self.log(
-                f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}'
-            )
-            self.log(
-                f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}'
-            )
-            self.log(
-                f"Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg"
-            )
+                # if we get here, the astrometry was successful! add the point to the model
+                msg = f"Adding model point (alt, az) = ({target_alt:0.1f}, {target_az:0.1f}) --> (ra, dec) = ({ra_j2000_hours:0.2f}, {dec_j2000_degrees:0.2f}), Nominal (ra, dec) = ({ra_j2000_nom.hour:0.2f}, {dec_j2000_nom.deg:0.2f})"
+                self.alertHandler.slack_log(msg, group=None)
+                # add the RA_hours and DEC_deg point to the telescope pointing model
+                self.doTry(
+                    f"mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}"
+                )
 
-            # if we get here, the astrometry was successful! add the point to the model
-            msg = f"Adding model point (alt, az) = ({target_alt:0.1f}, {target_az:0.1f}) --> (ra, dec) = ({ra_j2000_hours:0.2f}, {dec_j2000_degrees:0.2f}), Nominal (ra, dec) = ({ra_j2000_nom.hour:0.2f}, {dec_j2000_nom.deg:0.2f})"
-            self.alertHandler.slack_log(msg, group=None)
-            # add the RA_hours and DEC_deg point to the telescope pointing model
-            self.doTry(f"mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}")
-
-            radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
-            altaz_mapped.append((self.target_alt, self.target_az))
+                radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
+                # changed this from self.target_alt, self.target_az
+                altaz_mapped.append((target_alt, target_az))
 
         self.log(f"finished getting all the new points!")
         self.log(f"saving points")
