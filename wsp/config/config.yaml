@@ -969,13 +969,13 @@ observing_parameters:
         best_position:
             board_id: 4
             addr: "pc"
-            x_pixel: 800
-            y_pixel: 500
+            x_pixel: 570
+            y_pixel: 530
         base_position:
             board_id: 3 #0
             addr: "pb"
-            x_pixel: 1864 #1788
-            y_pixel: 530 #533
+            x_pixel: 1965 #1864 #1788
+            y_pixel: 500 #530 #533
         pixscale: 1.11
         x_pixels: 1984
         y_pixels: 1096
