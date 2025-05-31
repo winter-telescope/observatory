@@ -4235,7 +4235,7 @@ class RoboOperator(QtCore.QObject):
                         # 3, #PB
                         4,  # PC
                     ]
-                    board_ids_to_use = ["pa", "pb", "pc", "sa", "sb", "sc"]
+                    # board_ids_to_use = ["pa", "pb", "pc", "sa", "sb", "sc"]
                     x0_fit = self.image_daemon.get_focus_from_imgpathlist(
                         images,
                         board_ids_to_use=board_ids_to_use,
