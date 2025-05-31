@@ -4209,12 +4209,11 @@ class RoboOperator(QtCore.QObject):
                 try:
                     ns = Pyro5.api.locate_ns(host="192.168.1.10")
 
-                    # uri = ns.lookup("WINTERImageDaemon")
-                    # uri = ns.lookup("winter_daemon")
-                    # self.image_daemon = Pyro5.client.Proxy(uri)
-                    self.image_daemon = Pyro5.api.Proxy(
-                        ns.lookup(f"{self.camname}_daemon")
-                    )
+                    uri = ns.lookup("WINTERImageDaemon")
+                    self.image_daemon = Pyro5.client.Proxy(uri)
+                    # self.image_daemon = Pyro5.api.Proxy(
+                    #    ns.lookup(f"{self.camname}_daemon")
+                    # )
                     image_daemon_connected = True
                 except Exception as e:
                     image_daemon_connected = False
@@ -4242,6 +4241,7 @@ class RoboOperator(QtCore.QObject):
                         board_ids_to_use=board_ids_to_use,
                         plot_all=False,
                     )
+
                     self.announce(
                         f"Ran the focus script on Freya and got best focus = {x0_fit:.1f}"
                     )
