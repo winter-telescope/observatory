@@ -971,9 +971,9 @@ observing_parameters:
             x_pixel: 800
             y_pixel: 500
         base_position:
-            board_id: 0
-            x_pixel: 1788
-            y_pixel: 533
+            board_id: 3 #0
+            x_pixel: 1864 #1788
+            y_pixel: 530 #533
         pixscale: 1.11
         x_pixels: 1984
         y_pixels: 1096
