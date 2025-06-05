@@ -255,6 +255,10 @@ class ObsLogger(object):
 #        record['altitude'] = np.radians(request['target_alt'])
 #        record['azimuth'] = np.radians(request['target_az'])
 
+        # Hacky fix for H band needing more dithers
+        if request['target_filter_id'] == 3:
+            record['ditherNumber'] = record['ditherNumber']*2
+
         record['filter'] = FILTER_ID_TO_NAME[request['target_filter_id']]
         # times are recorded at start of exposure
         exposure_start = state['current_time'] - \
