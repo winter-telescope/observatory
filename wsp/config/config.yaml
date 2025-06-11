@@ -970,8 +970,8 @@ observing_parameters:
         best_position:
             board_id: 4
             addr: "pc"
-            x_pixel: 570
-            y_pixel: 530
+            x_pixel: 1475 #570
+            y_pixel: 550 #530
         base_position:
             board_id: 3 #0
             addr: "pb"
