@@ -539,6 +539,9 @@ class GurobiQueueManager(QueueManager):
         super().__init__(queue_name, queue_configuration, **kwargs)
         self.block_obs_number = 0
         self.queue_type = 'gurobi'
+        self.queue_order = []      
+        self.req_queue_order = []   
+        self.queue_slot = None        
 
     def _assign_nightly_requests(self, current_state, 
             time_limit = 30.*u.second, block_use = defaultdict(float)): 
@@ -556,8 +559,8 @@ class GurobiQueueManager(QueueManager):
             #print("attempitng to sequence Gurobi blocks")
             self._sequence_requests_in_block(current_state, time_limit = time_limit)
 
-        if (len(self.queue_order) == 0):
-            raise QueueEmptyError("Ran out of observations this block.") 
+        if not hasattr(self, "queue_order") or len(self.queue_order) == 0:
+            raise QueueEmptyError("Ran out of observations this block.")
         
         idx = self.queue_order[0]
         row = self.queue.loc[idx]
