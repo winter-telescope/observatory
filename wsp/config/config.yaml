@@ -122,6 +122,8 @@ log_link_name: 'winter.log'
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
 max_sun_alt_for_observing: -7
+sun_alt_to_startup_cameras: 10.0
+sun_alt_to_startup_cameras: -5.0
 
 
 robotic_manager_triggers:
@@ -454,7 +456,7 @@ telescope_shutter:
 # dome tracking error allowed in degrees
 dome_tracking_error_threshold: 0.1
 
-dome_home_az_degs: 169
+dome_home_az_degs: 40.0 #169
 
 Dome_Status_Dict:
     ## Palomar Command Server

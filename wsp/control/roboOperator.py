@@ -2041,27 +2041,36 @@ class RoboOperator(QtCore.QObject):
     #     self.winter_camera_on_status = all(conds)
     #     return self.winter_camera_on_status
 
-    def get_camera_should_be_running_status(self):
-
-        ### Notes:
+    def get_camera_should_be_running_status(self) -> bool:
         """
-        The plan here is that roboManager will set a flag. roboOperator
-        will init to cameras should be off is unknown, and then roboManager
-        will send a command that they should be on.
+        Decide whether the camera *should* be running.
 
-        Or the other option is to add in limits in the config and interpret
-        them using the robo manager methods
-
-
+        Rules
+        -----
+        • Turn **on** when the Sun is *setting* (sun_rising == False) and
+        altitude drops to ≤ startup threshold, typically +10 deg. to give
+        time to get everything going before sunset.
+        • Turn **off** when the Sun is *rising* (sun_rising == True) and
+        altitude climbs to ≥ shutdown threshold, typically -5 deg, at the
+        limit of when we might want to be doing morning sky flats.
+        • In between, keep the camera **on**.
         """
+        sun_alt = self.state["sun_alt"]  # degrees
+        sun_rising = self.state["sun_rising"]  # bool
 
-        # For now do the easy thing:
-        if self.state["sun_alt"] <= 10.0:  # -5.0:
-            # if self.state['sun_alt'] <= -12.0:
+        start_alt = self.config["sun_alt_to_startup_cameras"]  # +10
+        shutdown_alt = self.config["sun_alt_to_shutdown_cameras"]  # -5
+
+        # Evening start-up trigger
+        if (not sun_rising) and (sun_alt <= start_alt):
             return True
 
-        else:
+        # Morning shut-down trigger
+        if sun_rising and (sun_alt >= shutdown_alt):
             return False
+
+        # Night-time: keep running
+        return sun_alt < shutdown_alt
 
     def get_winter_camera_ready_to_observe_status(self):
         """
@@ -2607,6 +2616,9 @@ class RoboOperator(QtCore.QObject):
             system = "labjack"
             self.do("fpa on")
 
+            # make sure the purge flow is high
+            self.do("pdu off purgeflow")
+
             time.sleep(10)
 
             self.announce(":greentick: camera power startup complete")
@@ -2666,6 +2678,9 @@ class RoboOperator(QtCore.QObject):
             # make sure the pdu is off
             system = "pdu"
             self.do("pdu off fpas")
+
+            # now we can turn off the purge flow
+            self.do("pdu on purgeflow")
 
             self.announce(":greentick: camera power shutdown complete")
             systems_started.append(True)
