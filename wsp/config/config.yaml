@@ -874,7 +874,7 @@ filters:
     winter:
         J:
             name: "MKO J-band (Asahi)"
-            nominal_focus: 11750.0 #11687.0
+            nominal_focus: 12000.0 #11687.0
             active: True
             focus_exptime: 30
         Y:  
@@ -925,7 +925,8 @@ pointing_model:
         min_az: 5
         max_az: 355
     # current default pointing model to use
-    pointing_model_file: 'pointing_model_20220811.pxp'
+    pointing_model_file: "pointing_model_winter_20250529_downselected.pxp"
+    
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
     default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'
@@ -968,12 +969,14 @@ observing_parameters:
             ditherMaxStep_as: 90 #15
         best_position:
             board_id: 4
-            x_pixel: 800
-            y_pixel: 500
+            addr: "pc"
+            x_pixel: 1475 #570
+            y_pixel: 550 #530
         base_position:
-            board_id: 0
-            x_pixel: 1788
-            y_pixel: 533
+            board_id: 3 #0
+            addr: "pb"
+            x_pixel: 1965 #1864 #1788
+            y_pixel: 500 #530 #533
         pixscale: 1.11
         x_pixels: 1984
         y_pixels: 1096

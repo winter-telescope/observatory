@@ -28,6 +28,7 @@ import astropy.time
 import astropy.units as u
 import numpy as np
 import pandas as pd
+import Pyro5.api
 import Pyro5.client
 import Pyro5.core
 import pytz
@@ -1744,9 +1745,10 @@ class RoboOperator(QtCore.QObject):
             ]["y_pixel"]
 
         else:
-            # invalid offset type
+            # invalid offset typefocus_loop_param
             self.log(f"invalid offset type selected, defaulting to no offset")
             return ra_hours, dec_deg
+
         # where does the center of pointing land by default
         base_pointing_x_pixel = self.config["observing_parameters"][self.camname][
             "base_position"
@@ -1755,12 +1757,148 @@ class RoboOperator(QtCore.QObject):
             "base_position"
         ]["y_pixel"]
 
-        # what is the shape of the detector?
-        x_pixels = self.config["observing_parameters"][self.camname]["x_pixels"]
-        y_pixels = self.config["observing_parameters"][self.camname]["y_pixels"]
+        """
+        Coordinate transformations:
+        There are 3 coordinates systems used here:
+        - detector coordinates (for the specified sensor): (xd, yd)
+            ->  note that these match the coordinates when viewing a sensor image in DS9
+        - camera-oriented coordinates: (xc, yc)
+            ->  these are still coordinates within a single sensor, but are oriented
+                so that they are aligned with the full camer FOV, not the detector.
+                In practice this means that the starboard sensors require a 
+                coordinate transformation.
+        - mosaic coordinates: (xm, ym)
+            ->  these are a single set of coordinates that map the full field of view,
+                including all sensors. These coordinates match those of the "flattened"
+                fits images in DS9, with the same bottom-left origin but go out over the full
+                2 x 3 sensor mosaic.
+        
+        The idea of this function is to calculate:
+            1.  the starting point of the telescope with no "best detector" offset (eg xm_0, ym_0)
+            2.  the desired final position of the pointing center (xm_f, ym_f)
+            3.  the offset required to move the telescope to the desired position
+            4.  the new ra/dec coordinates that will put the telescope at the desired position
+        """
+
+        # detector width in x and y in pixels
+        wx = self.config["observing_parameters"][self.camname]["x_pixels"]
+        wy = self.config["observing_parameters"][self.camname]["y_pixels"]
 
         if self.camname == "winter":
 
+            # base offsets: how to map the sensors to the 2 x 3 mosaic
+            base_offsets = {
+                "sa": (1, 2),
+                "sb": (1, 1),
+                "sc": (0, 1),
+                "pc": (0, 2),
+                "pb": (0, 1),
+                "pa": (0, 0),
+            }
+
+            ## calculate the final goal center
+            addr_f = self.config["observing_parameters"][self.camname]["best_position"][
+                "addr"
+            ]
+            # start with detector coords (eg matching DS9): (xd, yd)
+            xd_f = self.config["observing_parameters"][self.camname]["best_position"][
+                "x_pixel"
+            ]
+            yd_f = self.config["observing_parameters"][self.camname]["best_position"][
+                "y_pixel"
+            ]
+
+            # calcualte camera-oriented coords: (xc, yc)
+            # coordinate transformation req'd if on the starboard side
+            if "s" in addr_f:
+                xc_f = wx - xd_f
+                yc_f = wy - yd_f
+            else:
+                xc_f = xd_f
+                yc_f = yd_f
+
+            # now calculate mosaic coords: (xm, ym)
+            xm_f = base_offsets[addr_f][0] * wx + xc_f
+            ym_f = base_offsets[addr_f][1] * wy + yc_f
+
+            # now calculate the mosaic coords of the start position
+            # start with detector coords (eg matching DS9): (xd, yd)
+            addr_0 = self.config["observing_parameters"][self.camname]["base_position"][
+                "addr"
+            ]
+            xd_0 = self.config["observing_parameters"][self.camname]["base_position"][
+                "x_pixel"
+            ]
+            yd_0 = self.config["observing_parameters"][self.camname]["base_position"][
+                "y_pixel"
+            ]
+            # coordinate transformation req'd if on the starboard side
+            if "s" in addr_0:
+                xc_0 = wx - xd_0
+                yc_0 = wy - yd_0
+            else:
+                xc_0 = xd_0
+                yc_0 = yd_0
+
+            # now calculate mosaic coords: (xm, ym)
+            xm_0 = base_offsets[addr_0][0] * wx + xc_0
+            ym_0 = base_offsets[addr_0][1] * wy + yc_0
+            self.log(f"starting location (xm_0, ym_0) = ({xm_0}, {ym_0})")
+
+            # Now calcualte the offsets:
+            delta_xm = xm_f - xm_0
+            delta_ym = ym_f - ym_0
+            self.log(f"raw pixel offsets (dxm, dym) = ({delta_xm}, {delta_ym})")
+            # now we need to rotate the pixel offsets by the position angle
+            parity = 1
+            delta_xm = parity * (
+                delta_xm * np.cos(np.deg2rad(pa)) - delta_ym * np.sin(np.deg2rad(pa))
+            )
+            delta_ym = parity * (
+                delta_xm * np.sin(np.deg2rad(pa)) + delta_ym * np.cos(np.deg2rad(pa))
+            )
+
+            self.log(
+                f"rotated pixel offsets (dxm, dym) = ({delta_xm:.0f}, {delta_ym:.0f})"
+            )
+
+            pixel_scale_arcsec = self.config["observing_parameters"][self.camname][
+                "pixscale"
+            ]
+
+            # now we need to calculate the actual offsets to move the telescope to the specified location
+
+            start = astropy.coordinates.SkyCoord(
+                ra=ra_hours * u.hourangle, dec=dec_deg * u.deg
+            )
+            self.log(
+                f"base pointing ra: {ra_hours} hours from call should match SkyCoord: {start.ra.hour} hours"
+            )
+            self.log(
+                f"base pointing dec: {dec_deg} degrees from call should match SkyCoord: {start.dec.deg} degrees"
+            )
+            offset_ra = delta_xm * (pixel_scale_arcsec / 60.0) * u.arcmin
+            offset_dec = delta_ym * (pixel_scale_arcsec / 60.0) * u.arcmin
+
+            end = start.spherical_offsets_by(offset_ra, offset_dec)
+
+            self.log(
+                f"base->offset pointing (ra, dec): ({start.ra.hour:.1f}, {start.dec.deg:.1f}) -> ({end.ra.hour:.1f}, {end.dec.deg:.1f})"
+            )
+
+            new_base_ra_hours = end.ra.hour
+            new_base_dec_deg = end.dec.deg
+
+            return new_base_ra_hours, new_base_dec_deg
+
+        else:
+            # for now, any other camera just pass through
+            self.log(
+                f"no offset calculation for {self.camname} camera, so just keeping the input RA/Dec"
+            )
+            return ra_hours, dec_deg
+
+            """
             # get the board id of the best detector
             board_id = self.config["observing_parameters"][self.camname][
                 "best_position"
@@ -1847,6 +1985,7 @@ class RoboOperator(QtCore.QObject):
         )  # changing viraj's minus sign to plus sign
 
         return new_base_ra_hours, new_base_dec_deg
+        """
 
     def get_observatory_ready_status(self):
         """
@@ -4068,9 +4207,13 @@ class RoboOperator(QtCore.QObject):
             if self.camname == "winter":
                 # make this better and less specific if possible...
                 try:
-                    ns = Pyro5.core.locate_ns(host="192.168.1.10")
+                    ns = Pyro5.api.locate_ns(host="192.168.1.10")
+
                     uri = ns.lookup("WINTERImageDaemon")
                     self.image_daemon = Pyro5.client.Proxy(uri)
+                    # self.image_daemon = Pyro5.api.Proxy(
+                    #    ns.lookup(f"{self.camname}_daemon")
+                    # )
                     image_daemon_connected = True
                 except Exception as e:
                     image_daemon_connected = False
@@ -4092,11 +4235,13 @@ class RoboOperator(QtCore.QObject):
                         # 3, #PB
                         4,  # PC
                     ]
+                    # board_ids_to_use = ["pa", "pb", "pc", "sa", "sb", "sc"]
                     x0_fit = self.image_daemon.get_focus_from_imgpathlist(
                         images,
                         board_ids_to_use=board_ids_to_use,
                         plot_all=False,
                     )
+
                     self.announce(
                         f"Ran the focus script on Freya and got best focus = {x0_fit:.1f}"
                     )
@@ -5703,8 +5848,9 @@ class RoboOperator(QtCore.QObject):
         # the observation has been completed successfully :D
         self.observation_completed = True
 
-    def remakePointingModel(self, append=False, firstpoint=0):
+    def remakePointingModel(self, camname, append=False, firstpoint=0):
         context = "Pointing Model"
+        self.log("setting up a new pointing model")
         self.alertHandler.slack_log("Setting Up a New Pointing Model!", group=None)
         if append:
             # if in append mode, don't clear the old points
@@ -5729,7 +5875,8 @@ class RoboOperator(QtCore.QObject):
         npoints = len(self.pointingModelBuilder.altaz_points)
 
         # make a list of all the points to step through
-        indices = np.arange(firstpoint - 1, npoints, 1)
+        # indices = np.arange(firstpoint - 1, npoints, 1)
+        indices = np.arange(firstpoint, npoints)  # -> simpler version of above
 
         # randomly shuffle the indices so that we slowly fill out a full model in random order
         np.random.shuffle(indices)
@@ -5745,117 +5892,154 @@ class RoboOperator(QtCore.QObject):
             try:
 
                 # do the observation
-                # self.do(f'robo_observe_altaz {target_alt} {target_az}')
-                self.do(
-                    f"robo_observe altaz {target_alt} {target_az} --pointing --calibration"
-                )
 
-                if self.target_ok:
+                # we are going to do the following:
+                # 0. init a list which will hold the background images
+                # 1: set exposure time to 30s
+                # 2. use robo_observ altaz to do an observation of the alt/az of the target
+                # 3. record the filepath of the last image
+                # 4. repeat for total of 3 dither (4 total images)
+                # 5. call the image daemon to run astrometry on the last image and background image list
+                # 6. get the astrometry solution and add the point to the model
 
-                    # time.sleep(10)
-                    # ADD A CASE TO HANDLE SITUATIONS WHERE THE OBSERVATION DOESN'T WORK
+                # set up the list of images
+                images = []
 
-                    # platesolve the image
-                    # TODO: fill this in from the config instead of hard coding
-                    lastimagefile = os.readlink(
-                        os.path.join(os.getenv("HOME"), "data", "last_image.lnk")
+                # changing the exposure can take a little time, so only do it if the exposure is DIFFERENT than the current
+                # if self.exptime == self.state['exptime']:
+                # for now we'll just set it to 30s, but this should be set in the config file on a per-camera basis
+                exptime = 30.0
+
+                # set the filter wheel to J-band
+                self.do(f"fw_goto 2")
+
+                if exptime == self.camera.state["exptime"]:
+                    self.log(
+                        "requested exposure time matches current setting, no further action taken"
                     )
-                    # lastimagefile = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
-
-                    # check if file exists
-                    imgpath = pathlib.Path(lastimagefile)
-                    timeout = 20
-                    dt = 0.5
-                    t_elapsed = 0
-                    self.log(f"waiting for image path {lastimagefile}")
-                    while t_elapsed < timeout:
-
-                        file_exists = imgpath.is_file()
-                        self.log(f"Last Image File Exists? {file_exists}")
-                        if file_exists:
-                            break
-                        else:
-                            time.sleep(dt)
-                            t_elapsed += dt
-
-                    msg = f"running platesolve on image: {lastimagefile}"
-                    self.log(msg)
-                    print(msg)
-                    solved = self.pointingModelBuilder.plateSolver.platesolve(
-                        lastimagefile, 0.47
+                    pass
+                else:
+                    # self.log(f'current exptime = {self.state["exptime"]}, changing to {self.exptime}')
+                    self.log(
+                        f'current exptime = {self.camera.state["exptime"]}, changing to {exptime}'
                     )
-                    if solved:
-                        ra_j2000_hours = (
-                            self.pointingModelBuilder.plateSolver.results.get(
-                                "ra_j2000_hours"
-                            )
-                        )
-                        dec_j2000_degrees = (
-                            self.pointingModelBuilder.plateSolver.results.get(
-                                "dec_j2000_degrees"
-                            )
-                        )
-                        platescale = self.pointingModelBuilder.plateSolver.results.get(
-                            "arcsec_per_pixel"
-                        )
-                        field_angle = self.pointingModelBuilder.plateSolver.results.get(
-                            "rot_angle_degs"
+                    self.do(f"setExposure {exptime} --{camname}")
+
+                # set up the first observation
+                system = "camera"
+                if camname == "winter":
+                    num_dithers = 4
+                else:
+                    num_dithers = 1
+
+                for dither_number in range(num_dithers):
+                    if dither_number == 0:
+                        self.do(
+                            f"robo_observe altaz {target_alt} {target_az} --pointing --calibration --offset center"
                         )
 
-                        ra_j2000 = astropy.coordinates.Angle(ra_j2000_hours * u.hour)
-                        dec_j2000 = astropy.coordinates.Angle(dec_j2000_degrees * u.deg)
-
-                        ######################################################################
-                        ### RUN IN SIMULATION MODE ###
-                        # Get the nominal RA/DEC from the fits header. Could do this different ways.
-                        # TODO: is this the approach we want? should it calculate it from the current position instead?
-                        hdu_list = fits.open(lastimagefile, ignore_missing_end=True)
-                        header = hdu_list[0].header
-
-                        ra_j2000_nom = astropy.coordinates.Angle(
-                            header["RA"], unit="deg"
-                        )
-                        dec_j2000_nom = astropy.coordinates.Angle(
-                            header["DEC"], unit="deg"
-                        )
-                        ######################################################################""
-
-                        self.log("RUNNING PLATESOLVE ON LAST IMAGE")
-                        self.log(
-                            f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}'
-                        )
-                        self.log(
-                            f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}'
-                        )
-                        self.log(
-                            f"Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg"
-                        )
-                        """
-                        #TODO: REMOVE THIS
-                        # overwrite the solution with the nominal values so we can actually get a model
-                        ra_j2000_hours = self.target_ra_j2000_hours
-                        dec_j2000_degrees = self.target_dec_j2000_deg
-                        """
-                        msg = f"Adding model point (alt, az) = ({self.target_alt:0.1f}, {self.target_az:0.1f}) --> (ra, dec) = ({ra_j2000_hours:0.2f}, {dec_j2000_degrees:0.2f}), Nominal (ra, dec) = ({ra_j2000_nom.hour:0.2f}, {dec_j2000_nom.deg:0.2f})"
-                        self.alertHandler.slack_log(msg, group=None)
-                        # add the RA_hours and DEC_deg point to the telescope pointing model
-                        self.doTry(
-                            f"mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}"
-                        )
-
-                        radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
-                        altaz_mapped.append((self.target_alt, self.target_az))
                     else:
-                        msg = f"> platesolve could not find a solution :( "
-                        self.log(msg)
-                        self.alertHandler.slack_log(msg)
+                        # any observation besides the first
+                        # do a dither:
+                        system = "telescope"
+                        dithersize = 5 * 60
+                        self.do(f"mount_random_dither_arcsec {dithersize}")
 
+                        system = "camera"
+                        # self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
+                        self.do("robo_do_exposure --pointing --calibration")
+
+                    # add the image to the list
+                    image_directory, image_filename = self.camera.getLastImagePath()
+                    image_filepath = os.path.join(image_directory, image_filename)
+                    if self.camname == "winter":
+                        image_filepath = image_filepath + "_mef.fits"
+                    images.append(image_filepath)
+                    self.log(f"image {dither_number} filepath: {image_filepath}")
             except Exception as e:
-                msg = f"roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}"
+                msg = f"roboOperator: error while running pointing model observation with {system} due to {e.__class__.__name__}, {e}"
                 self.log(msg)
+                self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
-                # return
+
+            # if we get here, the observation was successful
+            # try to solve the astrometry
+            try:
+                # ns = Pyro5.core.locate_ns(host="192.168.1.10")
+                ns = Pyro5.api.locate_ns(host="192.168.1.10")
+
+                if self.camname == "winter":
+                    daemon = Pyro5.api.Proxy(ns.lookup(f"{camname}_daemon"))
+
+                    science_image = images[-1]
+                    addr = "pb"
+                    astrom_info = daemon.solve_astrometry(
+                        addr=addr,
+                        science_image=science_image,
+                        background_image_list=images,
+                        output_dir="/home/winter/data/tmp/",
+                        pix_coords=(1864, 530),
+                        timeout=10,
+                    )
+
+                    self.log(
+                        f"Astrometric solution: {json.dumps(astrom_info, indent = 2)}"
+                    )
+
+                    ra_j2000 = astropy.coordinates.Angle(astrom_info["ra"] * u.deg)
+                    dec_j2000 = astropy.coordinates.Angle(astrom_info["dec"] * u.deg)
+
+                    ra_j2000_hours = ra_j2000.hour
+                    dec_j2000_degrees = dec_j2000.deg
+
+                    # report the nominal ra/dec from the header
+                    ra_j2000_nom = astropy.coordinates.Angle(
+                        astrom_info["ra_guess"] * u.deg
+                    )
+                    dec_j2000_nom = astropy.coordinates.Angle(
+                        astrom_info["dec_guess"] * u.deg
+                    )
+
+                    platescale = astrom_info["pixel_scale"]
+                    field_angle = astrom_info["rotation_deg"]
+
+                    self.announce(
+                        f"solved image: {science_image}, (RA, Dec) deg = ({ra_j2000.deg:0.2f}, {dec_j2000.deg:0.2f}), platescale = {platescale:0.2f}, field angle = {field_angle:0.2f}"
+                    )
+                else:
+                    # no other cameras implemented yet
+                    self.log(
+                        f"robo: couldn't handle camera {self.camname} yet, only winter is implemented"
+                    )
+
+            except Exception as e:
+                msg = f"error while running astrometry with {system} due to {e.__class__.__name__}, {e}"
+                self.announce(msg)
+                continue  # don't bail out, just go to the next point
+            else:
+                self.log("COMPLETED ASTROMETRY ON LAST IMAGE")
+                self.log(
+                    f'Platesolve Astrometry Solution: RA = {ra_j2000.to_string("hour")}, DEC = {dec_j2000.to_string("deg")}'
+                )
+                self.log(
+                    f'Nominal Position:               RA = {ra_j2000_nom.to_string("hour")}, DEC = {dec_j2000_nom.to_string("deg")}'
+                )
+                self.log(
+                    f"Platesolve:     Platescale = {platescale:.4f} arcsec/pix, Field Angle = {field_angle:.4f} deg"
+                )
+
+                # if we get here, the astrometry was successful! add the point to the model
+                msg = f"Adding model point (alt, az) = ({target_alt:0.1f}, {target_az:0.1f}) --> (ra, dec) = ({ra_j2000_hours:0.2f}, {dec_j2000_degrees:0.2f}), Nominal (ra, dec) = ({ra_j2000_nom.hour:0.2f}, {dec_j2000_nom.deg:0.2f})"
+                self.alertHandler.slack_log(msg, group=None)
+                # add the RA_hours and DEC_deg point to the telescope pointing model
+                self.doTry(
+                    f"mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}"
+                )
+
+                radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
+                # changed this from self.target_alt, self.target_az
+                altaz_mapped.append((target_alt, target_az))
 
         self.log(f"finished getting all the new points!")
         self.log(f"saving points")
