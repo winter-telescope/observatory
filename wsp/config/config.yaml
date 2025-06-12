@@ -382,8 +382,8 @@ telescope:
     simhost: "localhost"
     comm_port: 8220
     home_alt_degs: 45.0
-    #home_az_degs: 349.0
-    home_az_degs: 0
+    #home_az_degs: 0 # -> this was the standard for a long time
+    home_az_degs: 220 # -> this is the new standard, so that the telescope is anti dome when the dome is home at 40 deg
     #min_alt: 30
     min_alt: 15
     max_alt: 85.0
