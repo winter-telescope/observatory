@@ -123,7 +123,7 @@ log_link_name: 'winter.log'
 #max_sun_alt_for_observing: -18
 max_sun_alt_for_observing: -7
 sun_alt_to_startup_cameras: 10.0
-sun_alt_to_startup_cameras: -5.0
+sun_alt_to_shutdown_cameras: -5.0
 
 
 robotic_manager_triggers:
