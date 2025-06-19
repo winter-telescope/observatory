@@ -235,9 +235,8 @@ robotic_manager_triggers:
             conds:
                cond1:
                    type: 'sun'
-                   #val: -7.0
-                   #val: 5.0
-                   val: 10.0
+                   #val: 10.0
+                   val: 1000.0 # this just forces robo_run to be called at all times, should help avoid incomplete shutdowns
                    cond: '<'
                # make sure we start after the purge starts
                # cond2:

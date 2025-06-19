@@ -479,8 +479,15 @@ class RoboOperator(QtCore.QObject):
         group = "operator"
         self.alertHandler.slack_log(msg, group=group)
 
-        # turn off tracking
-        self.rotator_stop_and_reset()
+        try:
+            # if the telescope is connected and the rotator is enabled, reset it
+            if self.telescope.mount.is_connected and self.telescope.rotator.is_enabled:
+                # if the rotator is enabled, stop it and reset it
+                self.rotator_stop_and_reset()
+        except Exception as e:
+            self.logger.error(
+                f"could not reset the rotator after a hardware error: {e}. continuing anyway."
+            )
 
     def waitAndCheck(self, seconds):
         """
