@@ -122,6 +122,8 @@ log_link_name: 'winter.log'
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
 max_sun_alt_for_observing: -7
+sun_alt_to_startup_cameras: 10.0
+sun_alt_to_shutdown_cameras: -5.0
 
 
 robotic_manager_triggers:
@@ -233,9 +235,8 @@ robotic_manager_triggers:
             conds:
                cond1:
                    type: 'sun'
-                   #val: -7.0
-                   #val: 5.0
-                   val: 10.0
+                   #val: 10.0
+                   val: 1000.0 # this just forces robo_run to be called at all times, should help avoid incomplete shutdowns
                    cond: '<'
                # make sure we start after the purge starts
                # cond2:
@@ -380,8 +381,8 @@ telescope:
     simhost: "localhost"
     comm_port: 8220
     home_alt_degs: 45.0
-    #home_az_degs: 349.0
-    home_az_degs: 0
+    #home_az_degs: 0 # -> this was the standard for a long time
+    home_az_degs: 220 # -> this is the new standard, so that the telescope is anti dome when the dome is home at 40 deg
     #min_alt: 30
     min_alt: 15
     max_alt: 85.0
@@ -454,7 +455,7 @@ telescope_shutter:
 # dome tracking error allowed in degrees
 dome_tracking_error_threshold: 0.1
 
-dome_home_az_degs: 169
+dome_home_az_degs: 40.0 #169
 
 Dome_Status_Dict:
     ## Palomar Command Server
