@@ -111,8 +111,9 @@ class PDU(object):
         return response
 
     def getStatus(self, verbose=False):
-        if self.brand.lower() == "digital loggers":
-            try:
+        try:
+            if self.brand.lower() == "digital loggers":
+
                 response = self.send("status")
                 # Find the place in the garbled html return that says "state">,
                 # the next two characters are the status code
@@ -142,17 +143,36 @@ class PDU(object):
                 # status has form:
                 # status = [outlet1,outlet2,outlet3,outlet4,outlet5,outlet6,outlet7,outlet8]
 
-            except Exception as e:
-                status = [-1, -1, -1, -1, -1, -1, -1, -1]
-                self.log(f"ERROR getting PDU status: {e}")
-                # print(tb.format_exc())
-                # TODO add an entry to the log
-                # sys.exit()
+            elif self.brand.lower() == "synaccess":
+                response = self.synlinkpdu.outlets.list()
 
-            self.status = status
-            # now update the state
-            for i in range(len(self.status)):
-                self.outletstate.update({i + 1: self.status[i]})
+                status = []
+                for outlet in response:
+                    # outlet["outletIndex"] is the outlet number
+                    # outlet["outletState"] is the state of the outlet
+                    if outlet["outletState"] == "ON":
+                        status.append(1)
+                    elif outlet["outletState"] == "OFF":
+                        status.append(0)
+                    elif outlet["outletState"] == "REBOOT":
+                        status.append(2)
+                    else:
+                        status.append(-1)
+
+                # raise an error if the status is not the right length
+                if len(status) != self.num_outlets:
+                    raise IOError(
+                        f"Synaccess PDU {self.name} returned an unexpected number of outlets: {len(status)}"
+                    )
+
+        except Exception as e:
+            status = [-1, -1, -1, -1, -1, -1, -1, -1]
+            self.log(f"ERROR getting PDU status: {e}")
+
+        self.status = status
+        # now update the state
+        for i in range(len(self.status)):
+            self.outletstate.update({i + 1: self.status[i]})
 
     def getState(self):
         # this is a method to update the state dictionary with all the info
