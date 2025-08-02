@@ -549,10 +549,10 @@
             },
             "_boxTitle": "Chiller",
             "_style": "(P76093326)",
-            "cellHeight": 14,
-            "cellWidth": 16,
+            "cellHeight": 12,
+            "cellWidth": 13,
             "cellX": 24,
-            "cellY": 34,
+            "cellY": 36,
             "dataItems": [
                 {
                     "PMDI": {
@@ -597,18 +597,6 @@
                     "_extrema": false,
                     "_format": "%0.1f C",
                     "_source": "chiller_temperature",
-                    "type": "PNDI"
-                },
-                {
-                    "PObject": {
-                        "_id": "1291047080"
-                    },
-                    "_caption": "SP Err",
-                    "_captionStyle": "noStyle",
-                    "_defaultStyle": "noStyle",
-                    "_extrema": false,
-                    "_format": "",
-                    "_source": "",
                     "type": "PNDI"
                 },
                 {
@@ -696,6 +684,18 @@
                 },
                 {
                     "PObject": {
+                        "_id": "1291047080"
+                    },
+                    "_caption": "SP Err",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_extrema": false,
+                    "_format": "",
+                    "_source": "",
+                    "type": "PNDI"
+                },
+                {
+                    "PObject": {
                         "_id": "1219304224"
                     },
                     "_caption": "Flow SB",
@@ -721,10 +721,10 @@
                     "type": "PNDI"
                 }
             ],
-            "geometryHeight": 210,
-            "geometryWidth": 240,
+            "geometryHeight": 180,
+            "geometryWidth": 196,
             "geometryX": 360,
-            "geometryY": 510
+            "geometryY": 540
         },
         {
             "PObject": {
@@ -1811,10 +1811,10 @@
             },
             "_boxTitle": "Rack Power Box",
             "_style": "(P945645324)",
-            "cellHeight": 9,
-            "cellWidth": 16,
+            "cellHeight": 7,
+            "cellWidth": 13,
             "cellX": 24,
-            "cellY": 2,
+            "cellY": 1,
             "dataItems": [
                 {
                     "PObject": {
@@ -1903,10 +1903,10 @@
                     "type": "PMDI"
                 }
             ],
-            "geometryHeight": 135,
-            "geometryWidth": 240,
+            "geometryHeight": 106,
+            "geometryWidth": 196,
             "geometryX": 360,
-            "geometryY": 30
+            "geometryY": 15
         },
         {
             "PObject": {
@@ -1915,9 +1915,9 @@
             "_boxTitle": "Power Switch 1",
             "_style": "(P945645324)",
             "cellHeight": 10,
-            "cellWidth": 16,
+            "cellWidth": 13,
             "cellX": 24,
-            "cellY": 12,
+            "cellY": 9,
             "dataItems": [
                 {
                     "PMDI": {
@@ -1927,13 +1927,13 @@
                         "_map": {
                             "-999": "N/C[style=greyed (P1521393217)]",
                             "0": "OFF",
-                            "1": "ON[style=Important (P564751211)]"
+                            "1": "ON[style=No style (P588395958)]"
                         }
                     },
                     "PObject": {
                         "_id": "1773914662"
                     },
-                    "_caption": "1. Cal Lamp           ",
+                    "_caption": "1. Odin      ",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_1",
@@ -1952,7 +1952,7 @@
                     "PObject": {
                         "_id": "993802495"
                     },
-                    "_caption": "2. Empty",
+                    "_caption": "2. Freya",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "(P607577040)",
                     "_source": "pdu1_2",
@@ -1964,14 +1964,14 @@
                             "_id": "729063006"
                         },
                         "_map": {
-                            "0": "HIGH",
-                            "1": "LOW[style=No style (P1110536263)]"
+                            "0": "OFF",
+                            "1": "ON[style=No style (P588395958)]"
                         }
                     },
                     "PObject": {
                         "_id": "1911987376"
                     },
-                    "_caption": "3. PurgeFlow",
+                    "_caption": "3. EMPTY",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_3",
@@ -1990,7 +1990,7 @@
                     "PObject": {
                         "_id": "1478909516"
                     },
-                    "_caption": "4. Empty",
+                    "_caption": "4. Sol",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_4",
@@ -2009,7 +2009,7 @@
                     "PObject": {
                         "_id": "1150607455"
                     },
-                    "_caption": "5. Switch",
+                    "_caption": "5. EMPTY",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_5",
@@ -2028,7 +2028,7 @@
                     "PObject": {
                         "_id": "395800332"
                     },
-                    "_caption": "6. Router",
+                    "_caption": "6. EMPTY",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_6",
@@ -2040,14 +2040,14 @@
                             "_id": "926921707"
                         },
                         "_map": {
-                            "0": "OFF[style=No style (P258035071)]",
-                            "1": "ON[style=No style (P258035071)]"
+                            "0": "HIGH",
+                            "1": "LOW"
                         }
                     },
                     "PObject": {
                         "_id": "1813717090"
                     },
-                    "_caption": "7. Dead",
+                    "_caption": "7. PurgeFlow      ",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_7",
@@ -2066,17 +2066,17 @@
                     "PObject": {
                         "_id": "1005373353"
                     },
-                    "_caption": "8. Dead",
+                    "_caption": "8. FreyaBackup",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu1_8",
                     "type": "PMDI"
                 }
             ],
-            "geometryHeight": 150,
-            "geometryWidth": 240,
+            "geometryHeight": 151,
+            "geometryWidth": 196,
             "geometryX": 360,
-            "geometryY": 180
+            "geometryY": 135
         },
         {
             "PObject": {
@@ -2084,10 +2084,10 @@
             },
             "_boxTitle": "Power Switch 2",
             "_style": "(P945645324)",
-            "cellHeight": 10,
-            "cellWidth": 16,
+            "cellHeight": 9,
+            "cellWidth": 13,
             "cellX": 24,
-            "cellY": 23,
+            "cellY": 20,
             "dataItems": [
                 {
                     "PMDI": {
@@ -2140,7 +2140,7 @@
                     "PObject": {
                         "_id": "153362502"
                     },
-                    "_caption": "3. Empty",
+                    "_caption": "3. SUMMERacc",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_3",
@@ -2159,7 +2159,7 @@
                     "PObject": {
                         "_id": "824567371"
                     },
-                    "_caption": "4. Empty",
+                    "_caption": "4. SUMMERcam",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_4",
@@ -2178,7 +2178,7 @@
                     "PObject": {
                         "_id": "975885646"
                     },
-                    "_caption": "5. Odin",
+                    "_caption": "5. WINTERacc",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_5",
@@ -2191,13 +2191,13 @@
                         },
                         "_map": {
                             "0": "OFF[style=No style (P258035071)]",
-                            "1": "ON[style=No style (P258035071)]"
+                            "1": "ON[style=Important (P564751211)]"
                         }
                     },
                     "PObject": {
                         "_id": "738108475"
                     },
-                    "_caption": "6. SUMMER",
+                    "_caption": "6. Callamp",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_6",
@@ -2216,7 +2216,7 @@
                     "PObject": {
                         "_id": "2123459590"
                     },
-                    "_caption": "7. Thor",
+                    "_caption": "7. EMPTY",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_7",
@@ -2235,17 +2235,17 @@
                     "PObject": {
                         "_id": "1702505861"
                     },
-                    "_caption": "8. Freya",
+                    "_caption": "8. EMPTY",
                     "_captionStyle": "noStyle",
                     "_defaultStyle": "noStyle",
                     "_source": "pdu2_8",
                     "type": "PMDI"
                 }
             ],
-            "geometryHeight": 150,
-            "geometryWidth": 240,
+            "geometryHeight": 136,
+            "geometryWidth": 196,
             "geometryX": 360,
-            "geometryY": 345
+            "geometryY": 300
         },
         {
             "PObject": {
@@ -2462,6 +2462,61 @@
             "geometryWidth": 120,
             "geometryX": 750,
             "geometryY": 270
+        },
+        {
+            "PObject": {
+                "_id": "2114400195"
+            },
+            "_boxTitle": "Power Switch 3",
+            "_style": "(P2072147126)",
+            "cellHeight": 5,
+            "cellWidth": 13,
+            "cellX": 24,
+            "cellY": 30,
+            "dataItems": [
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "987050746"
+                        },
+                        "_map": {
+                            "0": "OFF[style=No style (P588395958)]",
+                            "1": "ON"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "1802675699"
+                    },
+                    "_caption": "1. Mirror Cover   ",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "pdu3_1",
+                    "type": "PMDI"
+                },
+                {
+                    "PMDI": {
+                        "PObject": {
+                            "_id": "230625163"
+                        },
+                        "_map": {
+                            "0": "OFF[style=No style (P588395958)]",
+                            "1": "ON"
+                        }
+                    },
+                    "PObject": {
+                        "_id": "802384935"
+                    },
+                    "_caption": "2. Thor",
+                    "_captionStyle": "noStyle",
+                    "_defaultStyle": "noStyle",
+                    "_source": "pdu3_2",
+                    "type": "PMDI"
+                }
+            ],
+            "geometryHeight": 76,
+            "geometryWidth": 196,
+            "geometryX": 360,
+            "geometryY": 450
         }
     ],
     "extremas": [
@@ -3178,8 +3233,8 @@
         }
     ],
     "webPort": "\u0000",
-    "windowCellHeight": 53,
-    "windowCellWidth": 61,
-    "windowHeight": 795,
-    "windowWidth": 915
+    "windowCellHeight": 52,
+    "windowCellWidth": 60,
+    "windowHeight": 793,
+    "windowWidth": 907
 }
