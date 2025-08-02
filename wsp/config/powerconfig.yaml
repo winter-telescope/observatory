@@ -7,29 +7,48 @@
 pdus:
     pdu1:
         pdu_number: 1
-        ip: 192.168.1.14
-        brand: 'Digital Loggers'
+        ip: 192.168.1.31
+        brand: 'Synaccess'
+        model: 'SP-1001AE-01'
         outlets:
-            1: 'Callamp'
-            2: 'Empty'
-            3: 'PurgeFlow'
-            4: 'Empty'
-            5: 'Switch'
-            6: 'Router'
-            7: 'Dead'
-            8: 'Dead'
-        startup: 21211111
+            1: Odin #'Callamp (2)'
+            2: Freya #'Empty (1)'
+            3: Thor #'PurgeFlow (2)'
+            4: Sol #'Empty (1)'
+            5: EMPTY #'Switch (1)'
+            6: EMPTY #'Router (1)'
+            7: PurgeFlow #'Empty (1)'
+            8: FreyaBackupDrive #'Empty (1)'
+        startup: 11111121
     pdu2:
         pdu_number: 2
-        ip: 192.168.1.75
-        brand: 'Digital Loggers'
+        ip: 192.168.1.32
+        brand: 'Synaccess'
+        model: 'SP-1001AE-01'
         outlets:
-            1: 'Camera12V'
-            2: 'FPAS'
-            3: 'Empty'
-            4: 'Empty'
-            5: 'Odin'
-            6: 'SUMMER'
-            7: 'Thor'
-            8: 'Freya'
-        startup: 22111111
+            1: Camera12V #'Camera12V (2)'
+            2: FPAS #'FPAS (2)'
+            3: SUMMERacc #'Empty (1)'
+            4: SUMMERcam #'Empty (1)'
+            5: WINTERacc #'Odin (1)'
+            6: Callamp #'SUMMER (1)'
+            7: EMPTY #'Thor (1)'
+            8: EMPTY #'Freya (1)'
+        startup: 22222111
+    pdu3:
+        pdu_number: 3
+        ip: 192.168.1.33
+        brand: 'Synaccess'
+        model: 'NP-0201DX'
+        outlets:
+            1: Shutter
+            2: EMPTY
+        startup: 10
+
+ups:
+    ups1:
+        ups_number: 1
+        ip: 192.168.1.41
+        brand: 'TrippLite'
+        model: 'SU1500RTXLCDN'
+
