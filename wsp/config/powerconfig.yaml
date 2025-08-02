@@ -34,7 +34,7 @@ pdus:
             6: Callamp #'SUMMER (1)'
             7: EMPTY #'Thor (1)'
             8: EMPTY #'Freya (1)'
-        startup: 22222111
+        startup: 22222211
     pdu3:
         pdu_number: 3
         ip: 192.168.1.33

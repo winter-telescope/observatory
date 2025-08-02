@@ -1148,7 +1148,7 @@ class RoboOperator(QtCore.QObject):
                             # check the cal lamp
                             # ---------------------------------------------------------------------
                             # TODO make this not hard coded
-                            if self.state["pdu1_1"] == 1:
+                            if self.state["pdu2_6"] == 1:
                                 # the cal lamp is on! turn it off
                                 self.announce("the cal lamp is on!")
                                 self.announce(
