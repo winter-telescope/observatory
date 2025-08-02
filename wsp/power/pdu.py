@@ -54,12 +54,17 @@ class PDU(object):
         self.startup_config = [
             int(state) for state in list(str(self.config["pdus"][self.name]["startup"]))
         ]
-        self.num_outlets = 8
+        self.num_outlets = len(self.config["pdus"][self.name]["outlets"])
         self.outletstate = dict()
         self.outletnames2nums = dict()
         self.outletnums2names = dict()
         self.state = dict()
-        self.status = [-1, -1, -1, -1, -1, -1, -1, -1]
+        self.status = [-1] * self.num_outlets
+
+        # print out some info about the PDU
+        print(
+            f"PDU {self.name} initialized with brand {self.brand}, ip {self.ip}, and outlets {self.config['pdus'][self.name]['outlets']}"
+        )
 
         # if the brand is synaccess we need to instantiate a SynLinkPy object
         if self.brand.lower() == "synaccess":
@@ -114,7 +119,7 @@ class PDU(object):
         try:
             if self.brand.lower() == "digital loggers":
 
-                response = self.send("status")
+                response = self._digitalLoggersSend("status")
                 # Find the place in the garbled html return that says "state">,
                 # the next two characters are the status code
                 status_key = '"state">'
@@ -149,12 +154,12 @@ class PDU(object):
                 status = []
                 for outlet in response:
                     # outlet["outletIndex"] is the outlet number
-                    # outlet["outletState"] is the state of the outlet
-                    if outlet["outletState"] == "ON":
+                    # outlet["state"] is the state of the outlet
+                    if outlet["state"] == "ON":
                         status.append(1)
-                    elif outlet["outletState"] == "OFF":
+                    elif outlet["state"] == "OFF":
                         status.append(0)
-                    elif outlet["outletState"] == "REBOOT":
+                    elif outlet["state"] == "REBOOT":
                         status.append(2)
                     else:
                         status.append(-1)
@@ -185,20 +190,21 @@ class PDU(object):
         return self.state
 
     def getOutletNames(self):
-        """
-        This does a query of the full status page then scrapes the various fields
-        It is adapted from the dlipower module by dwight hubbard
 
-            dlipower.py : (adapted from dlipower.Outlet.statuslist)
-                https://github.com/dwighthubbard/python-dlipower/blob/master/dlipower/dlipower.py
-            linked from digital loggers website: https://www.digital-loggers.com/python.html
+        if self.brand.lower() == "digital loggers":
+            """
+            This does a query of the full status page then scrapes the various fields
+            It is adapted from the dlipower module by dwight hubbard
 
-        It works reliably... but is *very* slow. So don't plan on doing it more often
-        than absolutely necessary
+                dlipower.py : (adapted from dlipower.Outlet.statuslist)
+                    https://github.com/dwighthubbard/python-dlipower/blob/master/dlipower/dlipower.py
+                linked from digital loggers website: https://www.digital-loggers.com/python.html
 
-        """
-        if self.brand.lower() != "digital loggers":
-            res = self.send("index.htm")
+            It works reliably... but is *very* slow. So don't plan on doing it more often
+            than absolutely necessary
+
+            """
+            res = self._digitalLoggersSend("index.htm")
 
             soup = BeautifulSoup(res.text, "html.parser")
 
@@ -257,8 +263,8 @@ class PDU(object):
             self.log("could not initialize outlet names!!")
 
     def renameOutlet(self, outlet, name):
-        if self.brand.lower() != "digital loggers":
-            res = self.send(f"unitnames.cgi?outname{outlet}={name}")
+        if self.brand.lower() == "digital loggers":
+            res = self._digitalLoggersSend(f"unitnames.cgi?outname{outlet}={name}")
 
         elif self.brand.lower() == "synaccess":
             self.synlinkpdu.outlets.change_config(outlet, {"outletName": name})
@@ -403,12 +409,27 @@ if __name__ == "__main__":
         os.path.join(wsp_path, "credentials", "authentication.yaml")
     )
 
-    pdu1 = PDU("pdu1", pdu_config, auth_config, autostart=False)
-    pdu2 = PDU("pdu2", pdu_config, auth_config, autostart=False)
+    # DO YOU WANT TO HAVE THIS SCRIPT SEND THE STARTUP CONFIG???
+    autostart = True  # set to False if you don't want to send the startup config
+
+    pdu1 = PDU("pdu1", pdu_config, auth_config, autostart=autostart)
+    pdu2 = PDU("pdu2", pdu_config, auth_config, autostart=autostart)
+    pdu3 = PDU("pdu3", pdu_config, auth_config, autostart=autostart)
     print(f"pdu1 initial status = {pdu1.status}")
     print(f"pdu2 initial status = {pdu2.status}")
+    print(f"pdu3 initial status = {pdu3.status}")
     # print('initial status = ',pdu1.status)
     # new_status = [1,1,1,1,1,1,1,1]
     # pdu1.sendStatus(new_status)
 
     # print('final status = ',pdu1.status)
+
+    # send a new state by name
+    test_toggle_by_name = True
+    if test_toggle_by_name:
+        pdu3.off("Shutter")
+
+        # print the final status
+        print(f"pdu1 final status = {pdu1.status}")
+        print(f"pdu2 final status = {pdu2.status}")
+        print(f"pdu3 final status = {pdu3.status}")

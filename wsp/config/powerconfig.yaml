@@ -43,7 +43,7 @@ pdus:
         outlets:
             1: Shutter
             2: Thor
-        startup: 10
+        startup: 11
 
 ups:
     ups1:
