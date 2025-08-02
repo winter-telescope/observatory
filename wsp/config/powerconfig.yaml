@@ -13,7 +13,7 @@ pdus:
         outlets:
             1: Odin #'Callamp (2)'
             2: Freya #'Empty (1)'
-            3: Thor #'PurgeFlow (2)'
+            3: TelescopePDU #'PurgeFlow (2)'
             4: Sol #'Empty (1)'
             5: EMPTY #'Switch (1)'
             6: EMPTY #'Router (1)'
@@ -42,7 +42,7 @@ pdus:
         model: 'NP-0201DX'
         outlets:
             1: Shutter
-            2: EMPTY
+            2: Thor
         startup: 10
 
 ups:
