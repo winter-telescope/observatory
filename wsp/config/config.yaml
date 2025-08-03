@@ -1156,6 +1156,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: 'powerManager.state[2]["status"][7]'
+    pdu3_1:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[3]["status"][0]'
+    pdu3_2:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[3]["status"][1]'
 # site
     site_latitude_degs:
         ftype: raw

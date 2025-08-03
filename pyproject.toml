@@ -32,7 +32,8 @@ dependencies = [
     "labjack_ljm",
     "pyserial==3.5",
     "psycopg==3.0.14",
-    "transitions[diagrams]",
+    #"transitions",
+    "synlinkpy",
 
 ]
 
@@ -42,6 +43,7 @@ dev = [
     "black",
     "isort",
     "spyder",
+    "ipykernel",
 ]
 
 [tool.setuptools]
