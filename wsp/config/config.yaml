@@ -799,8 +799,9 @@ focus_loop_param:
             target: '40 304'
     focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
-    focus_graceperiod_hours: 6
+    focus_graceperiod_hours: 2
     max_focus_attempts: 2
+    focus_done_file: '/tmp/focus_done.txt'
     #fine_micron_interval: 10
     #recent_path: '/home/winter/data/last_image.lnk'
     #file_type: '\*fits'

@@ -51,7 +51,7 @@ from focuser import focus_tracker, focusing
 from housekeeping import data_handler
 from schedule import wintertoo_validate
 from telescope import pointingModelBuilder
-
+from focus_utils import temp2focus
 # print all the columns
 pd.set_option("display.max_columns", None)
 pd.set_option("display.expand_frame_repr", False)
@@ -1191,6 +1191,7 @@ class RoboOperator(QtCore.QObject):
                             else:
                                 pass
 
+                            # changed graceperoid to check every 2 hours for temp changes
                             graceperiod_hours = self.config["focus_loop_param"][
                                 "focus_graceperiod_hours"
                             ]
@@ -1209,6 +1210,9 @@ class RoboOperator(QtCore.QObject):
                                 # here is a good place to insert a good check on temperature change,
                                 # or even better a check on FWHM of previous images
 
+                                # Check current temp
+                                focus_temp = glob.glob(self.state["T_ob_port"])
+
                                 if not filterIDs_to_focus is None:
                                     print(
                                         f"robo: focus attempt #{self.focus_attempt_number}"
@@ -1218,14 +1222,24 @@ class RoboOperator(QtCore.QObject):
                                         <= self.config["focus_loop_param"][
                                             "max_focus_attempts"
                                         ]
+                                    ) and not (
+                                        os.path.exists(self.config["focus_loop_param"]["focus_done_file"])
                                     ):
                                         self.announce(
-                                            f"**Out of date focus results**: we need to focus the telescope in these filters: {filterIDs_to_focus}"
+                                            f"**No Focus done file!**:  we need to focus the telescope in these filters: {filterIDs_to_focus}"
                                         )
                                         # there are filters to focus! run a focus sequence
                                         self.do_focus_sequence(
                                             filterIDs=filterIDs_to_focus
                                         )
+                                        # create focus done file
+                                        with open(self.config["focus_loop_param"]["focus_done_file"], 'w') as focfile:
+                                            focfile.write("Finished focus sequence at %s" % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+                                        self.announce(
+                                            f"Focus done file written"
+                                        )
+
                                         self.announce(
                                             f"got past the do_focus_sequence call in checkWhatToDo?"
                                         )
@@ -1234,7 +1248,20 @@ class RoboOperator(QtCore.QObject):
                                         self.checktimer.start()
                                         return
 
-                            # here we should check if the temperature has changed by some amount and nudge the focus if need be
+                                    elif os.path.exists(self.config["focus_loop_param"]["focus_done_file"]):
+                                        # has the temperature changed by a significant amount?
+                                        current_temp = self.state["T_ob_port"]
+                                        if np.abs(focus_temp - current_temp) > 2.5:
+                                            self.announce(
+                                                f"Temperature has changed; adjusting to model focus"
+                                            )
+                                            model_pos = temp2focus.temp_to_focus(current_temp)
+                                            self.do(f"m2_focuser_goto {model_pos}")
+                                            return
+
+                                    else:
+                                        pass
+                                        # Make sure cronjob to remove focus_done_file is in place
 
                             # ---------------------------------------------------------------------
                             # check what we should be observing NOW
