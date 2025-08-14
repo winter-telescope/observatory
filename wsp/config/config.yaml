@@ -33,7 +33,7 @@ fits_header:
     default_observer: 'WINTER roboOperator'
 
 ########## WINTERCMD COMMANDING ##########
-wintercmd_server_addr: 'localhost'
+wintercmd_server_addr: '0.0.0.0'
 wintercmd_server_port: 7000
 wintercmd_server_timeout: 0.1
 # trusted hosts (whitelist). allow commands from these machines
@@ -122,6 +122,8 @@ log_link_name: 'winter.log'
 # eg, if type is sun and cond is >= : then send the cmd when sun_alt >= VAL, set to -18
 #max_sun_alt_for_observing: -18
 max_sun_alt_for_observing: -7
+sun_alt_to_startup_cameras: 10.0
+sun_alt_to_shutdown_cameras: -5.0
 
 
 robotic_manager_triggers:
@@ -233,9 +235,8 @@ robotic_manager_triggers:
             conds:
                cond1:
                    type: 'sun'
-                   #val: -7.0
-                   #val: 5.0
-                   val: 10.0
+                   #val: 10.0
+                   val: 1000.0 # this just forces robo_run to be called at all times, should help avoid incomplete shutdowns
                    cond: '<'
                # make sure we start after the purge starts
                # cond2:
@@ -380,8 +381,8 @@ telescope:
     simhost: "localhost"
     comm_port: 8220
     home_alt_degs: 45.0
-    #home_az_degs: 349.0
-    home_az_degs: 0
+    #home_az_degs: 0 # -> this was the standard for a long time
+    home_az_degs: 220 # -> this is the new standard, so that the telescope is anti dome when the dome is home at 40 deg
     #min_alt: 30
     min_alt: 15
     max_alt: 85.0
@@ -454,7 +455,7 @@ telescope_shutter:
 # dome tracking error allowed in degrees
 dome_tracking_error_threshold: 0.1
 
-dome_home_az_degs: 169
+dome_home_az_degs: 40.0 #169
 
 Dome_Status_Dict:
     ## Palomar Command Server
@@ -874,7 +875,7 @@ filters:
     winter:
         J:
             name: "MKO J-band (Asahi)"
-            nominal_focus: 11750.0 #11687.0
+            nominal_focus: 12000.0 #11687.0
             active: True
             focus_exptime: 30
         Y:  
@@ -925,7 +926,8 @@ pointing_model:
         min_az: 5
         max_az: 355
     # current default pointing model to use
-    pointing_model_file: 'pointing_model_20220811.pxp'
+    pointing_model_file: "pointing_model_winter_20250529_downselected.pxp"
+    
     # filepath of pointlist to use by default in home directory
     #default_pointlist: 'data/pointing_model/25_point_denser_near_zenith_spaced_pointing_model_points.txt'
     default_pointlist: 'data/pointing_model/200_point_denser_near_zenith_spaced_pointing_model_points.txt'
@@ -968,12 +970,14 @@ observing_parameters:
             ditherMaxStep_as: 90 #15
         best_position:
             board_id: 4
-            x_pixel: 800
-            y_pixel: 500
+            addr: "pc"
+            x_pixel: 1475 #570
+            y_pixel: 550 #530
         base_position:
-            board_id: 0
-            x_pixel: 1788
-            y_pixel: 533
+            board_id: 3 #0
+            addr: "pb"
+            x_pixel: 1965 #1864 #1788
+            y_pixel: 500 #530 #533
         pixscale: 1.11
         x_pixels: 1984
         y_pixels: 1096
@@ -1152,6 +1156,20 @@ fields:
         dtype: int64
         rate: 'hk'
         var: 'powerManager.state[2]["status"][7]'
+    pdu3_1:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[3]["status"][0]'
+    pdu3_2:
+        ftype: raw
+        label: 'State'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: 'powerManager.state[3]["status"][1]'
 # site
     site_latitude_degs:
         ftype: raw
