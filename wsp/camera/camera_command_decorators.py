@@ -62,9 +62,6 @@ def daemon_command(
     return decorator
 
 
-# Update the existing decorators to be state-aware at the implementation level
-
-
 def camera_command(
     timeout: Optional[float] = 10.0,
     timeout_func: Optional[Callable] = None,
@@ -77,6 +74,23 @@ def camera_command(
     """
     Enhanced decorator for camera implementation commands.
     State validation is skipped since daemon handles state transitions.
+
+    Parameters
+    ----------
+    timeout : float
+        Command timeout in seconds
+    timeout_func : callable, optional
+        Function to calculate timeout dynamically
+    required_state : CameraState, optional
+        DEPRECATED - state validation now handled by daemon
+    target_state : CameraState, optional
+        DEPRECATED - state transitions handled by daemon
+    completion_state : CameraState, optional
+        State to set when command completes successfully
+    error_state : CameraState
+        State to set on error
+    check_addresses : bool
+        Whether to check/handle address parameters
     """
 
     def decorator(func: Callable) -> Callable:
@@ -99,7 +113,7 @@ def camera_command(
             else:
                 actual_timeout = timeout
 
-            # Set up command tracking
+            # Set up command tracking signals
             self.resetCommandPassSignal.emit(0)
             self.resetCommandActiveSignal.emit(1)
             self.resetCommandTimeoutSignal.emit(actual_timeout)
@@ -108,13 +122,12 @@ def camera_command(
                 # Execute the actual command
                 result = func(self, *args, **kwargs)
 
-                # If command completed successfully
-                if result is not False:  # Allow None or True as success
-                    # For immediate completion (like setExposure), signal done
-                    if completion_state:
-                        self.update_camera_state(completion_state)
-                        self.resetCommandPassSignal.emit(1)
-                        self.resetCommandActiveSignal.emit(0)
+                # If command completed successfully and immediately
+                # (e.g., setExposure, tecSetSetpoint)
+                if result is not False and completion_state:
+                    self.update_camera_state(completion_state)
+                    self.resetCommandPassSignal.emit(1)
+                    self.resetCommandActiveSignal.emit(0)
 
                 return result
 
@@ -130,74 +143,5 @@ def camera_command(
     return decorator
 
 
-def exposure_command(
-    timeout: Optional[float] = 300.0, timeout_func: Optional[Callable] = None
-):
-    """
-    Enhanced exposure command decorator.
-    State validation removed since daemon handles state transitions.
-    """
-
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
-            # Skip state check - daemon already set EXPOSING
-
-            # Calculate timeout
-            if timeout_func:
-                actual_timeout = timeout_func(self, *args, **kwargs)
-            else:
-                actual_timeout = timeout
-
-            # Set up command tracking
-            self.resetCommandPassSignal.emit(0)
-            self.resetCommandActiveSignal.emit(1)
-            self.resetCommandTimeoutSignal.emit(actual_timeout)
-
-            try:
-                # Execute the exposure
-                result = func(self, *args, **kwargs)
-                return result
-
-            except Exception as e:
-                self.log(f"Error during exposure: {e}", level=logging.ERROR)
-                self.resetCommandPassSignal.emit(0)
-                self.resetCommandActiveSignal.emit(0)
-                self.update_camera_state(CameraState.ERROR)
-                raise
-
-        return wrapper
-
-    return decorator
-
-
-def shutdown_command(timeout: float = 180.0):
-    """
-    Enhanced shutdown command decorator.
-    State validation removed since daemon handles state transitions.
-    """
-
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
-            # Skip state check - daemon already set SHUTDOWN_REQUESTED
-
-            # Set up command tracking
-            self.resetCommandPassSignal.emit(0)
-            self.resetCommandActiveSignal.emit(1)
-            self.resetCommandTimeoutSignal.emit(timeout)
-
-            try:
-                result = func(self, *args, **kwargs)
-                return result
-
-            except Exception as e:
-                self.log(f"Error during shutdown: {e}", level=logging.ERROR)
-                self.resetCommandPassSignal.emit(0)
-                self.resetCommandActiveSignal.emit(0)
-                self.update_camera_state(CameraState.ERROR)
-                raise
-
-        return wrapper
-
-    return decorator
+# That's it! Just two decorators: daemon_command and camera_command
+# No need for exposure_command, startup_command, shutdown_command, etc.

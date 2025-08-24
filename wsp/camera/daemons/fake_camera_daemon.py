@@ -1,4 +1,11 @@
-# fake_camera_daemon.py
+#!/usr/bin/env python3
+"""
+fake_camera_daemon.py
+
+Example fake camera implementation that demonstrates proper state management
+with immediate state transitions handled by the daemon.
+"""
+
 import logging
 import os
 from datetime import datetime
@@ -7,17 +14,14 @@ import astropy.io.fits as fits
 import numpy as np
 from PyQt5 import QtCore
 
-from wsp.camera.camera_command_decorators import (
-    camera_command,
-    exposure_command,
-    shutdown_command,
-    startup_command,
-)
+from wsp.camera.camera_command_decorators import camera_command
 from wsp.camera.daemon_framework import BaseCameraInterface, create_camera_daemon
 from wsp.camera.state import CameraState
 
 
 class ExposureConfig:
+    """Container for exposure configuration"""
+
     def __init__(self, imdir, imname, imtype, exposure_time, mode, metadata):
         self.imdir = imdir
         self.imname = imname
@@ -69,14 +73,21 @@ class TimerWorker(QtCore.QObject):
 class FakeCameraInterface(BaseCameraInterface):
     """
     Example fake camera implementation for testing.
+    Demonstrates proper state management with decorators.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Camera parameters
         self.exposure_time = 1.0
         self.tec_setpoint = -20.0
         self.tec_temp = 20.0
         self.tec_enabled = False
+
+        # Track exposure
+        self._exposure_start_time = datetime.utcnow()
+        self._exposure_complete_time = datetime.utcnow()
 
         # Create worker thread for timers
         self.timer_thread = QtCore.QThread()
@@ -90,6 +101,9 @@ class FakeCameraInterface(BaseCameraInterface):
 
         # Start the worker thread
         self.timer_thread.start()
+
+        # Initial state
+        self.update_camera_state(CameraState.OFF)
 
     def __del__(self):
         """Clean up the worker thread"""
@@ -112,17 +126,26 @@ class FakeCameraInterface(BaseCameraInterface):
         # Add camera specific items to the status
         self.state.update(
             {
-                "thing": "value",  # Example status item
+                "fake_camera_status": "operational",
+                "simulation_mode": True,
             }
         )
 
-    @startup_command(timeout=300.0)
+    def check_if_command_passed(self):
+        """Override to check if command completed"""
+        # This is called during polling when command_active is True
+        # For fake camera, we rely on timer callbacks to signal completion
+        pass
+
+    @camera_command(timeout=3600.0)  # 1 hour timeout for long startups
     def autoStartup(self):
         """Fake startup sequence"""
         self.log("Starting fake camera startup")
+        self.update_camera_state(CameraState.STARTUP_REQUESTED)
 
-        # Request timer creation in worker thread
+        # Simulate startup delay
         self.timer_worker.startupTimerRequested.emit(2000)
+        return True
 
     def _startup_complete(self):
         """Complete startup - called by signal from worker thread"""
@@ -132,13 +155,15 @@ class FakeCameraInterface(BaseCameraInterface):
         self.resetCommandPassSignal.emit(1)
         self.resetCommandActiveSignal.emit(0)
 
-    @shutdown_command(timeout=300.0)
+    @camera_command(timeout=300.0)  # 5 minute timeout for shutdown
     def autoShutdown(self):
         """Fake shutdown sequence"""
         self.log("Starting fake camera shutdown")
+        self.update_camera_state(CameraState.SHUTDOWN_REQUESTED)
 
-        # Request timer in worker thread
+        # Simulate shutdown delay
         self.timer_worker.shutdownTimerRequested.emit(1000)
+        return True
 
     def _shutdown_complete(self):
         """Complete shutdown - called by signal from worker thread"""
@@ -149,37 +174,40 @@ class FakeCameraInterface(BaseCameraInterface):
         self.resetCommandActiveSignal.emit(0)
 
     @camera_command(
-        timeout_func=lambda self, *args, **kwargs: (
-            4 * args[0] + 5 if args else 10
-        ),  # args[0] is exposure time
+        timeout_func=lambda self, *args, **kwargs: 10.0,
         completion_state=CameraState.READY,
     )
-    def setExposure(self, exptime, addrs=None, **kwargs):  # Add **kwargs here
+    def setExposure(self, exptime, addrs=None):
         """Set exposure time"""
         self.exposure_time = exptime
         self.log(f"Set exposure time to {exptime}s")
+        self.state.update({"exposure_time": exptime})
         return True
 
-    @exposure_command(
-        timeout_func=lambda self, *args, **kwargs: 5 * self.exposure_time + 5
+    @camera_command(
+        timeout_func=lambda self, *args, **kwargs: max(
+            5 * self.exposure_time + 10, 60.0
+        )
     )
-    def doExposure(self, imdir, imname, imtype, mode, metadata, addrs=None, **kwargs):
-        """Fake exposure"""
+    def doExposure(self, imdir, imname, imtype, mode, metadata, addrs=None):
+        """Execute fake exposure - state already set to EXPOSING by daemon decorator"""
         # Call parent to set up basic exposure parameters
         super().doExposure(imdir, imname, imtype, mode, metadata, addrs)
-
-        self.log(f"Starting fake exposure: {self.imname}")
-
-        # Initialize fake exposure parameters
-        if not os.path.exists(self.imdir):
-            os.makedirs(self.imdir)
+        self._exposure_start_time = datetime.utcnow()
+        self.log(
+            f"Starting fake exposure: {self.imname}, starttime = {self._exposure_start_time.isoformat()}"
+        )
 
         # Create a unique filename if needed
         if not self.imname:
             timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
             self.imname = f"fake_{timestamp}"
 
+        # Update lastfilename with full path
+        self.lastfilename = self.makeImageFilepath(self.imdir, self.imname, self.imtype)
+
         self.log(f"Fake exposure initialized: {self.imname}")
+        self.log(f"Will save to: {self.lastfilename}")
 
         exposure_config = ExposureConfig(
             imdir=self.imdir,
@@ -198,7 +226,10 @@ class FakeCameraInterface(BaseCameraInterface):
 
     def _exposure_complete(self, exposure_config):
         """Complete the fake exposure - called by signal from worker thread"""
-        self.log(f"Completing exposure: {exposure_config.imname}")
+        self._exposure_complete_time = datetime.utcnow()
+        self.log(
+            f"Completing exposure: {exposure_config.imname}, endtime = {self._exposure_complete_time.isoformat()}, dt = {self._exposure_complete_time - self._exposure_start_time} s"
+        )
 
         # Transition to READING state
         self.update_camera_state(CameraState.READING)
@@ -223,12 +254,10 @@ class FakeCameraInterface(BaseCameraInterface):
                 except Exception as e:
                     self.log(f"Could not add {key} to header: {e}")
 
-        # Add exposure time
+        # Add standard headers
         hdr["EXPTIME"] = exposure_config.exposure_time
-
-        # Ensure full filepath
-        if not self.lastfilename.endswith(".fits"):
-            self.lastfilename = f"{self.lastfilename}.fits"
+        hdr["IMAGETYP"] = exposure_config.imtype
+        hdr["DATE-OBS"] = datetime.utcnow().isoformat()
 
         # Write the image
         try:
@@ -237,42 +266,56 @@ class FakeCameraInterface(BaseCameraInterface):
             self.log(f"FITS file written successfully: {self.lastfilename}")
         except Exception as e:
             self.log(f"Error writing FITS file: {e}", level=logging.ERROR)
-            raise
+            self.update_camera_state(CameraState.ERROR)
+            self.resetCommandPassSignal.emit(0)
+            self.resetCommandActiveSignal.emit(0)
+            return
 
         # Signal command completion
         self.resetCommandPassSignal.emit(1)
         self.resetCommandActiveSignal.emit(0)
 
+        # Update state to show exposure complete
+        self.state.update(
+            {
+                "last_image": self.lastfilename,
+                "last_exposure_time": exposure_config.exposure_time,
+            }
+        )
+
         # Call parent's exposure complete method
         super()._exposure_complete(exposure_config.imdir, exposure_config.imname)
 
-    @camera_command(timeout=10.0)
-    def tecSetSetpoint(self, temp, addrs=None, **kwargs):
+    @camera_command(timeout=10.0, completion_state=CameraState.READY)
+    def tecSetSetpoint(self, temp, addrs=None):
         """Set TEC setpoint"""
         self.tec_setpoint = temp
         self.log(f"Set TEC setpoint to {temp}C")
+        self.state.update({"tec_setpoint": temp})
         return True
 
-    @camera_command(timeout=5.0)
-    def tecStart(self, addrs=None, **kwargs):
+    @camera_command(timeout=5.0, completion_state=CameraState.READY)
+    def tecStart(self, addrs=None):
         """Start TEC"""
         self.tec_enabled = True
         self.log("TEC started")
+        self.state.update({"tec_enabled": True})
         return True
 
-    @camera_command(timeout=5.0)
-    def tecStop(self, addrs=None, **kwargs):
+    @camera_command(timeout=5.0, completion_state=CameraState.READY)
+    def tecStop(self, addrs=None):
         """Stop TEC"""
         self.tec_enabled = False
         self.log("TEC stopped")
+        self.state.update({"tec_enabled": False})
         return True
 
-    def startupCamera(self, addrs=None, **kwargs):
-        """Manual startup"""
+    def startupCamera(self, addrs=None):
+        """Manual startup - delegates to autoStartup"""
         return self.autoStartup()
 
-    def shutdownCamera(self, addrs=None, **kwargs):
-        """Manual shutdown"""
+    def shutdownCamera(self, addrs=None):
+        """Manual shutdown - delegates to autoShutdown"""
         return self.autoShutdown()
 
     # Required abstract methods
@@ -294,4 +337,5 @@ class FakeCameraInterface(BaseCameraInterface):
 
 
 if __name__ == "__main__":
+    # Create and run the daemon
     create_camera_daemon(FakeCameraInterface, "FakeCamera")
