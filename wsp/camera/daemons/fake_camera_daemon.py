@@ -326,6 +326,35 @@ class FakeCameraInterface(BaseCameraInterface):
     def tecGetTemp(self) -> float:
         """Get current TEC temperature"""
         return self.tec_temp
+        return self.tec_setpoint
+
+    def tecGetVoltage(self) -> float:
+        """Get current TEC voltage"""
+        if self.tec_enabled:
+            # base voltage + some noise
+            self.tec_voltage = 7.5 + np.random.uniform(-0.5, 0.5)
+        else:
+            self.tec_voltage = 0.0
+        return self.tec_voltage
+
+    def tecGetCurrent(self) -> float:
+        """Get current TEC current"""
+        approx_tec_impedence = 4.0  # ohms
+        if self.tec_enabled:
+            # Simulate current based on voltage
+            self.tec_current = self.tec_voltage / approx_tec_impedence
+        else:
+            self.tec_current = 0.0
+        return self.tec_current
+
+    def tecGetPercentage(self):
+        """Get current TEC power percentage"""
+        max_tec_voltage = 8.0
+        approx_tec_impedence = 4.0  # ohms
+        max_power = max_tec_voltage**2 / approx_tec_impedence
+        power = self.tec_voltage**2 / approx_tec_impedence
+        self.tec_percentage = min(100.0, power / max_power * 100.0)
+        return self.tec_percentage
 
     def tecGetEnabled(self) -> bool:
         """Check if TEC is enabled"""

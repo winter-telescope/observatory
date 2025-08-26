@@ -17,7 +17,7 @@ import os
 import sys
 import time
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Dict, Optional
 
@@ -98,6 +98,10 @@ class BaseCamera(QtCore.QObject):
         self._previous_state = CameraState.OFF
         self._state_transition_time = datetime.utcnow()
 
+        # Operation tracking for grace period
+        self.active_operation_time = None
+        self.state_sync_grace_period = 2.0  # seconds to wait for daemon state sync
+
         # Default value handling
         self.default = self.config.get("default_value", -999)
 
@@ -107,96 +111,36 @@ class BaseCamera(QtCore.QObject):
         self.imstarttime = ""
         self.mode = None
         self.imtype = None
+        self.exptime = 0.0
+
+        # TEC parameters
+        self.tec_temp = 0  # Current temperature of TEC
+        self.tec_enabled = 0  # Is the TEC enabled?(0: OFF, 1: ON)
+        self.tec_setpoint = 0.0  # Setpoint temperature for TEC
+        self.tec_voltage = 0.0  # Voltage of TEC
+        self.tec_current = 0.0  # Current of TEC
+        self.tec_percentage = 0.0  # Percentage of TEC power
+
+        # Backwards compatibility attributes
+        self.timestamp = datetime.utcnow().timestamp()
+        self.command_pass = False
+        self.command_active = False
+        self.doing_exposure = False
+        self.is_connected = False
+        self.command_timeout = 0.0
+        self.command_sent_timestamp = 0.0
+        self.command_elapsed_dt = 0.0
+        self.autoShutdownRequested = False
+        self.autoShutdownComplete = False
+        self.autoStartupRequested = False
+        self.autoStartupComplete = False
 
         # Connect signals and slots
         self.newCommand.connect(self.doCommand)
 
-        # State verification tracking
-        self._expected_state = None
-        self._expected_state_timeout = 2.0
-        self._expected_state_set_time = None
-
         # Initialize connections
         self.init_remote_object()
         self.update_state()
-
-    def _set_expected_state(self, expected_state: CameraState, timeout: float = 2.0):
-        """Set the expected state and start tracking for verification"""
-        self._expected_state = expected_state
-        self._expected_state_timeout = timeout
-        self._expected_state_set_time = datetime.utcnow()
-
-    def _check_expected_state(self):
-        """Check if expected state matches actual state (called during update_state)"""
-        if self._expected_state is None or self._expected_state_set_time is None:
-            return
-
-        # Calculate elapsed time
-        elapsed = (datetime.utcnow() - self._expected_state_set_time).total_seconds()
-
-        # If we've exceeded the timeout, check if states match
-        if elapsed > self._expected_state_timeout:
-            if self._camera_state != self._expected_state:
-                self.log(
-                    f"State verification timeout! Expected {self._expected_state.value} "
-                    f"but daemon reports {self._camera_state.value} after {elapsed:.1f}s",
-                    level=logging.WARNING,
-                )
-            # Clear the expected state tracking
-            self._expected_state = None
-            self._expected_state_set_time = None
-
-    def _start_local_override(
-        self,
-        expected: CameraState,
-        min_hold: float = 0.4,  # keep local state at least this long after it’s first confirmed
-        max_wait: float = 2.0,  # give daemon up to this long to report the expected state
-    ) -> None:
-        self._local_override = {
-            "expected": expected,
-            "t0": datetime.utcnow(),
-            "min_hold": min_hold,
-            "max_wait": max_wait,
-            "seen_expected": False,  # flips True once daemon reports expected at least once
-        }
-
-    def _maybe_gate_remote(self, remote_state: CameraState) -> CameraState:
-        """Return the state we should apply *now* (possibly the current local state to ignore a regression)."""
-        gate = getattr(self, "_local_override", None)
-        if not gate:
-            return remote_state
-
-        now = datetime.utcnow()
-        elapsed = (now - gate["t0"]).total_seconds()
-        expected = gate["expected"]
-
-        # If daemon reports the expected state, mark confirmed
-        if remote_state == expected:
-            gate["seen_expected"] = True
-            # fall-through: allow updating to expected
-
-        # If we haven't yet seen expected and we're within max_wait, ignore regressions like READY
-        if not gate["seen_expected"] and elapsed < gate["max_wait"]:
-            if remote_state in (
-                CameraState.READY,
-                CameraState.SETTING_PARAMETERS,
-                CameraState.OFF,
-            ):
-                # keep local optimistic state for now
-                return self._camera_state
-
-        # If we have seen expected, enforce a brief min_hold before allowing a drop back
-        if gate["seen_expected"] and elapsed < gate["min_hold"]:
-            if remote_state != expected and remote_state != CameraState.ERROR:
-                return self._camera_state
-
-        # Clear the gate once we either time out or leave the expected state after min_hold
-        if elapsed >= gate["max_wait"] or (
-            gate["seen_expected"] and remote_state != expected
-        ):
-            self._local_override = None
-
-        return remote_state
 
     def log(self, msg, level=logging.INFO):
         msg = f"{self.camname} local interface: {msg}"
@@ -242,6 +186,10 @@ class BaseCamera(QtCore.QObject):
         """Check if the given state is a valid CameraState."""
         return isinstance(state, CameraState) and state in CameraState
 
+    def _mark_operation_start(self):
+        """Mark the start of an operation for grace period tracking"""
+        self.active_operation_time = datetime.now(timezone.utc).timestamp()
+
     def init_remote_object(self):
         """Initialize connection to remote daemon"""
         try:
@@ -251,8 +199,10 @@ class BaseCamera(QtCore.QObject):
             uri = ns.lookup(self.daemonname)
             self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
+            self.is_connected = True
         except Exception as e:
             self.connected = False
+            self.is_connected = False
             if self.verbose:
                 self.log(f"connection to remote object failed: {e}")
 
@@ -292,7 +242,6 @@ class BaseCamera(QtCore.QObject):
                 self.remote_state = self.remote_object.getStatus()
 
                 # Update camera state from remote BEFORE parsing
-                # This ensures remote state is set before parse_state is called
                 remote_camera_state = self.remote_state.get("camera_state", "OFF")
                 if self.verbose:
                     print(f"Remote camera state: {remote_camera_state}")
@@ -300,11 +249,29 @@ class BaseCamera(QtCore.QObject):
                 try:
                     new_state = CameraState(remote_camera_state)
                     if self.is_valid_state(new_state):
-                        # GATE HERE:
-                        gated_state = self._maybe_gate_remote(new_state)
+                        # Check if we're within grace period
+                        should_update = True
 
-                        if gated_state != self._camera_state:
-                            self.camera_state = gated_state
+                        if self.active_operation_time:
+                            time_since_operation = (
+                                datetime.now(timezone.utc).timestamp()
+                                - self.active_operation_time
+                            )
+                            if time_since_operation < self.state_sync_grace_period:
+                                if self.verbose:
+                                    self.log(
+                                        f"Within grace period ({time_since_operation:.1f}s < "
+                                        f"{self.state_sync_grace_period}s), not overwriting state"
+                                    )
+                                should_update = False
+                            else:
+                                # Grace period expired
+                                self.active_operation_time = None
+
+                        # Only update if we should
+                        if should_update and new_state != self._camera_state:
+                            self.camera_state = new_state
+
                     else:
                         self.log(
                             f"Invalid camera state received: {remote_camera_state}",
@@ -316,31 +283,90 @@ class BaseCamera(QtCore.QObject):
                         level=logging.ERROR,
                     )
 
+                # Update backwards compatibility attributes from remote state
+                self.timestamp = datetime.utcnow().timestamp()
+                self.command_pass = self.remote_state.get("command_pass", False)
+                self.command_active = self.remote_state.get("command_active", False)
+                self.exptime = self.remote_state.get("exposure_time", 0.0)
+                self.command_timeout = self.remote_state.get("command_timeout", 0.0)
+                self.command_sent_timestamp = self.remote_state.get(
+                    "command_sent_timestamp", 0.0
+                )
+
+                # Calculate elapsed time
+                if self.command_sent_timestamp > 0:
+                    self.command_elapsed_dt = (
+                        self.timestamp - self.command_sent_timestamp
+                    )
+                else:
+                    self.command_elapsed_dt = 0.0
+
+                # Update exposure status based on camera state
+                self.doing_exposure = self._camera_state in [
+                    CameraState.EXPOSING,
+                    CameraState.READING,
+                ]
+
+                # Update startup/shutdown flags based on state
+                self.autoStartupRequested = (
+                    self._camera_state == CameraState.STARTUP_REQUESTED
+                )
+                self.autoStartupComplete = (
+                    self._previous_state == CameraState.STARTUP_REQUESTED
+                    and self._camera_state == CameraState.READY
+                )
+                self.autoShutdownRequested = (
+                    self._camera_state == CameraState.SHUTDOWN_REQUESTED
+                )
+                self.autoShutdownComplete = (
+                    self._previous_state == CameraState.SHUTDOWN_REQUESTED
+                    and self._camera_state == CameraState.OFF
+                )
+
                 # Now parse the rest of the state
                 self.parse_state()
-
-                # Check if expected state matches actual state
-                self._check_expected_state()
 
             except Exception as e:
                 if self.verbose:
                     self.log(f"camera: could not update/parse remote state: {e}")
                 self.connected = False
+                self.is_connected = False
                 self.camera_state = CameraState.ERROR
 
     def parse_state(self):
         """Parse state - must be implemented by subclasses"""
-        # Base implementation
+        # Base implementation with backwards compatibility attributes
         self.state.update(
             {
+                "timestamp": self.timestamp,
                 "camname": self.camname,
-                "is_connected": self.connected,
+                "is_connected": self.is_connected,
                 "camera_state": self.camera_state.value,
                 "imdir": self.imdir,
                 "imname": self.imname,
                 "imstarttime": self.imstarttime,
                 "imtype": self.imtype,
                 "immode": self.mode,
+                # TEC
+                "tec_temp": self.tec_temp,
+                "tec_enabled": self.tec_enabled,
+                "tec_setpoint": self.tec_setpoint,
+                "tec_voltage": self.tec_voltage,
+                "tec_current": self.tec_current,
+                "tec_percentage": self.tec_percentage,
+                # Exposure
+                "exptime": self.exptime,
+                # Backwards compatibility entries
+                # "command_pass": self.command_pass,
+                # "command_active": self.command_active,
+                # "doing_exposure": self.doing_exposure,
+                # "command_timeout": self.command_timeout,
+                # "command_sent_timestamp": self.command_sent_timestamp,
+                # "command_elapsed_dt": self.command_elapsed_dt,
+                # "autoShutdownRequested": self.autoShutdownRequested,
+                # "autoShutdownComplete": self.autoShutdownComplete,
+                # "autoStartupRequested": self.autoStartupRequested,
+                # "autoStartupComplete": self.autoStartupComplete,
             }
         )
 
@@ -367,31 +393,24 @@ class BaseCamera(QtCore.QObject):
 
     # === Simplified API Methods - daemon handles state changes ===
 
-    def setExposure(self, exptime, timeout=5.0, **kwargs):
+    def setExposure(self, exptime, **kwargs):
         """Set exposure time
 
         Parameters
         ----------
         exptime : float
             Exposure time in seconds
-        timeout : float
-            Time to wait for state verification (default 5.0s)
-            For cameras with slow exposure changes, set this higher
         **kwargs
             Additional camera-specific parameters
         """
+        self._mark_operation_start()
+        # Don't update local exposure time, let it come from the server because sometimes it is slow
         try:
-            # Optimistically set state
             self.camera_state = CameraState.SETTING_PARAMETERS
-
             self.remote_object.setExposure(exptime, **kwargs)
-
-            # Optimistically return to READY
             self.camera_state = CameraState.READY
-
-            # Track expected state
-            self._set_expected_state(CameraState.READY, timeout=timeout)
         except Exception as e:
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
             print(f"Error setting exposure: {e}")
             raise
@@ -419,21 +438,17 @@ class BaseCamera(QtCore.QObject):
         self.imtype = imtype
         self.mode = mode
 
-        # NOTE: Moved state updates AFTER we set the EXPOSING state
-        # to avoid overwriting our optimistic state change
+        self._mark_operation_start()
 
         try:
-            # Optimistically set state to EXPOSING FIRST
+            # Optimistically set state to EXPOSING
             self.camera_state = CameraState.EXPOSING
+            self.doing_exposure = True  # Set exposure flag
 
-            # Start local override so we don't accept READY for a moment
-            self._start_local_override(CameraState.EXPOSING, min_hold=2.0, max_wait=5.0)
-
-            # THEN update state dictionaries (but this won't overwrite camera_state)
+            # Update state dictionaries
             self.log(f"updating state dictionaries")
-            # Don't call update_state() here as it will overwrite our optimistic state!
-            # Just update housekeeping state
             self.update_hk_state()
+            self.update_state()
 
             self.log(f"making FITS header")
             header = self.getFITSheader()
@@ -451,91 +466,104 @@ class BaseCamera(QtCore.QObject):
                 **kwargs,
             )
 
-            # Track expected state - we expect to stay in EXPOSING
-            self._set_expected_state(CameraState.EXPOSING, timeout=2.0)
-
         except Exception as e:
-            # Revert state on error
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
+            self.doing_exposure = False
             print(f"Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}")
 
-    def tecSetSetpoint(self, temp, timeout=1.0, **kwargs):
+    def tecSetSetpoint(self, temp, **kwargs):
         """Set TEC setpoint"""
+        self._mark_operation_start()
         try:
             self.camera_state = CameraState.SETTING_PARAMETERS
             self.remote_object.tecSetSetpoint(temp, **kwargs)
             self.camera_state = CameraState.READY
-            self._set_expected_state(CameraState.READY, timeout=timeout)
         except Exception as e:
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
             print(f"Error setting TEC setpoint: {e}")
             raise
 
     def tecStart(self, **kwargs):
         """Start TEC"""
+        self._mark_operation_start()
         try:
             self.camera_state = CameraState.SETTING_PARAMETERS
             self.remote_object.tecStart(**kwargs)
             self.camera_state = CameraState.READY
-            self._set_expected_state(CameraState.READY, timeout=1.0)
         except Exception as e:
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
             print(f"Error starting TEC: {e}")
             raise
 
     def tecStop(self, **kwargs):
         """Stop TEC"""
+        self._mark_operation_start()
         try:
             self.camera_state = CameraState.SETTING_PARAMETERS
             self.remote_object.tecStop(**kwargs)
             self.camera_state = CameraState.READY
-            self._set_expected_state(CameraState.READY, timeout=1.0)
         except Exception as e:
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
             print(f"Error stopping TEC: {e}")
             raise
 
     def startupCamera(self, **kwargs):
         """Manual startup"""
+        self._mark_operation_start()
+        self.autoStartupRequested = True
         try:
             self.camera_state = CameraState.STARTUP_REQUESTED
             self.remote_object.startupCamera(**kwargs)
-            self._set_expected_state(CameraState.STARTUP_REQUESTED, timeout=2.0)
         except Exception as e:
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
+            self.autoStartupRequested = False
             print(f"Error starting camera: {e}")
             raise
 
     def shutdownCamera(self, **kwargs):
         """Manual shutdown"""
+        self._mark_operation_start()
+        self.autoShutdownRequested = True
         try:
             self.camera_state = CameraState.SHUTDOWN_REQUESTED
             self.remote_object.shutdownCamera(**kwargs)
-            self._set_expected_state(CameraState.SHUTDOWN_REQUESTED, timeout=2.0)
         except Exception as e:
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
+            self.autoShutdownRequested = False
             print(f"Error shutting down camera: {e}")
             raise
 
     def autoStartupCamera(self, **kwargs):
         """Auto startup"""
+        self._mark_operation_start()
+        self.autoStartupRequested = True
         try:
             self.camera_state = CameraState.STARTUP_REQUESTED
             self.remote_object.autoStartup(**kwargs)
-            self._set_expected_state(CameraState.STARTUP_REQUESTED, timeout=2.0)
         except Exception as e:
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
+            self.autoStartupRequested = False
             print(f"Error during auto startup: {e}")
             raise
 
     def autoShutdownCamera(self, **kwargs):
         """Auto shutdown"""
+        self._mark_operation_start()
+        self.autoShutdownRequested = True
         try:
             self.camera_state = CameraState.SHUTDOWN_REQUESTED
             self.remote_object.autoShutdown(**kwargs)
-            self._set_expected_state(CameraState.SHUTDOWN_REQUESTED, timeout=2.0)
         except Exception as e:
+            self.active_operation_time = None
             self.camera_state = CameraState.ERROR
+            self.autoShutdownRequested = False
             print(f"Error during auto shutdown: {e}")
             raise
 

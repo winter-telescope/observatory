@@ -62,6 +62,9 @@ class BaseCameraInterface(QtCore.QObject):
         self.command_sent_timestamp = 0.0
         self.command_elapsed_dt = 0.0
 
+        # Connect signals to slots
+        # connect state changed to update the camera state
+
         # Timeout check timer
         self.timeout_timer = QtCore.QTimer()
         self.timeout_timer.timeout.connect(self.check_command_timeout)
@@ -178,7 +181,9 @@ class BaseCameraInterface(QtCore.QObject):
         self.tec_temp = self.tecGetTemp()
         self.tec_enabled = self.tecGetEnabled()
         self.exposure_time = self.getExposureTime()
-
+        self.tec_voltage = self.tecGetVoltage()
+        self.tec_current = self.tecGetCurrent()
+        self.tec_percentage = self.tecGetPercentage()
         self.pollCameraStatus()
 
         if self.command_active:
@@ -187,12 +192,18 @@ class BaseCameraInterface(QtCore.QObject):
         # Update state
         self.state.update(
             {
+                # Basic connection parameters
                 "timestamp": datetime.utcnow().timestamp(),
                 "connected": self.connected,
-                "exposure_time": self.exposure_time,
+                # Image parameters
+                "exptime": self.exposure_time,
+                # TEC parameters
                 "tec_temp": self.tec_temp,
-                "tec_setpoint": self.tec_setpoint,
                 "tec_enabled": self.tec_enabled,
+                "tec_setpoint": self.tec_setpoint,
+                "tec_voltage": self.tec_voltage,
+                "tec_current": self.tec_current,
+                "tec_percentage": self.tec_percentage,
             }
         )
 
@@ -322,6 +333,21 @@ class BaseCameraInterface(QtCore.QObject):
     @abstractmethod
     def tecGetSetpoint(self) -> float:
         """Get current TEC setpoint"""
+        return 0.0
+
+    @abstractmethod
+    def tecGetVoltage(self) -> float:
+        """Get current TEC voltage"""
+        return 0.0
+
+    @abstractmethod
+    def tecGetCurrent(self) -> float:
+        """Get current TEC current"""
+        return 0.0
+
+    @abstractmethod
+    def tecGetPercentage(self) -> float:
+        """Get current TEC power percentage"""
         return 0.0
 
     @abstractmethod
