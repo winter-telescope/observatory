@@ -11,24 +11,22 @@ import getopt
 import logging
 import os
 import signal
+import subprocess
 import sys
-import threading
-import time
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from datetime import datetime
 
-import numpy as np
-import Pyro5.core
-import Pyro5.server
+import Pyro5.server  # type: ignore
 import pytz
 import yaml
 from PyQt5 import QtCore
 
+from wsp.alerts.alert_handler import AlertHandler
 from wsp.camera.camera_command_decorators import daemon_command
 from wsp.camera.state import CameraState
 from wsp.daemon.daemon_utils import PyroDaemon
 from wsp.utils.logging_setup import setup_logger
-from wsp.utils.paths import CONFIG_PATH
+from wsp.utils.paths import CONFIG_PATH, CREDENTIALS_DIR, WSP_PATH
 
 
 class BaseCameraInterface(QtCore.QObject):
@@ -45,13 +43,23 @@ class BaseCameraInterface(QtCore.QObject):
     resetCommandTimeoutSignal = QtCore.pyqtSignal(float)
     resetCommandActiveSignal = QtCore.pyqtSignal(int)
 
-    def __init__(self, name, config, logger=None, verbose=False):
+    def __init__(
+        self,
+        name,
+        config,
+        logger=None,
+        verbose=False,
+        post_images_to_slack=False,
+        alertHandler=None,
+    ):
         super().__init__()
 
         self.name = name
         self.config = config
         self.logger = logger
         self.verbose = verbose
+        self.post_images_to_slack = post_images_to_slack
+        self.alertHandler = alertHandler
 
         # Signals for managing command tracking/timeouts
 
@@ -153,6 +161,20 @@ class BaseCameraInterface(QtCore.QObject):
             print(msg)
         else:
             self.logger.log(level=level, msg=msg)
+
+    def announce(self, msg, group=None):
+        # Post to winter_observatory slack channel (if alert handler exits) and to log
+        self.log(msg)
+        if self.alertHandler is not None:
+            self.alertHandler.slack_log(f":camera: {msg}", group=group)
+
+    def alert_error(self, msg, group=None):
+        """Send error alert"""
+        self.log(msg, level=logging.ERROR)
+        if self.alertHandler is not None:
+            self.alertHandler.slack_log(
+                f":warning: {self.name} ERROR: {msg}", group=group
+            )
 
     def update_camera_state(self, new_state: CameraState):
         """Update camera state and emit signal"""
@@ -264,7 +286,7 @@ class BaseCameraInterface(QtCore.QObject):
 
     def getDefaultSymLinkPath(self):
         """Get default symbolic link path for the last image taken"""
-        return os.path.join(os.path.expanduser("~"), "data", "images", "last_image.lnk")
+        return os.path.join(os.path.expanduser("~"), "data", "last_image.lnk")
 
     def makeSymLink_lastImage(self, image_path):
         # make a symbolic link to the last image taken: self.lastfilename
@@ -301,9 +323,17 @@ class BaseCameraInterface(QtCore.QObject):
         """Finalize exposure by creating symbolic link to last image"""
 
         self.makeSymLink_lastImage(self.lastfilename)
-
         self.update_camera_state(CameraState.READY)
         self.log(f"Exposure complete: {imname} at {imdir}")
+
+        # Post the image to slack if configured
+        if self.post_images_to_slack and self.alertHandler:
+            try:
+                plotterpath = os.path.join(WSP_PATH, "plotLastImg.py")
+                subprocess.Popen(args=["python", plotterpath])
+                self.announce(f"New image: {imname}")
+            except Exception as e:
+                self.log(f"Failed to post image to Slack: {e}", level=logging.ERROR)
 
     @abstractmethod
     def tecSetSetpoint(self, temp, addrs=None):
@@ -488,6 +518,8 @@ class CameraDaemonApp(QtCore.QObject):
         ns_host=None,
         logger=None,
         verbose=False,
+        alertHandler=None,
+        post_images_to_slack=False,
     ):
         super().__init__()
 
@@ -496,10 +528,17 @@ class CameraDaemonApp(QtCore.QObject):
         self.ns_host = ns_host
         self.logger = logger
         self.verbose = verbose
+        self.alertHandler = alertHandler
+        self.post_images_to_slack = post_images_to_slack
 
         # Create camera interface instance
         self.camera_interface = camera_class(
-            name=daemon_name, config=config, logger=logger, verbose=verbose
+            name=daemon_name,
+            config=config,
+            logger=logger,
+            verbose=verbose,
+            alertHandler=alertHandler,
+            post_images_to_slack=post_images_to_slack,
         )
 
         # Create daemon interface wrapper
@@ -551,9 +590,11 @@ def create_camera_daemon(camera_class, daemon_name):
     verbose = False
     doLogging = True
     ns_host = "192.168.1.10"
+    slack_alerts = True
+    post_images_to_slack = False
 
     options = "vpn:"
-    long_options = ["verbose", "print", "ns_host="]
+    long_options = ["verbose", "print", "ns_host=", "post_images"]
 
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
@@ -564,6 +605,10 @@ def create_camera_daemon(camera_class, daemon_name):
                 doLogging = False
             elif currentArgument in ("-n", "--ns_host"):
                 ns_host = currentValue
+            elif currentArgument in ("-s", "--slack_alerts"):
+                slack_alerts = True
+            elif currentArgument in ("--post_images"):
+                post_images_to_slack = True
     except getopt.error as err:
         print(str(err))
         sys.exit(1)
@@ -580,6 +625,26 @@ def create_camera_daemon(camera_class, daemon_name):
     else:
         logger = None
 
+    if slack_alerts:
+        auth_config_file = os.path.join(CREDENTIALS_DIR, "authentication.yaml")
+        user_config_file = os.path.join(CREDENTIALS_DIR, "alert_list.yaml")
+        alert_config_file = os.path.join(WSP_PATH, "config", "alert_config.yaml")
+        try:
+            auth_config = yaml.load(open(auth_config_file), Loader=yaml.FullLoader)
+            user_config = yaml.load(open(user_config_file), Loader=yaml.FullLoader)
+            alert_config = yaml.load(open(alert_config_file), Loader=yaml.FullLoader)
+
+            alertHandler = AlertHandler(user_config, alert_config, auth_config)
+        except Exception as e:
+            print(f"Error loading Slack credentials: {e}")
+            alertHandler = None
+    else:
+        alertHandler = None
+
+    # test the alert handler
+    if alertHandler is not None:
+        alertHandler.slack_log(":camera: WINTER Camera Daemon Started")
+
     # Create daemon
     main = CameraDaemonApp(
         camera_class=camera_class,
@@ -588,6 +653,8 @@ def create_camera_daemon(camera_class, daemon_name):
         ns_host=ns_host,
         logger=logger,
         verbose=verbose,
+        alertHandler=alertHandler,
+        post_images_to_slack=post_images_to_slack,
     )
 
     # Set up signal handling
