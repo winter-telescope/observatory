@@ -26,7 +26,7 @@
         - For all new cameras, let's move the state assessment and management into the interface daemon layer. 
 
 ## Organization Rework:
-
+``` bash:
 camera/
 ├── __init__.py
 ├── state.py          # Shared state definitions (CameraState enum)
@@ -37,3 +37,16 @@ camera/
     ├── __init__.py
     ├── winter.py
     └── summer.py
+```
+
+What about the specific cameras?
+
+WINTER:
+    - Want to avoid *any* touches to the camera daemon.
+    - Put the state assessment into the camera layer
+    - Options:
+        1. Rewrite the `camera.local_camera` to inherit from `base.BaseCamera`. This is nicer in a sense, but also more error prone.
+        2. Just add in some further functionality to the existing local_camera and don't change the inheritence.  
+        --> Doing this to avoid breaking what currently works. 
+    - Moving the WINTER local_camera to `camera.implementations.winter_camera.local_camera`
+    

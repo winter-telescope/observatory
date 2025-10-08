@@ -1,5 +1,3 @@
-import time
-
 from wsp.camera.camera import BaseCamera
 from wsp.utils.paths import CONFIG_PATH, WSP_PATH
 from wsp.utils.utils import loadconfig

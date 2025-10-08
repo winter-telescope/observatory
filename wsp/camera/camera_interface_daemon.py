@@ -729,7 +729,6 @@ if __name__ == "__main__":
     else:
         logger = None
 
-    # main = PyroGUI(sensor_name=name, verbose=verbose, logger=None)
     main = PyroGUI(
         addr=addr,
         config=config,

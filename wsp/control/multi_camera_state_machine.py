@@ -149,7 +149,7 @@ class CheckingCamerasState(State):
         state_machine = context.state_data.get("state_machine")
 
         # Determine if cameras should be running based on conditions
-        cameras_should_run = self._should_cameras_be_running(context)
+        cameras_should_run = context.robo.get_camera_should_be_running_status()
 
         if cameras_should_run:
             # Cameras should be on - check their states
@@ -191,26 +191,6 @@ class CheckingCamerasState(State):
                 _label(context, "all off")
                 context.robo.checktimer.start()
                 return ObservatoryState.IDLE
-
-    def _should_cameras_be_running(self, context: StateContext) -> bool:
-        """Determine if cameras should be running based on conditions"""
-        # Check various conditions - customize based on your needs
-
-        # Basic time-based check
-        sun_alt = context.robo.state.get("sun_alt", 90)
-        max_sun_alt = context.robo.config.get("max_sun_alt_for_cameras", -10)
-
-        # Cameras should run if:
-        # 1. Sun is low enough
-        # 2. No weather/safety issues
-        # 3. Schedule has targets
-
-        if sun_alt > max_sun_alt:
-            context.log(f"Sun too high ({sun_alt:.1f}°) for cameras")
-            return False
-
-        # Add other checks as needed
-        return True
 
 
 class StartingCamerasState(State):

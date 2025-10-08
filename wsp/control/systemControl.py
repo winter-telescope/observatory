@@ -29,7 +29,7 @@ from PyQt5 import QtCore
 # winter modules
 from wsp.alerts import alert_handler
 from wsp.camera import camera, winter_image_daemon_local
-from wsp.camera.winter_camera import local_winter_camera
+from wsp.camera.implementations.winter_camera import local_winter_camera
 from wsp.chiller import chiller, small_chiller
 from wsp.command import commandParser, commandServer, wintercmd
 from wsp.control import roboOperator
