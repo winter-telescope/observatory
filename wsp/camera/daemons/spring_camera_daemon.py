@@ -244,6 +244,19 @@ class SpringCameraInterface(BaseCameraInterface):
         """Manual shutdown - delegates to autoShutdown"""
         return self.autoShutdown()
 
+    # Imaging Methods
+    @camera_command(
+        timeout_func=lambda self, *args, **kwargs: 10.0,
+        completion_state=CameraState.READY,
+    )
+    def setExposure(self, exptime, addrs=None):
+        """Set exposure time"""
+        self.exposure_time = exptime
+        self.log(f"Set exposure time to {exptime}s")
+        self.state.update({"exposure_time": exptime})
+        self.cam.set_exposure(exptime)
+        return True
+
     # Polling Methods
     def tecGetSetpoint(self):
         try:
