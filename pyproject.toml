@@ -35,7 +35,7 @@ dependencies = [
     "transitions",
     "graphviz",
     "synlinkpy",
-    "pirt-camera-control @ git+ssh://git@github.com/winter-telescope/pirt-camera-control.git@v1.2.0",
+    "pirt-camera-control @ git+ssh://git@github.com/winter-telescope/pirt-camera-control.git@v1.3.0",
 
 ]
 

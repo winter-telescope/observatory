@@ -7,7 +7,6 @@ with immediate state transitions handled by the daemon.
 """
 
 import logging
-import os
 from datetime import datetime
 
 import astropy.io.fits as fits
@@ -15,20 +14,12 @@ import numpy as np
 from PyQt5 import QtCore
 
 from wsp.camera.camera_command_decorators import camera_command
-from wsp.camera.daemon_framework import BaseCameraInterface, create_camera_daemon
+from wsp.camera.daemon_framework import (
+    BaseCameraInterface,
+    ExposureConfig,
+    create_camera_daemon,
+)
 from wsp.camera.state import CameraState
-
-
-class ExposureConfig:
-    """Container for exposure configuration"""
-
-    def __init__(self, imdir, imname, imtype, exposure_time, mode, metadata):
-        self.imdir = imdir
-        self.imname = imname
-        self.imtype = imtype
-        self.exposure_time = exposure_time
-        self.mode = mode
-        self.metadata = metadata
 
 
 class TimerWorker(QtCore.QObject):

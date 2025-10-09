@@ -29,6 +29,18 @@ from wsp.utils.logging_setup import setup_logger
 from wsp.utils.paths import CONFIG_PATH, CREDENTIALS_DIR, WSP_PATH
 
 
+class ExposureConfig:
+    """Container for exposure configuration"""
+
+    def __init__(self, imdir, imname, imtype, exposure_time, mode, metadata):
+        self.imdir = imdir
+        self.imname = imname
+        self.imtype = imtype
+        self.exposure_time = exposure_time
+        self.mode = mode
+        self.metadata = metadata
+
+
 class BaseCameraInterface(QtCore.QObject):
     """
     Base interface for camera hardware communication.
@@ -198,6 +210,8 @@ class BaseCameraInterface(QtCore.QObject):
         self.state["timestamp"] = datetime.utcnow().timestamp()
         self.state["connected"] = self.connected
 
+        self.pollCameraStatus()
+
         # Required methods to be polled
         self.tec_setpoint = self.tecGetSetpoint()
         self.tec_temp = self.tecGetTemp()
@@ -206,10 +220,13 @@ class BaseCameraInterface(QtCore.QObject):
         self.tec_voltage = self.tecGetVoltage()
         self.tec_current = self.tecGetCurrent()
         self.tec_percentage = self.tecGetPercentage()
-        self.pollCameraStatus()
 
         if self.command_active:
             self.check_if_command_passed()
+
+        # if startup is requested, see if it is complete
+        if self._camera_state == CameraState.STARTUP_REQUESTED:
+
 
         # Update state
         self.state.update(
@@ -242,6 +259,21 @@ class BaseCameraInterface(QtCore.QObject):
     @abstractmethod
     def autoShutdown(self):
         """Auto shutdown sequence"""
+        pass
+    
+    @abstractmethod
+    def _check_if_startup_complete(self):
+        """Check if startup sequence is complete"""
+        pass
+    
+    @abstractmethod
+    def _check_if_ready_to_shutdown(self):
+        """Check if ready to shutdown"""
+        pass
+
+    @abstractmethod
+    def _complete_shutdown(self):
+        """Complete shutdown sequence"""
         pass
 
     @abstractmethod

@@ -277,7 +277,7 @@ telescope:
             cameras:
                 - "winter"
 
-        # Port 2: SUMMER, WINTER-Deep
+        # Port 2: SUMMER, SPRING
         2:
             name: 'summer'
             rotator:
@@ -288,14 +288,14 @@ telescope:
             pointing_model_file: "pointing_model_winter_20250529_downselected.pxp"
             cameras:
                 - "summer"
-                - "winter-deep"
+                - "spring"
 
 ########## CAMERA SET UP ##########
 multi_camera_enabled: True
 active_cameras:
     - "winter"
     #- "summer"
-    - "winter-deep"
+    - "spring"
 
 ########## TELEMETRY SERVERS ##########
 # define telemetry servers
