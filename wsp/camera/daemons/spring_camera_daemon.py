@@ -60,6 +60,9 @@ class SpringCameraInterface(BaseCameraInterface):
 
         # Initialize camera status dictionary which is populated when
         # self.cam.get_status() is called in self.pollCameraStatus()
+
+        self.log("Setting up connection to SPRING camera...")
+
         self.camera_status = {}
 
         try:
