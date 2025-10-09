@@ -225,8 +225,7 @@ class BaseCameraInterface(QtCore.QObject):
             self.check_if_command_passed()
 
         # if startup is requested, see if it is complete
-        if self._camera_state == CameraState.STARTUP_REQUESTED:
-
+        # if self._camera_state == CameraState.STARTUP_REQUESTED:
 
         # Update state
         self.state.update(
@@ -260,12 +259,12 @@ class BaseCameraInterface(QtCore.QObject):
     def autoShutdown(self):
         """Auto shutdown sequence"""
         pass
-    
+
     @abstractmethod
     def _check_if_startup_complete(self):
         """Check if startup sequence is complete"""
         pass
-    
+
     @abstractmethod
     def _check_if_ready_to_shutdown(self):
         """Check if ready to shutdown"""

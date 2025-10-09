@@ -316,3 +316,8 @@ class SpringCameraInterface(BaseCameraInterface):
             if self.verbose:
                 self.log(f"Error getting exposure time: {e}")
             return DEFAULT_STATUS_VALUE
+
+
+if __name__ == "__main__":
+    # Create and run the daemon
+    create_camera_daemon(SpringCameraInterface, "SpringCamera")
