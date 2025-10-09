@@ -104,9 +104,11 @@ class BaseCameraInterface(QtCore.QObject):
         self.local_timezone = pytz.timezone("America/Los_Angeles")
 
         # Set up hardware connection
+        self.log(f"Setting up connection to camera: {self.name}")
         self.setup_connection()
 
         # Start polling timer
+        self.log(f"Starting polling for camera: {self.name}")
         self.setup_polling()
 
     @property
