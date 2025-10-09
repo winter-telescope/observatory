@@ -445,7 +445,6 @@ class CameraDaemonInterface:
 
     def _update_status(self, status):
         """Cache the latest status from the camera"""
-        self.log(f"daemon_framework: Status updated: {status}")
         self._last_status = status.copy()
 
     def log(self, msg, level=logging.INFO):
