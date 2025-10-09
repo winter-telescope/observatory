@@ -287,7 +287,6 @@ class BaseCamera(QtCore.QObject):
                 self.timestamp = datetime.utcnow().timestamp()
                 self.command_pass = self.remote_state.get("command_pass", False)
                 self.command_active = self.remote_state.get("command_active", False)
-                self.exptime = self.remote_state.get("exposure_time", 0.0)
                 self.command_timeout = self.remote_state.get("command_timeout", 0.0)
                 self.command_sent_timestamp = self.remote_state.get(
                     "command_sent_timestamp", 0.0
@@ -348,14 +347,14 @@ class BaseCamera(QtCore.QObject):
                 "imtype": self.imtype,
                 "immode": self.mode,
                 # TEC
-                "tec_temp": self.tec_temp,
-                "tec_enabled": self.tec_enabled,
-                "tec_setpoint": self.tec_setpoint,
-                "tec_voltage": self.tec_voltage,
-                "tec_current": self.tec_current,
-                "tec_percentage": self.tec_percentage,
+                "tec_temp": self.remote_state.get("tec_temp", self.default),
+                "tec_enabled": self.remote_state.get("tec_enabled", self.default),
+                "tec_setpoint": self.remote_state.get("tec_setpoint", self.default),
+                "tec_voltage": self.remote_state.get("tec_voltage", self.default),
+                "tec_current": self.remote_state.get("tec_current", self.default),
+                "tec_percentage": self.remote_state.get("tec_percentage", self.default),
                 # Exposure
-                "exptime": self.exptime,
+                "exptime": self.remote_state.get("exptime", 0.0),
                 # Backwards compatibility entries
                 # "command_pass": self.command_pass,
                 # "command_active": self.command_active,
