@@ -118,6 +118,10 @@ class SpringCameraInterface(BaseCameraInterface):
         except Exception as e:
             self.log(f"Error polling camera status: {e}")
             self.connected = False
+        finally:
+            if not self.connected:
+                # try to reconnect
+                self.setup_connections()
 
     def check_if_command_passed(self):
         """Override to check if command completed"""
