@@ -1,11 +1,7 @@
 # spring_camera_daemon.py
-"""
-Daemon for the SPRING camera.
-This daemon communicates with the remote SPRING camera gui using the
-pirt-camera-control library.
-"""
 
 import logging
+import time
 from datetime import datetime
 
 import astropy.io.fits as fits
@@ -13,54 +9,24 @@ import numpy as np
 from pirtcam.client import CameraClient
 from PyQt5 import QtCore
 
-from wsp.camera.camera_command_decorators import camera_command
+from wsp.camera.camera_command_decorators import async_camera_command
 from wsp.camera.daemon_framework import BaseCameraInterface, create_camera_daemon
 from wsp.camera.state import CameraState
 
 DEFAULT_STATUS_VALUE = -888
-'''
-CAMERA_IP_ADDR = "192.168.1.15"
-CAMERA_IP_ADDR = "localhost"
- def setup_connections(self):
-        """
-        Set up connections specific to the SPRING camera.
-        """
-        # Implementation for setting up connections
-        self.cam = CameraClient(host=CAMERA_IP_ADDR, port=5555)
-        self.cam.connect()
-
-        self.initialize_camera()
-
-    def initialize_camera(self):
-        """
-        Initialize the SPRING camera with necessary settings.
-        """
-        # Implementation for initializing the camera
-        self.cam.set_correction("GAIN", "OFF")
-        self.cam.set_correction("OFFSET", "OFF")
-        self.cam.set_correction("SUB", "OFF")
-'''
 
 
 class SpringCameraInterface(BaseCameraInterface):
     """
-    Interface for the SPRING camera.
-    This class extends BaseCameraInterface to provide specific functionality for the SPRING camera.
+    Interface for the SPRING camera using the async decorator pattern.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Additional initialization if needed
 
-    def setup_connections(self):
-        """
-        Set up connections specific to the SPRING camera.
-        """
-        # Implementation for setting up connections
-
-        # Initialize camera status dictionary which is populated when
-        # self.cam.get_status() is called in self.pollCameraStatus()
-
+    def setup_connection(self):
+        """Set up connections specific to the SPRING camera."""
         self.log("Setting up connection to SPRING camera...")
 
         self.camera_status = {}
@@ -78,163 +44,210 @@ class SpringCameraInterface(BaseCameraInterface):
             self.connected = False
 
     def initialize_camera(self):
-        """
-        Initialize the SPRING camera with necessary settings.
-        """
-        # Implementation for initializing the camera
+        """Initialize the SPRING camera with necessary settings."""
         self.cam.set_correction("GAIN", "OFF")
         self.cam.set_correction("OFFSET", "OFF")
         self.cam.set_correction("SUB", "OFF")
 
     def pollCameraStatus(self):
-        """Poll the camera status and update state
-        Expects a dictionary:
-        {
-            "status": "success",
-            "data": {
-            "tec_locked": 1,
-            "exposure": 1.0,
-            "nframes": 1,
-            "object": "SCICAM",
-            "observer": "MDM",
-            "save_path": "~/data",
-            "tec_temp": -39.96138,
-            "tec_setpoint": -39.994728,
-            "soc": "30HZ_32MSEXP_-40C",
-            "gain_corr": 1,
-            "offset_corr": 1,
-            "sub_corr": 1,
-            "tec_lock": 1,
-            "waiting_on_exposure_update": 0
-            }
-            }
-        """
+        """Poll the camera status"""
         if not self.connected:
             self.log("Camera not connected.")
+            return
 
         try:
             self.camera_status = self.cam.get_status()
-            if self.verbose:
-                self.log(f"Camera status: {self.camera_status}")
         except Exception as e:
             self.log(f"Error polling camera status: {e}")
             self.connected = False
         finally:
             if not self.connected:
-                # try to reconnect
-                self.setup_connections()
+                # Try to reconnect
+                self.setup_connection()
 
-    def check_if_command_passed(self):
-        """Override to check if command completed"""
-        # This is called during polling when command_active is True
-        # For fake camera, we rely on timer callbacks to signal completion
-        pass
+    # === Async Command Methods with Decorators ===
 
-    @camera_command(timeout=10.0, completion_state=CameraState.READY)
-    def tecSetSetpoint(self, temp, addrs=None):
-        """Set TEC setpoint"""
-        self.tec_setpoint = temp
-        self.log(f"Set TEC setpoint to {temp}C")
-        reply = self.cam.set_tec_temperature(temp)
-        if reply.get("status") == "success":
-            return True
-        else:
-            self.log(f"Failed to set TEC setpoint: {reply}")
-            return False
-
-    @camera_command(timeout=5.0, completion_state=CameraState.READY)
+    @async_camera_command(timeout=10.0, completion_state=CameraState.READY)
     def tecStart(self, addrs=None):
         """Start TEC"""
-        self.tec_enabled = True
-        self.log("TEC started")
+        self.log("Starting TEC")
+
         reply = self.cam.set_tec_enabled(True)
-        if reply.get("status") == "success":
-            return True
-        else:
-            self.log(f"Failed to start TEC: {reply}")
+
+        if self.command_worker.stop_requested:
             return False
 
-    @camera_command(timeout=5.0, completion_state=CameraState.READY)
+        if reply.get("status") == "success":
+            self.tec_enabled = True
+            return True
+        else:
+            raise Exception(f"Failed to start TEC: {reply}")
+
+    @async_camera_command(timeout=10.0, completion_state=CameraState.READY)
     def tecStop(self, addrs=None):
         """Stop TEC"""
-        self.tec_enabled = False
-        self.log("TEC stopped")
+        self.log("Stopping TEC")
+
         reply = self.cam.set_tec_enabled(False)
-        if reply.get("status") == "success":
-            return True
-        else:
-            self.log(f"Failed to stop TEC: {reply}")
+
+        if self.command_worker.stop_requested:
             return False
 
-    @camera_command(timeout=1800.0, completion_state=CameraState.READY)
-    def autoStartup(self):
-        """Auto startup:
-        1. connect to camera if not already
-        2. set TEC setpoint to config value
-        3. start TEC
+        if reply.get("status") == "success":
+            self.tec_enabled = False
+            return True
+        else:
+            raise Exception(f"Failed to stop TEC: {reply}")
+
+    @async_camera_command(timeout=10.0, completion_state=CameraState.READY)
+    def setExposure(self, exptime, addrs=None):
+        """Set exposure time"""
+        self.log(f"Setting exposure time to {exptime}s")
+
+        self.cam.set_exposure(exptime)
+
+        if self.command_worker.stop_requested:
+            return False
+
+        self.exposure_time = exptime
+        self.state.update({"exposure_time": exptime})
+        return True
+
+    @async_camera_command(
+        timeout=lambda self, *args, **kwargs: self.exposure_time + 30.0,
+        completion_state=CameraState.READY,
+        initial_state=CameraState.EXPOSING,
+    )
+    def doExposure(self, imdir, imname, imtype, mode, metadata, addrs=None):
+        """Execute exposure with interruptible checking"""
+        # Set up exposure parameters (from parent class)
+        self.imdir = imdir
+        self.imname = imname
+        self.imtype = imtype
+        self.mode = mode
+        self.metadata = metadata
+        self.addrs = addrs
+        self.lastfilename = self.makeImageFilepath(imdir, imname, imtype)
+
+        self.log(f"Starting exposure: {self.lastfilename}")
+
+        # If the camera API supports async/polling, make it interruptible:
+        # Example of interruptible exposure if API supports it:
         """
-        self.update_camera_state(CameraState.STARTUP_REQUESTED)
+        # Start exposure
+        self.cam.start_exposure(self.lastfilename)
+        
+        # Poll for completion with interrupt checking
+        poll_interval = 0.1  # seconds
+        max_polls = int((self.exposure_time + 30) / poll_interval)
+        
+        for i in range(max_polls):
+            if self.command_worker.stop_requested:
+                self.cam.abort_exposure()
+                self.log("Exposure aborted by user")
+                return False
+            
+            if self.cam.is_exposure_complete():
+                break
+            
+            time.sleep(poll_interval)
+        """
+
+        # For blocking API (current case):
+        reply = self.cam.take_image(
+            filename=self.lastfilename, nframes=1, object_name=imtype
+        )
+
+        if self.command_worker.stop_requested:
+            self.log("Exposure command was interrupted")
+            return False
+
+        if reply.get("status") == "success":
+            self._exposure_complete(imdir, imname)
+            return True
+        else:
+            raise Exception(f"Exposure failed: {reply}")
+
+    # === Commands with Pending Completion ===
+    @async_camera_command(
+        timeout=120.0,  # 2 minutes
+        completion_state=CameraState.READY,
+        initial_state=CameraState.SETTING_PARAMETERS,
+        pending_completion=True,  # Stay in SETTING_PARAMETERS until temp stable
+    )
+    def tecSetSetpoint(self, temp, addrs=None):
+        """Set TEC setpoint - stays in SETTING_PARAMETERS until stable"""
+        self.log(f"Setting TEC setpoint to {temp}C")
+
+        # Store target for completion checking
+        self.tec_target_temp = temp
+
+        reply = self.cam.set_tec_temperature(temp)
+
+        if reply.get("status") == "success":
+            self.tec_setpoint = temp
+            self.log("Setpoint changed, waiting for temperature to stabilize...")
+            return True
+        else:
+            raise Exception(f"Failed to set TEC setpoint: {reply}")
+
+    @async_camera_command(
+        timeout=1800.0,  # 30 minutes
+        completion_state=CameraState.READY,
+        initial_state=CameraState.STARTUP_REQUESTED,
+        pending_completion=True,  # Stay in STARTUP_REQUESTED until complete
+    )
+    def autoStartup(self):
+        """Start startup sequence - stays in STARTUP_REQUESTED until conditions met"""
+        self.log("Initiating startup sequence")
 
         if not self.connected:
-            self.setup_connections()
+            self.setup_connection()
             if not self.connected:
-                self.update_camera_state(CameraState.ERROR)
-                return False
+                raise Exception("Failed to connect to camera")
+
+        # Get target from config
+        self.startup_target_temp = self.config.get("tec_setpoint", -60.0)
 
         # Set TEC setpoint
-        self.tecSetSetpoint(-60.0)
+        self.log(f"Setting TEC setpoint to {self.startup_target_temp}C")
+        reply = self.cam.set_tec_temperature(self.startup_target_temp)
+        if reply.get("status") != "success":
+            raise Exception(f"Failed to set TEC setpoint: {reply}")
 
         # Start TEC
-        self.tecStart()
+        self.log("Enabling TEC")
+        reply = self.cam.set_tec_enabled(True)
+        if reply.get("status") != "success":
+            raise Exception(f"Failed to start TEC: {reply}")
 
+        # Return success - state stays STARTUP_REQUESTED
+        self.log("Startup initiated, monitoring temperature...")
         return True
 
-    @camera_command(timeout=1800.0, completion_state=CameraState.OFF)
+    @async_camera_command(
+        timeout=600.0,  # 10 minutes
+        completion_state=CameraState.OFF,
+        initial_state=CameraState.SHUTDOWN_REQUESTED,
+        pending_completion=True,  # Stay in SHUTDOWN_REQUESTED until complete
+    )
     def autoShutdown(self):
-        """Auto shutdown:
-        1. connect to camera if not already
-        2. set TEC setpoint to -40C
-        """
-        self.update_camera_state(CameraState.SHUTDOWN_REQUESTED)
+        """Start shutdown - stays in SHUTDOWN_REQUESTED until conditions met"""
+        self.log("Initiating shutdown sequence")
 
         if not self.connected:
-            self.setup_connections()
+            self.setup_connection()
             if not self.connected:
-                self.update_camera_state(CameraState.ERROR)
-                return False
+                raise Exception("Failed to connect to camera")
 
         # Stop TEC
-        self.tecStop()
+        self.log("Disabling TEC")
+        reply = self.cam.set_tec_enabled(False)
+        if reply.get("status") != "success":
+            raise Exception(f"Failed to stop TEC: {reply}")
 
-        return True
-
-    def _check_if_startup_complete(self, state):
-        """Check if startup is complete"""
-        startup_conditions = [
-            state["connected"],
-            state["tec_enabled"],
-            abs(state["tec_temp"] - state["tec_setpoint"]) < 0.1,
-            state["tec_lock"],
-        ]
-        if all(startup_conditions):
-            self.update_camera_state(CameraState.READY)
-            return True
-        return False
-
-    def _check_if_ready_to_shutdown(self, state):
-        """Check if camera is ready to shutdown"""
-        shutdown_conditions = [
-            state["connected"],
-            state["tec_temp"] > -45.0,
-        ]
-        if all(shutdown_conditions):
-            return True
-        return False
-
-    def _complete_shutdown(self):
-        """Complete shutdown process"""
-        self.tecStop()
-        self.update_camera_state(CameraState.OFF)
+        # Return success - state stays SHUTDOWN_REQUESTED
+        self.log("Shutdown initiated, waiting for camera to warm up...")
         return True
 
     def startupCamera(self, addrs=None):
@@ -245,20 +258,59 @@ class SpringCameraInterface(BaseCameraInterface):
         """Manual shutdown - delegates to autoShutdown"""
         return self.autoShutdown()
 
-    # Imaging Methods
-    @camera_command(
-        timeout_func=lambda self, *args, **kwargs: 10.0,
-        completion_state=CameraState.READY,
-    )
-    def setExposure(self, exptime, addrs=None):
-        """Set exposure time"""
-        self.exposure_time = exptime
-        self.log(f"Set exposure time to {exptime}s")
-        self.state.update({"exposure_time": exptime})
-        self.cam.set_exposure(exptime)
-        return True
+    # === Completion Condition Checkers ===
 
-    # Polling Methods
+    def _check_startup_complete(self) -> bool:
+        """Check if startup sequence is complete"""
+        # Define your startup completion conditions
+        conditions = [
+            self.connected,
+            self.tec_enabled,
+            abs(self.tec_temp - self.startup_target_temp) < 0.5,  # Within 0.5C
+            # Could add more conditions like:
+            # self.camera_status.get("data", {}).get("tec_locked", False),
+        ]
+
+        if all(conditions):
+            self.log(f"Startup complete: TEC at {self.tec_temp:.1f}C")
+            return True
+        else:
+            # Optional: log progress
+            if (
+                hasattr(self, "_last_startup_log")
+                and (datetime.utcnow().timestamp() - self._last_startup_log) > 10
+            ):
+                self.log(
+                    f"Startup progress: Temp={self.tec_temp:.1f}C, "
+                    f"Target={self.startup_target_temp}C"
+                )
+                self._last_startup_log = datetime.utcnow().timestamp()
+            elif not hasattr(self, "_last_startup_log"):
+                self._last_startup_log = datetime.utcnow().timestamp()
+
+        return False
+
+    def _check_tec_setpoint_complete(self) -> bool:
+        """Check if TEC has stabilized at new setpoint"""
+        if hasattr(self, "tec_target_temp"):
+            temp_stable = abs(self.tec_temp - self.tec_target_temp) < 0.5
+            if temp_stable:
+                self.log(f"TEC stabilized at {self.tec_temp:.1f}C")
+                del self.tec_target_temp  # Clean up
+                return True
+        return False
+
+    def _check_shutdown_complete(self) -> bool:
+        """Check if shutdown is complete"""
+        # For example, wait for TEC to warm up
+        conditions = [
+            not self.tec_enabled,
+            self.tec_temp > -45.0,  # Warmed up enough
+        ]
+        return all(conditions)
+
+    # === Status Polling Methods (unchanged) ===
+
     def tecGetSetpoint(self):
         try:
             return self.camera_status.get("data", {}).get(
@@ -290,8 +342,6 @@ class SpringCameraInterface(BaseCameraInterface):
             return DEFAULT_STATUS_VALUE
 
     def tecGetCurrent(self):
-        # this is approximate.
-        # max power ~ 55 W at 9V
         max_power = 55.0
         max_voltage = 9.0
         approx_impedance = max_voltage**2 / max_power
@@ -304,7 +354,6 @@ class SpringCameraInterface(BaseCameraInterface):
             return DEFAULT_STATUS_VALUE
 
     def tecGetPercentage(self):
-        # TEC percent is voltage/max voltage
         try:
             voltage = self.camera_status.get("data", {}).get(
                 "tec_voltage", DEFAULT_STATUS_VALUE
@@ -337,6 +386,36 @@ class SpringCameraInterface(BaseCameraInterface):
             if self.verbose:
                 self.log(f"Error getting exposure time: {e}")
             return DEFAULT_STATUS_VALUE
+
+    '''
+    def _check_if_startup_complete(self, state):
+        """Check if startup is complete"""
+        startup_conditions = [
+            state["connected"],
+            state["tec_enabled"],
+            abs(state["tec_temp"] - state["tec_setpoint"]) < 0.1,
+            state["tec_lock"],
+        ]
+        if all(startup_conditions):
+            self.update_camera_state(CameraState.READY)
+            return True
+        return False
+
+    def _check_if_ready_to_shutdown(self, state):
+        """Check if camera is ready to shutdown"""
+        shutdown_conditions = [
+            state["connected"],
+            state["tec_temp"] > -45.0,
+        ]
+        if all(shutdown_conditions):
+            return True
+        return False
+
+    def _complete_shutdown(self):
+        """Complete shutdown process"""
+        self.tecStop()
+        self.update_camera_state(CameraState.OFF)
+        return True'''
 
 
 if __name__ == "__main__":

@@ -1,147 +1,93 @@
-"""
-camera_command_decorators.py
-
-Enhanced decorators that handle state management for both
-camera interface implementations and daemon wrapper methods.
-"""
+# camera_command_decorators.py
 
 import functools
 import logging
-from datetime import datetime
-from typing import Any, Callable, Optional
-
-from PyQt5 import QtCore
+from typing import Callable, Optional, Union
 
 from wsp.camera.state import CameraState
 
 
-def daemon_command(
-    initial_state: Optional[CameraState] = None,
-    final_state: Optional[CameraState] = None,
-    error_state: CameraState = CameraState.ERROR,
+def async_camera_command(
+    timeout: Union[float, Callable] = 30.0,
+    completion_state: CameraState = CameraState.READY,
+    initial_state: Optional[CameraState] = CameraState.SETTING_PARAMETERS,
+    pending_completion: bool = False,
 ):
     """
-    Decorator for daemon interface methods that manages immediate state transitions.
-    This decorator is used on CameraDaemonInterface methods to set state immediately
-    when commands are received from the client.
+    Decorator for async camera commands.
 
-    Parameters
-    ----------
-    initial_state : CameraState, optional
-        State to set immediately when command is received
-    final_state : CameraState, optional
-        State to set after successful completion (rarely used at daemon level)
-    error_state : CameraState
-        State to set on error
+    Args:
+        timeout: Either a float or a callable that returns a float
+        completion_state: State to set on successful completion
+        initial_state: State to set immediately when command starts
+        pending_completion: If True, stay in initial_state until completion conditions are met
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
-            # Set initial state immediately when command is received
+            # Set initial state immediately
             if initial_state:
-                self.log(f"Setting immediate state: {initial_state.value}")
-                self.camera.update_camera_state(initial_state)
+                self.update_camera_state(initial_state)
 
-            try:
-                result = func(self, *args, **kwargs)
-
-                # Set final state if specified (usually not needed at daemon level)
-                if final_state:
-                    self.camera.update_camera_state(final_state)
-
-                return result
-
-            except Exception as e:
-                self.log(f"Error in {func.__name__}: {e}", level=logging.ERROR)
-                self.camera.update_camera_state(error_state)
-                raise
-
-        return wrapper
-
-    return decorator
-
-
-def camera_command(
-    timeout: Optional[float] = 10.0,
-    timeout_func: Optional[Callable] = None,
-    required_state: Optional[CameraState] = None,
-    target_state: Optional[CameraState] = None,
-    completion_state: Optional[CameraState] = None,
-    error_state: CameraState = CameraState.ERROR,
-    check_addresses: bool = True,
-):
-    """
-    Enhanced decorator for camera implementation commands.
-    State validation is skipped since daemon handles state transitions.
-
-    Parameters
-    ----------
-    timeout : float
-        Command timeout in seconds
-    timeout_func : callable, optional
-        Function to calculate timeout dynamically
-    required_state : CameraState, optional
-        DEPRECATED - state validation now handled by daemon
-    target_state : CameraState, optional
-        DEPRECATED - state transitions handled by daemon
-    completion_state : CameraState, optional
-        State to set when command completes successfully
-    error_state : CameraState
-        State to set on error
-    check_addresses : bool
-        Whether to check/handle address parameters
-    """
-
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
-            # Skip state validation - daemon has already set the appropriate state
-            # The daemon interface is responsible for checking if commands are allowed
-
-            # Handle address parameters if needed
-            if check_addresses and "addrs" in kwargs:
-                addrs = kwargs.get("addrs")
-                if addrs is None:
-                    kwargs["addrs"] = getattr(self, "addrs", None)
-                elif not isinstance(addrs, list):
-                    kwargs["addrs"] = [addrs]
-
-            # Calculate timeout dynamically if function provided
-            if timeout_func:
-                actual_timeout = timeout_func(self, *args, **kwargs)
+            # Calculate timeout
+            if callable(timeout):
+                self.command_timeout = timeout(self, *args, **kwargs)
             else:
-                actual_timeout = timeout
+                self.command_timeout = timeout
 
-            # Set up command tracking signals
-            self.resetCommandPassSignal.emit(0)
-            self.resetCommandActiveSignal.emit(1)
-            self.resetCommandTimeoutSignal.emit(actual_timeout)
+            # Store metadata for completion handling
+            command_completion_state = completion_state
+            command_pending = pending_completion
+            command_initial_state = initial_state
 
-            try:
-                # Execute the actual command
-                result = func(self, *args, **kwargs)
+            # Create the blocking operation
+            def blocking_operation():
+                try:
+                    # Call the actual decorated method
+                    result = func(self, *args, **kwargs)
 
-                # If command completed successfully and immediately
-                # (e.g., setExposure, tecSetSetpoint)
-                if result is not False and completion_state:
-                    self.update_camera_state(completion_state)
-                    self.resetCommandPassSignal.emit(1)
-                    self.resetCommandActiveSignal.emit(0)
+                    # Check if stopped
+                    if (
+                        hasattr(self, "command_worker")
+                        and self.command_worker.stop_requested
+                    ):
+                        self.log(
+                            f"{func.__name__} was interrupted", level=logging.WARNING
+                        )
+                        return False
 
-                return result
+                    # Handle completion based on pending flag
+                    if command_pending and result:
+                        # Command succeeded but needs completion checking
+                        # Store info for polling to check
+                        self.pending_command_completion = {
+                            "command": func.__name__,
+                            "completion_state": command_completion_state,
+                            "initial_state": command_initial_state,
+                            "start_time": self.command_sent_timestamp,
+                        }
+                        # Don't change state - stay in initial_state
+                    elif result:
+                        # Normal completion - set completion state immediately
+                        self.pending_completion_state = command_completion_state
 
-            except Exception as e:
-                self.log(f"Error in {func.__name__}: {e}", level=logging.ERROR)
-                self.resetCommandPassSignal.emit(0)
-                self.resetCommandActiveSignal.emit(0)
-                self.update_camera_state(error_state)
-                raise
+                    return result
+
+                except Exception as e:
+                    self.log(f"Error in {func.__name__}: {e}", level=logging.ERROR)
+                    raise e
+
+            # Execute asynchronously
+            return self.execute_async_command(blocking_operation, func.__name__)
+
+        # Store metadata
+        wrapper.is_async_command = True
+        wrapper.timeout = timeout
+        wrapper.completion_state = completion_state
+        wrapper.initial_state = initial_state
+        wrapper.pending_completion = pending_completion
 
         return wrapper
 
     return decorator
-
-
-# That's it! Just two decorators: daemon_command and camera_command
-# No need for exposure_command, startup_command, shutdown_command, etc.

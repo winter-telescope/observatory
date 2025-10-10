@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# camera_daemon_framework.py
 """
-camera_daemon_framework.py
-
 Framework for camera-specific daemon implementations.
 Each camera type will have its own daemon that inherits from this framework.
 """
@@ -22,7 +19,7 @@ import yaml
 from PyQt5 import QtCore
 
 from wsp.alerts.alert_handler import AlertHandler
-from wsp.camera.camera_command_decorators import daemon_command
+from wsp.camera.camera_command_decorators import async_camera_command
 from wsp.camera.state import CameraState
 from wsp.daemon.daemon_utils import PyroDaemon
 from wsp.utils.logging_setup import setup_logger
@@ -41,19 +38,86 @@ class ExposureConfig:
         self.metadata = metadata
 
 
+class CameraCommandWorker(QtCore.QObject):
+    """Worker that executes camera commands in a separate thread"""
+
+    # Signals
+    commandStarted = QtCore.pyqtSignal(str)  # command name
+    commandCompleted = QtCore.pyqtSignal(bool, str)  # success, message
+    commandError = QtCore.pyqtSignal(str)  # error message
+
+    def __init__(self, logger=None):
+        super().__init__()
+        self.current_command = None
+        self.current_args = None
+        self.current_kwargs = None
+        self.stop_requested = False
+        self.command_name = None
+        self.logger = logger
+
+    def log(self, msg, level=logging.INFO):
+        if self.logger:
+            self.logger.log(level=level, msg=f"command_worker: {msg}")
+        else:
+            print(f"command_worker: {msg}")
+
+    @QtCore.pyqtSlot(object, str, object, object)
+    def execute_command(self, command_func, command_name, args, kwargs):
+        """Execute a command - called via signal from main thread"""
+        self.current_command = command_func
+        self.current_args = args or ()
+        self.current_kwargs = kwargs or {}
+        self.command_name = command_name
+
+        self.stop_requested = False
+
+        self.commandStarted.emit(command_name)
+
+        try:
+            # Check for stop before starting
+            if self.stop_requested:
+                self.commandError.emit(f"{command_name}: Stopped before execution")
+                return
+
+            # Execute the command
+            result = self.current_command(*self.current_args, **self.current_kwargs)
+
+            # Check if stop was requested during execution
+            if self.stop_requested:
+                self.commandError.emit(f"{command_name}: Stopped during execution")
+            elif result is False:
+                self.commandError.emit(f"{command_name}: Command returned False")
+            else:
+                self.commandCompleted.emit(
+                    True, f"{command_name}: Completed successfully"
+                )
+
+        except Exception as e:
+            self.commandError.emit(f"{command_name}: Exception - {str(e)}")
+        finally:
+            self.current_command = None
+            self.current_args = None
+            self.current_kwargs = None
+            self.command_name = None
+
+    @QtCore.pyqtSlot()
+    def stop_command(self):
+        """Request to stop the current command"""
+        self.stop_requested = True
+        self.log(f"Stop requested for command: {self.command_name}")
+
+
 class BaseCameraInterface(QtCore.QObject):
     """
-    Base interface for camera hardware communication.
-    Camera-specific implementations should inherit from this.
+    Base interface for camera hardware communication with single-threaded async execution.
     """
 
     newStatus = QtCore.pyqtSignal(object)
-    stateChanged = QtCore.pyqtSignal(str)  # Emit state changes
+    stateChanged = QtCore.pyqtSignal(str)
 
-    # Signals for tracking if a command has been sent, passed, timed out, or is active
-    resetCommandPassSignal = QtCore.pyqtSignal(int)
-    resetCommandTimeoutSignal = QtCore.pyqtSignal(float)
-    resetCommandActiveSignal = QtCore.pyqtSignal(int)
+    # Signals for command execution
+    executeCommand = QtCore.pyqtSignal(object, str, object, object)
+    stopCommand = QtCore.pyqtSignal()
 
     def __init__(
         self,
@@ -73,8 +137,6 @@ class BaseCameraInterface(QtCore.QObject):
         self.post_images_to_slack = post_images_to_slack
         self.alertHandler = alertHandler
 
-        # Signals for managing command tracking/timeouts
-
         # Command tracking attributes
         self.command_active = 0
         self.command_pass = 0
@@ -82,26 +144,46 @@ class BaseCameraInterface(QtCore.QObject):
         self.command_sent_timestamp = 0.0
         self.command_elapsed_dt = 0.0
 
-        # Connect signals to slots
-        # connect state changed to update the camera state
+        # Set up persistent worker thread
+        self.command_thread = QtCore.QThread()
+        self.command_worker = CameraCommandWorker(logger=logger)
+        self.command_worker.moveToThread(self.command_thread)
 
-        # Timeout check timer
-        self.timeout_timer = QtCore.QTimer()
-        self.timeout_timer.timeout.connect(self.check_command_timeout)
-        self.timeout_timer.start(100)  # Check every 100ms
+        # Connect signals
+        self.executeCommand.connect(self.command_worker.execute_command)
+        self.stopCommand.connect(self.command_worker.stop_command)
+        self.command_worker.commandStarted.connect(self._on_command_started)
+        self.command_worker.commandCompleted.connect(self._on_command_completed)
+        self.command_worker.commandError.connect(self._on_command_error)
+
+        # Start the worker thread
+        self.command_thread.start()
+
+        # Track command execution
+        self.command_running = False
+        self.current_command_name = None
+        self.pending_completion_state = None
+        self.pending_command_completion = None
 
         # State management
         self.state = {
             "camera_state": CameraState.OFF.value,
             "connected": False,
             "timestamp": datetime.utcnow().timestamp(),
+            "command_running": False,
+            "current_command": None,
         }
 
         # Hardware connection status
         self.connected = False
 
-        # Local timezone for timestamps
+        # Local timezone
         self.local_timezone = pytz.timezone("America/Los_Angeles")
+
+        # Timeout check timer
+        self.timeout_timer = QtCore.QTimer()
+        self.timeout_timer.timeout.connect(self.check_command_timeout)
+        self.timeout_timer.start(100)  # Check every 100ms
 
         # Set up hardware connection
         self.log(f"Setting up connection to camera: {self.name}")
@@ -111,63 +193,177 @@ class BaseCameraInterface(QtCore.QObject):
         self.log(f"Starting polling for camera: {self.name}")
         self.setup_polling()
 
+    def __del__(self):
+        """Clean up the worker thread on deletion"""
+        if hasattr(self, "command_thread"):
+            self.command_thread.quit()
+            if not self.command_thread.wait(5000):  # Wait up to 5 seconds
+                self.log("Force terminating worker thread", level=logging.WARNING)
+                self.command_thread.terminate()
+
     @property
     def _camera_state(self):
         """Compatibility property for decorators"""
         return CameraState(self.state.get("camera_state", "OFF"))
 
+    def execute_async_command(self, command_func, command_name, *args, **kwargs):
+        """
+        Execute a command asynchronously in the worker thread.
+        Returns False if another command is already running.
+        """
+        if self.command_running:
+            self.log(
+                f"Cannot execute {command_name}: {self.current_command_name} is already running",
+                level=logging.WARNING,
+            )
+            return False
+
+        # Set command tracking state
+        self.command_running = True
+        self.current_command_name = command_name
+        self.command_active = 1
+        self.command_sent_timestamp = datetime.utcnow().timestamp()
+        self.command_elapsed_dt = 0.0
+
+        # Update state
+        self.state.update(
+            {
+                "command_running": True,
+                "current_command": command_name,
+                "command_active": 1,
+                "command_sent_timestamp": self.command_sent_timestamp,
+            }
+        )
+
+        # Emit signal to execute command in worker thread
+        self.executeCommand.emit(command_func, command_name, args, kwargs)
+
+        self.log(f"Queued async command: {command_name}")
+        return True
+
+    def stop_current_command(self):
+        """Stop the currently executing command"""
+        if self.command_running:
+            self.log(f"Requesting stop for command: {self.current_command_name}")
+            self.stopCommand.emit()
+            return True
+        else:
+            self.log("No command currently running to stop")
+            return False
+
+    def _on_command_started(self, command_name):
+        """Handle command start notification"""
+        self.log(f"Command started: {command_name}")
+        # State already set by decorator's initial_state
+
+    def _on_command_completed(self, success, message):
+        """Handle command completion"""
+        self.log(f"Command completed: {message}")
+
+        # Update tracking state
+        self.command_running = False
+        self.command_active = 0
+        self.command_pass = 1 if success else 0
+        command_name = self.current_command_name
+        self.current_command_name = None
+
+        # Update state dict
+        self.state.update(
+            {
+                "command_running": False,
+                "current_command": None,
+                "command_active": 0,
+                "command_pass": self.command_pass,
+                "last_command": command_name,
+                "last_command_success": success,
+            }
+        )
+
+        # Check if this command has pending completion
+        if success and self.pending_command_completion:
+            # Command succeeded but needs completion monitoring
+            # Stay in the current state (initial_state) until conditions are met
+            self.log(f"Command {command_name} monitoring for completion conditions")
+            # Don't change state here - let polling handle it
+        elif success and self.pending_completion_state:
+            # Normal completion - set state immediately
+            self.update_camera_state(self.pending_completion_state)
+            self.pending_completion_state = None
+        elif success:
+            # Default to READY
+            self.update_camera_state(CameraState.READY)
+
+    def _on_command_error(self, error_msg):
+        """Handle command error"""
+        self.log(f"Command error: {error_msg}", level=logging.ERROR)
+
+        # Update tracking state
+        self.command_running = False
+        self.command_active = 0
+        self.command_pass = 0
+        command_name = self.current_command_name
+        self.current_command_name = None
+        self.pending_completion_state = None
+
+        # Update state dict
+        self.state.update(
+            {
+                "command_running": False,
+                "current_command": None,
+                "command_active": 0,
+                "command_pass": 0,
+                "last_command": command_name,
+                "last_command_error": error_msg,
+            }
+        )
+
+        # Set error state
+        self.update_camera_state(CameraState.ERROR)
+
     def check_command_timeout(self):
         """Check if active command has timed out"""
-        if self.command_active:
+        if self.command_active and self.command_running:
             elapsed = datetime.utcnow().timestamp() - self.command_sent_timestamp
             self.command_elapsed_dt = elapsed
 
             if elapsed > self.command_timeout:
-                self.log(f"Command timeout after {elapsed:.1f}s", level=logging.ERROR)
-                self.command_active = 0
-                self.command_pass = 0
-                self.update_camera_state(CameraState.ERROR)
-                self.state.update(
-                    {
-                        "command_active": 0,
-                        "command_pass": 0,
-                        "command_timeout_occurred": True,
-                        "command_elapsed_dt": elapsed,
-                    }
+                self.log(
+                    f"Command timeout after {elapsed:.1f}s (limit: {self.command_timeout}s)",
+                    level=logging.ERROR,
                 )
 
-    def resetCommandActive(self, val):
-        # reset the command active value to val (0 or 1), and update state
-        # self.log(f'running resetCommandActive: {val}')
-        self.command_active = val
-        self.state.update({"command_active": val})
+                # Request stop of the current command
+                self.stop_current_command()
 
-    def resetCommandPass(self, val):
-        # reset the command pass value to val (0 or 1), and update state
-        # self.log(f'running resetCommandPass: {val}')
-        self.command_pass = val
-        self.state.update({"command_pass": val})
+                # Force cleanup after a short delay
+                QtCore.QTimer.singleShot(1000, self._force_timeout_cleanup)
 
-    def resetCommandTimeout(self, dt):
-        # this resets the timestamp of the last image send, and the amount of time
-        # that is allocated before triggering a command timeout
-        self.log(f"running resetCommandTimeout: {dt}")
-        self.command_timeout = dt
-        self.command_sent_timestamp = datetime.now(datetime.timezone.utc).timestamp()
-        self.command_elapsed_dt = 0.0
-        self.state.update(
-            {
-                "command_timeout": self.command_timeout,
-                "command_sent_timestamp": self.command_sent_timestamp,
-                "command_elapsed_dt": self.command_elapsed_dt,
-            }
-        )
+    def _force_timeout_cleanup(self):
+        """Force cleanup after timeout"""
+        if self.command_running:
+            self.log("Forcing timeout cleanup", level=logging.WARNING)
 
-    def setup_polling(self):
-        """Set up periodic status polling"""
-        self.pollTimer = QtCore.QTimer()
-        self.pollTimer.timeout.connect(self.pollStatus)
-        self.pollTimer.start(1000)  # Poll every second
+            # Reset command state
+            self.command_running = False
+            self.command_active = 0
+            self.command_pass = 0
+            command_name = self.current_command_name
+            self.current_command_name = None
+            self.pending_completion_state = None
+
+            self.update_camera_state(CameraState.ERROR)
+            self.state.update(
+                {
+                    "command_running": False,
+                    "current_command": None,
+                    "command_active": 0,
+                    "command_pass": 0,
+                    "command_timeout_occurred": True,
+                    "command_elapsed_dt": self.command_elapsed_dt,
+                    "last_command": command_name,
+                    "last_command_error": "Timeout",
+                }
+            )
 
     def log(self, msg, level=logging.INFO):
         msg = f"{self.name}_interface: {msg}"
@@ -177,13 +373,11 @@ class BaseCameraInterface(QtCore.QObject):
             self.logger.log(level=level, msg=msg)
 
     def announce(self, msg, group=None):
-        # Post to winter_observatory slack channel (if alert handler exits) and to log
         self.log(msg)
         if self.alertHandler is not None:
             self.alertHandler.slack_log(f":camera: {msg}", group=group)
 
     def alert_error(self, msg, group=None):
-        """Send error alert"""
         self.log(msg, level=logging.ERROR)
         if self.alertHandler is not None:
             self.alertHandler.slack_log(
@@ -197,6 +391,111 @@ class BaseCameraInterface(QtCore.QObject):
             self.stateChanged.emit(new_state.value)
             self.log(f"State changed to: {new_state.value}")
 
+    def setup_polling(self):
+        """Set up periodic status polling"""
+        self.pollTimer = QtCore.QTimer()
+        self.pollTimer.timeout.connect(self.pollStatus)
+        self.pollTimer.start(1000)  # Poll every second
+
+    def pollStatus(self):
+        """Enhanced polling that checks completion conditions"""
+        self.state["timestamp"] = datetime.utcnow().timestamp()
+        self.state["connected"] = self.connected
+
+        # Poll camera-specific status
+        self.pollCameraStatus()
+
+        # Poll required values
+        self.tec_setpoint = self.tecGetSetpoint()
+        self.tec_temp = self.tecGetTemp()
+        self.tec_enabled = self.tecGetEnabled()
+        self.exposure_time = self.getExposureTime()
+        self.tec_voltage = self.tecGetVoltage()
+        self.tec_current = self.tecGetCurrent()
+        self.tec_percentage = self.tecGetPercentage()
+
+        # Check pending command completion
+        if self.pending_command_completion:
+            self._check_pending_completion()
+
+        # Update state
+        self.state.update(
+            {
+                "timestamp": datetime.utcnow().timestamp(),
+                "connected": self.connected,
+                "exptime": self.exposure_time,
+                "tec_temp": self.tec_temp,
+                "tec_enabled": self.tec_enabled,
+                "tec_setpoint": self.tec_setpoint,
+                "tec_voltage": self.tec_voltage,
+                "tec_current": self.tec_current,
+                "tec_percentage": self.tec_percentage,
+                "command_elapsed_dt": (
+                    self.command_elapsed_dt if self.command_running else 0
+                ),
+                "pending_completion": self.pending_command_completion is not None,
+            }
+        )
+
+        # Emit the new status
+        self.newStatus.emit(self.state)
+
+    def _check_pending_completion(self):
+        """Check if pending command has completed its conditions"""
+        if not self.pending_command_completion:
+            return
+
+        command = self.pending_command_completion["command"]
+
+        # Dispatch to command-specific completion checkers
+        completed = False
+
+        if command == "autoStartup":
+            completed = self._check_startup_complete()
+        elif command == "autoShutdown":
+            completed = self._check_shutdown_complete()
+        elif command == "tecSetSetpoint":
+            completed = self._check_tec_setpoint_complete()
+        # Add more completion checkers as needed
+
+        if completed:
+            # Completion conditions met!
+            completion_state = self.pending_command_completion["completion_state"]
+            self.log(f"Command {command} completion conditions met")
+            self.update_camera_state(completion_state)
+            self.pending_command_completion = None
+        else:
+            # Check timeout
+            elapsed = (
+                datetime.utcnow().timestamp()
+                - self.pending_command_completion["start_time"]
+            )
+            if elapsed > self.command_timeout:
+                self.log(
+                    f"Command {command} timed out waiting for completion",
+                    level=logging.ERROR,
+                )
+                self.update_camera_state(CameraState.ERROR)
+                self.pending_command_completion = None
+            # else: stay in current state and keep checking
+
+    # === Required Methods ===
+    # Command-specific completion checkers (to be overridden in implementations)
+    @abstractmethod
+    def _check_startup_complete(self) -> bool:
+        """Override this to check if startup is complete"""
+        return False
+
+    @abstractmethod
+    def _check_shutdown_complete(self) -> bool:
+        """Override this to check if shutdown is complete"""
+        return False
+
+    @abstractmethod
+    def _check_tec_setpoint_complete(self) -> bool:
+        """Override this to check if TEC has reached setpoint"""
+        return False
+
     @abstractmethod
     def setup_connection(self):
         """Set up the connection to the camera hardware"""
@@ -206,51 +505,6 @@ class BaseCameraInterface(QtCore.QObject):
     def pollCameraStatus(self):
         """Poll the camera hardware for status updates"""
         pass
-
-    def pollStatus(self):
-        """Poll camera status - must emit newStatus signal"""
-        self.state["timestamp"] = datetime.utcnow().timestamp()
-        self.state["connected"] = self.connected
-
-        self.pollCameraStatus()
-
-        # Required methods to be polled
-        self.tec_setpoint = self.tecGetSetpoint()
-        self.tec_temp = self.tecGetTemp()
-        self.tec_enabled = self.tecGetEnabled()
-        self.exposure_time = self.getExposureTime()
-        self.tec_voltage = self.tecGetVoltage()
-        self.tec_current = self.tecGetCurrent()
-        self.tec_percentage = self.tecGetPercentage()
-
-        if self.command_active:
-            self.check_if_command_passed()
-
-        # if startup is requested, see if it is complete
-        # if self._camera_state == CameraState.STARTUP_REQUESTED:
-
-        # Update state
-        self.state.update(
-            {
-                # Basic connection parameters
-                "timestamp": datetime.utcnow().timestamp(),
-                "connected": self.connected,
-                # Image parameters
-                "exptime": self.exposure_time,
-                # TEC parameters
-                "tec_temp": self.tec_temp,
-                "tec_enabled": self.tec_enabled,
-                "tec_setpoint": self.tec_setpoint,
-                "tec_voltage": self.tec_voltage,
-                "tec_current": self.tec_current,
-                "tec_percentage": self.tec_percentage,
-            }
-        )
-
-        # Emit the new status
-        self.newStatus.emit(self.state)
-
-    # === Required API Methods ===
 
     @abstractmethod
     def autoStartup(self):
@@ -432,7 +686,6 @@ class BaseCameraInterface(QtCore.QObject):
 class CameraDaemonInterface:
     """
     Pyro daemon interface that wraps the camera interface.
-    This is what gets exposed via Pyro5.
     """
 
     def __init__(self, camera_interface: BaseCameraInterface):
@@ -453,7 +706,7 @@ class CameraDaemonInterface:
         else:
             print(f"daemon_interface: {msg}")
 
-    # === Pyro-exposed methods with immediate state changes ===
+    # === Pyro-exposed methods ===
 
     @Pyro5.server.expose
     def getStatus(self):
@@ -461,69 +714,68 @@ class CameraDaemonInterface:
         return self._last_status
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.STARTUP_REQUESTED)
+    def stopCurrentCommand(self):
+        """Stop the currently executing command"""
+        self.log("Stop command requested")
+        return self.camera.stop_current_command()
+
+    @Pyro5.server.expose
+    def getCurrentCommand(self):
+        """Get the name of the currently running command"""
+        return self.camera.current_command_name
+
+    @Pyro5.server.expose
+    def isCommandRunning(self):
+        """Check if a command is currently running"""
+        return self.camera.command_running
+
+    @Pyro5.server.expose
     def autoStartup(self):
         """Auto startup sequence"""
         self.log("Starting auto startup")
-        self.camera.autoStartup()
+        return self.camera.autoStartup()
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.SHUTDOWN_REQUESTED)
     def autoShutdown(self):
         """Auto shutdown sequence"""
         self.log("Starting auto shutdown")
-        self.camera.autoShutdown()
+        return self.camera.autoShutdown()
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.SETTING_PARAMETERS)
     def setExposure(self, exptime, addrs=None):
         """Set exposure time"""
-        self.camera.setExposure(exptime, addrs)
-        # After setting, return to READY
-        self.camera.update_camera_state(CameraState.READY)
+        return self.camera.setExposure(exptime, addrs)
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.EXPOSING)
     def doExposure(self, imdir, imname, imtype, mode, metadata, addrs=None):
-        """Execute exposure with immediate state update"""
+        """Execute exposure"""
         self.log(f"Starting exposure: {imname}")
-        self.camera.doExposure(imdir, imname, imtype, mode, metadata, addrs)
+        return self.camera.doExposure(imdir, imname, imtype, mode, metadata, addrs)
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.SETTING_PARAMETERS)
     def tecSetSetpoint(self, temp, addrs=None):
         """Set TEC temperature"""
-        self.camera.tecSetSetpoint(temp, addrs)
-        # Return to READY after setting
-        self.camera.update_camera_state(CameraState.READY)
+        return self.camera.tecSetSetpoint(temp, addrs)
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.SETTING_PARAMETERS)
     def tecStart(self, addrs=None):
         """Start TEC"""
-        self.camera.tecStart(addrs)
-        # Return to READY after starting
-        self.camera.update_camera_state(CameraState.READY)
+        return self.camera.tecStart(addrs)
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.SETTING_PARAMETERS)
     def tecStop(self, addrs=None):
         """Stop TEC"""
-        self.camera.tecStop(addrs)
-        # Return to READY after stopping
-        self.camera.update_camera_state(CameraState.READY)
+        return self.camera.tecStop(addrs)
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.STARTUP_REQUESTED)
     def startupCamera(self, addrs=None):
         """Manual startup"""
-        self.camera.startupCamera(addrs)
+        return self.camera.startupCamera(addrs)
 
     @Pyro5.server.expose
-    @daemon_command(initial_state=CameraState.SHUTDOWN_REQUESTED)
     def shutdownCamera(self, addrs=None):
         """Manual shutdown"""
-        self.camera.shutdownCamera(addrs)
+        return self.camera.shutdownCamera(addrs)
 
     @Pyro5.server.expose
     def getDefaultImageDirectory(self):
