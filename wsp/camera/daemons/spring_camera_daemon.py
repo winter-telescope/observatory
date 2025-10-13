@@ -245,7 +245,8 @@ class SpringCameraInterface(BaseCameraInterface):
             nframes=1,
             object=object_name,
             observer=observer_name,
-            headers=cleaned_metadata,
+            # no headers for now
+            headers={},
         )
 
         if self.command_worker.stop_requested:
