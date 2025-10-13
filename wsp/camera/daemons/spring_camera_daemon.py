@@ -65,6 +65,23 @@ class SpringCameraInterface(BaseCameraInterface):
                 # Try to reconnect
                 self.setup_connection()
 
+    # === Update the Camera Status Dictionary ===
+    def pollStatus(self):
+        # Update camera-specific status fields
+        self.state.update(
+            {
+                "case_temp": self.getCaseTemp(),
+                "digpcb_temp": self.getDigPCBTemp(),
+                "senspcb_temp": self.getPCBTemp(),
+                "gain_corr": self.getGainCorr(),
+                "offset_corr": self.getOffsetCorr(),
+                "sub_corr": self.getSubCorr(),
+            }
+        )
+
+        # Call the parent method to update common fields
+        super().pollCameraStatus()
+
     # === Async Command Methods with Decorators ===
 
     @async_camera_command(timeout=10.0, completion_state=CameraState.READY)
@@ -367,6 +384,14 @@ class SpringCameraInterface(BaseCameraInterface):
                 self.log(f"Error getting TEC percentage: {e}")
             return DEFAULT_STATUS_VALUE
 
+    def tecGetSteadyStatus(self) -> bool:
+        try:
+            return self.camera_status.get("data", {}).get("tec_locked", False)
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error getting TEC steady status: {e}")
+            return False
+
     def tecGetEnabled(self):
         try:
             return self.camera_status.get("data", {}).get(
@@ -385,6 +410,66 @@ class SpringCameraInterface(BaseCameraInterface):
         except Exception as e:
             if self.verbose:
                 self.log(f"Error getting exposure time: {e}")
+            return DEFAULT_STATUS_VALUE
+
+    def getPCBTemp(self):
+        try:
+            return self.camera_status.get("data", {}).get(
+                "senspcb_temp", DEFAULT_STATUS_VALUE
+            )
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error getting PCB temperature: {e}")
+            return DEFAULT_STATUS_VALUE
+
+    def getCaseTemp(self):
+        try:
+            return self.camera_status.get("data", {}).get(
+                "case_temp", DEFAULT_STATUS_VALUE
+            )
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error getting case temperature: {e}")
+            return DEFAULT_STATUS_VALUE
+
+    def getDigPCBTemp(self):
+        try:
+            return self.camera_status.get("data", {}).get(
+                "digpcb_temp", DEFAULT_STATUS_VALUE
+            )
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error getting digital PCB temperature: {e}")
+            return DEFAULT_STATUS_VALUE
+
+    def getGainCorr(self):
+        try:
+            return self.camera_status.get("data", {}).get(
+                "gain_corr", DEFAULT_STATUS_VALUE
+            )
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error getting gain correction status: {e}")
+            return DEFAULT_STATUS_VALUE
+
+    def getOffsetCorr(self):
+        try:
+            return self.camera_status.get("data", {}).get(
+                "offset_corr", DEFAULT_STATUS_VALUE
+            )
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error getting offset correction status: {e}")
+            return DEFAULT_STATUS_VALUE
+
+    def getSubCorr(self):
+        try:
+            return self.camera_status.get("data", {}).get(
+                "sub_corr", DEFAULT_STATUS_VALUE
+            )
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error getting subframe correction status: {e}")
             return DEFAULT_STATUS_VALUE
 
     '''

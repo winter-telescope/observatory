@@ -353,6 +353,7 @@ class BaseCamera(QtCore.QObject):
                 "tec_voltage": self.remote_state.get("tec_voltage", self.default),
                 "tec_current": self.remote_state.get("tec_current", self.default),
                 "tec_percentage": self.remote_state.get("tec_percentage", self.default),
+                "tec_steady": self.remote_state.get("tec_steady", False),
                 # Exposure
                 "exptime": self.remote_state.get("exptime", 0.0),
                 # Backwards compatibility entries

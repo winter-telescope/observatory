@@ -413,6 +413,7 @@ class BaseCameraInterface(QtCore.QObject):
         self.tec_voltage = self.tecGetVoltage()
         self.tec_current = self.tecGetCurrent()
         self.tec_percentage = self.tecGetPercentage()
+        self.tec_steady = self.tecGetSteadyStatus()
 
         # Check pending command completion
         if self.pending_command_completion:
@@ -430,6 +431,7 @@ class BaseCameraInterface(QtCore.QObject):
                 "tec_voltage": self.tec_voltage,
                 "tec_current": self.tec_current,
                 "tec_percentage": self.tec_percentage,
+                "tec_steady": self.tec_steady,
                 "command_elapsed_dt": (
                     self.command_elapsed_dt if self.command_running else 0
                 ),
@@ -666,6 +668,11 @@ class BaseCameraInterface(QtCore.QObject):
     def tecGetPercentage(self) -> float:
         """Get current TEC power percentage"""
         return 0.0
+
+    @abstractmethod
+    def tecGetSteadyStatus(self) -> bool:
+        """Check if TEC temperature is steady"""
+        return False
 
     @abstractmethod
     def tecGetTemp(self) -> float:
