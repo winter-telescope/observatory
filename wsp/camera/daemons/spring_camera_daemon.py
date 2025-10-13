@@ -80,7 +80,7 @@ class SpringCameraInterface(BaseCameraInterface):
         )
 
         # Call the parent method to update common fields
-        super().pollCameraStatus()
+        super().pollStatus()
 
     # === Async Command Methods with Decorators ===
 
