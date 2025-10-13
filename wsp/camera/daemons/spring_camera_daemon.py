@@ -149,43 +149,87 @@ class SpringCameraInterface(BaseCameraInterface):
 
         self.log(f"Starting exposure: {self.lastfilename}")
 
-        # If the camera API supports async/polling, make it interruptible:
-        # Example of interruptible exposure if API supports it:
-        """
-        # Start exposure
-        self.cam.start_exposure(self.lastfilename)
-        
-        # Poll for completion with interrupt checking
-        poll_interval = 0.1  # seconds
-        max_polls = int((self.exposure_time + 30) / poll_interval)
-        
-        for i in range(max_polls):
-            if self.command_worker.stop_requested:
-                self.cam.abort_exposure()
-                self.log("Exposure aborted by user")
-                return False
-            
-            if self.cam.is_exposure_complete():
-                break
-            
-            time.sleep(poll_interval)
-        """
         # Set the directory
         self.cam.set_save_path(imdir)
 
-        # For blocking API (current case):
-        # if object or OBJECT are in metadata, pass that to the camera
+        """
+        headers/metadata format: Custom FITS headers in one of these formats:
+            - Dict: {'KEYWORD': value} or {'KEYWORD': (value, 'comment')}
+            - List of tuples: [('KEYWORD', value), ('KEYWORD', value, 'comment')]
+            - List of astropy Card objects
+        """
+
         object_name = None
-        if metadata:
-            meta_lower = {k.lower(): v for k, v in metadata.items()}
-            object_name = meta_lower.get("object")
-            observer_name = meta_lower.get("observer")
+        observer_name = "unknown"  # default if not provided
+        cleaned_metadata = None
+
+        if metadata is None:
+            cleaned_metadata = None
+
+        elif isinstance(metadata, dict):
+            # Copy so we don't mutate caller's dict
+            md = dict(metadata)
+
+            # Case-insensitive pop for OBJECT/OBSERVER
+            lower_map = {k.lower(): k for k in md.keys()}
+
+            if "object" in lower_map:
+                object_name = md.pop(lower_map["object"])
+            if "observer" in lower_map:
+                observer_name = md.pop(lower_map["observer"])
+
+            cleaned_metadata = md
+
+        elif isinstance(metadata, list):
+            if all(isinstance(item, fits.Card) for item in metadata):
+                # List of astropy Cards
+                new_cards = []
+                for card in metadata:
+                    key_lower = (card.keyword or "").lower()
+                    if key_lower == "object":
+                        if object_name is None:
+                            object_name = card.value
+                        # skip adding this card (we "shuck" it out)
+                        continue
+                    if key_lower == "observer":
+                        if observer_name == "unknown":
+                            observer_name = card.value
+                        # skip adding this card
+                        continue
+                    new_cards.append(card)
+                cleaned_metadata = new_cards
+
+            elif all(
+                isinstance(item, tuple) and len(item) in (2, 3) for item in metadata
+            ):
+                # List of tuples
+                new_tuples = []
+                for t in metadata:
+                    key = t[0]
+                    key_lower = (key or "").lower()
+                    if key_lower == "object":
+                        if object_name is None:
+                            object_name = t[1]
+                        continue
+                    if key_lower == "observer":
+                        if observer_name == "unknown":
+                            observer_name = t[1]
+                        continue
+                    new_tuples.append(t)
+                cleaned_metadata = new_tuples
+            else:
+                # Unknown list format; pass through unchanged
+                cleaned_metadata = metadata
+        else:
+            # Unknown metadata type; pass through unchanged
+            cleaned_metadata = metadata
 
         reply = self.cam.capture_frames(
             filename=self.lastfilename,
             nframes=1,
             object=object_name,
             observer=observer_name,
+            headers=cleaned_metadata,
         )
 
         if self.command_worker.stop_requested:
