@@ -137,7 +137,13 @@ class SpringCameraInterface(BaseCameraInterface):
         initial_state=CameraState.EXPOSING,
     )
     def doExposure(self, imdir, imname, imtype, mode, metadata, addrs=None):
-        """Execute exposure with interruptible checking"""
+        """Execute exposure with interruptible checking.
+
+        metadata:
+            - Dict: {'KEYWORD': value} or {'KEYWORD': (value, 'comment')}
+            - List of tuples: [('KEYWORD', value), ('KEYWORD', value, 'comment')]
+        Anything else (e.g., astropy.io.fits.Card) is rejected.
+        """
         # Set up exposure parameters (from parent class)
         self.imdir = imdir
         self.imname = imname
@@ -152,12 +158,11 @@ class SpringCameraInterface(BaseCameraInterface):
         # Set the directory
         self.cam.set_save_path(imdir)
 
-        """
-        headers/metadata format: Custom FITS headers in one of these formats:
-            - Dict: {'KEYWORD': value} or {'KEYWORD': (value, 'comment')}
-            - List of tuples: [('KEYWORD', value), ('KEYWORD', value, 'comment')]
-            - List of astropy Card objects
-        """
+        def _extract_value(v):
+            # If dict value is a (value, comment) tuple, return value
+            if isinstance(v, tuple) and len(v) >= 1:
+                return v[0]
+            return v
 
         object_name = None
         observer_name = "unknown"  # default if not provided
@@ -170,59 +175,70 @@ class SpringCameraInterface(BaseCameraInterface):
             # Copy so we don't mutate caller's dict
             md = dict(metadata)
 
-            # Case-insensitive pop for OBJECT/OBSERVER
-            lower_map = {k.lower(): k for k in md.keys()}
+            # Case-insensitive lookups for OBJECT/OBSERVER
+            key_obj = next(
+                (k for k in md.keys() if isinstance(k, str) and k.lower() == "object"),
+                None,
+            )
+            key_obs = next(
+                (
+                    k
+                    for k in md.keys()
+                    if isinstance(k, str) and k.lower() == "observer"
+                ),
+                None,
+            )
 
-            if "object" in lower_map:
-                object_name = md.pop(lower_map["object"])
-            if "observer" in lower_map:
-                observer_name = md.pop(lower_map["observer"])
+            if key_obj is not None:
+                object_name = _extract_value(md.pop(key_obj))
+            if key_obs is not None:
+                observer_name = _extract_value(md.pop(key_obs))
 
             cleaned_metadata = md
 
         elif isinstance(metadata, list):
-            if all(isinstance(item, fits.Card) for item in metadata):
-                # List of astropy Cards
-                new_cards = []
-                for card in metadata:
-                    key_lower = (card.keyword or "").lower()
-                    if key_lower == "object":
-                        if object_name is None:
-                            object_name = card.value
-                        # skip adding this card (we "shuck" it out)
-                        continue
-                    if key_lower == "observer":
-                        if observer_name == "unknown":
-                            observer_name = card.value
-                        # skip adding this card
-                        continue
-                    new_cards.append(card)
-                cleaned_metadata = new_cards
-
-            elif all(
+            # Must be list of (key, value[, comment]) tuples
+            if not all(
                 isinstance(item, tuple) and len(item) in (2, 3) for item in metadata
             ):
-                # List of tuples
-                new_tuples = []
-                for t in metadata:
-                    key = t[0]
-                    key_lower = (key or "").lower()
-                    if key_lower == "object":
-                        if object_name is None:
-                            object_name = t[1]
-                        continue
-                    if key_lower == "observer":
-                        if observer_name == "unknown":
-                            observer_name = t[1]
-                        continue
-                    new_tuples.append(t)
-                cleaned_metadata = new_tuples
-            else:
-                # Unknown list format; pass through unchanged
-                cleaned_metadata = metadata
+                # Explicitly call out Card objects or bad shapes
+                bad = next(
+                    (
+                        type(item).__name__
+                        for item in metadata
+                        if not (isinstance(item, tuple) and len(item) in (2, 3))
+                    ),
+                    None,
+                )
+                raise TypeError(
+                    f"metadata must be a list of 2- or 3-tuples; unsupported item type/shape: {bad or 'unknown'}"
+                )
+
+            new_tuples = []
+            for t in metadata:
+                key = t[0]
+                if not isinstance(key, str):
+                    raise TypeError("metadata tuple key must be a string")
+
+                key_lower = key.lower()
+                if key_lower == "object":
+                    if object_name is None:
+                        object_name = t[1]
+                    continue
+                if key_lower == "observer":
+                    if observer_name == "unknown":
+                        observer_name = t[1]
+                    continue
+
+                new_tuples.append(t)
+
+            cleaned_metadata = new_tuples
+
         else:
-            # Unknown metadata type; pass through unchanged
-            cleaned_metadata = metadata
+            raise TypeError(
+                "metadata must be a dict or a list of (key, value[, comment]) tuples; "
+                f"got {type(metadata).__name__}"
+            )
 
         reply = self.cam.capture_frames(
             filename=self.lastfilename,
@@ -242,7 +258,6 @@ class SpringCameraInterface(BaseCameraInterface):
         else:
             raise Exception(f"Exposure failed: {reply}")
 
-    # === Commands with Pending Completion ===
     @async_camera_command(
         timeout=120.0,  # 2 minutes
         completion_state=CameraState.READY,

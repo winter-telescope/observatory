@@ -451,6 +451,8 @@ class BaseCamera(QtCore.QObject):
             self.log(f"making FITS header")
             header = self.getFITSheader()
 
+            self.log(f"header: {header}")
+
             self.log(
                 f"sending doExposure request to camera: imdir = {self.imdir}, imname = {self.imname}"
             )
