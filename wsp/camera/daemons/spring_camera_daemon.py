@@ -76,6 +76,7 @@ class SpringCameraInterface(BaseCameraInterface):
                 "gain_corr": self.getGainCorr(),
                 "offset_corr": self.getOffsetCorr(),
                 "sub_corr": self.getSubCorr(),
+                "gui_state": self.getGUIState(),
             }
         )
 
@@ -470,6 +471,14 @@ class SpringCameraInterface(BaseCameraInterface):
         except Exception as e:
             if self.verbose:
                 self.log(f"Error getting subframe correction status: {e}")
+            return DEFAULT_STATUS_VALUE
+
+    def getGUIState(self):
+        try:
+            return self.camera_status.get("data", {}).get("camera_state", "UNKNOWN")
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error getting camera state: {e}")
             return DEFAULT_STATUS_VALUE
 
     '''
