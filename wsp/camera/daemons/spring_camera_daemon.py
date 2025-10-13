@@ -240,6 +240,12 @@ class SpringCameraInterface(BaseCameraInterface):
                 f"got {type(metadata).__name__}"
             )
 
+        # filename should have no extension and no path
+        self.log(f"imname: {imname}")
+        self.log(f"imdir: {imdir}")
+        self.log(f"imtype: {imtype}")
+        self.log(f"lastfilename: {self.lastfilename}")
+
         reply = self.cam.capture_frames(
             filename=self.lastfilename,
             nframes=1,
