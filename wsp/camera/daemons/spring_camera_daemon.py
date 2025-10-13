@@ -170,10 +170,22 @@ class SpringCameraInterface(BaseCameraInterface):
             
             time.sleep(poll_interval)
         """
+        # Set the directory
+        self.cam.set_save_path(imdir)
 
         # For blocking API (current case):
-        reply = self.cam.take_image(
-            filename=self.lastfilename, nframes=1, object_name=imtype
+        # if object or OBJECT are in metadata, pass that to the camera
+        object_name = None
+        if metadata:
+            meta_lower = {k.lower(): v for k, v in metadata.items()}
+            object_name = meta_lower.get("object")
+            observer_name = meta_lower.get("observer")
+
+        reply = self.cam.capture_frames(
+            filename=self.lastfilename,
+            nframes=1,
+            object=object_name,
+            observer=observer_name,
         )
 
         if self.command_worker.stop_requested:

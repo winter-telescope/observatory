@@ -356,19 +356,17 @@ class BaseCamera(QtCore.QObject):
                 "tec_steady": self.remote_state.get("tec_steady", False),
                 # Exposure
                 "exptime": self.remote_state.get("exptime", 0.0),
-                # Backwards compatibility entries
-                # "command_pass": self.command_pass,
-                # "command_active": self.command_active,
-                # "doing_exposure": self.doing_exposure,
-                # "command_timeout": self.command_timeout,
-                # "command_sent_timestamp": self.command_sent_timestamp,
-                # "command_elapsed_dt": self.command_elapsed_dt,
-                # "autoShutdownRequested": self.autoShutdownRequested,
-                # "autoShutdownComplete": self.autoShutdownComplete,
-                # "autoStartupRequested": self.autoStartupRequested,
-                # "autoStartupComplete": self.autoStartupComplete,
             }
         )
+
+        # Cycle through remote state to add any additional fields that don't exist yet
+        for key, value in self.remote_state.items():
+            if key not in self.state:
+                try:
+                    self.state.update({key: value})
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f"could not add {key}:{value} to state: {e}")
 
     def validate_mode(self, mode: Optional[str], **kwargs) -> str:
         """Validate readout mode - should be implemented by subclasses"""
