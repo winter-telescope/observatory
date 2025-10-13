@@ -261,8 +261,8 @@ def GetHeader(config, state, imageinfo, logger=None, verbose=False):
     # header.append(('OBJRA', objra_str,     'Object right ascension (deg:m:s)'))
     # header.append(('OBJDEC', objdec_str,   'Object declination (deg:m:s)'))
 
-    header.append(("OBJRA", None, "DEPRECATED - Object RA"))
-    header.append(("OBJDEC", None, "DEPRECATED - Object DEC"))
+    header.append(("OBJRA", "", "DEPRECATED - Object RA"))
+    header.append(("OBJDEC", "", "DEPRECATED - Object DEC"))
 
     # Update the headers with the Scheduled Target RA/Dec
     targ_ra_comment = "Target RA (J2000)"
@@ -284,11 +284,13 @@ def GetHeader(config, state, imageinfo, logger=None, verbose=False):
         targ_ra_value = np.round(targ_ra.deg, 6)
         targ_dec_value = np.round(targ_dec.deg, 6)
     except AssertionError:
-        # No need to do anything, fallback values will be used
-        pass
+        targ_ra_value = ""
+        targ_dec_value = ""
     except Exception as e:
         if verbose:
             log(logger, f"header creator: could not form target ra/dec strings: {e}")
+        targ_ra_value = ""
+        targ_dec_value = ""
     header.append(("TARGRA", targ_ra_value, targ_ra_comment))
     header.append(("TARGDEC", targ_dec_value, targ_dec_comment))
 
@@ -314,9 +316,13 @@ def GetHeader(config, state, imageinfo, logger=None, verbose=False):
     except AssertionError:
         # No need to do anything, fallback values will be used
         pass
+        pointing_ra_value = ""
+        pointing_dec_value = ""
     except Exception as e:
         if verbose:
             log(logger, f"header creator: could not form pointing ra/dec strings: {e}")
+        pointing_ra_value = ""
+        pointing_dec_value = ""
 
     header.append(("POINTRA", pointing_ra_value, pointing_ra_comment))
     header.append(("POINTDEC", pointing_dec_value, pointing_dec_comment))
