@@ -3,6 +3,7 @@
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
 
 import astropy.io.fits as fits
 import numpy as np
@@ -246,8 +247,11 @@ class SpringCameraInterface(BaseCameraInterface):
         self.log(f"imtype: {imtype}")
         self.log(f"lastfilename: {self.lastfilename}")
 
+        # strip off any file extension and leading path
+        filename_stem = Path(self.lastfilename.replace("\\", "/")).expanduser().stem
+
         reply = self.cam.capture_frames(
-            filename=self.lastfilename,
+            filename=filename_stem,
             nframes=1,
             object=object_name,
             observer=observer_name,
