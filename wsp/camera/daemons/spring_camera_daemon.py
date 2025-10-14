@@ -262,11 +262,29 @@ class SpringCameraInterface(BaseCameraInterface):
             self.log("Exposure command was interrupted")
             return False
 
-        if reply.get("status") == "success":
-            self._exposure_complete(imdir, imname)
+        # Accept multiple reply shapes, avoid AttributeError
+        if reply is None:
+            # Async start acknowledged; completion will be handled elsewhere
+            self.log("capture_frames returned None (async). Treating as started OK.")
             return True
-        else:
+
+        if isinstance(reply, dict):
+            if reply.get("status") == "success":
+                self._exposure_complete(imdir, imname)
+                return True
             raise Exception(f"Exposure failed: {reply}")
+
+        if isinstance(reply, bool):
+            if reply:
+                self._exposure_complete(imdir, imname)
+                return True
+            raise Exception("Exposure failed: capture_frames returned False")
+
+        # Unexpected type; don’t crash the state machine
+        self.log(
+            f"Unexpected capture_frames reply type: {type(reply).__name__}; treating as started OK."
+        )
+        return True
 
     @async_camera_command(
         timeout=120.0,  # 2 minutes
