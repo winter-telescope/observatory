@@ -10,6 +10,7 @@ import os
 import signal
 import subprocess
 import sys
+import traceback
 from abc import abstractmethod
 from datetime import datetime
 
@@ -44,7 +45,7 @@ class CameraCommandWorker(QtCore.QObject):
     # Signals
     commandStarted = QtCore.pyqtSignal(str)  # command name
     commandCompleted = QtCore.pyqtSignal(bool, str)  # success, message
-    commandError = QtCore.pyqtSignal(str)  # error message
+    commandError = QtCore.pyqtSignal(str, str)  # error message, traceback
 
     def __init__(self, logger=None):
         super().__init__()
@@ -76,7 +77,10 @@ class CameraCommandWorker(QtCore.QObject):
         try:
             # Check for stop before starting
             if self.stop_requested:
-                self.commandError.emit(f"{command_name}: Stopped before execution")
+                self.commandError.emit(
+                    f"{command_name}: Stopped before execution",
+                    "",  # No traceback for manual stop
+                )
                 return
 
             # Execute the command
@@ -84,16 +88,24 @@ class CameraCommandWorker(QtCore.QObject):
 
             # Check if stop was requested during execution
             if self.stop_requested:
-                self.commandError.emit(f"{command_name}: Stopped during execution")
+                self.commandError.emit(
+                    f"{command_name}: Stopped during execution",
+                    "",  # No traceback for manual stop
+                )
             elif result is False:
-                self.commandError.emit(f"{command_name}: Command returned False")
+                self.commandError.emit(
+                    f"{command_name}: Command returned False",
+                    "",  # No traceback for False return
+                )
             else:
                 self.commandCompleted.emit(
                     True, f"{command_name}: Completed successfully"
                 )
 
         except Exception as e:
-            self.commandError.emit(f"{command_name}: Exception - {str(e)}")
+            # Capture the full traceback
+            tb_str = traceback.format_exc()
+            self.commandError.emit(f"{command_name}: Exception - {str(e)}", tb_str)
         finally:
             self.current_command = None
             self.current_args = None
@@ -293,9 +305,17 @@ class BaseCameraInterface(QtCore.QObject):
             # Default to READY
             self.update_camera_state(CameraState.READY)
 
-    def _on_command_error(self, error_msg):
-        """Handle command error"""
+    def _on_command_error(self, error_msg, traceback_str=""):
+        """Handle command error with optional traceback"""
         self.log(f"Command error: {error_msg}", level=logging.ERROR)
+
+        # Log the full traceback if available
+        if traceback_str:
+            self.log("Full traceback:", level=logging.ERROR)
+            # Split and log each line of the traceback for better readability
+            for line in traceback_str.split("\n"):
+                if line.strip():  # Skip empty lines
+                    self.log(line, level=logging.ERROR)
 
         # Update tracking state
         self.command_running = False
@@ -305,7 +325,7 @@ class BaseCameraInterface(QtCore.QObject):
         self.current_command_name = None
         self.pending_completion_state = None
 
-        # Update state dict
+        # Update state dict - include traceback in state for debugging
         self.state.update(
             {
                 "command_running": False,
@@ -314,6 +334,7 @@ class BaseCameraInterface(QtCore.QObject):
                 "command_pass": 0,
                 "last_command": command_name,
                 "last_command_error": error_msg,
+                "last_command_traceback": traceback_str,  # Store for debugging
             }
         )
 
