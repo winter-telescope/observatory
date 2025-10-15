@@ -382,12 +382,11 @@ class BaseCamera(QtCore.QObject):
 
         # Cycle through remote state to add any additional fields that don't exist yet
         for key, value in self.remote_state.items():
-            if key not in self.state:
-                try:
-                    self.state.update({key: value})
-                except Exception as e:
-                    if self.verbose:
-                        self.log(f"could not add {key}:{value} to state: {e}")
+            try:
+                self.state.update({key: value})
+            except Exception as e:
+                if self.verbose:
+                    self.log(f"could not add {key}:{value} to state: {e}")
 
     def validate_mode(self, mode: Optional[str], **kwargs) -> str:
         """Validate readout mode - should be implemented by subclasses"""
