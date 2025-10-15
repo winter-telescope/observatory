@@ -136,6 +136,7 @@ class SpringCameraInterface(BaseCameraInterface):
         timeout=lambda self, *args, **kwargs: self.exposure_time + 30.0,
         completion_state=CameraState.READY,
         initial_state=CameraState.EXPOSING,
+        pending_completion=True,  # Stay in EXPOSING until exposure completes
     )
     def doExposure(self, imdir, imname, imtype, mode, metadata, addrs=None):
         """Execute exposure with interruptible checking.
@@ -256,35 +257,30 @@ class SpringCameraInterface(BaseCameraInterface):
             object=object_name,
             observer=observer_name,
             headers=cleaned_metadata,
+            wait_for_completion=False,  # Don't wait in client
+            debug=False,
         )
 
         if self.command_worker.stop_requested:
             self.log("Exposure command was interrupted")
             return False
 
-        # Accept multiple reply shapes, avoid AttributeError
+        # Check the ACK response
         if reply is None:
-            # Async start acknowledged; completion will be handled elsewhere
-            self.log("capture_frames returned None (async). Treating as started OK.")
-            return True
+            raise Exception("No response from GUI - communication error")
 
         if isinstance(reply, dict):
             if reply.get("status") == "success":
-                self._exposure_complete(imdir, imname)
+                self.log("Capture command accepted, exposure started")
+                # Return True - state stays EXPOSING until _check_exposure_complete() returns True
                 return True
-            raise Exception(f"Exposure failed: {reply}")
+            else:
+                raise Exception(
+                    f"Capture failed to start: {reply.get('message', 'Unknown error')}"
+                )
 
-        if isinstance(reply, bool):
-            if reply:
-                self._exposure_complete(imdir, imname)
-                return True
-            raise Exception("Exposure failed: capture_frames returned False")
-
-        # Unexpected type; don’t crash the state machine
-        self.log(
-            f"Unexpected capture_frames reply type: {type(reply).__name__}; treating as started OK."
-        )
-        return True
+        # Unexpected reply type
+        raise Exception(f"Unexpected reply type: {type(reply).__name__}: {reply}")
 
     @async_camera_command(
         timeout=120.0,  # 2 minutes
@@ -425,6 +421,45 @@ class SpringCameraInterface(BaseCameraInterface):
             self.tec_temp > -45.0,  # Warmed up enough
         ]
         return all(conditions)
+
+    def _check_exposure_complete(self) -> bool:
+        """Check if exposure has completed by polling camera status"""
+        try:
+            # Poll the GUI for current status
+            status_data = self.camera_status.get("data", {})
+
+            # Check if camera is still capturing
+            is_capturing = status_data.get("is_capturing", False)
+
+            if not is_capturing:
+                # Exposure complete!
+                self.log("Exposure completed")
+
+                # Call the exposure completion handler
+                self._exposure_complete(self.imdir, self.imname)
+
+                return True
+
+            # Still exposing - log progress occasionally
+            if (
+                not hasattr(self, "_last_exposure_log")
+                or (datetime.utcnow().timestamp() - self._last_exposure_log) > 5
+            ):
+                current_frame = status_data.get("current_frame", 0)
+                total_frames = status_data.get("total_frames", 1)
+                time_remaining = status_data.get("capture_time_remaining", 0)
+                self.log(
+                    f"Exposing: frame {current_frame}/{total_frames}, "
+                    f"{time_remaining:.1f}s remaining"
+                )
+                self._last_exposure_log = datetime.utcnow().timestamp()
+
+            return False
+
+        except Exception as e:
+            self.log(f"Error checking exposure completion: {e}", level=logging.ERROR)
+            # On error, assume exposure failed
+            return True
 
     # === Status Polling Methods (unchanged) ===
 
