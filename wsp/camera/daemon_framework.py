@@ -483,7 +483,9 @@ class BaseCameraInterface(QtCore.QObject):
             completed = self._check_tec_setpoint_complete()
         elif command == "doExposure":
             completed = self._check_exposure_complete()
-        # Add more completion checkers as needed
+        elif command == "set_exposure":
+            completed = self._check_set_exposure_complete()
+        # Add more completion checkers as n`eeded
 
         if completed:
             # Completion conditions met!
@@ -526,6 +528,11 @@ class BaseCameraInterface(QtCore.QObject):
     @abstractmethod
     def _check_exposure_complete(self) -> bool:
         """Override this to check if exposure is complete"""
+        return False
+
+    @abstractmethod
+    def _check_set_exposure_complete(self) -> bool:
+        """Override this to check if set exposure is complete"""
         return False
 
     @abstractmethod

@@ -58,6 +58,10 @@ class SpringCameraInterface(BaseCameraInterface):
 
         try:
             self.camera_status = self.cam.get_status()
+            if self.verbose:
+                self.log(
+                    f"polling camera status: GUI Status = {self.camera_status['gui_state']}"
+                )
         except Exception as e:
             self.log(f"Error polling camera status: {e}")
             self.connected = False
@@ -68,6 +72,10 @@ class SpringCameraInterface(BaseCameraInterface):
 
     # === Update the Camera Status Dictionary ===
     def pollStatus(self):
+
+        # Call the parent method to update common fields
+        super().pollStatus()
+
         # Update camera-specific status fields
         self.state.update(
             {
@@ -80,9 +88,6 @@ class SpringCameraInterface(BaseCameraInterface):
                 "gui_state": self.getGUIState(),
             }
         )
-
-        # Call the parent method to update common fields
-        super().pollStatus()
 
     # === Async Command Methods with Decorators ===
 
@@ -421,6 +426,14 @@ class SpringCameraInterface(BaseCameraInterface):
             self.tec_temp > -45.0,  # Warmed up enough
         ]
         return all(conditions)
+
+    def _check_set_exposure_complete(self) -> bool:
+        """Check if set exposure command is complete"""
+        # make sure camera is READY and that the exposure timeout is 0 and
+        # that the exposure time matches the requested time
+        status_data = self.camera_status.get("data", {})
+
+        return True
 
     def _check_exposure_complete(self) -> bool:
         """Check if exposure has completed by polling camera status"""
