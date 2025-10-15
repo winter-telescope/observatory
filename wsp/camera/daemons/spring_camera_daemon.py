@@ -58,8 +58,8 @@ class SpringCameraInterface(BaseCameraInterface):
 
         try:
             self.camera_status = self.cam.get_status()
-            if self.verbose:
-                self.log(self.camera_status)
+            # if self.verbose:
+            #    self.log(self.camera_status)
 
         except Exception as e:
             self.log(f"Error polling camera status: {e}")
@@ -87,6 +87,10 @@ class SpringCameraInterface(BaseCameraInterface):
                 "gui_state": self.getGUIState(),
             }
         )
+
+        if self.verbose:
+            self.log(f"Updated camera state: {self.state}")
+        self.newStatus.emit(self.state)
 
     # === Async Command Methods with Decorators ===
 

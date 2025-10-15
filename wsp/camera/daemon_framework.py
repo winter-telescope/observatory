@@ -463,7 +463,7 @@ class BaseCameraInterface(QtCore.QObject):
         )
 
         # Emit the new status
-        self.newStatus.emit(self.state)
+        # self.newStatus.emit(self.state)
 
     def _check_pending_completion(self):
         """Check if pending command has completed its conditions"""
