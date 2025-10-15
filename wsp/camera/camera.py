@@ -50,6 +50,8 @@ class BaseCamera(QtCore.QObject):
         config,
         camname,
         daemon_pyro_name,
+        ns_host_camera=None,
+        ns_host_hk=None,
         ns_host=None,
         logger=None,
         verbose=False,
@@ -67,8 +69,12 @@ class BaseCamera(QtCore.QObject):
             Name identifier for this camera
         daemon_pyro_name : str
             Pyro daemon name for this camera
+        ns_host_camera : str, optional
+            IP address of the Pyro name server where camera daemon is registered
+        ns_host_hk : str, optional
+            IP address of the Pyro name server where housekeeping state is registered
         ns_host : str, optional
-            IP address of the Pyro name server
+            Deprecated, use ns_host_camera instead
         logger : logging.Logger, optional
             Logger instance
         verbose : bool, optional
@@ -82,7 +88,17 @@ class BaseCamera(QtCore.QObject):
         self.config = config
         self.camname = camname
         self.daemonname = daemon_pyro_name
-        self.ns_host = ns_host
+
+        # ns_host_camera, ns_host_hk: if not provided, fallback to ns_host for backwards compatibility
+        if ns_host_camera is None:
+            self.ns_host_camera = ns_host
+        else:
+            self.ns_host_camera = ns_host_camera
+        if ns_host_hk is None:
+            self.ns_host_hk = ns_host
+        else:
+            self.ns_host_hk = ns_host_hk
+
         self.logger = logger
         self.verbose = verbose
 
@@ -195,7 +211,7 @@ class BaseCamera(QtCore.QObject):
         try:
             if self.verbose:
                 self.log(f"init_remote_object: trying to connect to {self.daemonname}")
-            ns = Pyro5.core.locate_ns(host=self.ns_host)
+            ns = Pyro5.core.locate_ns(host=self.ns_host_camera)
             uri = ns.lookup(self.daemonname)
             self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
@@ -209,7 +225,7 @@ class BaseCamera(QtCore.QObject):
     def init_hk_state_object(self):
         """Initialize housekeeping state connection"""
         try:
-            ns = Pyro5.core.locate_ns(host=self.ns_host)
+            ns = Pyro5.core.locate_ns(host=self.ns_host_hk)
             uri = ns.lookup("state")
             self.remote_hk_state_object = Pyro5.client.Proxy(uri)
             self.hk_connected = True

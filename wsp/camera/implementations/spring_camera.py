@@ -21,6 +21,8 @@ cam = SpringCamera(
     config=config,
     camname="spring",
     daemon_pyro_name="SpringCamera",
+    ns_host_camera="localhost",  # camera is run locally
+    ns_host_hk="192.168.1.10",  # hk is run on the main computer
     logger=None,
     verbose=False,
 )
