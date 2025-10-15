@@ -58,10 +58,7 @@ class SpringCameraInterface(BaseCameraInterface):
 
         try:
             self.camera_status = self.cam.get_status()
-            if self.verbose:
-                self.log(
-                    f"polling camera status: GUI Status = {self.camera_status['gui_state']}"
-                )
+
         except Exception as e:
             self.log(f"Error polling camera status: {e}")
             self.connected = False
