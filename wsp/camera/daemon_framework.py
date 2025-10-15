@@ -7,12 +7,14 @@ Each camera type will have its own daemon that inherits from this framework.
 import getopt
 import logging
 import os
+import shutil
 import signal
 import subprocess
 import sys
 import traceback
 from abc import abstractmethod
 from datetime import datetime
+from pathlib import Path
 
 import Pyro5.server  # type: ignore
 import pytz
@@ -603,19 +605,42 @@ class BaseCameraInterface(QtCore.QObject):
 
     def getDefaultSymLinkPath(self):
         """Get default symbolic link path for the last image taken"""
-        return os.path.join(os.path.expanduser("~"), "data", "last_image.lnk")
+        return os.path.join(os.path.expanduser("~"), "data", "last_image.fits")
 
     def makeSymLink_lastImage(self, image_path):
-        # make a symbolic link to the last image taken: self.lastfilename
+        """Create/update a pointer to the latest image.
+        - On POSIX: symlink.
+        - On Windows: try symlink; if not permitted, fallback to hard link, then copy.
+        """
+        last_image_link_path = Path(self.getDefaultSymLinkPath())
 
-        last_image_link_path = self.getDefaultSymLinkPath()
+        # remove existing link/file if present
+        try:
+            if last_image_link_path.exists() or last_image_link_path.is_symlink():
+                last_image_link_path.unlink()
+        except FileNotFoundError:
+            pass
 
         try:
             os.symlink(image_path, last_image_link_path)
-        except FileExistsError:
-            self.log("deleting existing symbolic link to last image taken")
-            os.remove(last_image_link_path)
-            os.symlink(image_path, last_image_link_path)
+            self.log(f"Created symlink: {last_image_link_path} -> {image_path}")
+        except OSError as e:
+            if sys.platform.startswith("win") and getattr(e, "winerror", None) == 1314:
+                # No symlink privilege, try hard link
+                try:
+                    os.link(image_path, last_image_link_path)
+                    self.log(f"Created hard link for {last_image_link_path}")
+                except OSError:
+                    shutil.copy2(image_path, last_image_link_path)
+                    self.log(f"Copied file to {last_image_link_path} (fallback)")
+            else:
+                # Other error, try hard link then copy
+                try:
+                    os.link(image_path, last_image_link_path)
+                    self.log(f"Created hard link for {last_image_link_path}")
+                except OSError:
+                    shutil.copy2(image_path, last_image_link_path)
+                    self.log(f"Copied file to {last_image_link_path} (fallback)")
 
     @abstractmethod
     def doExposure(self, imdir, imname, imtype, mode, metadata, addrs=None):
