@@ -127,6 +127,7 @@ class SpringCameraInterface(BaseCameraInterface):
     def setExposure(self, exptime, addrs=None):
         """Set exposure time"""
         self.log(f"Setting exposure time to {exptime}s")
+        self.requested_exposure_time = exptime
 
         self.cam.set_exposure(exptime)
 
@@ -433,7 +434,14 @@ class SpringCameraInterface(BaseCameraInterface):
         # that the exposure time matches the requested time
         status_data = self.camera_status.get("data", {})
 
-        return True
+        conditions = [
+            self.state.get("gui_state", "") == "READY",
+            self.state.get("exptime", 0) == self.requested_exposure_time,
+            status_data.get("exposure", 0) == self.requested_exposure_time,
+            status_data.get("waiting_on_exposure_update", False) is False,
+        ]
+
+        return all(conditions)
 
     def _check_exposure_complete(self) -> bool:
         """Check if exposure has completed by polling camera status"""

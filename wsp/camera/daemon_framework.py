@@ -179,6 +179,9 @@ class BaseCameraInterface(QtCore.QObject):
         self.pending_completion_state = None
         self.pending_command_completion = None
 
+        # Camera Attributes
+        self.requested_exposure_time = -1.0
+
         # State management
         self.state = {
             "camera_state": CameraState.OFF.value,
