@@ -58,6 +58,8 @@ class SpringCameraInterface(BaseCameraInterface):
 
         try:
             self.camera_status = self.cam.get_status()
+            if self.verbose:
+                self.log(self.camera_status)
 
         except Exception as e:
             self.log(f"Error polling camera status: {e}")
