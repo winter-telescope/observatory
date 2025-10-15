@@ -133,7 +133,7 @@ class SpringCameraInterface(BaseCameraInterface):
         return True
 
     @async_camera_command(
-        timeout=lambda self, *args, **kwargs: self.exposure_time + 30.0,
+        timeout=lambda self, *args, **kwargs: 2 * self.exposure_time + 30.0,
         completion_state=CameraState.READY,
         initial_state=CameraState.EXPOSING,
         pending_completion=True,  # Stay in EXPOSING until exposure completes
