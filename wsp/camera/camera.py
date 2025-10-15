@@ -246,6 +246,11 @@ class BaseCamera(QtCore.QObject):
 
     def update_state(self):
         """Poll daemon for current state"""
+
+        # Update HK state also
+        self.update_hk_state()
+
+        # Update the System State
         if not self.connected:
             if self.verbose:
                 self.log(
@@ -466,6 +471,9 @@ class BaseCamera(QtCore.QObject):
 
             self.log(f"making FITS header")
             header = self.getFITSheader()
+            # header = fitsheader.GetHeader(
+            #   self.config, self.hk_state, self.state, logger=self.logger
+            # )
 
             self.log(f"header: {header}")
 
