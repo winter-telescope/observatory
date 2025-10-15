@@ -70,10 +70,8 @@ class SpringCameraInterface(BaseCameraInterface):
                 self.setup_connection()
 
     # === Update the Camera Status Dictionary ===
-    def pollStatus(self):
-
-        # Call the parent method to update common fields
-        super().pollStatus()
+    def update_camera_state_info(self):
+        """Update any camera-specific status info in the state dict"""
 
         # Update camera-specific status fields
         self.state.update(
@@ -88,9 +86,8 @@ class SpringCameraInterface(BaseCameraInterface):
             }
         )
 
-        if self.verbose:
-            self.log(f"Updated camera state: {self.state}")
-        self.newStatus.emit(self.state)
+        # if self.verbose:
+        #    self.log(f"Updated camera state: {self.state}")
 
     # === Async Command Methods with Decorators ===
 

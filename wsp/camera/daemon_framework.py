@@ -462,8 +462,10 @@ class BaseCameraInterface(QtCore.QObject):
             }
         )
 
+        self.update_camera_state_info()
+
         # Emit the new status
-        # self.newStatus.emit(self.state)
+        self.newStatus.emit(self.state)
 
     def _check_pending_completion(self):
         """Check if pending command has completed its conditions"""
@@ -748,6 +750,10 @@ class BaseCameraInterface(QtCore.QObject):
     def getExposureTime(self) -> float:
         """Get current exposure time"""
         return 0.0
+
+    def update_camera_state_info(self):
+        """Update any camera-specific status info in the state dict"""
+        pass
 
 
 class CameraDaemonInterface:
