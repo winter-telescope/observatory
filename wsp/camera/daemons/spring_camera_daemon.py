@@ -86,8 +86,8 @@ class SpringCameraInterface(BaseCameraInterface):
             }
         )
 
-        # if self.verbose:
-        #    self.log(f"Updated camera state: {self.state}")
+        if self.verbose:
+            self.log(f"Updated camera state: {self.state}")
 
     # === Async Command Methods with Decorators ===
 
