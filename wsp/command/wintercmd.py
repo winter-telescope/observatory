@@ -2408,7 +2408,10 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 5-10-21
         Send the rotator to the home position
         """
-        angle = self.config["telescope"]["rotator_home_degs"]
+
+        angle = self.config["telescope"]["ports"][self.telescope.port]["rotator"][
+            "home_degs"
+        ]
         cmd = f"rotator_goto_mech {angle}"
         self.parse(cmd)
 
@@ -5088,8 +5091,9 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("-w", "--winter", action="store_true", default=True)
-        group.add_argument("-c", "--summer", action="store_true", default=False)
+        group.add_argument("--winter", action="store_true", default=True)
+        group.add_argument("--summer", action="store_true", default=False)
+        group.add_argument("--spring", action="store_true", default=False)
 
         self.getargs()
 
@@ -5099,6 +5103,8 @@ class Wintercmd(QtCore.QObject):
             camname = "winter"
         elif self.args.summer:
             camname = "summer"
+        elif self.args.spring:
+            camname = "spring"
 
         camera = self.camdict[camname]
 
@@ -5137,9 +5143,20 @@ class Wintercmd(QtCore.QObject):
                 )
                 break
 
-            stop_condition = (self.state[f"{camname}_camera_exptime"] == exptime) & (
-                self.state[f"{camname}_camera_command_pass"] == 1
-            )
+            if camname == "winter":
+                stop_condition = (
+                    self.state[f"{camname}_camera_exptime"] == exptime
+                ) & (self.state[f"{camname}_camera_command_pass"] == 1)
+            elif camname == "spring":
+                stop_condition = (camera.state["camera_exptime"] == exptime) & (
+                    camera.state["camera_state"] == "READY"
+                )
+            else:
+                self.logger.info("WARNING! applying generic stop condition!")
+                stop_condition = (camera.state["camera_exptime"] == exptime) & (
+                    camera.state["camera_state"] == "READY"
+                )
+
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -5612,7 +5629,9 @@ class Wintercmd(QtCore.QObject):
             conds.append(
                 np.abs(
                     self.state["rotator_mech_position"]
-                    - self.config["telescope"]["rotator_home_degs"]
+                    - self.config["telescope"]["ports"][self.telescope.port]["rotator"][
+                        "home_degs"
+                    ]
                 )
                 < 1.0
             )  # NPL 12-15-21 these days it sags to ~ -27 from -25

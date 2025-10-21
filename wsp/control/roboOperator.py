@@ -11,17 +11,14 @@ operator.py
 
 import glob
 import json
-
-# import json
 import logging
 import os
-import pathlib
 import subprocess
-import sys
 import threading
 import time
 import traceback
 from datetime import datetime
+from typing import Optional
 
 import astropy.coordinates
 import astropy.time
@@ -30,27 +27,23 @@ import numpy as np
 import pandas as pd
 import Pyro5.api
 import Pyro5.client
-import Pyro5.core
 import pytz
-
-# import pandas as pd
 import sqlalchemy as db
 from astropy.io import fits
 from PyQt5 import QtCore
 
-# import wintertoo.validate
-# import winter_utils
+from wsp.cal import cal_tracker
+from wsp.camera.config import CameraConfigManager
+from wsp.ephem import ephem_utils
+from wsp.focuser import focus_tracker, focusing
+from wsp.housekeeping import data_handler
+from wsp.schedule import wintertoo_validate
+from wsp.telescope import pointingModelBuilder
+from wsp.telescope.telescope import WrapWarningInfo
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
-sys.path.insert(1, wsp_path)
 
-from cal import cal_tracker
-from ephem import ephem_utils
-from focuser import focus_tracker, focusing
-from housekeeping import data_handler
-from schedule import wintertoo_validate
-from telescope import pointingModelBuilder
 
 # print all the columns
 pd.set_option("display.max_columns", None)
@@ -141,7 +134,6 @@ class RoboOperatorThread(QtCore.QThread):
         dome,
         chiller,
         ephem,
-        # viscam, ccd,
         camdict,
         fwdict,
         imghandlerdict,
@@ -167,8 +159,6 @@ class RoboOperatorThread(QtCore.QThread):
         self.alertHandler = alertHandler
         self.watchdog = watchdog
         self.ephem = ephem
-        # self.viscam = viscam
-        # self.ccd = ccd
         self.camdict = camdict
         self.fwdict = fwdict
         self.imghandlerdict = imghandlerdict
@@ -310,6 +300,9 @@ class RoboOperator(QtCore.QObject):
         self.dometest = dometest
         self.mountsim = mountsim
 
+        # set up the camera manager
+        self.camera_manager = CameraConfigManager(self.config)
+
         # for now just trying to start leaving places in the code to swap between winter and summer
         self.camname = "winter"
         self.switchCamera(self.camname)
@@ -366,15 +359,6 @@ class RoboOperator(QtCore.QObject):
         self.active_alarms = []
         self.alarm_enable = True
 
-        """ TO PURGE! # NPL 10-3-23
-        ### SET UP THE WRITER ###
-        # init the database writer
-        writerpath = self.config['obslog_directory'] + '/' + self.config['obslog_database_name']
-        #self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
-        self.writer = ObsWriter.ObsWriter(writerpath, self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
-        # create an empty dict that will hold the data that will get written out to the fits header and the log db
-        self.data_to_log = dict()
-        """
         ### SCHEDULE ATTRIBUTES ###
         # hold a variable to track remaining dithers in kst
         self.remaining_dithers = 0
@@ -383,14 +367,6 @@ class RoboOperator(QtCore.QObject):
         self.waiting_for_exposure = False
         self.exptimer = QtCore.QTimer()
         self.exptimer.setSingleShot(True)
-        # if there's too many things i think they may not all get triggered?
-        # self.exptimer.timeout.connect(self.log_timer_finished)
-        # self.exptimer.timeout.connect(self.log_observation_and_gotoNext)
-        # self.exptimer.timeout.connect(self.rotator_stop_and_reset)
-
-        # when the image is saved, log the observation and go to the next
-        #### FIX THIS SOON! NPL 6-13-21
-        # self.ccd.imageSaved.connect(self.log_observation_and_gotoNext)
 
         ### a QTimer for handling the cadance of checking what to do
         self.checktimer = QtCore.QTimer()
@@ -405,15 +381,6 @@ class RoboOperator(QtCore.QObject):
 
         ### Some methods which will log things we pass to the fits header info
         self.resetObsValues()
-
-        """
-        self.operator = self.config.get('fits_header',{}).get('default_operator','')
-        self.programPI = ''
-        self.programID = 0
-        self.qcomment = ''
-        self.targtype = ''
-        self.targname = ''
-        """
 
         ### CONNECT SIGNALS AND SLOTS ###
         self.startRoboSignal.connect(self.restart_robo)
@@ -633,10 +600,15 @@ class RoboOperator(QtCore.QObject):
         """
         self.autostart_override = state
 
-    def handle_wrap_warning(self, angle):
+    def handle_wrap_warning(self, info: WrapWarningInfo):
 
         # create a notification
-        msg = f'*WRAP WARNING!!* rotator angle {angle} outside allowed range [{self.config["telescope"]["rotator_min_degs"]},{self.config["telescope"]["rotator_max_degs"]}])'
+        msg = (
+            f"*WRAP WARNING!!* rotator angle {info.angle} "
+            f"outside allowed range "
+            f"[{info.min_degs},"
+            f"{info.max_degs}] on port {info.port}."
+        )
         context = ""
         system = "rotator"
         cmd = self.lastcmd
@@ -684,47 +656,67 @@ class RoboOperator(QtCore.QObject):
                 f"specified obstype {qcomment} is not a valid string! doing nothing."
             )
 
-    def switchCamera(self, camname):
+    def switchPort(self, port: Optional[int]):
+        # port can only be 1 or 2
+        if port is None:
+            msg = "specified port is None! doing nothing."
+            self.log(msg)
+            return
 
-        try:
-            camera = self.camdict[camname]
-            fw = self.fwdict[camname]
+        if port not in [1, 2]:
+            msg = f"specified port {port} is not valid! must be 1 or 2. doing nothing."
+            self.log(msg)
+            return
 
-            # if that worked then switch it
-            self.camera = camera
-            self.fw = fw
-            self.camname = camname
-            msg = f"switched roboOperator's camera to {self.camname}"
+        if port == self.telescope.port:
+            msg = f"rotator already on port {port}, doing nothing"
+            self.log(msg)
+            return
+        else:
+            self.do(f"m3_goto {port}")
+        msg = f"switched rotator to port {port}"
 
-        except Exception as e:
-            msg = f"could not switch camera to {camname}: {e}"
+        # if that worked then update the self.port attribute
+        # do i need to carry self.port?
+        # self.port = active_port
 
         self.log(msg)
-        # print('\n\n\n\n')
-        # print('######################################################')
-        # print(msg)
-        # print('######################################################')
-        # print('\n\n\n\n')
 
-    def getWhichCameraToUse(self, filterID):
-        # look up which camera to use based on the specified filterID
-        try:
-            for camname in self.config["filters"]:
-                for filt in self.config["filters"][camname]:
-                    if filt == filterID:
-                        return camname
+    def switchCamera(self, camname):
+        """
+        Switch the active camera and configure associated hardware
 
-            # if we're here we didn't find the filter
-            self.log(
-                f"no camera found with filter corresponding to filterID: {filterID}"
-            )
-            return None
+        Raises:
+            KeyError: if camname not in camdict
+            Exception: if port switching or model loading fails
+        """
+        # Validate the camera name first
+        if camname not in self.camdict:
+            msg = f"camera '{camname}' is not valid. Available cameras: {list(self.camdict.keys())}"
+            self.log(msg)
+            raise KeyError(msg)
 
-        except Exception as e:
-            self.log(
-                f"could not look up which camera to use for specified filterID = {filterID} due to {type(e)}: {e}"
-            )
-            return None
+        camera = self.camdict[camname]
+        fw = self.fwdict[camname]
+
+        # Switch to the corresponding port (this can raise exceptions)
+        port = self.camera_manager.get_port_for_camera(camname)
+        self.switchPort(port)
+
+        # If that worked then switch the camera references
+        self.camera = camera
+        self.fw = fw
+        self.camname = camname
+
+        # Load the corresponding pointing model (this can raise exceptions)
+        pointing_model_file = self.camera_manager.get_camera_pointing_model_file(
+            camname
+        )
+        self.do(f"mount_model_load {pointing_model_file}")
+
+        msg = f"switched roboOperator's camera to {self.camname}"
+        self.log(msg)
+        return True
 
     def restart_robo(self, arg="auto"):
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
@@ -2480,14 +2472,13 @@ class RoboOperator(QtCore.QObject):
             # turn off tracking
             self.do("mount_tracking_off")
 
-            # make sure we load the pointing model explicitly
-            self.do(
-                f'mount_model_load {self.config["pointing_model"]["pointing_model_file"]}'
-            )
-
             # turn on the motors
             self.do("mount_az_on")
             self.do("mount_alt_on")
+
+            # Port-specific actions: try to switch ports (move M3 if needed)
+            # will raise exceptions if it goes wrong
+            self.switchCamera(self.camname)
 
             # turn on the rotator
             if not self.mountsim:
@@ -3657,13 +3648,21 @@ class RoboOperator(QtCore.QObject):
         do a series of dark exposures in all active filteres
 
         """
-        # change the camera to the specified camera for the darks
-        if camname != self.camname:
-            self.camname = camname
-            self.switchCamera(self.camname)
-
         context = "do_darks"
-        self.log(f"starting dark sequence")
+        self.log("starting dark sequence")
+
+        # change the camera to the specified camera for the darks
+        try:
+            if camname != self.camname:
+                self.camname = camname
+                self.switchCamera(self.camname)
+        except Exception as e:
+            msg = f"roboOperator: could not switch to camera {camname} for dark routine due to {e.__class__.__name__}, {e}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError(context, "switchCamera", "telescope", msg)
+            self.hardware_error.emit(err)
+            return
 
         # set the progID info here for the headers
         self.resetObsValues()
@@ -4575,6 +4574,8 @@ class RoboOperator(QtCore.QObject):
         # first grab some fields from the currentObs
         # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which
         # borks up the housekeeping and the dirfile and is a big fat mess
+        # which camera should be used for the observation?
+        cam_to_use = str(currentObs.get("camera", "winter"))
         self.obsHistID = int(currentObs["obsHistID"])
         self.ra_deg_scheduled = float(currentObs["raDeg"])
         self.dec_deg_scheduled = float(currentObs["decDeg"])
@@ -4586,6 +4587,17 @@ class RoboOperator(QtCore.QObject):
         self.programName = str(currentObs.get("progName", ""))
         self.validStart = float(currentObs.get("validStart"))
         self.validStop = float(currentObs.get("validStop"))
+
+        # do a check: is the filter valid for the camera?
+        if (
+            self.filter_scheduled
+            not in self.camera_manager.get_camera_info(cam_to_use).filters
+        ):
+            self.log(
+                f"filter {self.filter_scheduled} is not valid for camera {cam_to_use}... aborting observation"
+            )
+            return
+
         # self.observed is managed elsewhere
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
         self.maxAirmass = float(
@@ -4627,14 +4639,6 @@ class RoboOperator(QtCore.QObject):
             center_offset = "best"
         else:
             center_offset = "center"
-
-        # which camera should be used for the observation?
-        cam_to_use = self.getWhichCameraToUse(filterID=self.filter_scheduled)
-        if cam_to_use is None:
-            self.log(f"not sure which camera to use! aborting current observation.")
-            # NPL: comment this out while hunting the cause of skipped observations
-            # self.checkWhatToDo()
-            return
 
         # if we're in the right camera just continue, otherwise switch cameras
         if cam_to_use == self.camname:
@@ -5219,12 +5223,12 @@ class RoboOperator(QtCore.QObject):
         for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
             if self.is_rotator_mech_angle_possible(
                 predicted_rotator_mechangle=possible_target_mech_angle,
-                rotator_min_degs=self.config["telescope"]["rotator"][self.camname][
-                    "rotator_min_degs"
-                ],
-                rotator_max_degs=self.config["telescope"]["rotator"][self.camname][
-                    "rotator_max_degs"
-                ],
+                rotator_min_degs=self.config["telescope"]["ports"][self.telescope.port][
+                    "rotator"
+                ]["min_degs"],
+                rotator_max_degs=self.config["telescope"]["ports"][self.telescope.port][
+                    "rotator"
+                ]["max_degs"],
             ):
                 self.target_mech_angle = possible_target_mech_angle
                 self.target_field_angle = possible_target_field_angles[ind]
@@ -5510,9 +5514,9 @@ class RoboOperator(QtCore.QObject):
         # handle the field angle
         if field_angle.lower() == "auto":
             # self.target_field_angle = self.config['telescope'] # this is wrong :D will give 155 instead of 65
-            self.target_field_angle = self.config["telescope"]["rotator"]["winter"][
-                "rotator_field_angle_zeropoint"
-            ]
+            self.target_field_angle = self.config["telescope"]["ports"][
+                self.telescope.port
+            ]["rotator"]["field_angle_zeropoint"]
         else:
             self.target_field_angle = field_angle
 
@@ -5610,8 +5614,8 @@ class RoboOperator(QtCore.QObject):
                     ra_hours=self.target_ra_j2000_hours,
                     dec_deg=self.target_dec_j2000_deg,
                     pa=self.target_field_angle
-                    - self.config["telescope"]["rotator"]["winter"][
-                        "rotator_field_angle_zeropoint"
+                    - self.config["telescope"]["ports"][self.telescope.port]["rotator"][
+                        "field_angle_zeropoint"
                     ],
                     offsettype=offset,
                 )
