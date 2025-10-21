@@ -1,0 +1,109 @@
+digraph MultiCameraSM {
+  rankdir=LR;
+  labelloc="t";
+  label="Multi-Camera Robo Operator — State Machine (current wiring)";
+
+  node [shape=ellipse, fontsize=11];
+
+  // Styles
+  node [style=filled, fillcolor="#eaffea", color="#2a7a2a"]  // implemented default
+  edge [fontsize=9, color="#555555"]
+
+  // Implemented states
+  IDLE;
+  CHECKING_CAMERAS;
+  STARTING_CAMERAS;
+  WAITING_CAMERAS_READY;
+  CHECKING_CALS;
+  EXECUTING_CAL;
+  CHECKING_CONDITIONS;
+  OPENING_DOME;
+  SELECTING_TARGET;
+  SWITCHING_PORT;
+  PREPARING_OBSERVATION;
+  OBSERVING;
+  STANDBY;
+  ERROR;
+
+  // Placeholder / not yet implemented handlers
+  node [style="dashed,filled", fillcolor="#f0f0f0", color="#777777"]
+  CHECKING_FOCUS;
+  EXECUTING_FOCUS;
+  STOWING;
+  SHUTTING_DOWN_CAMERAS;
+  CAMERA_POWEROFF;
+  END_OF_SCHEDULE;
+
+  // Reset node style for implemented after placeholders
+  node [style=filled, fillcolor="#eaffea", color="#2a7a2a"]
+
+  // Start
+  start [shape=point, width=0.08, label="", color="#444444"];
+  start -> IDLE;
+
+  // Core loop
+  IDLE -> CHECKING_CAMERAS [label="robo.running = True"];
+
+  STANDBY -> IDLE [label="timer tick"];
+
+  // Checking cameras
+  CHECKING_CAMERAS -> STARTING_CAMERAS [label="should_run && any OFF"];
+  CHECKING_CAMERAS -> WAITING_CAMERAS_READY [label="should_run && all !READY && no OFF"];
+  CHECKING_CAMERAS -> CHECKING_CALS [label="should_run && any READY"];
+  CHECKING_CAMERAS -> SHUTTING_DOWN_CAMERAS [label="!should_run && any !OFF"];
+  CHECKING_CAMERAS -> STANDBY [label="!should_run && all OFF"];
+
+  STARTING_CAMERAS -> WAITING_CAMERAS_READY [label="after start request"];
+
+  WAITING_CAMERAS_READY -> CHECKING_CALS [label="any READY"];
+  WAITING_CAMERAS_READY -> WAITING_CAMERAS_READY [label="else (wait)"];
+  WAITING_CAMERAS_READY -> ERROR [style=dashed, label="exception"];
+
+  // Cals
+  CHECKING_CALS -> EXECUTING_CAL [label="pending_cal_tasks > 0"];
+  CHECKING_CALS -> CHECKING_CONDITIONS [label="no cals needed"];
+
+  EXECUTING_CAL -> EXECUTING_CAL [label="more tasks"];
+  EXECUTING_CAL -> CHECKING_CONDITIONS [label="done"];
+  EXECUTING_CAL -> ERROR [style=dashed, label="exception"];
+
+  // Conditions
+  CHECKING_CONDITIONS -> STOWING [label="bad dome conditions"];
+  CHECKING_CONDITIONS -> STANDBY [label="sun too high OR obs not ready (startup)"];
+  CHECKING_CONDITIONS -> OPENING_DOME [label="shutter != OPEN"];
+  CHECKING_CONDITIONS -> CHECKING_FOCUS [label="all good"];
+
+  OPENING_DOME -> STANDBY [label="open requested"];
+
+  // Focus placeholder
+  CHECKING_FOCUS -> EXECUTING_FOCUS [label="needs focus", style=dashed];
+  CHECKING_FOCUS -> SELECTING_TARGET [label="focus OK / placeholder", style=dashed];
+
+  EXECUTING_FOCUS -> SELECTING_TARGET [label="done", style=dashed];
+
+  // Selection → observe path
+  SELECTING_TARGET -> STANDBY [label="no valid obs"];
+  SELECTING_TARGET -> END_OF_SCHEDULE [label="end_of_schedule=True"];
+  SELECTING_TARGET -> SWITCHING_PORT [label="have currentObs"];
+
+  SWITCHING_PORT -> PREPARING_OBSERVATION [label="port switched / correct"];
+
+  PREPARING_OBSERVATION -> SWITCHING_PORT [label="port mismatch (defensive)"];
+  PREPARING_OBSERVATION -> SELECTING_TARGET [label="camera !READY / no obs"];
+  PREPARING_OBSERVATION -> OBSERVING [label="ready & configured"];
+
+  OBSERVING -> CHECKING_CAMERAS [label="exposure done"];
+  OBSERVING -> ERROR [style=dashed, label="exception"];
+
+  // Error handling
+  ERROR -> STANDBY [label="safe_park + timer"];
+
+  // Shutdown placeholders (from CHECKING_CAMERAS branch)
+  SHUTTING_DOWN_CAMERAS -> CAMERA_POWEROFF [style=dashed, label="done"];
+  CAMERA_POWEROFF -> STANDBY [style=dashed, label="all OFF"];
+
+  // Nice layout hints
+  {rank=same; STARTING_CAMERAS; WAITING_CAMERAS_READY;}
+  {rank=same; CHECKING_CALS; EXECUTING_CAL;}
+  {rank=same; SWITCHING_PORT; PREPARING_OBSERVATION;}
+}
