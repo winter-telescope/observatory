@@ -194,7 +194,7 @@ class housekeeping:
         self.housekeeping_poll_functions.append(self.chiller.update_state)
 
         self.hk_loop = data_handler.hk_loop(
-            config=self.config,
+            config=self.hk_config,
             state=self.state,
             curframe=self.curframe,
             schedule=self.schedule,
