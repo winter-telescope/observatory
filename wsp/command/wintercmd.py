@@ -4885,9 +4885,14 @@ class Wintercmd(QtCore.QObject):
                     f"doExposure command timed out after {timeout} seconds before completing"
                 )
 
-            stop_condition = (
-                self.state[f"{camname}_camera_doing_exposure"] == False
-            ) & (self.state[f"{camname}_camera_command_pass"] == 1)
+            if camname == "winter":
+                stop_condition = (
+                    self.state[f"{camname}_camera_doing_exposure"] == False
+                ) & (self.state[f"{camname}_camera_command_pass"] == 1)
+            elif camname == "spring":
+                stop_condition = (camera.state["camera_state"] == "READY") & (
+                    camera.state["command_pass"] == 1
+                )
 
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]

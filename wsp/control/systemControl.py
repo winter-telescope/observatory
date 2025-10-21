@@ -29,7 +29,8 @@ from PyQt5 import QtCore
 # winter modules
 from wsp.alerts import alert_handler
 from wsp.camera import camera, winter_image_daemon_local
-from wsp.camera.implementations.winter_camera import local_winter_camera
+from wsp.camera.implementations.spring_camera import SpringCamera
+from wsp.camera.implementations.winter_camera import local_camera
 from wsp.chiller import chiller, small_chiller
 from wsp.command import commandParser, commandServer, wintercmd
 from wsp.control import roboOperator
@@ -445,28 +446,20 @@ class control(QtCore.QObject):
             base_directory=self.base_directory, config=self.config, logger=self.logger
         )
 
-        """
-        # init the viscam shutter, filter wheel, and raspberry pi
-        self.viscam = viscam.local_viscam(base_directory = self.base_directory)
-        
-        #TODO: deprecate this
-        # init the viscam ccd
-        self.ccd = ccd.local_ccd(base_directory = self.base_directory, config = self.config, logger = self.logger)
-        
-        """
-        # init the sumnmer camera interface
-        self.summercamera = camera.local_camera(
+        # init the summer camera interface
+        self.springcamera = SpringCamera(
             base_directory=self.base_directory,
             config=self.config,
-            camname="summer",
-            daemon_pyro_name="SUMMERcamera",
-            ns_host=self.ns_host,
-            logger=self.logger,
-            verbose=self.verbose,
+            camname="spring",
+            daemon_pyro_name="SPRINGCamera",
+            ns_host_camera=self.ns_host,
+            ns_host_hk=self.ns_host,
+            logger=None,
+            verbose=False,
         )
 
         # init the winter camera interface
-        self.wintercamera = local_winter_camera(
+        self.wintercamera = local_camera(
             base_directory=self.base_directory,
             config=self.config,
             camname="winter",
@@ -500,6 +493,7 @@ class control(QtCore.QObject):
         self.camdict = dict(
             {
                 "winter": self.wintercamera,
+                "spring": self.springcamera,
                 #'summer' : self.summercamera,
             }
         )
@@ -568,10 +562,6 @@ class control(QtCore.QObject):
             powerManager=self.powerManager,
             counter=self.counter,
             ephem=self.ephem,
-            # viscam = self.viscam,
-            # ccd = self.ccd,
-            # summercamera = self.summercamera,
-            # wintercamera = self.wintercamera,
             camdict=self.camdict,
             fwdict=self.fwdict,
             imghandlerdict=self.imghandlerdict,
@@ -603,10 +593,6 @@ class control(QtCore.QObject):
             labjacks=self.labjacks,
             powerManager=self.powerManager,
             logger=self.logger,
-            # viscam = self.viscam,
-            # ccd = self.ccd,
-            # summercamera = self.summercamera,
-            # wintercamera = self.wintercamera,
             camdict=self.camdict,
             fwdict=self.fwdict,
             imghandlerdict=self.imghandlerdict,
@@ -652,8 +638,6 @@ class control(QtCore.QObject):
                 dome=self.dome,
                 chiller=self.chiller,
                 ephem=self.ephem,
-                # viscam=self.viscam,
-                # ccd = self.ccd,
                 camdict=self.camdict,
                 fwdict=self.fwdict,
                 imghandlerdict=self.imghandlerdict,

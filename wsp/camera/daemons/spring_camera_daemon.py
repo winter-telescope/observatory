@@ -669,4 +669,4 @@ class SpringCameraInterface(BaseCameraInterface):
 
 if __name__ == "__main__":
     # Create and run the daemon
-    create_camera_daemon(SpringCameraInterface, "SpringCamera")
+    create_camera_daemon(SpringCameraInterface, "SPRINGCamera")
