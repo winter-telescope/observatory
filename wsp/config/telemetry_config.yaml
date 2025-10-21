@@ -22,10 +22,7 @@ housekeeping_data_directory: 'data/rawdir'
 housekeeping_data_link_directory: 'data'
 housekeeping_data_link_name: 'dm.lnk'
 
-# where to put the log. base directory is home
-log_directory: 'data/log'
-log_link_directory: 'data'
-log_link_name: 'winter.log'
+
 
 
 # define fields.
@@ -4579,3 +4576,31 @@ fields:
         var: camdict['winter'].state['pc_command_pass']
     
    
+#### FITS HEADER STUFF. THESE ARE STRINGS! WILL NOT BE LOGGED TO THE DIRFILE
+header_fields:
+    operator_name:
+        var: robostate["operator"]
+    obstype:
+        var: robostate["obstype"]
+    programPI:
+        var: robostate["programPI"]
+    programName:
+        var: robostate["programName"]
+    qcomment:
+        var: robostate["qcomment"]
+    targetType:
+        var: robostate["targtype"]
+    targetName:
+        var: robostate["targetName"]
+    scheduleName:
+        var: robostate["scheduleName"]
+    scheduleType:
+        var: robostate["scheduleType"]
+    obsmode:
+        var: robostate["obsmode"]
+    pwi4_version:
+        var: telescope.state["pwi4.version"]
+    mount_model_filename:
+        var: telescope.state["mount.model.filename"]
+    mirror_cover_state_str:
+        var: mirror_cover.state["mirror_cover_state_str"]
