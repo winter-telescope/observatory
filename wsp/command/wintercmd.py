@@ -4866,7 +4866,12 @@ class Wintercmd(QtCore.QObject):
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
         # timeout = self.state[f'{camname}_camera_command_timeout']
-        timeout = self.state[f"{camname}_camera_exptime"] + 10.0
+        if camname == "winter":
+            timeout = self.state[f"{camname}_camera_exptime"] + 10.0
+        elif camname == "spring":
+            timeout = float(camera.state["exptime"]) * 3 + 10.0
+        else:
+            timeout = 30.0 * 3 + 10.0
         # create a buffer list to hold several samples over which the stop condition must be true
 
         n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
