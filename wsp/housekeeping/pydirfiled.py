@@ -37,26 +37,26 @@ import Pyro5.server
 # from PyQt5 import uic, QtGui, QtWidgets
 from PyQt5 import QtCore
 
-from wsp.utils.paths import CONFIG_DIR
+from wsp.housekeeping import dirfile_python
+from wsp.utils import logging_setup, utils
+from wsp.utils.paths import TELEMETRY_CONFIG_PATH, WSP_PATH
 
 # add the wsp directory to the PATH
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(1, wsp_path)
+wsp_path = WSP_PATH
 print(f"dirfiled: wsp_path = {wsp_path}")
 
 # winter modules
 
 # from housekeeping import data_handler
-
+"""
 try:
     from housekeeping import dirfile_python
 except:
     import dirfile_python
 
 # from daemon import daemon_utils
-
-from utils import logging_setup, utils
+from utils import logging_setup, utils"""
 
 
 class DirfileWriter(QtCore.QObject):
@@ -400,7 +400,7 @@ if __name__ == "__main__":
     base_directory = wsp_path
 
     # load the config
-    config_file = os.path.join(CONFIG_DIR, "hk_config.yaml")
+    config_file = TELEMETRY_CONFIG_PATH
     config = utils.loadconfig(config_file)
 
     # set up the logger
