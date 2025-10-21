@@ -13,7 +13,6 @@ WINTER instrument.
 
 # system packages
 import getopt
-import os
 import signal
 import sys
 
@@ -21,7 +20,7 @@ from PyQt5 import QtCore
 
 from wsp.control import systemControl
 from wsp.utils import logging_setup, utils
-from wsp.utils.paths import CONFIG_DIR, CONFIG_PATH, WSP_PATH
+from wsp.utils.paths import CONFIG_PATH, TELEMETRY_CONFIG_PATH, WSP_PATH
 
 # add the wsp directory to the PATH
 wsp_path = WSP_PATH
@@ -230,7 +229,7 @@ def main(argv=None):
     logger = logging_setup.setup_logger(wsp_path, config)
 
     # housekeeping configuration
-    hk_config_filepath = os.path.join(CONFIG_DIR, "hk_config.yaml")
+    hk_config_filepath = TELEMETRY_CONFIG_PATH
     hk_config = utils.loadconfig(hk_config_filepath)
 
     # START UP THE CONTROL SYSTEM
