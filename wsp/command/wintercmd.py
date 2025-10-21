@@ -3856,13 +3856,15 @@ class Wintercmd(QtCore.QObject):
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument("-w", "--winter", action="store_true", default=True)
         group.add_argument("-c", "--summer", action="store_true", default=False)
-
+        group.add_argument("-c", "--spring", action="store_true", default=False)
         self.getargs()
 
         if self.args.winter:
             camname = "winter"
         elif self.args.summer:
             camname = "summer"
+        elif self.args.spring:
+            camname = "spring"
 
         self.cmdparser.add_argument(
             "-a",
@@ -4725,8 +4727,9 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser("take an exposure with the camera")
         # argument to hold the camera
         camgroup = self.cmdparser.add_mutually_exclusive_group()
-        camgroup.add_argument("-w", "--winter", action="store_true", default=False)
-        camgroup.add_argument("-c", "--summer", action="store_true", default=False)
+        camgroup.add_argument("--winter", action="store_true", default=True)
+        camgroup.add_argument("--summer", action="store_true", default=False)
+        camgroup.add_argument("--spring", action="store_true", default=False)
 
         # argument to hold the observation type
         imtypegroup = self.cmdparser.add_mutually_exclusive_group()
@@ -4834,6 +4837,8 @@ class Wintercmd(QtCore.QObject):
             camname = "winter"
         elif self.args.summer:
             camname = "summer"
+        elif self.args.spring:
+            camname = "spring"
         else:
             camname = "winter"
 
