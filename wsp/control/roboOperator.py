@@ -2229,7 +2229,9 @@ class RoboOperator(QtCore.QObject):
         if not self.mountsim:
             delta_rot_angle = np.abs(
                 self.state["rotator_mech_position"]
-                - self.config["ports"][self.telescope.port]["rotator"]["home_degs"]
+                - self.config["telescope"]["ports"][self.telescope.port]["rotator"][
+                    "home_degs"
+                ]
             )
             min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
             conds.append(
