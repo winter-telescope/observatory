@@ -1,0 +1,10 @@
+stateDiagram-v2
+  [*] --> IDLE
+  CHECKING_CAMERAS --> WAITING_CAMERAS_READY: should_run and waiting (no READY)
+  IDLE --> CHECKING_CAMERAS: Robo is running
+  note right of SHUTTING_DOWN_CAMERAS: placeholder (no handler)
+  note right of CAMERA_POWEROFF: placeholder (no handler)
+  note right of CHECKING_FOCUS: placeholder (no handler)
+  note right of EXECUTING_FOCUS: placeholder (no handler)
+  note right of STOWING: placeholder (no handler)
+  note right of END_OF_SCHEDULE: placeholder (no handler)

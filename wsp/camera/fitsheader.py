@@ -5,7 +5,7 @@ Created on Mon May 22 14:54:47 2023
 
 FITS Header Creator
 
-Takes in metadata, typically a state dictionary from WSP, and produces 
+Takes in metadata, typically a state dictionary from WSP, and produces
 a full FITS header
 
 @author: winter
@@ -38,7 +38,7 @@ def log(logger, msg, level=logging.INFO):
         logger.log(level=level, msg=msg)
 
 
-def GetHeader(config, state, imageinfo, logger=None):
+def GetHeader(config, state, imageinfo, logger=None, verbose=False):
 
     # state is the WSP housekeeping state metadata
     # imageinfo is specific information about the image
@@ -261,8 +261,8 @@ def GetHeader(config, state, imageinfo, logger=None):
     # header.append(('OBJRA', objra_str,     'Object right ascension (deg:m:s)'))
     # header.append(('OBJDEC', objdec_str,   'Object declination (deg:m:s)'))
 
-    header.append(("OBJRA", None, "DEPRECATED - Object RA"))
-    header.append(("OBJDEC", None, "DEPRECATED - Object DEC"))
+    header.append(("OBJRA", "", "DEPRECATED - Object RA"))
+    header.append(("OBJDEC", "", "DEPRECATED - Object DEC"))
 
     # Update the headers with the Scheduled Target RA/Dec
     targ_ra_comment = "Target RA (J2000)"
@@ -284,10 +284,13 @@ def GetHeader(config, state, imageinfo, logger=None):
         targ_ra_value = np.round(targ_ra.deg, 6)
         targ_dec_value = np.round(targ_dec.deg, 6)
     except AssertionError:
-        # No need to do anything, fallback values will be used
-        pass
+        targ_ra_value = ""
+        targ_dec_value = ""
     except Exception as e:
-        log(logger, f"header creator: could not form target ra/dec strings: {e}")
+        if verbose:
+            log(logger, f"header creator: could not form target ra/dec strings: {e}")
+        targ_ra_value = ""
+        targ_dec_value = ""
     header.append(("TARGRA", targ_ra_value, targ_ra_comment))
     header.append(("TARGDEC", targ_dec_value, targ_dec_comment))
 
@@ -313,8 +316,13 @@ def GetHeader(config, state, imageinfo, logger=None):
     except AssertionError:
         # No need to do anything, fallback values will be used
         pass
+        pointing_ra_value = ""
+        pointing_dec_value = ""
     except Exception as e:
-        log(logger, f"header creator: could not form pointing ra/dec strings: {e}")
+        if verbose:
+            log(logger, f"header creator: could not form pointing ra/dec strings: {e}")
+        pointing_ra_value = ""
+        pointing_dec_value = ""
 
     header.append(("POINTRA", pointing_ra_value, pointing_ra_comment))
     header.append(("POINTDEC", pointing_dec_value, pointing_dec_comment))
@@ -401,7 +409,8 @@ def GetHeader(config, state, imageinfo, logger=None):
         )
 
     except Exception as e:
-        log(logger, f"could not make the time entries: {e}")
+        if verbose:
+            log(logger, f"could not make the time entries: {e}")
         header.append(("UTC", "", "Time of observation "))
         header.append(("UTCISO", "", "Time of observation in ISO format"))
         header.append(("UTCSHUT", "", "UTC time shutter open"))
@@ -422,8 +431,12 @@ def GetHeader(config, state, imageinfo, logger=None):
         weather_datetime = datetime.fromtimestamp(state["dome_timestamp"])
         ut_weath = weather_datetime.strftime("%Y-%m-%d %H%M%S.%f")
     except Exception as e:
-        log(logger, (f'state["dome_timestamp"] = {state.get("dome_timestamp", "?")}'))
-        log(logger, (f"could not get dome time, {e}"))
+        if verbose:
+            log(
+                logger,
+                (f'state["dome_timestamp"] = {state.get("dome_timestamp", "?")}'),
+            )
+            log(logger, (f"could not get dome time, {e}"))
         ut_weath = ""
 
     header.append(("UT_WEATH", ut_weath, "UT of weather data"))
