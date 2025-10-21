@@ -56,7 +56,9 @@ class control(QtCore.QObject):
     newcmdRequest = QtCore.pyqtSignal(object)
 
     ## Initialize Class ##
-    def __init__(self, mode, config, base_directory, logger, opts=None, parent=None):
+    def __init__(
+        self, mode, config, hk_config, base_directory, logger, opts=None, parent=None
+    ):
         super(control, self).__init__(parent)
 
         print(f"control: base_directory = {base_directory}")
@@ -65,6 +67,7 @@ class control(QtCore.QObject):
 
         # pass in the config
         self.config = config
+        self.hk_config = hk_config
         # pass in the logger
         self.logger = logger
         # pass in the base directory
@@ -103,8 +106,6 @@ class control(QtCore.QObject):
 
         # Cleanup (kill any!) existing instances of the daemons running
         daemons_to_kill = [  #'ns_daemon',
-            "ccd_daemon.py",
-            "viscamd.py",
             "domed.py",
             "chillerd.py",
             "small_chillerd.py",
@@ -193,21 +194,7 @@ class control(QtCore.QObject):
 
         try:
             nameserverd = Pyro5.core.locate_ns(host=self.ns_host)
-            """
-            # Don't think I need to do this...
-            try:
-                # unregister all the entries
-                entrylist = list(nameserverd.list().keys())[1:]
-                print(f'entries in pyro5 nameserver: {entrylist}')
-                for name in entrylist:
-                    print(f'removing {name}...')
-                    nameserverd.remove(name)
-                    
-                entrylist = list(nameserverd.list().keys())[1:]
-                print(f'entries in pyro5 nameserver: {entrylist}')
-            except Exception as e:
-                print(f'could not cleanup nameserver entries: {e}')
-            """
+
         except:
             # the nameserver is not running
             print("control: nameserver not already running. starting from wsp")
@@ -546,11 +533,10 @@ class control(QtCore.QObject):
             self.base_directory, self.config, ns_host=self.ns_host, logger=self.logger
         )
         ### SET UP THE HOUSEKEEPING ###
-
-        # if mode == 1:
         # init the housekeeping class (this starts the daq and dirfile write loops)
         self.hk = housekeeping.housekeeping(
-            self.config,
+            config=self.config,
+            hk_config=self.hk_config,
             base_directory=self.base_directory,
             mode=mode,
             watchdog=self.watchdog,
@@ -599,11 +585,6 @@ class control(QtCore.QObject):
             mirror_cover=self.mirror_cover,
             ephem=self.ephem,
         )
-
-        if mode in ["r", "m"]:
-            # init the schedule executor
-            # self.scheduleExec = schedule_executor.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
-            pass
 
         # init the command executor
         self.cmdexecutor = commandParser.cmd_executor(
@@ -661,9 +642,4 @@ class control(QtCore.QObject):
 
         ##### START SCHEDULE EXECUTOR #####
         if mode in ["r", "m"]:
-            # self.scheduleExec.start()
             self.roboThread.start()
-            # Now execute a list of commands
-            """cmdlist = ['mount_connect', 'mount_az_on', 'mount_alt_on', 'mount_home','mount_goto_alt_az 35 38.5']
-            self.logger.info(f'control: trying to add a list of commands to the cmd executor')
-            self.newcmd.emit(cmdlist)"""
