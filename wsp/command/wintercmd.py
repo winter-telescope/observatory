@@ -4730,9 +4730,9 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser("take an exposure with the camera")
         # argument to hold the camera
         camgroup = self.cmdparser.add_mutually_exclusive_group()
-        camgroup.add_argument("--winter", action="store_true", default=True)
-        camgroup.add_argument("--summer", action="store_true", default=False)
-        camgroup.add_argument("--spring", action="store_true", default=False)
+        camgroup.add_argument("--winter", action="store_true")
+        camgroup.add_argument("--summer", action="store_true")
+        camgroup.add_argument("--spring", action="store_true")
 
         # argument to hold the observation type
         imtypegroup = self.cmdparser.add_mutually_exclusive_group()
@@ -5091,20 +5091,21 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("--winter", action="store_true", default=True)
-        group.add_argument("--summer", action="store_true", default=False)
-        group.add_argument("--spring", action="store_true", default=False)
+        group.add_argument("--winter", action="store_true")  # Remove default=True
+        group.add_argument("--summer", action="store_true")
+        group.add_argument("--spring", action="store_true")
 
         self.getargs()
 
         self.logger.info(f"setExposure: args = {self.args}")
 
-        if self.args.winter:
-            camname = "winter"
+        # Default to 'winter' if no camera specified
+        if self.args.spring:
+            camname = "spring"
         elif self.args.summer:
             camname = "summer"
-        elif self.args.spring:
-            camname = "spring"
+        else:
+            camname = "winter"  # Default case
 
         camera = self.camdict[camname]
 
