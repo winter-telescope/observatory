@@ -305,7 +305,16 @@ class RoboOperator(QtCore.QObject):
 
         # for now just trying to start leaving places in the code to swap between winter and summer
         self.camname = "winter"
-        self.switchCamera(self.camname)
+        # change the camera to the specified camera for the darks
+        try:
+            self.switchCamera(self.camname)
+        except Exception as e:
+            msg = f"roboOperator: could not switch to camera {self.camname} for dark routine due to {e.__class__.__name__}, {e}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError("roboOperator.__init__", "switchCamera", "telescope", msg)
+            self.hardware_error.emit(err)
+            return
 
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger=self.logger)
@@ -2220,7 +2229,7 @@ class RoboOperator(QtCore.QObject):
         if not self.mountsim:
             delta_rot_angle = np.abs(
                 self.state["rotator_mech_position"]
-                - self.config["telescope"]["rotator_home_degs"]
+                - self.config["ports"][self.telescope.port]["rotator"]["home_degs"]
             )
             min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
             conds.append(
@@ -4546,7 +4555,7 @@ class RoboOperator(QtCore.QObject):
                         3. emit a restartRobo signal so it gets kicked back to the top of the tree
 
         """
-
+        context = "do_currentObs"
         if currentObs == "default":
             currentObs = self.schedule.currentObs
 
@@ -4641,10 +4650,18 @@ class RoboOperator(QtCore.QObject):
             center_offset = "center"
 
         # if we're in the right camera just continue, otherwise switch cameras
-        if cam_to_use == self.camname:
-            pass
-        else:
-            self.switchCamera(cam_to_use)
+        # change the camera to the specified camera for the darks
+        try:
+            if cam_to_use != self.camname:
+                self.camname = cam_to_use
+                self.switchCamera(self.camname)
+        except Exception as e:
+            msg = f"roboOperator: could not switch to camera {cam_to_use} for dark routine due to {e.__class__.__name__}, {e}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError(context, "switchCamera", "telescope", msg)
+            self.hardware_error.emit(err)
+            return
 
         # how many pointings will we do?
         pointing_offsets = [{"coords": {"dRA": 0, "dDec": 0}}]

@@ -39,7 +39,7 @@ from PyQt5 import QtCore
 
 from wsp.housekeeping import dirfile_python
 from wsp.utils import logging_setup, utils
-from wsp.utils.paths import TELEMETRY_CONFIG_PATH, WSP_PATH
+from wsp.utils.paths import CONFIG_PATH, TELEMETRY_CONFIG_PATH, WSP_PATH
 
 # add the wsp directory to the PATH
 # add the wsp directory to the PATH
@@ -400,8 +400,9 @@ if __name__ == "__main__":
     base_directory = wsp_path
 
     # load the config
-    config_file = TELEMETRY_CONFIG_PATH
-    config = utils.loadconfig(config_file)
+    telemetry_config = utils.loadconfig(TELEMETRY_CONFIG_PATH)
+
+    config = utils.loadconfig(CONFIG_PATH)
 
     # set up the logger
     if doLogging:
@@ -412,7 +413,7 @@ if __name__ == "__main__":
     print(f"dirfiled: connecting with ns_host = {ns_host}")
     main = Main(
         base_directory=wsp_path,
-        config=config,
+        config=telemetry_config,
         logger=logger,
         ns_host=ns_host,
         verbose=verbose,
