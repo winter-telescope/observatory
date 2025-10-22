@@ -2174,10 +2174,17 @@ fields:
         var: fwdict['winter'].state['homed']
     
 
-
+########### SPRING CAMERA FIELDS ###########
+    spring_camera_exptime:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['spring'].state['exptime']
 
         
-########### CAMERA API FIELDS ##########
+########### WINTER CAMERA FIELDS ##########
     winter_camera_timestamp:
         ftype: raw
         label: 'time'

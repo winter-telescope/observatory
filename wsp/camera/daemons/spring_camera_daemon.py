@@ -636,37 +636,8 @@ class SpringCameraInterface(BaseCameraInterface):
                 self.log(f"Error getting camera state: {e}")
             return DEFAULT_STATUS_VALUE
 
-    '''
-    def _check_if_startup_complete(self, state):
-        """Check if startup is complete"""
-        startup_conditions = [
-            state["connected"],
-            state["tec_enabled"],
-            abs(state["tec_temp"] - state["tec_setpoint"]) < 0.1,
-            state["tec_lock"],
-        ]
-        if all(startup_conditions):
-            self.update_camera_state(CameraState.READY)
-            return True
-        return False
-
-    def _check_if_ready_to_shutdown(self, state):
-        """Check if camera is ready to shutdown"""
-        shutdown_conditions = [
-            state["connected"],
-            state["tec_temp"] > -45.0,
-        ]
-        if all(shutdown_conditions):
-            return True
-        return False
-
-    def _complete_shutdown(self):
-        """Complete shutdown process"""
-        self.tecStop()
-        self.update_camera_state(CameraState.OFF)
-        return True'''
-
 
 if __name__ == "__main__":
     # Create and run the daemon
+
     create_camera_daemon(SpringCameraInterface, "SPRINGCamera")
