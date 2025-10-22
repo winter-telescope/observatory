@@ -1,6 +1,7 @@
 # spring_camera_daemon.py
 
 import logging
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -88,6 +89,13 @@ class SpringCameraInterface(BaseCameraInterface):
 
         if self.verbose:
             self.log(f"Updated camera state: {self.state}")
+
+    # === Image Path Overrides ===
+    def getDefaultImageDirectory(self) -> str:
+        """Get default image directory"""
+        return os.path.join(
+            "~", "data", "images", datetime.now().strftime("%Y%m%d"), "spring"
+        )
 
     # === Async Command Methods with Decorators ===
 
