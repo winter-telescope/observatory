@@ -257,7 +257,7 @@ telescope:
                 min_degs: -210.0
             cameras:
                 spring:
-                    pointing_model_file: "pointing_model_spring_20240603.pxp"
+                    pointing_model_file: "pointing_model_winter_20250529_downselected.pxp"
 
                 
 
