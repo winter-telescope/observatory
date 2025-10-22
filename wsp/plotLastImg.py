@@ -110,6 +110,7 @@ def plotFITS(
                 os.path.expanduser("~"),
                 "data",
                 "image-daemon-data",
+                "calibration",
                 "pirt",
                 "masterdarks",
             )
