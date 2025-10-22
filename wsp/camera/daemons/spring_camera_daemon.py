@@ -124,7 +124,7 @@ class SpringCameraInterface(BaseCameraInterface):
             raise Exception(f"Failed to stop TEC: {reply}")
 
     @async_camera_command(
-        timeout=lambda self, *args, **kwargs: 3 * self.exposure_time + 30.0,
+        timeout=lambda self, *args, **kwargs: 3 * args[0] + 30.0,  # args[0] is exptime
         completion_state=CameraState.READY,
         initial_state=CameraState.SETTING_PARAMETERS,
         pending_completion=True,
