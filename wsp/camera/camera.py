@@ -151,6 +151,10 @@ class BaseCamera(QtCore.QObject):
         self.autoStartupRequested = False
         self.autoStartupComplete = False
 
+        # Last image path
+        self.last_image_dir = ""
+        self.last_image_filename = ""
+
         # Connect signals and slots
         self.newCommand.connect(self.doCommand)
 
@@ -488,6 +492,11 @@ class BaseCamera(QtCore.QObject):
                 **kwargs,
             )
 
+            # grab the filename after exposure command is sent
+            self.last_image_dir, self.last_image_filename = (
+                self.remote_object.getLastImagePath()
+            )
+
         except Exception as e:
             self.active_operation_time = None
             self.camera_state = CameraState.ERROR
@@ -601,7 +610,8 @@ class BaseCamera(QtCore.QObject):
 
     def getLastImagePath(self):
         """Get last image path: returns <imdir>, <filename>"""
-        return self.remote_object.getLastImagePath()
+        # return self.remote_object.getLastImagePath()
+        return self.last_image_dir, self.last_image_filename
 
     def checkCamera(self, **kwargs):
         """Check camera status"""
