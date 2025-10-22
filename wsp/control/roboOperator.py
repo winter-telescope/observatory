@@ -489,7 +489,7 @@ class RoboOperator(QtCore.QObject):
         using this as a reference: (source: https://stackoverflow.com/questions/6321940/how-to-launch-getattr-function-in-python-with-additional-parameters)
 
         """
-        # print(f'dome: caught doCommand signal: {cmd_obj.cmd}')
+        self.log(f"caught doCommand signal: {cmd_obj.cmd}")
         cmd = cmd_obj.cmd
         args = cmd_obj.args
         kwargs = cmd_obj.kwargs
