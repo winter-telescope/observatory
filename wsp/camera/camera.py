@@ -426,7 +426,6 @@ class BaseCamera(QtCore.QObject):
         try:
             self.camera_state = CameraState.SETTING_PARAMETERS
             self.remote_object.setExposure(exptime, **kwargs)
-            self.camera_state = CameraState.READY
         except Exception as e:
             self.active_operation_time = None
             self.camera_state = CameraState.ERROR
