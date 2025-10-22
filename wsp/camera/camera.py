@@ -599,6 +599,10 @@ class BaseCamera(QtCore.QObject):
             startupValidation=startupValidation, **kwargs
         )
 
+    def getLastImagePath(self):
+        """Get last image path: returns <imdir>, <filename>"""
+        return self.remote_object.getLastImagePath()
+
     def checkCamera(self, **kwargs):
         """Check camera status"""
         self.remote_object.checkCamera(**kwargs)

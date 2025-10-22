@@ -595,6 +595,10 @@ class BaseCameraInterface(QtCore.QObject):
             os.path.expanduser("~"), "data", "images", datetime.now().strftime("%Y%m%d")
         )
 
+    def getLastImagePath(self):
+        """Get the directory and filename of the last image taken"""
+        return self.imdir, self.imname
+
     def getImageFilename(self, imname) -> str:
         """Get default image filename
         Can be overridden by specific camera implementations"""
@@ -866,6 +870,11 @@ class CameraDaemonInterface:
     def getDefaultImageDirectory(self):
         """Get default image directory"""
         return self.camera.getDefaultImageDirectory()
+
+    @Pyro5.server.expose
+    def getLastImagePath(self):
+        """Get the directory and filename of the last image taken"""
+        return self.camera.getLastImagePath()
 
     @Pyro5.server.expose
     def killCameraDaemon(self):
