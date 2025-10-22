@@ -438,13 +438,11 @@ class SpringCameraInterface(BaseCameraInterface):
         """Check if set exposure command is complete"""
         # make sure camera is READY and that the exposure timeout is 0 and
         # that the exposure time matches the requested time
-        status_data = self.camera_status.get("data", {})
+        # status_data = self.camera_status.get("data", {})
 
         conditions = [
             self.state.get("gui_state", "") == "READY",
-            self.state.get("exptime", 0) == self.requested_exposure_time,
-            status_data.get("exposure", 0) == self.requested_exposure_time,
-            status_data.get("waiting_on_exposure_update", False) is False,
+            self.state.get("exptime", -1) == self.requested_exposure_time,
         ]
 
         return all(conditions)
