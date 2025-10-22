@@ -3877,19 +3877,6 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def robo_remakePointingModel(self):
         self.defineCmdParser("remake the pointing model for the telescope")
-        # argument to hold the camera name
-        group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("-w", "--winter", action="store_true", default=True)
-        group.add_argument("-c", "--summer", action="store_true", default=False)
-        group.add_argument("-c", "--spring", action="store_true", default=False)
-        self.getargs()
-
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
-            camname = "summer"
-        elif self.args.spring:
-            camname = "spring"
 
         self.cmdparser.add_argument(
             "-a",
@@ -3913,9 +3900,7 @@ class Wintercmd(QtCore.QObject):
         # firstpoint = self.args.firstline[0]
         firstpoint = self.args.firstline
 
-        sigcmd = signalCmd(
-            "remakePointingModel", camname=camname, append=append, firstpoint=firstpoint
-        )
+        sigcmd = signalCmd("remakePointingModel", append=append, firstpoint=firstpoint)
         print(f"wintercmd: sending command = {sigcmd.cmd}")
 
         self.roboThread.newCommand.emit(sigcmd)

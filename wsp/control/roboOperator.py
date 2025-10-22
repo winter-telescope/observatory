@@ -5982,7 +5982,7 @@ class RoboOperator(QtCore.QObject):
         # the observation has been completed successfully :D
         self.observation_completed = True
 
-    def remakePointingModel(self, camname, append=False, firstpoint=0):
+    def remakePointingModel(self, append=False, firstpoint=0):
         context = "Pointing Model"
         self.log("setting up a new pointing model")
         self.alertHandler.slack_log("Setting Up a New Pointing Model!", group=None)
@@ -6057,11 +6057,11 @@ class RoboOperator(QtCore.QObject):
                     self.log(
                         f'current exptime = {self.camera.state["exptime"]}, changing to {exptime}'
                     )
-                    self.do(f"setExposure {exptime} --{camname}")
+                    self.do(f"setExposure {exptime} --{self.camname}")
 
                 # set up the first observation
                 system = "camera"
-                if camname == "winter":
+                if self.camname == "winter":
                     num_dithers = 4
                 else:
                     num_dithers = 1
@@ -6133,7 +6133,7 @@ class RoboOperator(QtCore.QObject):
                 ns = Pyro5.api.locate_ns(host="192.168.1.10")
 
                 if self.camname == "winter":
-                    daemon = Pyro5.api.Proxy(ns.lookup(f"{camname}_daemon"))
+                    daemon = Pyro5.api.Proxy(ns.lookup(f"{self.camname}_daemon"))
 
                     science_image = images[-1]
                     addr = "pb"
