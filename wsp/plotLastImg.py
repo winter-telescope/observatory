@@ -114,10 +114,10 @@ def plotFITS(
                 "masterdarks",
             )
 
-            # the master darks have filenames like: pirt_masterdark_30.000.fits
+            # the master darks have filenames like: pirt_masterdark_30.000s.fits
             dark_filename = os.path.join(
                 SPRING_MASTER_DARK_DIR,
-                f"pirt_masterdark_{float(exptime_str):0.3f}.fits",
+                f"pirt_masterdark_{float(exptime_str):0.3f}s.fits",
             )
 
             if os.path.exists(dark_filename):
