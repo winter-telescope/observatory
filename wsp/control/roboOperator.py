@@ -3894,6 +3894,7 @@ class RoboOperator(QtCore.QObject):
             self.log(f"could not update the header field values in the focus loop: {e}")
 
         # get the current filter
+        self.log(f"getting current filter for camera {self.camname}, fw = {self.fw}")
         try:
             # Check if filter wheel is available
             if self.fw is None:
@@ -3995,7 +3996,7 @@ class RoboOperator(QtCore.QObject):
             self.log(f"focus loop: will take images at {loop.filter_range}")
 
         except Exception as e:
-            msg = f"roboOperator: could not run focus loop due to  due to {e.__class__.__name__}, {e}"  #', tb = {traceback.format_exc()}'
+            msg = f"roboOperator: could not run focus loop due to  due to {e.__class__.__name__}, {e} tb = {traceback.format_exc()}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             # err = roboError(context, self.lastcmd, system, msg)
