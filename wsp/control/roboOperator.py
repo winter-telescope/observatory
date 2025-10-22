@@ -5984,8 +5984,9 @@ class RoboOperator(QtCore.QObject):
 
     def remakePointingModel(self, append=False, firstpoint=0):
         context = "Pointing Model"
-        self.log("setting up a new pointing model")
-        self.alertHandler.slack_log("Setting Up a New Pointing Model!", group=None)
+        msg = f"Setting up a new pointing model for {self.camname} camera."
+        self.announce(msg)
+        self.announce(f"Test Mode? {self.test_mode}")
         if append:
             # if in append mode, don't clear the old points
             pass
@@ -6097,13 +6098,14 @@ class RoboOperator(QtCore.QObject):
                         image_filepath = image_filepath + ".fits"
 
                     # handle testing mode where no images are saved
+                    self.log(f"checking test mode: {self.test_mode}")
                     if self.test_mode:
                         if self.camname == "winter":
                             self.log("test mode not implemented yet for winter cam")
                             return
                         elif self.camname == "spring":
                             image_directory = os.path.join(
-                                os.path.expanduser("~"),
+                                "~",
                                 "data",
                                 "image-daemon-data",
                                 "raw",
@@ -6112,6 +6114,12 @@ class RoboOperator(QtCore.QObject):
                                 "WNTR25fejjz",
                             )
                             image_filename = "scicam_20250804T111108.fits"
+                            self.log(
+                                f"test mode active, using dir: {image_directory}, file: {image_filename}"
+                            )
+                            image_filepath = os.path.join(
+                                image_directory, image_filename
+                            )
                         else:
                             self.log(
                                 f"test mode not implemented yet for cam {self.camname}"
