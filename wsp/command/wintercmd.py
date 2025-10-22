@@ -3434,11 +3434,11 @@ class Wintercmd(QtCore.QObject):
         self.getargs()
         self.logger.info(f"robo_switch_camera: args = {self.args}")
 
-        camera = self.args.camera[0]
+        camname = self.args.camera[0]
 
-        self.logger.info(f"wintercmd: switching robotic camera to {camera}")
+        self.logger.info(f"wintercmd: switching robotic camera to {camname}")
 
-        sigcmd = signalCmd("switchCamera", camera=camera)
+        sigcmd = signalCmd("switchCamera", camname=camname)
 
         self.roboThread.newCommand.emit(sigcmd)
 
