@@ -827,7 +827,7 @@ observing_parameters:
         x_pixels: 1984
         y_pixels: 1096
     
-    summer:
+    spring:
         best_position:
             x_pixel: 0
             y_pixel: 0
