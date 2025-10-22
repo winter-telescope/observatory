@@ -5129,8 +5129,20 @@ class Wintercmd(QtCore.QObject):
             # TODO: ditch this and fix the stop condition
             # if we checking specific addresses then we need a different way to assess success
             return
+
         condition = True
-        timeout = 10
+
+        if camname == "winter":
+            timeout = 10
+        elif camname == "spring":
+            timeout = 3 * exptime + 10
+        else:
+            timeout = 30
+
+        self.logger.info(
+            f"setExposure: timeout set to {timeout} seconds for {camname} and {exptime} sec exposure"
+        )
+
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
