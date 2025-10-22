@@ -4356,7 +4356,9 @@ class RoboOperator(QtCore.QObject):
                     imagedaemon = Pyro5.api.Proxy(ns.lookup("pirt_daemon"))
 
                     results = imagedaemon.run_focus_loop(
-                        image_list=images, output_dir=os.path.join("~", "data", "tmp")
+                        image_list=images,
+                        output_dir=os.path.join("~", "data", "tmp"),
+                        post_plot=True,
                     )
 
                     x0_fit = results["best_focus"]  # may crash out if fit fails
