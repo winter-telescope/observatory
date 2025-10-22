@@ -699,6 +699,7 @@ class RoboOperator(QtCore.QObject):
             KeyError: if camname not in camdict
             Exception: if port switching or model loading fails
         """
+        self.log(f"got command to switch camera to {camname}")
         # Validate the camera name first
         if camname not in self.camdict:
             msg = f"camera '{camname}' is not valid. Available cameras: {list(self.camdict.keys())}"
