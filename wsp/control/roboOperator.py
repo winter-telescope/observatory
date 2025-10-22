@@ -4207,7 +4207,7 @@ class RoboOperator(QtCore.QObject):
                 # add the filter position and image path to the list to analyze
                 focuser_pos.append(dist)
                 images.append(image_filepath)
-                self.log("focus image added to list")
+                self.log(f"focus image added to list: {image_filepath}")
 
             except Exception as e:
                 msg = f"roboOperator: error while running focus loop with {system} due to {e.__class__.__name__}, {e}"
