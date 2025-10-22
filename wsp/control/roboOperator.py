@@ -5997,7 +5997,7 @@ class RoboOperator(QtCore.QObject):
 
         # load up the points
         pointlist_filepath = os.path.join(
-            os.getenv("HOME"),
+            os.path.expanduser("~"),
             self.config["pointing_model"]["default_pointlist"],
         )
         self.pointingModelBuilder.load_point_list(pointlist_filepath)
@@ -6072,6 +6072,11 @@ class RoboOperator(QtCore.QObject):
                             f"robo_observe altaz {target_alt} {target_az} --pointing --calibration --offset center"
                         )
 
+                        if self.camname == "spring":
+                            # for now we need to dump the first image for spring because it may be streaked
+                            # do another observation at the same spot
+                            self.do("robo_do_exposure --pointing --calibration")
+
                     else:
                         # any observation besides the first
                         # do a dither:
@@ -6088,6 +6093,30 @@ class RoboOperator(QtCore.QObject):
                     image_filepath = os.path.join(image_directory, image_filename)
                     if self.camname == "winter":
                         image_filepath = image_filepath + "_mef.fits"
+                    else:
+                        image_filepath = image_filepath + ".fits"
+
+                    # handle testing mode where no images are saved
+                    if self.test_mode:
+                        if self.camname == "winter":
+                            self.log("test mode not implemented yet for winter cam")
+                            return
+                        elif self.camname == "spring":
+                            image_directory = os.path.join(
+                                os.path.expanduser("~"),
+                                "data",
+                                "image-daemon-data",
+                                "raw",
+                                "pirt",
+                                "science",
+                                "WNTR25fejjz",
+                            )
+                            image_filename = "scicam_20250804T111108.fits"
+                        else:
+                            self.log(
+                                f"test mode not implemented yet for cam {self.camname}"
+                            )
+                            return
                     images.append(image_filepath)
                     self.log(f"image {dither_number} filepath: {image_filepath}")
             except Exception as e:
@@ -6116,36 +6145,42 @@ class RoboOperator(QtCore.QObject):
                         pix_coords=(1864, 530),
                         timeout=10,
                     )
-
-                    self.log(
-                        f"Astrometric solution: {json.dumps(astrom_info, indent = 2)}"
-                    )
-
-                    ra_j2000 = astropy.coordinates.Angle(astrom_info["ra"] * u.deg)
-                    dec_j2000 = astropy.coordinates.Angle(astrom_info["dec"] * u.deg)
-
-                    ra_j2000_hours = ra_j2000.hour
-                    dec_j2000_degrees = dec_j2000.deg
-
-                    # report the nominal ra/dec from the header
-                    ra_j2000_nom = astropy.coordinates.Angle(
-                        astrom_info["ra_guess"] * u.deg
-                    )
-                    dec_j2000_nom = astropy.coordinates.Angle(
-                        astrom_info["dec_guess"] * u.deg
-                    )
-
-                    platescale = astrom_info["pixel_scale"]
-                    field_angle = astrom_info["rotation_deg"]
-
-                    self.announce(
-                        f"solved image: {science_image}, (RA, Dec) deg = ({ra_j2000.deg:0.2f}, {dec_j2000.deg:0.2f}), platescale = {platescale:0.2f}, field angle = {field_angle:0.2f}"
+                elif self.camname == "spring":
+                    daemon = Pyro5.api.Proxy(ns.lookup("pirt_daemon"))
+                    science_image = images[-1]  # should only be one image for spring
+                    astrom_info = daemon.solve_astrometry(
+                        science_image=science_image,
+                        output_dir="~/data/tmp/",
+                        timeout=10,
                     )
                 else:
-                    # no other cameras implemented yet
                     self.log(
-                        f"robo: couldn't handle camera {self.camname} yet, only winter is implemented"
+                        f"no recipe for analyzing camera {self.camname} astrometry yet, returning"
                     )
+                    return
+
+                self.log(f"Astrometric solution: {json.dumps(astrom_info, indent = 2)}")
+
+                ra_j2000 = astropy.coordinates.Angle(astrom_info["ra"] * u.deg)
+                dec_j2000 = astropy.coordinates.Angle(astrom_info["dec"] * u.deg)
+
+                ra_j2000_hours = ra_j2000.hour
+                dec_j2000_degrees = dec_j2000.deg
+
+                # report the nominal ra/dec from the header
+                ra_j2000_nom = astropy.coordinates.Angle(
+                    astrom_info["ra_guess"] * u.deg
+                )
+                dec_j2000_nom = astropy.coordinates.Angle(
+                    astrom_info["dec_guess"] * u.deg
+                )
+
+                platescale = astrom_info["pixel_scale"]
+                field_angle = astrom_info["rotation_deg"]
+
+                self.announce(
+                    f"solved image: {science_image}, (RA, Dec) deg = ({ra_j2000.deg:0.2f}, {dec_j2000.deg:0.2f}), platescale = {platescale:0.2f}, field angle = {field_angle:0.2f}"
+                )
 
             except Exception as e:
                 msg = f"error while running astrometry with {system} due to {e.__class__.__name__}, {e}"
@@ -6167,9 +6202,13 @@ class RoboOperator(QtCore.QObject):
                 msg = f"Adding model point (alt, az) = ({target_alt:0.1f}, {target_az:0.1f}) --> (ra, dec) = ({ra_j2000_hours:0.2f}, {dec_j2000_degrees:0.2f}), Nominal (ra, dec) = ({ra_j2000_nom.hour:0.2f}, {dec_j2000_nom.deg:0.2f})"
                 self.alertHandler.slack_log(msg, group=None)
                 # add the RA_hours and DEC_deg point to the telescope pointing model
-                self.doTry(
-                    f"mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}"
-                )
+                if self.test_mode:
+                    self.announce("test mode active, not adding point to model")
+                    continue
+                else:
+                    self.doTry(
+                        f"mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}"
+                    )
 
                 radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
                 # changed this from self.target_alt, self.target_az
