@@ -4232,7 +4232,7 @@ class RoboOperator(QtCore.QObject):
             #          '/home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits',
             #          '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
             #          '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
-            if self.camname=="winter":
+            if self.camname == "winter":
                 imnames = [
                     "WINTERcamera_20240913-090922-224",
                     "WINTERcamera_20240913-091001-328",
@@ -4247,15 +4247,17 @@ class RoboOperator(QtCore.QObject):
                     for imname in imnames
                 ]
 
-            elif self.camname =="spring":
+            elif self.camname == "spring":
 
-                imnames = ["scicam_20250804T103631",
-                           "scicam_20250804T103701",
-                           "scicam_20250804T103731",
-                           "scicam_20250804T103801",
-                           "scicam_20250804T103831",
-                           "scicam_20250804T103901",
-                           "scicam_20250804T103931",
+                imnames = [
+                    "scicam_20250804T103631",
+                    "scicam_20250804T103701",
+                    "scicam_20250804T103731",
+                    "scicam_20250804T103801",
+                    "scicam_20250804T103831",
+                    "scicam_20250804T103901",
+                    "scicam_20250804T103931",
+                ]
                 images = [
                     "~/data/image-daemon-data/raw/pirt/focus/" + imname + ".fits"
                     for imname in imnames
