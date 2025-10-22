@@ -123,20 +123,26 @@ class SpringCameraInterface(BaseCameraInterface):
         else:
             raise Exception(f"Failed to stop TEC: {reply}")
 
-    @async_camera_command(timeout=10.0, completion_state=CameraState.READY)
+    @async_camera_command(
+        timeout=lambda self, *args, **kwargs: 3 * self.exposure_time + 30.0,
+        completion_state=CameraState.READY,
+        initial_state=CameraState.SETTING_PARAMETERS,
+        pending_completion=True,
+    )
     def setExposure(self, exptime, addrs=None):
         """Set exposure time"""
         self.log(f"Setting exposure time to {exptime}s")
         self.requested_exposure_time = exptime
 
-        self.cam.set_exposure(exptime)
+        reply = self.cam.set_exposure(exptime)
 
-        if self.command_worker.stop_requested:
-            return False
-
-        self.exposure_time = exptime
-        self.state.update({"exposure_time": exptime})
-        return True
+        if reply.get("status") == "success":
+            self.log(
+                "Exposure time requested successfully, waiting for camera to complete..."
+            )
+            return True
+        else:
+            raise Exception(f"Failed to set exposure time: {reply}")
 
     @async_camera_command(
         timeout=lambda self, *args, **kwargs: 2 * self.exposure_time + 30.0,

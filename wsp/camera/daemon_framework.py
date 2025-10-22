@@ -488,7 +488,7 @@ class BaseCameraInterface(QtCore.QObject):
             completed = self._check_tec_setpoint_complete()
         elif command == "doExposure":
             completed = self._check_exposure_complete()
-        elif command == "set_exposure":
+        elif command == "setExposure":
             completed = self._check_set_exposure_complete()
         # Add more completion checkers as n`eeded
 

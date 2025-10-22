@@ -5154,12 +5154,12 @@ class Wintercmd(QtCore.QObject):
                     self.state[f"{camname}_camera_exptime"] == exptime
                 ) & (self.state[f"{camname}_camera_command_pass"] == 1)
             elif camname == "spring":
-                stop_condition = (camera.state["camera_exptime"] == exptime) & (
+                stop_condition = (camera.state["exptime"] == exptime) & (
                     camera.state["camera_state"] == "READY"
                 )
             else:
                 self.logger.info("WARNING! applying generic stop condition!")
-                stop_condition = (camera.state["camera_exptime"] == exptime) & (
+                stop_condition = (camera.state["exptime"] == exptime) & (
                     camera.state["camera_state"] == "READY"
                 )
 
