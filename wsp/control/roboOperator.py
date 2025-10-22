@@ -668,6 +668,7 @@ class RoboOperator(QtCore.QObject):
             )
 
     def switchPort(self, port: Optional[int]):
+        self.log(f"got command to switch rotator to port {port}")
         # port can only be 1 or 2
         if port is None:
             msg = "specified port is None! doing nothing."
@@ -709,7 +710,7 @@ class RoboOperator(QtCore.QObject):
             raise KeyError(msg)
 
         camera = self.camdict[camname]
-        fw = self.fwdict[camname]
+        fw = self.fwdict.get(camname, None)
 
         # Switch to the corresponding port (this can raise exceptions)
         port = self.camera_manager.get_port_for_camera(camname)
