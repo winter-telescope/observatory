@@ -4035,27 +4035,38 @@ class RoboOperator(QtCore.QObject):
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             return
+
+        self.log(f"reached pre-start focuser position: {focuser_start_pos}")
         # step through the focus positions and take images
 
         focuser_pos = []
         images = []
-        image_log_path = self.config["focus_loop_param"]["image_log_path"]
 
         # keep track of which image we're on
         i = 0
+
+        self.log(f"starting focus loop image collection with {nsteps} steps")
         # for i in range(len(loop.filter_range_nom)):
         for dist in loop.filter_range_nom:
 
             try:
-                self.log(f"taking filter image at focuser position = {dist}")
+                self.log(f"taking focus image at focuser position = {dist}")
 
                 # drive the focuser
                 system = "focuser"
                 self.do(f"m2_focuser_goto {dist}")
 
-                self.exptime = self.config["filters"][self.camname][filterID][
-                    "focus_exptime"
-                ]
+                if self.camname == "winter":
+                    self.exptime = self.config["filters"][self.camname][filterID][
+                        "focus_exptime"
+                    ]
+                else:
+                    self.exptime = 30.0  # default for now
+                    self.log(
+                        f"no focus exptime specified for camera {self.camname}, defaulting to {self.exptime} s",
+                        level=logging.WARNING,
+                    )
+
                 self.logger.info(
                     f"robo: making sure exposure time on camera to is set to {self.exptime}"
                 )
