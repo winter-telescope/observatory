@@ -135,7 +135,7 @@ def plotFITS(
             print(f"Could not subtract dark frame due to error: {e}")
             traceback.print_exc()
 
-    title = f"Last Image Taken: {filename}\nMedian Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s"
+    title = f"Last Image Taken: {filename}\nMedian RAW Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s"
     title += f'\nFilter: {header.get("FILTERID","?")}, OBSTYPE = {header.get("OBSTYPE", "?").upper()}'
     title += f'\nComment: {header.get("QCOMMENT", "?")}'
     if "UTC" in header:
