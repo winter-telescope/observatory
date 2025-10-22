@@ -124,7 +124,7 @@ class SpringCameraInterface(BaseCameraInterface):
             raise Exception(f"Failed to stop TEC: {reply}")
 
     @async_camera_command(
-        timeout=lambda self, *args, **kwargs: 3 * args[0] + 30.0,  # args[0] is exptime
+        timeout=lambda self, *args, **kwargs: 3 * kwargs.get("exptime", args[0]) + 30.0,
         completion_state=CameraState.READY,
         initial_state=CameraState.SETTING_PARAMETERS,
         pending_completion=True,
@@ -444,7 +444,12 @@ class SpringCameraInterface(BaseCameraInterface):
             self.state.get("gui_state", "") == "READY",
             self.state.get("exptime", -1) == self.requested_exposure_time,
         ]
-
+        if self.verbose:
+            self.log(
+                f"Set exposure check conditions: gui_state={self.state.get('gui_state','')}, "
+                f"exptime={self.state.get('exptime',-1)}, "
+                f"requested_exposure_time={self.requested_exposure_time}"
+            )
         return all(conditions)
 
     def _check_exposure_complete(self) -> bool:
