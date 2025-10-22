@@ -201,8 +201,8 @@ class Telescope(PWI4):
         angle = self.state["rotator.mech_position_degs"]
 
         active_port = int(self.state["m3.port"])
-        min_angle = self.config["ports"][self.port]["rotator"]["min_degs"]
-        max_angle = self.config["ports"][self.port]["rotator"]["max_degs"]
+        min_angle = self.config["telescope"]["ports"][self.port]["rotator"]["min_degs"]
+        max_angle = self.config["telescope"]["ports"][self.port]["rotator"]["max_degs"]
         self.wrap_status = (angle <= min_angle) or (angle >= max_angle)
 
         self.state.update({"wrap_status": self.wrap_status})
