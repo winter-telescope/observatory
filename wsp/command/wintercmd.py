@@ -3421,6 +3421,25 @@ class Wintercmd(QtCore.QObject):
             self.roboThread.restartRoboSignal.emit("test")
 
     @cmd
+    def robo_switch_camera(self):
+        self.defineCmdParser("switch the active camera for robotic operations")
+        self.cmdparser.add_argument(
+            "camera",
+            nargs=1,
+            action=None,
+            type=str,
+            choices=["winter", "summer", "spring"],
+        )
+
+        self.getargs()
+        print(self.args)
+
+        camera = self.args.camera[0]
+
+        sigcmd = signalCmd("switchCamera", camera=camera)
+        self.roboThread.newCommand.emit(sigcmd)
+
+    @cmd
     def robo_do_currentObs(self):
         self.defineCmdParser("do the current observation")
         self.roboThread.do_currentObs_Signal.emit()
