@@ -4190,8 +4190,14 @@ class RoboOperator(QtCore.QObject):
                     # self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
                     self.do(f"robo_do_exposure -foc ")
 
-                image_directory, image_filename = self.camera.getLastImagePath()
-                image_filepath = os.path.join(image_directory, image_filename)
+                try:
+                    image_directory, image_filename = self.camera.getLastImagePath()
+                    image_filepath = os.path.join(image_directory, image_filename)
+                except Exception as e:
+                    # print error with full traceback
+                    tb = traceback.format_exc()
+                    msg = f"roboOperator: could not get image path after focus exposure due to {e.__class__.__name__}, {e}, traceback: {tb}"
+                    self.log(msg)
 
                 if self.camname == "winter":
                     image_filepath = image_filepath + "_mef.fits"
