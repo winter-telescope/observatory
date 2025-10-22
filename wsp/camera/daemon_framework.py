@@ -638,6 +638,7 @@ class BaseCameraInterface(QtCore.QObject):
         - On Windows: try symlink; if not permitted, fallback to hard link, then copy.
         """
         last_image_link_path = Path(self.getDefaultSymLinkPath())
+        image_path = Path(image_path).expanduser().resolve()
 
         # remove existing link/file if present
         try:
