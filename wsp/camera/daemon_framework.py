@@ -475,6 +475,15 @@ class BaseCameraInterface(QtCore.QObject):
         if not self.pending_command_completion:
             return
 
+        # grace period after command sent before checking. helps avoid race conditions
+        grace_period = 1.0  # seconds
+        elapsed_since_command = (
+            datetime.utcnow().timestamp()
+            - self.pending_command_completion["start_time"]
+        )
+        if elapsed_since_command < grace_period:
+            return
+
         command = self.pending_command_completion["command"]
 
         # Dispatch to command-specific completion checkers
