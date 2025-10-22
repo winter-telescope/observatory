@@ -186,7 +186,7 @@ def plotFITS(
 
         axarr[1].set_yscale("log")
 
-    plt.savefig(os.path.join(os.getenv("HOME"), "data", "last_image.jpg"))
+    plt.savefig(os.path.join(os.path.expanduser("~"), "data", "last_image.jpg"))
 
     # plt.show()#block = False)
     # plt.pause(0.1)
