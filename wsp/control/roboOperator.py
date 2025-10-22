@@ -489,9 +489,9 @@ class RoboOperator(QtCore.QObject):
         using this as a reference: (source: https://stackoverflow.com/questions/6321940/how-to-launch-getattr-function-in-python-with-additional-parameters)
 
         """
-        self.log(
-            f"caught doCommand signal: {cmd_obj.cmd} <args: {cmd_obj.args}, kwargs: {cmd_obj.kwargs}>"
-        )
+        # self.log(
+        #    f"caught doCommand signal: {cmd_obj.cmd} <args: {cmd_obj.args}, kwargs: {cmd_obj.kwargs}>"
+        # )
         cmd = cmd_obj.cmd
         args = cmd_obj.args
         kwargs = cmd_obj.kwargs
@@ -3878,6 +3878,8 @@ class RoboOperator(QtCore.QObject):
         self.announce("running focus loop!")
         context = "do_focusLoop"
 
+        # get the current focuser position?
+
         # set the progID info here for the headers
         self.resetObsValues()
         try:
@@ -3892,55 +3894,72 @@ class RoboOperator(QtCore.QObject):
             self.log(f"could not update the header field values in the focus loop: {e}")
 
         # get the current filter
-
         try:
+            # Check if filter wheel is available
+            if self.fw is None:
+                # If no filter wheel, nom_focus must be a numeric position
+                if nom_focus in ["default", "last", "model"]:
+                    msg = f"roboOperator: cannot use nom_focus='{nom_focus}' when filter wheel is unavailable. Please provide a numeric focus position."
+                    self.log(msg)
+                    self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+                    return
 
-            filterpos = self.fw.state["filter_pos"]
-            # pixscale = self.config['focus_loop_param']['pixscale'][self.camname]
-            pixscale = self.config["observing_parameters"][self.camname]["pixscale"]
+                # Use the provided numeric nom_focus value
+                # Still need pixscale for the focus loop
+                pixscale = self.config["observing_parameters"][self.camname]["pixscale"]
+                filterID = None
+                filtername = "Unknown (no filter wheel)"
+                self.log(
+                    f"Running focus loop without filter wheel. Using nom_focus = {nom_focus}"
+                )
 
-            filterID = self.config["filter_wheels"][self.camname]["positions"][
-                filterpos
-            ]  # eg. 'r'
-            filtername = self.config["filters"][self.camname][filterID][
-                "name"
-            ]  # eg. "SDSS r' (Chroma)"
+            else:
+                # Normal operation with filter wheel
+                filterpos = self.fw.state["filter_pos"]
+                pixscale = self.config["observing_parameters"][self.camname]["pixscale"]
 
-            if nom_focus == "last":
-                # TODO: make this query the focusTracker to find the last focus position
-                try:
-                    last_focus, last_focus_timestamp = self.focusTracker.checkLastFocus(
-                        filterID
-                    )
-                    # set the nominal focus to the last focus positiion
-                    nom_focus = last_focus
-                    self.log(
-                        f"focusing around previous best focus location: {nom_focus}"
-                    )
+                filterID = self.config["filter_wheels"][self.camname]["positions"][
+                    filterpos
+                ]  # eg. 'r'
+                filtername = self.config["filters"][self.camname][filterID][
+                    "name"
+                ]  # eg. "SDSS r' (Chroma)"
 
-                    if nom_focus is None:
+                if nom_focus == "last":
+                    # TODO: make this query the focusTracker to find the last focus position
+                    try:
+                        last_focus, last_focus_timestamp = (
+                            self.focusTracker.checkLastFocus(filterID)
+                        )
+                        # set the nominal focus to the last focus positiion
+                        nom_focus = last_focus
                         self.log(
-                            f"no previous focus position found, defaulting to nominal."
+                            f"focusing around previous best focus location: {nom_focus}"
+                        )
+
+                        if nom_focus is None:
+                            self.log(
+                                f"no previous focus position found, defaulting to nominal."
+                            )
+                            nom_focus = self.config["filters"][self.camname][filterID][
+                                "nominal_focus"
+                            ]
+
+                    except Exception as e:
+                        self.log(
+                            f"could not get a value for the last focus position. defaulting to default focus. Traceback = {traceback.format_exc()}"
                         )
                         nom_focus = self.config["filters"][self.camname][filterID][
                             "nominal_focus"
                         ]
-
-                except Exception as e:
-                    self.log(
-                        f"could not get a value for the last focus position. defaulting to default focus. Traceback = {traceback.format_exc()}"
-                    )
+                elif nom_focus == "default":
                     nom_focus = self.config["filters"][self.camname][filterID][
                         "nominal_focus"
                     ]
-            elif nom_focus == "default":
-                nom_focus = self.config["filters"][self.camname][filterID][
-                    "nominal_focus"
-                ]
 
-            elif nom_focus == "model":
-                # put the model here
-                nom_focus = 9.654 * self.state["telescope_temp_ambient"] + 9784.4
+                elif nom_focus == "model":
+                    # put the model here
+                    nom_focus = 9.654 * self.state["telescope_temp_ambient"] + 9784.4
 
             if total_throw == "default":
                 # total_throw = self.config['focus_loop_param']['total_throw']
@@ -4146,10 +4165,13 @@ class RoboOperator(QtCore.QObject):
 
                 else:
                     # any observation besides the first
-                    # do a dither:
-                    system = "telescope"
-                    dithersize = 5 * 60
-                    self.do(f"mount_random_dither_arcsec {dithersize}")
+                    if self.camname == "winter":
+                        # do a dither:
+                        system = "telescope"
+                        dithersize = 5 * 60
+                        self.do(f"mount_random_dither_arcsec {dithersize}")
+                    else:
+                        self.log(f"no dither for camera {self.camname}")
 
                     system = "camera"
                     # self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
@@ -4157,8 +4179,11 @@ class RoboOperator(QtCore.QObject):
 
                 image_directory, image_filename = self.camera.getLastImagePath()
                 image_filepath = os.path.join(image_directory, image_filename)
+
                 if self.camname == "winter":
                     image_filepath = image_filepath + "_mef.fits"
+                else:
+                    image_filepath = image_filepath + ".fits"
 
                 # add the filter position and image path to the list to analyze
                 focuser_pos.append(dist)
@@ -4289,6 +4314,25 @@ class RoboOperator(QtCore.QObject):
                 else:
                     fit_successful = False
                     # x0_fit = 11797.657
+            elif self.camname == "spring":
+                # use the winter-image-daemon for spring
+                try:
+                    ns = Pyro5.api.locate_ns(host="192.168.1.10")
+                    imagedaemon = Pyro5.api.Proxy(ns.lookup("pirt_daemon"))
+
+                    results = imagedaemon.run_focus_loop(
+                        image_list=images, output_dir=os.path.join("~", "data", "tmp")
+                    )
+
+                    x0_fit = results["best_focus"]  # may crash out if fit fails
+                    fit_successful = True
+
+                except Exception as e:
+                    msg = f"could not get focus from pirt image daemon: {e}"
+
+                    self.announce(msg)
+
+                    fit_successful = False
 
             else:
                 fit_successful = False

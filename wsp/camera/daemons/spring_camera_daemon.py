@@ -14,6 +14,7 @@ from PyQt5 import QtCore
 from wsp.camera.camera_command_decorators import async_camera_command
 from wsp.camera.daemon_framework import BaseCameraInterface, create_camera_daemon
 from wsp.camera.state import CameraState
+from wsp.utils.utils import tonight_local
 
 DEFAULT_STATUS_VALUE = -888
 
@@ -93,9 +94,7 @@ class SpringCameraInterface(BaseCameraInterface):
     # === Image Path Overrides ===
     def getDefaultImageDirectory(self) -> str:
         """Get default image directory"""
-        return os.path.join(
-            "~", "data", "images", datetime.now().strftime("%Y%m%d"), "spring"
-        )
+        return os.path.join("~", "data", "images", tonight_local(), "spring")
 
     # === Async Command Methods with Decorators ===
 
