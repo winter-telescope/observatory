@@ -3910,6 +3910,7 @@ class RoboOperator(QtCore.QObject):
                 pixscale = self.config["observing_parameters"][self.camname]["pixscale"]
                 filterID = None
                 filtername = "Unknown (no filter wheel)"
+                filterpos = None
                 self.log(
                     f"Running focus loop without filter wheel. Using nom_focus = {nom_focus}"
                 )
