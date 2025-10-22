@@ -1022,7 +1022,7 @@ def create_camera_daemon(camera_class, daemon_name):
 
     # test the alert handler
     if alertHandler is not None:
-        alertHandler.slack_log(":camera: WINTER Camera Daemon Started")
+        alertHandler.slack_log(f":camera: {daemon_name} Daemon Started")
 
     # Create daemon
     main = CameraDaemonApp(
