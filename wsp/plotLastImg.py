@@ -12,6 +12,7 @@ import os
 import pathlib
 import sys
 import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -99,6 +100,39 @@ def plotFITS(
         exptime_str = f'{header["EXPTIME"]:0.1f}'
     else:
         exptime_str = "?"
+
+    # Camera-based specific handling
+    camname = header.get("INSTRUME", "Unknown")
+    if camname == "spring":
+        # try to do a dark subtraction
+        try:
+            SPRING_MASTER_DARK_DIR = os.path.join(
+                os.path.expanduser("~"),
+                "data",
+                "image-daemon-data",
+                "pirt",
+                "masterdarks",
+            )
+
+            # the master darks have filenames like: pirt_masterdark_30.000.fits
+            dark_filename = os.path.join(
+                SPRING_MASTER_DARK_DIR,
+                f"pirt_masterdark_{float(exptime_str):0.3f}.fits",
+            )
+
+            if os.path.exists(dark_filename):
+                dark_hdu = fits.open(dark_filename)
+                dark_data = dark_hdu[0].data
+                # crop to the same size as the image
+                dark_crop = dark_data[xmin:xmax, ymin:ymax]
+                image = image - dark_crop
+                print(f"Subtracted dark frame: {dark_filename}")
+            else:
+                print(f"Could not find dark frame: {dark_filename}")
+        except Exception as e:
+            # print error with traceback:
+            print(f"Could not subtract dark frame due to error: {e}")
+            traceback.print_exc()
 
     title = f"Last Image Taken: {filename}\nMedian Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s"
     title += f'\nFilter: {header.get("FILTERID","?")}, OBSTYPE = {header.get("OBSTYPE", "?").upper()}'
