@@ -3943,21 +3943,21 @@ class RoboOperator(QtCore.QObject):
                             self.log(
                                 f"no previous focus position found, defaulting to nominal."
                             )
-                            nom_focus = self.config["filters"][self.camname][filterID][
-                                "nominal_focus"
-                            ]
+                            nom_focus = self.config["focus_loop_param"]["cameras"][
+                                self.camname
+                            ]["nominal_focus"]
 
                     except Exception as e:
                         self.log(
                             f"could not get a value for the last focus position. defaulting to default focus. Traceback = {traceback.format_exc()}"
                         )
-                        nom_focus = self.config["filters"][self.camname][filterID][
-                            "nominal_focus"
-                        ]
+                        nom_focus = self.config["focus_loop_param"]["cameras"][
+                            self.camname
+                        ]["nominal_focus"]
                 elif nom_focus == "default":
-                    nom_focus = self.config["filters"][self.camname][filterID][
-                        "nominal_focus"
-                    ]
+                    nom_focus = self.config["focus_loop_param"]["cameras"][
+                        self.camname
+                    ]["nominal_focus"]
 
                 elif nom_focus == "model":
                     # put the model here
@@ -4057,9 +4057,9 @@ class RoboOperator(QtCore.QObject):
                 self.do(f"m2_focuser_goto {dist}")
 
                 if self.camname == "winter":
-                    self.exptime = self.config["filters"][self.camname][filterID][
-                        "focus_exptime"
-                    ]
+                    self.exptime = self.config["focus_loop_param"]["cameras"][
+                        self.camname
+                    ]["focus_exptime"]
                 else:
                     self.exptime = 30.0  # default for now
                     self.log(

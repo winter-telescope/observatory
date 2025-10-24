@@ -641,8 +641,25 @@ focus_loop_param:
             total_throw: 800
             nsteps: 12
     #micron_interval: 100
+    cameras:
+        winter:
+            filterID: 'J'
+            nominal_focus: 11925
+            focus_exptime: 30
+        spring:
+            filterID: 'J'
+            nominal_focus: 19400
+            focus_exptime: 30
+        summer:
+            filterID: 'r'
+            nominal_focus: 19400
+            focus_exptime: 30
+    nominal_focus:
+        spring: 19400
+        summer: 19400
+        winter: 11925
     focus_filters:
-        winter-deep:
+        spring:
             - 'J'
         winter:
             - 'J'
@@ -734,13 +751,13 @@ filters:
 filter_wheels:
     winter-deep:
         positions:
-            1: 'u'
-            2: 'g'
-            3: 'r'
-            4: 'i'
-            5: 'Y'
-            6: 'J'
-            7: 'EMPTY'
+            1: 'u' # FW Position 0
+            2: 'g' # FW Position 1
+            3: 'r' # FW Position 2
+            4: 'i' # FW Position 3
+            5: 'Y' # FW Position 4
+            6: 'J' # FW Position 5
+            7: 'EMPTY' # FW Position 6
     summer:
         positions:
             1: 'u'
