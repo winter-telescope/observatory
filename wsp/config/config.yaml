@@ -252,9 +252,9 @@ telescope:
             name: 'summer'
             rotator:
                 field_angle_zeropoint: 155.0 
-                home_degs: -25.0
-                max_degs: 160.0
-                min_degs: -210.0
+                home_degs: 65.0
+                max_degs: 225.0
+                min_degs: -95.0
             cameras:
                 spring:
                     pointing_model_file: "pointing_model_spring_20251022.pxp"
