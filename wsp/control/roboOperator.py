@@ -712,6 +712,17 @@ class RoboOperator(QtCore.QObject):
         camera = self.camdict[camname]
         fw = self.fwdict.get(camname, None)
 
+        # First, send the rotator on the current port to its home position
+        try:
+            # if the telescope is connected and the rotator is enabled, reset it
+            if self.telescope.mount.is_connected and self.telescope.rotator.is_enabled:
+                # if the rotator is enabled, stop it and reset it
+                self.rotator_stop_and_reset()
+        except Exception as e:
+            self.logger.error(
+                f"could not reset the rotator after a hardware error: {e}. continuing anyway."
+            )
+
         # Switch to the corresponding port (this can raise exceptions)
         port = self.camera_manager.get_port_for_camera(camname)
         self.switchPort(port)
