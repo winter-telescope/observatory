@@ -4941,16 +4941,28 @@ class RoboOperator(QtCore.QObject):
                                 filter_num = position
                             else:
                                 pass
-                        if filter_num == self.fw.state["filter_pos"]:
-                            self.log(
-                                "requested filter matches current, no further action taken"
-                            )
+                            
+                        self.log(
+                            f"changing filter to scheduled filter: {self.filter_scheduled} (position {filter_num})"
+                        )
+
+                        if self.camname in ["winter"]:
+                            # check if the filter is already in place
+                            if filter_num == self.fw.state["filter_pos"]:
+                                self.log(
+                                    "requested filter matches current, no further action taken"
+                                )
+                            else:
+                                self.log(
+                                    f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}'
+                                )
+                                # self.do(f'command_filter_wheel {filter_num}')
+                                self.do(f"fw_goto {filter_num} --{self.camname}")
                         else:
+                            # for spring fw is not yet implemented
                             self.log(
-                                f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}'
+                                f"skipping filter change for camera {self.camname} (not yet implemented)"
                             )
-                            # self.do(f'command_filter_wheel {filter_num}')
-                            self.do(f"fw_goto {filter_num} --{self.camname}")
 
                         # set up a big descriptive message for slack:
                         msg = f'>> Executing Observation: Pointing Number [{pointing_num}/{num_pointings}]: (dRA, dDec) = ({pointing_offset["coords"]["dRA"]}, {pointing_offset["coords"]["dDec"]})'
