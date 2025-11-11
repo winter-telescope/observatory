@@ -4941,7 +4941,7 @@ class RoboOperator(QtCore.QObject):
                                 filter_num = position
                             else:
                                 pass
-                            
+
                         self.log(
                             f"changing filter to scheduled filter: {self.filter_scheduled} (position {filter_num})"
                         )
@@ -5368,15 +5368,19 @@ class RoboOperator(QtCore.QObject):
 
         if verbose:
             print("\n##########################################")
+
+        angle_margin = 10  # degs of margin for safe operation
         for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
             if self.is_rotator_mech_angle_possible(
                 predicted_rotator_mechangle=possible_target_mech_angle,
                 rotator_min_degs=self.config["telescope"]["ports"][self.telescope.port][
                     "rotator"
-                ]["min_degs"],
+                ]["min_degs"]
+                + angle_margin,
                 rotator_max_degs=self.config["telescope"]["ports"][self.telescope.port][
                     "rotator"
-                ]["max_degs"],
+                ]["max_degs"]
+                - angle_margin,
             ):
                 self.target_mech_angle = possible_target_mech_angle
                 self.target_field_angle = possible_target_field_angles[ind]
