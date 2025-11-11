@@ -749,7 +749,7 @@ filters:
         
 
 filter_wheels:
-    winter-deep:
+    spring:
         positions:
             1: 'u' # FW Position 0
             2: 'g' # FW Position 1
@@ -760,13 +760,13 @@ filter_wheels:
             7: 'EMPTY' # FW Position 6
     summer:
         positions:
-            1: 'u'
-            2: 'EMPTY'
-            3: 'g'
-            4: 'EMPTY'
-            5: 'r'
-            6: 'EMPTY'
-            7: 'i'
+            1: 'u' # FW Position 0
+            2: 'g' # FW Position 1
+            3: 'r' # FW Position 2
+            4: 'i' # FW Position 3
+            5: 'Y' # FW Position 4
+            6: 'J' # FW Position 5
+            7: 'EMPTY' # FW Position 6
     winter:
         positions:
             1: 'dark'
