@@ -4559,8 +4559,9 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("-w", "--winter", action="store_true", default=True)
-        group.add_argument("-c", "--summer", action="store_true", default=False)
+        group.add_argument("--winter", action="store_true")
+        group.add_argument("--summer", action="store_true")
+        group.add_argument("--spring", action="store_true")
 
         self.getargs()
 
@@ -4570,8 +4571,17 @@ class Wintercmd(QtCore.QObject):
             fwname = "winter"
         elif self.args.summer:
             fwname = "summer"
+        elif self.args.spring:
+            fwname = "spring"
+        else:
+            fwname = "winter"  # default
 
         fw = self.fwdict[fwname]
+
+        # break if fw is spring
+        if fwname != "winter":
+            self.logger.info(f"fw_goto: {fwname} filter wheel not implemented yet!")
+            return
 
         pos = self.args.pos[0]
 
