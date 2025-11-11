@@ -715,7 +715,7 @@ class RoboOperator(QtCore.QObject):
         # Home and stow the rotator on the port we are *leaving*
         self.doTry("rotator_enable")
         self.doTry("rotator_home")
-        #self.doTry("rotator_disable")
+        # self.doTry("rotator_disable")
 
         # Switch to the corresponding port (this can raise exceptions)
         port = self.camera_manager.get_port_for_camera(camname)

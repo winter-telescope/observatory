@@ -845,6 +845,10 @@ observing_parameters:
         y_pixels: 1096
     
     spring:
+        dithers:
+            ditherNumber: 32
+            ditherMinStep_as: 75
+            ditherMaxStep_as: 90
         best_position:
             x_pixel: 0
             y_pixel: 0
@@ -857,6 +861,10 @@ observing_parameters:
         y_pixels: 1024
 
     summer:
+        dithers:
+            ditherNumber: 32
+            ditherMinStep_as: 75
+            ditherMaxStep_as: 90
         best_position:
             x_pixel: 0
             y_pixel: 0
