@@ -5313,10 +5313,29 @@ class RoboOperator(QtCore.QObject):
             target_field_angle + 180.0,
         ]
 
+        alt_sign = -1
+        if self.telescope.port == 2:
+            if verbose:
+                print("telescope port 2, alt sign = +1")
+            alt_sign = +1
+
+        # Compute candidate mech angles with the port-dependent sign
         possible_target_mech_angles = [
-            (target_field_angle - parallactic_angle - self.target_alt)
-            for target_field_angle in possible_target_field_angles
+            (fa - parallactic_angle + alt_sign * self.target_alt)
+            for fa in possible_target_field_angles
         ]
+
+        if verbose:
+            print(f"target_field_angle = {target_field_angle:0.3f} degs")
+            print(f"parallactic angle = {parallactic_angle:0.3f} degs")
+            print(f"target alt = {self.target_alt:0.3f} degs")
+            print(f"target az = {self.target_az:0.3f} degs")
+
+        # deprecated for port-aware calculation
+        # possible_target_mech_angles = [
+        #   (target_field_angle - parallactic_angle - self.target_alt)
+        #   for target_field_angle in possible_target_field_angles
+        # ]
 
         messages = [
             "No rotator wrap predicted",
