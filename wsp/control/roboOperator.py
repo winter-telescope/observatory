@@ -3682,11 +3682,14 @@ class RoboOperator(QtCore.QObject):
 
         """
         context = "do_darks"
-        self.log("starting dark sequence")
+        self.log(f"starting dark sequence for camera {camname}")
 
         # change the camera to the specified camera for the darks
         try:
             if camname != self.camname:
+                self.log(
+                    f"roboOperator: switching camera from {self.camname} to {camname}"
+                )
                 self.camname = camname
                 self.switchCamera(self.camname)
         except Exception as e:
@@ -3697,6 +3700,7 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
 
+        self.log(f"proceeding with darks on camera {self.camname}")
         # set the progID info here for the headers
         self.resetObsValues()
         try:

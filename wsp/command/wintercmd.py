@@ -3563,9 +3563,9 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the camera name
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("-w", "--winter", action="store_true", default=True)
-        group.add_argument("-c", "--summer", action="store_true", default=False)
-
+        group.add_argument("--winter", action="store_true")
+        group.add_argument("--summer", action="store_true")
+        group.add_argument("--spring", action="store_true")
         self.getargs()
 
         self.logger.info(f"fw_goto: args = {self.args}")
@@ -3574,6 +3574,10 @@ class Wintercmd(QtCore.QObject):
             camname = "winter"
         elif self.args.summer:
             camname = "summer"
+        elif self.args.spring:
+            camname = "spring"
+        else:
+            camname = "winter"  # default
 
         # You call this function like this:
         # robo_do_darks -n 3 -e 1 5 10
