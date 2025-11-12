@@ -548,20 +548,20 @@ cal_params:
                 nextmorning: True
                 sundir: 0
                 cmd: 'robo_do_darks --winter'
-            domeflats:
-                conds:
-                    cond1:
-                        type: 'sun'
-                        val: 5.0
-                        cond: '<'
-                    # cond2:
-                    #     type: 'sun'
-                    #     val: -10.0
-                    #     cond: '>'
-                repeat_on_restart: False
-                nextmorning: False
-                sundir: -1
-                cmd: 'robo_do_calibration -df'
+            #domeflats:
+            #    conds:
+            #        cond1:
+            #            type: 'sun'
+            #            val: 5.0
+            #            cond: '<'
+            #        # cond2:
+            #        #     type: 'sun'
+            #        #     val: -10.0
+            #        #     cond: '>'
+            #    repeat_on_restart: False
+            #    nextmorning: False
+            #    sundir: -1
+            #    cmd: 'robo_do_calibration -df'
     spring:
         darks:
             n_imgs: 5
