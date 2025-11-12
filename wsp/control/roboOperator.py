@@ -3716,13 +3716,13 @@ class RoboOperator(QtCore.QObject):
 
         # How many images do you want to take at each exposure time?
         if n_imgs is None:
-            n_imgs = self.config["cal_params"][self.camname]["dark"]["n_imgs"]
+            n_imgs = self.config["cal_params"][self.camname]["darks"]["n_imgs"]
         # What exposure times should we take darks at?
         # exptimes = [360.0, 180.0]
 
         # commenting this out for the moment to get things working in ndr-slope mode
         if (exptimes is None) or (exptimes == []):
-            exptimes = self.config["cal_params"][self.camname]["dark"]["exptimes"]
+            exptimes = self.config["cal_params"][self.camname]["darks"]["exptimes"]
 
             try:
                 # try to run a query of scheduled exposure times:
@@ -3783,7 +3783,7 @@ class RoboOperator(QtCore.QObject):
             )
 
             # send the filter to the specified position from the config file
-            filterID = self.config["cal_params"][self.camname]["dark"]["filterID"]
+            filterID = self.config["cal_params"][self.camname]["darks"]["filterID"]
             # get filter number
             for position in self.config["filter_wheels"][self.camname]["positions"]:
                 if (

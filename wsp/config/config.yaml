@@ -232,10 +232,9 @@ telescope:
     home_az_degs: 220 
     min_alt: 15
     max_alt: 85.0
-
+    default_port: 1 # default port on startup
     ports:
         # Port 1: WINTER
-        default: 1 # default port for startup
         1: 
             name: 'winter'
             rotator:
@@ -567,9 +566,7 @@ cal_params:
         darks:
             n_imgs: 5
             exptimes:
-                - 10.0
                 - 30.0
-                - 60.0
             filterID: 'J'
         triggers:
             darks:
