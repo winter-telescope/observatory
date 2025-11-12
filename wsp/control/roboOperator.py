@@ -2241,9 +2241,14 @@ class RoboOperator(QtCore.QObject):
 
         if not self.mountsim:
             # if the telescope is between ports, then we are not stowed:
-            if self.telescope.port not in [0, 1]:
+            if self.telescope.port not in [1, 2]:
+                print(
+                    f"DEBUG: port value = {self.telescope.port!r}, type = {type(self.telescope.port)}"
+                )
+                print(f"DEBUG: port not in [1,2] = {self.telescope.port not in [1, 2]}")
                 conds.append(False)
             else:
+                print("DEBUG: Taking FALSE branch")
                 delta_rot_angle = np.abs(
                     self.state["rotator_mech_position"]
                     - self.config["telescope"]["ports"][self.telescope.port]["rotator"][
