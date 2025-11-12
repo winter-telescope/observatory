@@ -2408,6 +2408,45 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 5-10-21
         Send the rotator to the home position
         """
+        self.defineCmdParser("turn instrument rotator to home position")
+
+        # need to ensure that a valid rotator is selected, eg,
+        # self.telescope.port is in [1,2]
+        # poll the port for some period until a valid rotator is found
+        # or timeout
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 30.0
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+
+            # print('entering loop')
+            # time.sleep(self.config['cmd_status_dt'])
+            QtCore.QThread.msleep(int(self.config["cmd_status_dt"] * 1000))
+            timestamp = datetime.utcnow().timestamp()
+            dt = timestamp - start_timestamp
+            # print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(
+                    f"command timed out after {timeout} seconds before completing:"
+                    f" port {self.telescope.port} is not at either allowed ports (1,2)"
+                )
+
+            stop_condition = self.telescope.port in [1, 2]
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+
+            if all(entry == condition for entry in stop_condition_buffer):
+                break
 
         angle = self.config["telescope"]["ports"][self.telescope.port]["rotator"][
             "home_degs"
