@@ -457,7 +457,10 @@ class RoboOperator(QtCore.QObject):
 
         try:
             # if the telescope is connected and the rotator is enabled, reset it
-            if self.telescope.mount.is_connected and self.telescope.rotator.is_enabled:
+            if (
+                self.telescope.state["mount.is_connected"]
+                and self.telescope.state["rotator.is_enabled"]
+            ):
                 # if the rotator is enabled, stop it and reset it
                 self.rotator_stop_and_reset()
         except Exception as e:
@@ -3723,17 +3726,16 @@ class RoboOperator(QtCore.QObject):
         # commenting this out for the moment to get things working in ndr-slope mode
         if (exptimes is None) or (exptimes == []):
             exptimes = self.config["cal_params"][self.camname]["darks"]["exptimes"]
-
-            try:
-                # try to run a query of scheduled exposure times:
-                scheduled_exptimes = self.caltracker.getScheduledExptimes(self.camname)
-                for exptime in scheduled_exptimes:
-                    if exptime not in exptimes:
-                        exptimes.append(exptime)
-            except Exception as e:
-                msg = f"could not run query on scheduled exposure times for {self.camname}: {e}"
-                self.announce(msg, group="operator")
-            # now order the exposure times?
+            # query ALL schedules and grab any additional exposure times
+            # try:
+            #    # try to run a query of scheduled exposure times:
+            #    scheduled_exptimes = self.caltracker.getScheduledExptimes(self.camname)
+            #    for exptime in scheduled_exptimes:
+            #        if exptime not in exptimes:
+            #            exptimes.append(exptime)
+            # except Exception as e:
+            #    msg = f"could not run query on scheduled exposure times for {self.camname}: {e}"
+            #    self.announce(msg, group="operator")
 
         # stow the rotator
         self.rotator_stop_and_reset()

@@ -4619,12 +4619,12 @@ class Wintercmd(QtCore.QObject):
         else:
             fwname = "winter"  # default
 
-        fw = self.fwdict[fwname]
-
         # break if fw is spring
         if fwname != "winter":
             self.logger.info(f"fw_goto: {fwname} filter wheel not implemented yet!")
             return
+
+        fw = self.fwdict[fwname]
 
         pos = self.args.pos[0]
 
