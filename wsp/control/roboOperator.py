@@ -2127,7 +2127,7 @@ class RoboOperator(QtCore.QObject):
 
         return is_lockout
 
-    def get_observatory_ready_status(self):
+    def get_observatory_ready_status(self, verbose=True):
         """
         Run a check to see if the observatory is ready. Basically:
             - did startup run successfully
@@ -2155,14 +2155,16 @@ class RoboOperator(QtCore.QObject):
         # TODO: UNCOMMENT
         # NPL: commenting out so that we can observe even though mirror cover is stuck open
         # 7-3-23
-        # if not self.test_mode:
-        if not self.mountsim:
+        # if we are not in mount_sim or testmode, check the mirror cover state
+        if not self.mountsim and not self.test_mode:
 
             conds.append(self.state["Mirror_Cover_State"] == 0)
 
         # TODO: add something about the focus here
 
         self.observatory_ready = all(conds)
+
+        # print a summary of the observatory ready status and flag any false conditions
 
         return self.observatory_ready
 
