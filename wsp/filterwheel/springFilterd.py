@@ -15,14 +15,19 @@ import threading
 import time
 from datetime import datetime
 
+import Pyro5.core
 import Pyro5.server
 import requests
 import yaml
 from PyQt5 import QtCore
 
-from wsp.daemon import daemon_utils
-from wsp.utils import logging_setup
-from wsp.utils.paths import WSP_PATH
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, wsp_path)
+print(f"springFilterd: wsp_path = {wsp_path}")
+
+from daemon import daemon_utils
+from utils import logging_setup
 
 
 class SpringFilterWheel(QtCore.QObject):
@@ -556,7 +561,7 @@ if __name__ == "__main__":
     print(f"springfilterd: logging mode = {doLogging}")
 
     # load the config
-    fwconfig = os.path.join(WSP_PATH, "filterwheel", "springfw_config.yaml")
+    fwconfig = os.path.join(wsp_path, "filterwheel", "springfw_config.yaml")
     config = yaml.load(open(fwconfig), Loader=yaml.FullLoader)
 
     app = QtCore.QCoreApplication(sys.argv)
