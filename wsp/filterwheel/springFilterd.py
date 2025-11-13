@@ -161,13 +161,19 @@ class SpringFilterWheel(QtCore.QObject):
             if response.status_code == 200:
                 response_dict = response.json()
                 self.parseResponse(response_dict)
-
-                # Assume homing completes successfully
-                # The filter wheel will report its position when we next query it
-                self.homed = 1
-                self.is_moving = 0
                 self.connected = True
-                self.log("Homing complete")
+
+                # Update state based on response
+                if self.filter_pos in [0, 1] and self.fw_status == 1:
+                    self.homed = 1
+                    self.is_moving = 0
+                    self.log("Homing complete")
+                else:
+                    self.log(
+                        f"Homing response: pos={self.filter_pos}, status={self.fw_status}"
+                    )
+                    self.is_moving = 0
+
                 self.update_state()
                 return True
 
@@ -213,6 +219,7 @@ class SpringFilterWheel(QtCore.QObject):
             if response.status_code == 200:
                 response_dict = response.json()
                 self.parseResponse(response_dict)
+                self.connected = True
 
                 # Handle shutter for dark filter
                 if filter_num == self.dark_filter:
@@ -220,10 +227,16 @@ class SpringFilterWheel(QtCore.QObject):
                 else:
                     self.openShutter()
 
-                # Assume move completes successfully
-                self.is_moving = 0
-                self.connected = True
-                self.log(f"Move to filter {filter_num} complete")
+                # Update state based on response
+                if self.filter_pos == filter_num and self.fw_status == 1:
+                    self.is_moving = 0
+                    self.log(f"Move to filter {filter_num} complete")
+                else:
+                    self.log(
+                        f"Move response: pos={self.filter_pos}, goal={filter_num}, status={self.fw_status}"
+                    )
+                    self.is_moving = 0
+
                 self.update_state()
                 return True
 
@@ -252,7 +265,10 @@ class SpringFilterWheel(QtCore.QObject):
             if response.status_code == 200:
                 response_dict = response.json()
                 self.parseResponse(response_dict)
+                self.connected = True
                 if verbose:
+                    self.log(f"Shutter opened: {response_dict}")
+                else:
                     self.log("Shutter opened")
                 self.update_state()
                 return True
@@ -260,9 +276,11 @@ class SpringFilterWheel(QtCore.QObject):
                 self.log(
                     f"Shutter open failed with status code: {response.status_code}"
                 )
+                self.connected = False
                 return False
         except Exception as e:
             self.log(f"Shutter open error: {e}")
+            self.connected = False
             return False
 
     def closeShutter(self, verbose=False):
@@ -274,7 +292,10 @@ class SpringFilterWheel(QtCore.QObject):
             if response.status_code == 200:
                 response_dict = response.json()
                 self.parseResponse(response_dict)
+                self.connected = True
                 if verbose:
+                    self.log(f"Shutter closed: {response_dict}")
+                else:
                     self.log("Shutter closed")
                 self.update_state()
                 return True
@@ -282,9 +303,11 @@ class SpringFilterWheel(QtCore.QObject):
                 self.log(
                     f"Shutter close failed with status code: {response.status_code}"
                 )
+                self.connected = False
                 return False
         except Exception as e:
             self.log(f"Shutter close error: {e}")
+            self.connected = False
             return False
 
     def goto(self, pos):
