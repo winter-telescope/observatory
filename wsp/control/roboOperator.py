@@ -2059,7 +2059,7 @@ class RoboOperator(QtCore.QObject):
         telescope_power = self.state.get("dome_telescope_power", -1)
 
         # Check if we're in manual lockout (CONSOLE mode with telescope power OFF)
-        is_lockout = (control_status == 2) and (telescope_power == 0)
+        is_lockout = (control_status == 2) or (telescope_power == 0)
 
         return is_lockout
 
