@@ -364,6 +364,8 @@ class RoboOperator(QtCore.QObject):
         # a similar flag to denote whether the observatory is safely stowed
         self.observatory_stowed = False
 
+        self.in_manual_lockout = False  # Track manual lockout state
+
         ### ALARMS ###
         self.active_alarms = []
         self.alarm_enable = True
@@ -995,6 +997,36 @@ class RoboOperator(QtCore.QObject):
                 
             
             """
+
+            # ---------------------------------------------------------------------
+            # check for manual lockout mode FIRST
+            # ---------------------------------------------------------------------
+            current_lockout_status = self.get_manual_lockout_status()
+
+            if current_lockout_status:
+                # We are in manual lockout
+                if not self.in_manual_lockout:
+                    # Just entered lockout
+                    self.in_manual_lockout = True
+                    self.announce(
+                        f"🔒🛑 **MANUAL LOCKOUT DETECTED** - Dome is in CONSOLE mode with telescope power OFF. "
+                        f"Observatory operations paused. Standing by until lockout is cleared..."
+                    )
+                else:
+                    # Still in lockout
+                    self.log("Manual lockout active, standing by...")
+
+                # Skip everything else and just wait
+                self.checktimer.start()
+                return
+
+            elif self.in_manual_lockout:
+                # Just exited lockout
+                self.in_manual_lockout = False
+                self.announce(
+                    f"🔓✅ **MANUAL LOCKOUT CLEARED** - Resuming normal operations..."
+                )
+
             # WINTER camera
             self.log("checking if the camera should be on")
             if self.get_camera_should_be_running_status():
@@ -2010,6 +2042,26 @@ class RoboOperator(QtCore.QObject):
 
         return new_base_ra_hours, new_base_dec_deg
         """
+
+    def get_manual_lockout_status(self):
+        """
+        Check if the dome is in manual lockout mode.
+
+        Manual lockout is indicated by:
+            - dome_control_status == 2 ("CONSOLE")
+            - dome_telescope_power == 0 ("OFF")
+
+        Returns:
+            bool: True if in manual lockout, False otherwise
+        """
+        # Get the current values
+        control_status = self.state.get("dome_control_status", -1)
+        telescope_power = self.state.get("dome_telescope_power", -1)
+
+        # Check if we're in manual lockout (CONSOLE mode with telescope power OFF)
+        is_lockout = (control_status == 2) and (telescope_power == 0)
+
+        return is_lockout
 
     def get_observatory_ready_status(self):
         """
