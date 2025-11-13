@@ -1123,13 +1123,13 @@ class RoboOperator(QtCore.QObject):
                                     self.doTry(cal_cmd)
 
                                     self.log(
-                                        f"finished executing cal sequence {cal_desc}:"
+                                        f"finished executing cal sequence {cal_desc}, going to re-check what to do next"
                                     )
                                     QtCore.QCoreApplication.processEvents()
 
-                                self.announce(
-                                    f"finished executing all active requests for cal sequences, going to check what to do next"
-                                )
+                                    # after executing one cal sequence, break out of the for loop to re-check what to do
+                                    break
+
                                 self.checktimer.start()
                                 return
 
@@ -3966,16 +3966,23 @@ class RoboOperator(QtCore.QObject):
         self.announce(":greentick: auto darks image sequence completed successfully!")
         self.announce("setting system back up for observing")
 
-        system = "telescope"
-        self.announce(f"opening mirror covers...")
-        self.doTry("mirror_cover_open", context=context, system=system)
-        self.announce(":greentick: mirror covers open!")
+        if not self.test_mode:
+            system = "telescope"
+            self.announce(f"opening mirror covers...")
+            self.doTry("mirror_cover_open", context=context, system=system)
+            self.announce(":greentick: mirror covers open!")
+        else:
+            self.log(
+                "I would open the mirror covers now, but we're in test mode so skipping."
+            )
 
-        system = "dome"
-        self.announce("opening dome...")
-        self.doTry("dome_open", context=context, system=system)
-        self.announce(":greentick: dome opened")
-
+        if not self.test_mode:
+            system = "dome"
+            self.announce("opening dome...")
+            self.doTry("dome_open", context=context, system=system)
+            self.announce(":greentick: dome opened")
+        else:
+            self.log("I would open the dome now, but we're in test mode so skipping.")
         # cycle through all the active filters:for filterID in
         # filterIDs = self.focusTracker.getActiveFilters()
         self.announce("auto darks completed, continuuing with observations!")
