@@ -305,16 +305,6 @@ class RoboOperator(QtCore.QObject):
 
         # for now just trying to start leaving places in the code to swap between winter and summer
         self.camname = "winter"
-        # change the camera to the specified camera for the darks
-        try:
-            self.switchCamera(self.camname)
-        except Exception as e:
-            msg = f"roboOperator: could not switch to camera {self.camname} for dark routine due to {e.__class__.__name__}, {e}"
-            self.log(msg)
-            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
-            err = roboError("roboOperator.__init__", "switchCamera", "telescope", msg)
-            self.hardware_error.emit(err)
-            return
 
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger=self.logger)
@@ -451,6 +441,17 @@ class RoboOperator(QtCore.QObject):
         self.updateThread = data_handler.daq_loop(
             func=self.update_state, dt=500, name="robo_status_update"
         )
+
+        # change the camera to the specified camera for the darks
+        try:
+            self.switchCamera(self.camname)
+        except Exception as e:
+            msg = f"roboOperator: could not switch to camera {self.camname} for dark routine due to {e.__class__.__name__}, {e}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError("roboOperator.__init__", "switchCamera", "telescope", msg)
+            self.hardware_error.emit(err)
+            return
 
     def broadcast_hardware_error(self, error):
         msg = f":redsiren: *{error.system.upper()} ERROR* ocurred when attempting command: *_{error.cmd}_*, {error.msg}"
