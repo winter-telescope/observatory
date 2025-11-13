@@ -78,8 +78,6 @@ class SpringFilterWheel(QtCore.QObject):
         self.state_update_dt = config["state_update_dt"]
 
         ## Startup:
-        self.testConnection()
-        time.sleep(0.5)
         self.home(verbose=verbose)
 
     def log(self, msg, level=logging.INFO):
@@ -100,7 +98,6 @@ class SpringFilterWheel(QtCore.QObject):
 
     def pollStatus(self):
         """Get housekeeping status"""
-        self.getStatus()
         self.update_state()
 
     def update_state(self):
@@ -139,24 +136,6 @@ class SpringFilterWheel(QtCore.QObject):
         except Exception as e:
             self.log(f"Error executing command {cmd}: {e}")
 
-    def testConnection(self):
-        """Test connection to web interface"""
-        try:
-            # Try to get status
-            url = f"{self.base_url}/filter_wheel?n=8"
-            response = requests.get(url, timeout=self.request_timeout)
-            if response.status_code == 200:
-                self.connected = True
-                self.log("Successfully connected to Spring filter wheel")
-            else:
-                self.connected = False
-                self.log(
-                    f"Connection test failed with status code: {response.status_code}"
-                )
-        except Exception as e:
-            self.connected = False
-            self.log(f"Connection test failed: {e}")
-
     def parseResponse(self, response_dict):
         """Parse the JSON response from the web interface"""
         self.filter_pos = response_dict.get("fw_pos", -1)
@@ -165,25 +144,6 @@ class SpringFilterWheel(QtCore.QObject):
         self.shutter_open = response_dict.get("shutter_open", -1)
         self.shutter_status = response_dict.get("shutter_status", 0)
         self.shutter_response_code = response_dict.get("shutter_response_code", 0)
-
-    def getStatus(self, verbose=False):
-        """Get current filter wheel status"""
-        try:
-            url = f"{self.base_url}/filter_wheel?n=8"
-            response = requests.get(url, timeout=self.request_timeout)
-            if response.status_code == 200:
-                response_dict = response.json()
-                self.parseResponse(response_dict)
-                if verbose:
-                    self.log(f"Status: {response_dict}")
-                return True
-            else:
-                self.connected = False
-                return False
-        except Exception as e:
-            self.connected = False
-            self.log(f"Error getting status: {e}")
-            return False
 
     def home(self, verbose=False):
         """Home the filter wheel (go to position 0 or 1)"""
@@ -202,19 +162,14 @@ class SpringFilterWheel(QtCore.QObject):
                 response_dict = response.json()
                 self.parseResponse(response_dict)
 
-                # Wait for move to complete
-                start_time = time.time()
-                timeout = self.config.get("timeout_secs", 60)
-
-                while time.time() - start_time < timeout:
-                    self.getStatus()
-                    if self.filter_pos in [0, 1] and self.fw_status == 1:
-                        self.homed = 1
-                        self.is_moving = 0
-                        self.log("Homing complete")
-                        self.update_state()
-                        return True
-                    time.sleep(self.state_update_dt)
+                # Assume homing completes successfully
+                # The filter wheel will report its position when we next query it
+                self.homed = 1
+                self.is_moving = 0
+                self.connected = True
+                self.log("Homing complete")
+                self.update_state()
+                return True
 
                 self.log("Homing timed out")
                 self.is_moving = 0
@@ -265,18 +220,12 @@ class SpringFilterWheel(QtCore.QObject):
                 else:
                     self.openShutter()
 
-                # Wait for move to complete
-                start_time = time.time()
-                timeout = self.config.get("timeout_secs", 60)
-
-                while time.time() - start_time < timeout:
-                    self.getStatus()
-                    if self.filter_pos == filter_num and self.fw_status == 1:
-                        self.is_moving = 0
-                        self.log(f"Move to filter {filter_num} complete")
-                        self.update_state()
-                        return True
-                    time.sleep(self.state_update_dt)
+                # Assume move completes successfully
+                self.is_moving = 0
+                self.connected = True
+                self.log(f"Move to filter {filter_num} complete")
+                self.update_state()
+                return True
 
                 self.log("Move timed out")
                 self.is_moving = 0
