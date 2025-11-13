@@ -730,6 +730,18 @@ class RoboOperator(QtCore.QObject):
         self.doTry("rotator_enable")
         self.doTry("rotator_home")
 
+        # Set the focuser to the corresponding camera's focus position
+        camera_focus = self.focusTracker.get_best_focus(camera=camname)
+        if camera_focus is not None:
+            self.log(
+                f"setting focuser to best focus for camera {camname}: {camera_focus}"
+            )
+            # rack focuser to smaller value to approach focus from below
+            self.doTry("m2_focuser_goto", camera_focus - 500)  # type: ignore
+            self.doTry("foc_set_position", camera_focus)  # type: ignore
+        else:
+            self.log(f"no best focus found for camera {camname}, not moving focuser")
+
         # If that worked then switch the camera references
         self.camera = camera
         self.fw = fw
@@ -1269,25 +1281,52 @@ class RoboOperator(QtCore.QObject):
                             else:
                                 pass
 
-                            graceperiod_hours = self.config["focus_loop_param"][
-                                "focus_graceperiod_hours"
-                            ]
                             if self.test_mode == True:
                                 self.log(f"not checking focus bc we're in test mode")
                                 pass
                             else:
-                                filterIDs_to_focus = (
-                                    self.focusTracker.getFiltersToFocus(
-                                        obs_timestamp=obstime_timestamp_utc,
-                                        graceperiod_hours=graceperiod_hours,
-                                        cam=self.camname,
-                                    )
+
+                                # filterIDs_to_focus = (
+                                #    self.focusTracker.getFiltersToFocus(
+                                #        obs_timestamp=obstime_timestamp_utc,
+                                #        graceperiod_hours=graceperiod_hours,
+                                #        cam=self.camname,
+                                #    )
+                                # )
+                                cameras_to_focus = self.focusTracker.getCamerasToFocus(
+                                    obs_timestamp=obstime_timestamp_utc,
+                                    graceperiod_hours=self.config["focus_loop_param"][
+                                        "focus_graceperiod_hours"
+                                    ],
+                                    max_attempts=self.config["focus_loop_param"].get(
+                                        "max_focus_attempts", 3
+                                    ),
                                 )
+
+                                if cameras_to_focus:
+                                    self.log(
+                                        f"need to focus cameras: {cameras_to_focus}"
+                                    )
+                                    for cam_to_focus in cameras_to_focus:
+                                        # pick off one camera to focus, then return to checkWhatToDo
+                                        self.announce(
+                                            f"**Out of date focus results**: we need to focus the telescope for camera: {cam_to_focus}"
+                                        )
+                                        # there are filters to focus! run a focus sequence
+                                        self.do_camera_focus_sequence(
+                                            camname=cam_to_focus
+                                        )
+                                        self.announce(
+                                            f"got past the do_focus_sequence call in checkWhatToDo?"
+                                        )
+                                        # now exit and rerun the check
+                                        self.checktimer.start()
+                                        return
 
                                 # here is a good place to insert a good check on temperature change,
                                 # or even better a check on FWHM of previous images
 
-                                if not filterIDs_to_focus is None:
+                                """ if not filterIDs_to_focus is None:
                                     print(
                                         f"robo: focus attempt #{self.focus_attempt_number}"
                                     )
@@ -1310,7 +1349,7 @@ class RoboOperator(QtCore.QObject):
                                         self.focus_attempt_number += 1
                                         # now exit and rerun the check
                                         self.checktimer.start()
-                                        return
+                                        return """
 
                             # here we should check if the temperature has changed by some amount and nudge the focus if need be
 
@@ -4530,6 +4569,7 @@ class RoboOperator(QtCore.QObject):
                 self.announce(f"FIT IS TOO BAD. Returning to nominal focus")
                 self.do(f"m2_focuser_goto {nom_focus}")
                 self.focus_attempt_number += 1
+                # log a bad focus attempt with the focus_tracker (not yet implemented)
 
             else:
                 self.logger.info(f"Focuser_going to final position at {x0_fit} microns")
@@ -4571,8 +4611,11 @@ class RoboOperator(QtCore.QObject):
                         f"updating the focus position of filter {filterID} to {x0_fit}, timestamp = {obstime_timestamp_utc}"
                     )
 
-                    self.focusTracker.updateFilterFocus(
-                        filterID, x0_fit, obstime_timestamp_utc
+                    # self.focusTracker.updateFilterFocus(
+                    #    filterID, x0_fit, obstime_timestamp_utc
+                    # )
+                    self.focusTracker.updateCameraFocus(
+                        camera=self.camname, focus_pos=x0_fit
                     )
 
                 # we completed the focus! set the focus attempt number to zero
@@ -4607,6 +4650,109 @@ class RoboOperator(QtCore.QObject):
         )
 
         return x0_fit
+
+    def do_camera_focus_sequence(self, camname: Optional[str] = None):
+        """
+        run a focus loop on the specified camera. if camname is None, use self.camname
+
+        """
+        context = "do_camera_focus_sequence"
+        system = ""
+
+        if camname is None:
+            camname = self.camname
+        self.announce(f"running focus sequence for camera {camname}")
+
+        # switch cameras if needed
+        if camname != self.camname:
+            self.announce(
+                f"switching camera from {self.camname} --> {camname} for focus sequence"
+            )
+            try:
+                self.do(f"robo_switch_camera {camname}")
+            except Exception as e:
+                self.log(
+                    f"Error switching camera: aborting focus sequence: {e}, traceback = {traceback.format_exc()}"
+                )
+                return
+
+        # 1. change to the focus filter for this camera
+        filterID = self.focusTracker.get_focus_filter(self.camname)
+        self.announce(f"changing to focus filter {filterID} for camera {self.camname}")
+
+        # try to move the filter
+        try:
+            system = "filter wheel"
+
+            if self.camname not in ["winter"]:
+                self.announce(
+                    f"camera {self.camname} has no filter wheel, skipping filter change"
+                )
+            else:
+                # get filter number
+                for position in self.config["filter_wheels"][self.camname]["positions"]:
+                    if (
+                        self.config["filter_wheels"][self.camname]["positions"][
+                            position
+                        ]
+                        == filterID
+                    ):
+                        filter_num = position
+                    else:
+                        pass
+                if filter_num == self.fw.state["filter_pos"]:
+                    self.log(
+                        "requested filter matches current, no further action taken"
+                    )
+                else:
+                    self.log(
+                        f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}'
+                    )
+                    # self.do(f'command_filter_wheel {filter_num}')
+                    self.do(f"fw_goto {filter_num} --{self.camname}")
+        except Exception as e:
+            msg = f"roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
+
+        # 2. do a focus loop!!
+        system = "focus_loop"
+        try:
+            # sweeptype = "narrow"  # one of 'narrow' or 'wide'
+            # total_throw = self.config["focus_loop_param"]["sweep_param"][sweeptype][
+            #    "total_throw"
+            # ]
+            # nsteps = self.config["focus_loop_param"]["sweep_param"][sweeptype]["nsteps"]
+            # nom_focus = "default"
+            total_throw = self.config["focus_loop_param"]["cameras"][self.camname][
+                "focus_loop_total_throw"
+            ]
+            nsteps = self.config["focus_loop_param"]["cameras"][self.camname][
+                "focus_loop_nsteps"
+            ]
+            nom_focus = self.config["focus_loop_param"]["cameras"][self.camname][
+                "nominal_focus"
+            ]
+
+            focusType = "Vcurve"  # <- really??
+
+            self.do_focusLoop(
+                nom_focus=nom_focus,
+                total_throw=total_throw,
+                nsteps=nsteps,
+                updateFocusTracker=True,
+                focusType=focusType,
+            )
+        except Exception as e:
+            msg = f"roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return
 
     def do_focus_sequence(self, filterIDs="reference", focusType="default"):
         """

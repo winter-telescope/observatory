@@ -630,6 +630,7 @@ cal_params:
                 
 ########### FOCUSER LOOP PARAM ###########
 focus_loop_param:
+    max_focus_attempts: 3
     sweep_param:
         narrow:
             total_throw: 500
@@ -642,14 +643,23 @@ focus_loop_param:
         winter:
             filterID: 'J'
             nominal_focus: 11925
+            sweep_param:
+                total_throw: 500
+                nsteps: 6
             focus_exptime: 30
         spring:
             filterID: 'J'
-            nominal_focus: 19400
+            nominal_focus: 19450
+            sweep_param:
+                total_throw: 200
+                nsteps: 6
             focus_exptime: 30
         summer:
             filterID: 'r'
             nominal_focus: 19400
+            sweep_param:
+                total_throw: 500
+                nsteps: 6
             focus_exptime: 30
     nominal_focus:
         spring: 19400
