@@ -236,20 +236,16 @@ class TriggerHandler(QtCore.QObject):
 
     def setupTrigLog(self, logpath, linkpath):
         """
-        set up a yaml log file which records whether the command for each trigger
+        set up a json log file which records whether the command for each trigger
         has already been sent tonight.
 
         checks to see if tonight's triglog already exists. if not it makes a new one.
+        if it exists but is not compliant with the current trigger configuration,
+        it deletes the old file and creates a new one.
         """
-        # file
-        # self.triglog_dir = os.path.join(os.getenv("HOME"),'data','triglogs')
-        # self.triglog_filename = f'triglog_{utils.tonight_local()}.json'
         self.triglog_filepath = logpath
         self.triglog_dir = os.path.dirname(self.triglog_filepath)
 
-        # self.triglog_linkdir = os.path.join(os.getenv("HOME"),'data')
-        # self.triglog_linkname = 'triglog_tonight.lnk'
-        # self.triglog_linkpath = os.path.join(self.triglog_linkdir, self.triglog_linkname)
         self.triglog_linkpath = linkpath
         self.triglog_linkdir = os.path.dirname(self.triglog_linkpath)
 
@@ -261,18 +257,46 @@ class TriggerHandler(QtCore.QObject):
         pathlib.Path(self.triglog_linkdir).mkdir(parents=True, exist_ok=True)
         self.log(f"ensuring directory exists: {self.triglog_linkdir}")
 
+        # flag to track whether we need to create a new triglog
+        create_new_triglog = False
+
         # check if the file exists
         try:
             # assume file exists and try to load triglog from file
-            self.log(f"loading triglog from file")
-            self.triglog = json.load(open(self.triglog_filepath))
+            self.log(f"loading triglog from file: {self.triglog_filepath}")
+            loaded_triglog = json.load(open(self.triglog_filepath))
+
+            # validate that the loaded triglog is compliant with current triggers
+            if self._validate_triglog(loaded_triglog):
+                self.log("existing triglog is valid and compliant")
+                self.triglog = loaded_triglog
+            else:
+                self.log(
+                    "existing triglog is not compliant with current trigger configuration"
+                )
+                create_new_triglog = True
 
         except FileNotFoundError:
             # file does not exist: create it
             self.log("no triglog found: creating new one")
+            create_new_triglog = True
+
+        except (json.JSONDecodeError, ValueError) as e:
+            # file exists but is corrupted or invalid JSON
+            self.log(f"triglog file is corrupted or invalid: {e}")
+            create_new_triglog = True
+
+        # create a new triglog if needed
+        if create_new_triglog:
+            # remove the old file if it exists
+            if os.path.exists(self.triglog_filepath):
+                self.log(
+                    f"removing non-compliant triglog file: {self.triglog_filepath}"
+                )
+                os.remove(self.triglog_filepath)
 
             # create the default triglog: no cmds have been sent
-            self.resetTrigLog()
+            self.resetTrigLog(updateFile=True)
 
         # recreate a symlink to tonights trig log file
         self.log(f"trying to create link at {self.triglog_linkpath}")
@@ -284,7 +308,45 @@ class TriggerHandler(QtCore.QObject):
             os.remove(self.triglog_linkpath)
             os.symlink(self.triglog_filepath, self.triglog_linkpath)
 
-        print(f"\ntriglog = {json.dumps(self.triglog, indent = 2)}")
+        print(f"\ntriglog = {json.dumps(self.triglog, indent=2)}")
+
+    def _validate_triglog(self, loaded_triglog):
+        """
+        Validate that the loaded triglog is compliant with the current trigger configuration.
+
+        Returns True if valid, False otherwise.
+        """
+        # check if loaded_triglog is a dictionary
+        if not isinstance(loaded_triglog, dict):
+            self.log("triglog is not a dictionary")
+            return False
+
+        # check that all current triggers exist in the loaded triglog
+        for trigname in self.triggers.keys():
+            if trigname not in loaded_triglog:
+                self.log(f"trigger '{trigname}' missing from loaded triglog")
+                return False
+
+            # check that each trigger entry has the required fields
+            trig_entry = loaded_triglog[trigname]
+            if not isinstance(trig_entry, dict):
+                self.log(f"trigger entry for '{trigname}' is not a dictionary")
+                return False
+
+            required_fields = ["sent", "sun_alt_sent", "time_sent"]
+            for field in required_fields:
+                if field not in trig_entry:
+                    self.log(f"trigger '{trigname}' missing required field '{field}'")
+                    return False
+
+        # check for extra triggers in the loaded triglog that no longer exist
+        for trigname in loaded_triglog.keys():
+            if trigname not in self.triggers:
+                self.log(f"loaded triglog contains obsolete trigger '{trigname}'")
+                return False
+
+        self.log("triglog validation passed")
+        return True
 
     def getTrigCurVals(self, triggercond, sun_alt, timestamp, nextmorning=False):
         """:
