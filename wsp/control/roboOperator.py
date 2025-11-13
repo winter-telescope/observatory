@@ -999,7 +999,7 @@ class RoboOperator(QtCore.QObject):
             """
 
             # ---------------------------------------------------------------------
-            # check for manual lockout mode FIRST
+            # check for manual lockout mode
             # ---------------------------------------------------------------------
             current_lockout_status = self.get_manual_lockout_status()
 
@@ -1007,14 +1007,40 @@ class RoboOperator(QtCore.QObject):
                 # We are in manual lockout
                 if not self.in_manual_lockout:
                     # Just entered lockout
+
                     self.in_manual_lockout = True
+                    self.manual_lockout_start_time = datetime.now().timestamp()
+                    self.manual_lockout_last_reminder_time = None
+
                     self.announce(
-                        f"🔒🛑 **MANUAL LOCKOUT DETECTED** - Dome is in CONSOLE mode with telescope power OFF. "
-                        f"Observatory operations paused. Standing by until lockout is cleared..."
+                        "🛑🔒 *MANUAL LOCKOUT DETECTED* - Dome is in *CONSOLE* mode and/or telescope power is *OFF*. "
+                        "Observatory operations paused while staff perform manual checks. "
+                        "Standing by until lockout is cleared..."
                     )
                 else:
                     # Still in lockout
                     self.log("Manual lockout active, standing by...")
+
+                    # Check if we should send a reminder
+                    if self.should_send_lockout_reminder():
+
+                        self.manual_lockout_last_reminder_time = (
+                            datetime.now().timestamp()
+                        )
+
+                        # Calculate how long we've been locked out
+                        lockout_duration_min = (
+                            datetime.now().timestamp() - self.manual_lockout_start_time
+                        ) / 60  # type: ignore
+
+                        operator_msg = (
+                            f"⚠️ *MANUAL LOCKOUT REMINDER* - The observatory has been in manual lockout "
+                            f"for {lockout_duration_min:.0f} minutes during observing hours "
+                            f"(sun alt = {self.state['sun_alt']:.1f}°). "
+                            f"The system could be observing but is still locked out. Is this expected?"
+                        )
+
+                        self.alertHandler.slack_message_group("operator", operator_msg)
 
                 # Skip everything else and just wait
                 self.checktimer.start()
@@ -1023,8 +1049,11 @@ class RoboOperator(QtCore.QObject):
             elif self.in_manual_lockout:
                 # Just exited lockout
                 self.in_manual_lockout = False
+                self.manual_lockout_start_time = None
+                self.manual_lockout_last_reminder_time = None
+
                 self.announce(
-                    f"🔓✅ **MANUAL LOCKOUT CLEARED** - Resuming normal operations..."
+                    "🔓✅ *MANUAL LOCKOUT CLEARED* - Resuming normal operations..."
                 )
 
             # WINTER camera
@@ -2042,6 +2071,41 @@ class RoboOperator(QtCore.QObject):
 
         return new_base_ra_hours, new_base_dec_deg
         """
+
+    def should_send_lockout_reminder(self):
+        """
+        Check if we should send a reminder about manual lockout.
+
+        Sends reminders if:
+            - System should be observing (sun is low enough)
+            - It's been 30+ minutes since last reminder (or initial lockout)
+
+        Returns:
+            bool: True if reminder should be sent
+        """
+        import time
+
+        # Check if we're in observing hours (sun is low enough)
+        sun_is_low = self.state["sun_alt"] <= self.config["max_sun_alt_for_observing"]
+
+        if not sun_is_low:
+            # Don't send reminders during daytime
+            return False
+
+        current_time = datetime.now().timestamp()
+        reminder_interval_sec = 30 * 60  # 30 minutes
+
+        # Check if enough time has passed since last reminder
+        if self.manual_lockout_last_reminder_time is None:
+            # First reminder - check if it's been long enough since lockout started
+            time_in_lockout = current_time - self.manual_lockout_start_time
+            return time_in_lockout >= reminder_interval_sec
+        else:
+            # Subsequent reminders - check time since last reminder
+            time_since_last_reminder = (
+                current_time - self.manual_lockout_last_reminder_time
+            )
+            return time_since_last_reminder >= reminder_interval_sec
 
     def get_manual_lockout_status(self):
         """
