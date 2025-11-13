@@ -150,8 +150,13 @@ class TriggerHandler(QtCore.QObject):
 
         # create local dictionary of triggers
         for trig in trigdict["triggers"]:
+            if trigname_prefix is not None:
+                trig_key = f"{trigname_prefix}-{trig}"
+            else:
+                trig_key = trig
+
             triglist = list()
-            self.log(f"setting up trigger: {trig}")
+            self.log(f"setting up trigger: {trig_key}")
 
             trigsundir = trigdict["triggers"][trig]["sundir"]
             trignextmorning = trigdict["triggers"][trig].get("nextmorning", False)
@@ -174,10 +179,7 @@ class TriggerHandler(QtCore.QObject):
             roboTrigger = RoboTrigger(
                 trigcmd, trigsundir, triglist, repeat_on_restart, trignextmorning
             )
-            if trigname_prefix is not None:
-                trig_key = f"{trigname_prefix}-{trig}"
-            else:
-                trig_key = trig
+
             self.triggers.update({trig_key: roboTrigger})
 
         # # set up the log file
