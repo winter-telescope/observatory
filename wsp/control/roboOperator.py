@@ -4715,7 +4715,7 @@ class RoboOperator(QtCore.QObject):
         try:
             system = "filter wheel"
 
-            if self.camname not in ["winter"]:
+            if self.camname not in ["winter", "spring"]:
                 self.announce(
                     f"camera {self.camname} has no filter wheel, skipping filter change"
                 )
