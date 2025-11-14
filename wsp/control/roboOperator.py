@@ -760,6 +760,7 @@ class RoboOperator(QtCore.QObject):
         return True
 
     def restart_robo(self, arg="auto"):
+        self.log("restarting the WINTER robot")
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
         # if we get passed test mode, or have already started in test mode, then turn on sun_override
         if arg == "test" or self.test_mode == True:
