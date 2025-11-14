@@ -3964,6 +3964,18 @@ class RoboOperator(QtCore.QObject):
                 self.hardware_error.emit(err)
                 return
 
+            # shutter
+            if self.camname in ["spring"]:
+                try:
+                    self.do("shutter close --spring")
+                except Exception as e:
+                    msg = f"roboOperator: could not close {self.camname} shutter due to {e.__class__.__name__}, {e}"
+                    self.log(msg)
+                    self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+                    err = roboError(context, self.lastcmd, "shutter", msg)
+                    self.hardware_error.emit(err)
+                    return
+
             system = "camera"
             # step through the specified exposure times:
             for exptime in exptimes:
@@ -5239,7 +5251,7 @@ class RoboOperator(QtCore.QObject):
                             f"changing filter to scheduled filter: {self.filter_scheduled} (position {filter_num})"
                         )
 
-                        if self.camname in ["winter"]:
+                        if self.camname in ["winter", "spring"]:
                             # check if the filter is already in place
                             if filter_num == self.fw.state["filter_pos"]:
                                 self.log(
@@ -5256,6 +5268,20 @@ class RoboOperator(QtCore.QObject):
                             self.log(
                                 f"skipping filter change for camera {self.camname} (not yet implemented)"
                             )
+                        ## Shutter: open it unless a dark has been requested ###
+                        if self.camname == "spring":
+                            if self.filter_scheduled.lower() in ["dark"]:
+                                if self.fw.state["shutter_status"] == 0:
+                                    self.log("shutter already closed")
+                                else:
+                                    self.log("closing shutter for dark exposure")
+                                    self.do("shutter_close --spring")
+                            else:
+                                if self.fw.state["shutter_status"] == 1:
+                                    pass
+                                else:
+                                    self.log("opening shutter for science exposure")
+                                    self.do("shutter_open --spring")
 
                         # set up a big descriptive message for slack:
                         msg = f'>> Executing Observation: Pointing Number [{pointing_num}/{num_pointings}]: (dRA, dDec) = ({pointing_offset["coords"]["dRA"]}, {pointing_offset["coords"]["dDec"]})'
