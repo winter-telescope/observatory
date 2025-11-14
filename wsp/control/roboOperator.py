@@ -4729,11 +4729,11 @@ class RoboOperator(QtCore.QObject):
             # nsteps = self.config["focus_loop_param"]["sweep_param"][sweeptype]["nsteps"]
             # nom_focus = "default"
             total_throw = self.config["focus_loop_param"]["cameras"][self.camname][
-                "focus_loop_total_throw"
-            ]
+                "sweep_param"
+            ]["total_throw"]
             nsteps = self.config["focus_loop_param"]["cameras"][self.camname][
-                "focus_loop_nsteps"
-            ]
+                "sweep_param"
+            ]["nsteps"]
             nom_focus = self.config["focus_loop_param"]["cameras"][self.camname][
                 "nominal_focus"
             ]
