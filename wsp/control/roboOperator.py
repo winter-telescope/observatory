@@ -4435,7 +4435,9 @@ class RoboOperator(QtCore.QObject):
                 ]
 
                 images = [
-                    "/home/winter/data/images/sample_focusloop/" + imname + "_mef.fits"
+                    "/home/winter/data/images/sample_focusloop/focusLoop_20240913-090922-224/"
+                    + imname
+                    + "_mef.fits"
                     for imname in imnames
                 ]
 
