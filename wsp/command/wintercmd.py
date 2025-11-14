@@ -1950,7 +1950,7 @@ class Wintercmd(QtCore.QObject):
         group.add_argument("--spring", action="store_true")
         self.getargs()
 
-        self.logger.info(f"fw_goto: args = {self.args}")
+        self.logger.info(f"doFocusSeq: args = {self.args}")
 
         if self.args.winter:
             camname = "winter"
@@ -1966,7 +1966,7 @@ class Wintercmd(QtCore.QObject):
         else:
             self.logger.info(f"doFocusSeq: performing focus sequence on active cam")
 
-        sigcmd = signalCmd("do_camera_focus_sequence", camera_name=camname)
+        sigcmd = signalCmd("do_camera_focus_sequence", camname=camname)
         self.roboThread.newCommand.emit(sigcmd)
 
     """
