@@ -738,8 +738,8 @@ class RoboOperator(QtCore.QObject):
                 f"setting focuser to best focus for camera {camname}: {camera_focus}"
             )
             # rack focuser to smaller value to approach focus from below
-            self.doTry("m2_focuser_goto", camera_focus - 500)  # type: ignore
-            self.doTry("foc_set_position", camera_focus)  # type: ignore
+            self.doTry(f"m2_focuser_goto {camera_focus - 500}")  # type: ignore
+            self.doTry(f"foc_set_position {camera_focus}")  # type: ignore
         else:
             self.log(f"no best focus found for camera {camname}, not moving focuser")
 
