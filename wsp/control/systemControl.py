@@ -37,7 +37,7 @@ from wsp.control import roboOperator
 from wsp.daemon import daemon_utils, test_daemon_local
 from wsp.dome import dome
 from wsp.ephem import ephem
-from wsp.filterwheel import filterwheel
+from wsp.filterwheel import filterwheel, spring_filterwheel
 from wsp.housekeeping import housekeeping, labjack_handler_local
 from wsp.power import powerManager
 from wsp.schedule import schedule
@@ -476,7 +476,7 @@ class control(QtCore.QObject):
             verbose=self.verbose,
         )
 
-        self.springfw = filterwheel.spring_filterwheel(
+        self.springfw = spring_filterwheel.local_filterwheel(
             base_directory=self.base_directory,
             config=self.config,
             daemon_pyro_name="SPRINGfw",
