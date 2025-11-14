@@ -4601,8 +4601,9 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("-w", "--winter", action="store_true", default=True)
-        group.add_argument("-c", "--summer", action="store_true", default=False)
+        group.add_argument("--winter", action="store_true")
+        group.add_argument("--summer", action="store_true")
+        group.add_argument("--spring", action="store_true")
 
         self.getargs()
 
@@ -4612,6 +4613,10 @@ class Wintercmd(QtCore.QObject):
             fwname = "winter"
         elif self.args.summer:
             fwname = "summer"
+        elif self.args.spring:
+            fwname = "spring"
+        else:
+            fwname = "winter"  # default
 
         fw = self.fwdict[fwname]
 
@@ -4649,9 +4654,9 @@ class Wintercmd(QtCore.QObject):
             fwname = "winter"  # default
 
         # break if fw is spring
-        if fwname != "winter":
-            self.logger.info(f"fw_goto: {fwname} filter wheel not implemented yet!")
-            return
+        # if fwname != "winter":
+        #    self.logger.info(f"fw_goto: {fwname} filter wheel not implemented yet!")
+        #    return
 
         fw = self.fwdict[fwname]
 
@@ -4692,6 +4697,92 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f"wintercmd: successfully completed filter wheel move")
                 break
+
+    ##### SHUTTER METHODS #####
+    @cmd
+    def shutter(self):
+        """open or close the shutter for the specified camera"""
+        self.defineCmdParser("open or close the shutter for a camera")
+        self.cmdparser.add_argument(
+            "action",
+            nargs=1,
+            action=None,
+            type=str,
+            choices=["open", "close"],
+        )
+
+        group = self.cmdparser.add_mutually_exclusive_group(required=True)
+        group.add_argument("--winter", action="store_true")
+        group.add_argument("--summer", action="store_true")
+        group.add_argument("--spring", action="store_true")
+
+        self.getargs()
+
+        if self.verbose:
+            print(self.args)
+
+        action = self.args.action[0]
+
+        if self.args.winter:
+            camname = "winter"
+        elif self.args.summer:
+            camname = "summer"
+        elif self.args.spring:
+            camname = "spring"
+        else:
+            camname = "spring"  # default
+
+        self.logger.info(f"shutter: {action} shutter for {camname} camera")
+
+        if camname == "spring":
+            fw = self.fwdict[camname]
+
+            if action == "open":
+                cmd = "openShutter"
+            elif action == "close":
+                cmd = "closeShutter"
+            else:
+                self.logger.error(f"shutter: unknown action {action}")
+                return
+            sigcmd = signalCmd(cmd)
+
+            fw.newCommand.emit(sigcmd)
+
+            ## Wait until end condition is satisfied, or timeout ##
+            condition = True
+            timeout = 60 * 5
+            # create a buffer list to hold several samples over which the stop condition must be true
+            n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+            stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+            # get the current timestamp
+            start_timestamp = datetime.utcnow().timestamp()
+            while True:
+                QtCore.QCoreApplication.processEvents()
+                time.sleep(self.config["cmd_status_dt"])
+                timestamp = datetime.utcnow().timestamp()
+                dt = timestamp - start_timestamp
+                # print(f'wintercmd: wait time so far = {dt}')
+                if dt > timeout:
+                    raise TimeoutError(
+                        f"unable to move filter wheel: command timed out after {timeout} seconds before completing."
+                    )
+
+                stop_condition = self.state["spring_shutter_is_open"]
+                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+                # now replace the last element
+                stop_condition_buffer[-1] = stop_condition
+
+                if all(entry == condition for entry in stop_condition_buffer):
+                    self.logger.info(
+                        f"wintercmd: successfully completed shutter {action} operation"
+                    )
+                    break
+        else:
+            self.logger.error(
+                f"shutter: shutter control not implemented for {camname} camera"
+            )
 
     ##### CAMERA API METHODS #####
     @cmd
