@@ -118,6 +118,8 @@ class control(QtCore.QObject):
             "powerd.py",
             "labjackd.py",
             "watchdogd.py",
+            "winterFilterd.py",
+            "springFilterd.py",
         ]
         daemon_utils.cleanup(daemons_to_kill)
 
@@ -325,6 +327,14 @@ class control(QtCore.QObject):
             )
             self.daemonlist.add_daemon(self.winterfwd)
 
+            springfwargs = ["-n", self.ns_host]
+            self.springfwd = daemon_utils.PyDaemon(
+                name="springfw",
+                filepath=f"{wsp_path}/filterwheel/springFilterd.py",
+                args=springfwargs,
+            )
+            self.daemonlist.add_daemon(self.springfwd)
+
             # watchdog monitor daemon
             if self.disable_watchdog:
                 self.alertHandler.slack_log(
@@ -466,6 +476,15 @@ class control(QtCore.QObject):
             verbose=self.verbose,
         )
 
+        self.springfw = filterwheel.spring_filterwheel(
+            base_directory=self.base_directory,
+            config=self.config,
+            daemon_pyro_name="SPRINGfw",
+            ns_host=self.ns_host,
+            logger=self.logger,
+            verbose=self.verbose,
+        )
+
         self.winter_image_handler = winter_image_daemon_local.WINTERImageHandler(
             wsp_path,
             config=self.config,
@@ -489,6 +508,7 @@ class control(QtCore.QObject):
         self.fwdict = dict(
             {
                 "winter": self.winterfw,
+                "spring": self.springfw,
                 #'summer' : self.summerfw,
             }
         )

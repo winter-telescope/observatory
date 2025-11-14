@@ -129,7 +129,7 @@ class SpringFilterWheel(QtCore.QObject):
                 "shutter_status": self.shutter_status,
                 "shutter_response_code": self.shutter_response_code,
                 "homed": self.homed,
-                "connected": self.connected,
+                "is_connected": self.connected,
             }
         )
 

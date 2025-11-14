@@ -2172,6 +2172,78 @@ fields:
         dtype: int64
         rate: hk
         var: fwdict['winter'].state['homed']
+    # SPRING Filter Wheel
+    spring_fw_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: hk
+        var: fwdict['spring'].state['timestamp']
+    spring_fw_connected:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['is_connected']
+    spring_fw_filter_pos:
+        ftype: raw
+        label: 'num'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['filter_pos']
+    spring_fw_filter_goal:
+        ftype: raw
+        label: 'num'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['filter_goal']
+    spring_fw_is_moving:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['is_moving']
+    spring_fw_is_homing:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['is_homing']
+    spring_fw_is_homed:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['homed']
+    spring_shutter_is_open:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['shutter_open']
+    spring_shutter_status:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['shutter_status']
+    spring_shutter_response_code:
+        ftype: raw
+        label: 'Code'
+        units: None
+        dtype: int64
+        rate: hk
+        var: fwdict['spring'].state['shutter_response_code']
+
     
 
 ########### SPRING CAMERA FIELDS ###########
