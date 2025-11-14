@@ -18,7 +18,16 @@ from flask.json import jsonify
 app = Flask(__name__)
 
 app.logger.info("starting up the app")
-STATE = {}
+
+# Initialize STATE with default values
+STATE = {
+    "fw_pos": -1,
+    "fw_status": 0,
+    "fw_response_code": 0,
+    "shutter_open": -1,
+    "shutter_status": 0,
+    "shutter_response_code": 0,
+}
 
 
 # send a command to the filter wheel
@@ -33,12 +42,17 @@ def get_filter_command():
         -4 : could not communicate with device
     """
     try:
-        # try to connect to FW
-        FW = fli.USBFilterWheel.find_devices()[0]
-
         # get web request
         n = request.args.get("n")
         n = int(n)
+
+        if n == 8:
+            # command to get current position - just return cached STATE
+            reply_string = json.dumps(STATE)
+            return reply_string
+
+        # try to connect to FW for all other commands
+        FW = fli.USBFilterWheel.find_devices()[0]
 
         if (
             n == -1
@@ -69,24 +83,6 @@ def get_filter_command():
             STATE.update({"fw_status": fw_status})
             STATE.update({"fw_response_code": fw_response_code})
 
-            reply_string = json.dumps(STATE)
-
-        elif n == 8:
-            # command to get current position
-            try:
-                # get the current filter position
-                fw_pos = FW.get_filter_pos()
-                fw_status = 1
-                fw_response_code = 0
-            except Exception as e:
-                print(f"error getting fw pos: {e}")
-                fw_pos = -9
-                fw_status = 0
-                fw_response_code = -3
-
-            STATE.update({"fw_pos": fw_pos})
-            STATE.update({"fw_status": fw_status})
-            STATE.update({"fw_response_code": fw_response_code})
             reply_string = json.dumps(STATE)
 
         else:
