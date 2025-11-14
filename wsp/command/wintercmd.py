@@ -1943,10 +1943,39 @@ class Wintercmd(QtCore.QObject):
 
     @cmd
     def doFocusSeq(self):
+        """perform a focus sequence on the specified camera"""
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument("--winter", action="store_true")
+        group.add_argument("--summer", action="store_true")
+        group.add_argument("--spring", action="store_true")
+        self.getargs()
+
+        self.logger.info(f"fw_goto: args = {self.args}")
+
+        if self.args.winter:
+            camname = "winter"
+        elif self.args.summer:
+            camname = "summer"
+        elif self.args.spring:
+            camname = "spring"
+        else:
+            camname = None  # default: current active camera
+
+        if camname is not None:
+            self.logger.info(f"doFocusSeq: performing focus sequence on {camname} cam")
+        else:
+            self.logger.info(f"doFocusSeq: performing focus sequence on active cam")
+
+        sigcmd = signalCmd("do_camera_focus_sequence", camera_name=camname)
+        self.roboThread.newCommand.emit(sigcmd)
+
+    """
+    @cmd
+    def doFocusSeq(self):
         self.defineCmdParser("do a focus sequence on all active filters")
         sigcmd = signalCmd("do_focus_sequence")
 
-        self.roboThread.newCommand.emit(sigcmd)
+        self.roboThread.newCommand.emit(sigcmd)"""
 
     @cmd
     def doFocusLoop_old(self):

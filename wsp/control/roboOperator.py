@@ -4755,6 +4755,7 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return
 
+    # deprecated:
     def do_focus_sequence(self, filterIDs="reference", focusType="default"):
         """
         run a focus loop for each of the filters specified
