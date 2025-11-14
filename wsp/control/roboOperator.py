@@ -4063,7 +4063,14 @@ class RoboOperator(QtCore.QObject):
         self.announce("running focus loop!")
         context = "do_focusLoop"
 
-        # get the current focuser position?
+        #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
+        self.check_ok_to_observe(logcheck=True)
+        if self.ok_to_observe:
+            self.log("okay to observe, continuing with focus loop")
+            pass
+        else:
+            self.announce("not okay to observe right now, exiting focus loop routine")
+            return
 
         # set the progID info here for the headers
         self.resetObsValues()
