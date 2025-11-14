@@ -4100,7 +4100,16 @@ class RoboOperator(QtCore.QObject):
         # get the current filter
         self.log(f"getting current filter for camera {self.camname}, fw = {self.fw}")
         try:
+
+            # if spring camera, make sure shutter is open
+            if self.camname == "spring":
+                system = "shutter"
+                if self.fw.state["shutter_status"] != 1:
+                    self.log("spring shutter is closed, opening now")
+                    self.do(f"shutter open --{self.camname}")
+
             # Check if filter wheel is available
+            system = "filter wheel"
             if self.fw is None:
                 # If no filter wheel, nom_focus must be a numeric position
                 if nom_focus in ["default", "last", "model"]:
