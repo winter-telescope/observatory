@@ -97,8 +97,24 @@ class SpringFilterWheel(QtCore.QObject):
         self.state.update({"command_pass": val})
 
     def pollStatus(self):
-        """Get housekeeping status"""
-        self.update_state()
+        """Get housekeeping status by querying cached state"""
+        try:
+            url = f"{self.base_url}/filter_wheel?n=8"
+            response = requests.get(url, timeout=self.request_timeout)
+
+            if response.status_code == 200:
+                response_dict = response.json()
+                self.parseResponse(response_dict)
+                self.connected = True
+                self.update_state()
+            else:
+                if self.verbose:
+                    self.log(f"Poll failed with status code: {response.status_code}")
+                self.connected = False
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Poll error: {e}")
+            self.connected = False
 
     def update_state(self):
         self.state.update(
@@ -368,7 +384,8 @@ class CommThread(QtCore.QThread):
         self.pollTimer.setSingleShot(False)
         self.pollTimer.timeout.connect(self.fw.pollStatus)
 
-        poll_interval_ms = 1000
+        # Get poll interval from config, default to 1000ms
+        poll_interval_ms = self.config.get("poll_interval_ms", 1000)
         self.pollTimer.start(poll_interval_ms)
 
         self.exec_()
