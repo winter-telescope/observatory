@@ -4739,8 +4739,10 @@ class Wintercmd(QtCore.QObject):
 
             if action == "open":
                 cmd = "openShutter"
+                shutter_is_open_goal = True
             elif action == "close":
                 cmd = "closeShutter"
+                shutter_is_open_goal = False
             else:
                 self.logger.error(f"shutter: unknown action {action}")
                 return
@@ -4768,7 +4770,9 @@ class Wintercmd(QtCore.QObject):
                         f"unable to move filter wheel: command timed out after {timeout} seconds before completing."
                     )
 
-                stop_condition = self.state["spring_shutter_is_open"]
+                stop_condition = (
+                    self.state["spring_shutter_is_open"] == shutter_is_open_goal
+                )
                 # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
                 stop_condition_buffer[:-1] = stop_condition_buffer[1:]
                 # now replace the last element
