@@ -123,24 +123,22 @@ class FocusTracker:
         """
         out = {}
         active_cameras = self.config.get("active_cameras", [])
-        # get the config for each active camera
-        cameras_cfg = {}
-        for cam in active_cameras:
-            cameras_cfg.update(self.config["focus_loop_param"]["cameras"].get(cam, {}))
-        # cameras_cfg = self.config["focus_loop_param"].get("cameras", {})
+        all_cameras_cfg = self.config["focus_loop_param"].get("cameras", {})
 
-        for cam, info in cameras_cfg.items():
-            out[cam] = {
-                "camera": cam,
-                "focus_filter": info.get("filterID"),
-                "nominal_focus": info.get("nominal_focus"),
-                "last_focus": None,
-                "last_focus_timestamp_utc": None,
-                "last_focus_time_local": None,
-                # NEW fields
-                "attempts_since_success": 0,
-                "last_attempt_timestamp_utc": None,
-            }
+        # Filter to only active cameras
+        for cam in active_cameras:
+            if cam in all_cameras_cfg:
+                info = all_cameras_cfg[cam]
+                out[cam] = {
+                    "camera": cam,
+                    "focus_filter": info.get("filterID"),
+                    "nominal_focus": info.get("nominal_focus"),
+                    "last_focus": None,
+                    "last_focus_timestamp_utc": None,
+                    "last_focus_time_local": None,
+                    "attempts_since_success": 0,
+                    "last_attempt_timestamp_utc": None,
+                }
         return out
 
     # Ensure a camera entry exists
