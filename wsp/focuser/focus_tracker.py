@@ -122,7 +122,13 @@ class FocusTracker:
         Build from config['focus_loop_param']['cameras'].
         """
         out = {}
-        cameras_cfg = self.config["focus_loop_param"].get("cameras", {})
+        active_cameras = self.config.get("active_cameras", [])
+        # get the config for each active camera
+        cameras_cfg = {}
+        for cam in active_cameras:
+            cameras_cfg.update(self.config["focus_loop_param"]["cameras"].get(cam, {}))
+        # cameras_cfg = self.config["focus_loop_param"].get("cameras", {})
+
         for cam, info in cameras_cfg.items():
             out[cam] = {
                 "camera": cam,
