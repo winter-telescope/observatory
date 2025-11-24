@@ -237,18 +237,27 @@ class FocusTracker:
     ) -> Optional[List[str]]:
         """
         Return list of cameras that need focus:
-          - never focused, or
-          - last focused earlier than graceperiod_hours,
+        - never focused, or
+        - last focused earlier than graceperiod_hours,
         AND (attempt gating):
-          - If attempts_since_success >= max_attempts AND the last attempt was within graceperiod_hours,
+        - If attempts_since_success >= max_attempts AND the last attempt was within graceperiod_hours,
             DO NOT include (cool-down). Otherwise include.
         Returns None if nothing needs focus.
+
+        Only returns cameras that are in active_cameras config.
         """
         obs_timestamp = self._normalize_timestamp(obs_timestamp)
         grace_s = graceperiod_hours * 3600.0
 
+        # Get active cameras from config
+        active_cameras = self.config.get("active_cameras", [])
+
         if cameras is None:
-            cameras = list(self.focus_log.keys())
+            # Only consider cameras that are both in focus_log AND active
+            cameras = [cam for cam in self.focus_log.keys() if cam in active_cameras]
+        else:
+            # Filter provided cameras list to only include active ones
+            cameras = [cam for cam in cameras if cam in active_cameras]
 
         needs: List[str] = []
         for cam in cameras:
