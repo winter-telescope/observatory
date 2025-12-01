@@ -642,14 +642,14 @@ focus_loop_param:
     cameras:
         winter:
             filterID: 'J'
-            nominal_focus: 11925
+            nominal_focus: 11865
             sweep_param:
                 total_throw: 500
                 nsteps: 6
             focus_exptime: 30
         spring:
             filterID: 'J'
-            nominal_focus: 19450
+            nominal_focus: 19320
             sweep_param:
                 total_throw: 200
                 nsteps: 6
