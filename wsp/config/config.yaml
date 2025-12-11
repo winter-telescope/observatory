@@ -649,9 +649,9 @@ focus_loop_param:
             focus_exptime: 30
         spring:
             filterID: 'J'
-            nominal_focus: 19320
+            nominal_focus: 19380
             sweep_param:
-                total_throw: 200
+                total_throw: 250
                 nsteps: 6
             focus_exptime: 30
         summer:
