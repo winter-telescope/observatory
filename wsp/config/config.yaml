@@ -265,7 +265,7 @@ multi_camera_enabled: True
 active_cameras:
     - "winter"
     #- "summer"
-    - "spring"
+    #- "spring"
 
 ########## TELEMETRY SERVERS ##########
 # define telemetry servers
