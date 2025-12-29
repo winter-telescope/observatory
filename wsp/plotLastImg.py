@@ -8,6 +8,16 @@ Created on Tue Jul 20 15:37:23 2021
 
 
 import os
+import pathlib
+import sys
+import time
+import traceback
+from datetime import datetime
+from pathlib import Path
+
+import astropy.time
+import astropy.visualization
+import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 import matplotlib.pyplot as plt
@@ -89,13 +99,45 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
     if "AEXPTIME" in header.keys():
         exptime_str = f'{header["AEXPTIME"]:0.1f}'
     else:
-        exptime_str = '?'
-    
-    
-    
-    title = f'Last Image Taken: {filename}\nMedian Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s'
-    title+= f'\nFilter: {header.get("FILTERID","?")}, ObsType = {header.get("OBSTYPE", "?")}'
-    title+=f'\nComment: {header.get("QCOMMENT", "?")}'
+        exptime_str = "?"
+
+    # Camera-based specific handling
+    camname = header.get("INSTRUME", "Unknown")
+    if camname == "spring":
+        # try to do a dark subtraction
+        try:
+            SPRING_MASTER_DARK_DIR = os.path.join(
+                os.path.expanduser("~"),
+                "data",
+                "image-daemon-data",
+                "calibration",
+                "pirt",
+                "masterdarks",
+            )
+
+            # the master darks have filenames like: pirt_masterdark_30.000s.fits
+            dark_filename = os.path.join(
+                SPRING_MASTER_DARK_DIR,
+                f"pirt_masterdark_{float(exptime_str):0.3f}s.fits",
+            )
+
+            if os.path.exists(dark_filename):
+                dark_hdu = fits.open(dark_filename)
+                dark_data = dark_hdu[0].data
+                # crop to the same size as the image
+                dark_crop = dark_data[xmin:xmax, ymin:ymax]
+                image = image - dark_crop
+                print(f"Subtracted dark frame: {dark_filename}")
+            else:
+                print(f"Could not find dark frame: {dark_filename}")
+        except Exception as e:
+            # print error with traceback:
+            print(f"Could not subtract dark frame due to error: {e}")
+            traceback.print_exc()
+
+    title = f"Last Image Taken: {filename}\nMedian RAW Counts = {median_counts:.0f}, Std Dev = {stddev:.0f}, Exptime = {exptime_str} s"
+    title += f'\nFilter: {header.get("FILTERID","?")}, OBSTYPE = {header.get("OBSTYPE", "?").upper()}'
+    title += f'\nComment: {header.get("QCOMMENT", "?")}'
     if "UTC" in header:
         tstr = header['UTCISO']
         
@@ -177,14 +219,17 @@ def plotFITS(filename, printinfo = False, xmin = None, xmax = None, ymin = None,
         # use arange for the bins since we only expect integer counts
         
         bins = np.arange(lowerlim, upperlim, 1)
-        n, bins, patches = axarr[1].hist(vec, bins = bins, color = 'black')
-        
-        axarr[1].set_xlabel('Counts')
-        axarr[1].set_ylabel('Nbins')
-    
-        axarr[1].set_yscale('log')
-    
-    plt.savefig(os.path.join(os.getenv("HOME"),'data','last_image.jpg'))
+        n, bins, patches = axarr[1].hist(vec, bins=bins, color="black")
+
+        axarr[1].set_xlabel("Counts")
+        axarr[1].set_ylabel("Nbins")
+
+        axarr[1].set_yscale("log")
+
+    plt.savefig(os.path.join(os.path.expanduser("~"), "data", "last_image.jpg"))
+
+    # plt.show()#block = False)
+    # plt.pause(0.1)
 
     #plt.show()#block = False)
     #plt.pause(0.1)
@@ -219,11 +264,47 @@ post_to_slack = True
 #%%
 name = os.readlink(os.path.join(os.getenv("HOME"), 'data', 'last_image.lnk'))
 
-#hdu.writeto(name,overwrite = True)
+# name = '/home/winter/data/viscam/test_images/20210503_171349_Camera00.fits'
+# name = os.path.join(os.getenv("HOME"), 'data','images','20210730','SUMMER_20210730_043149_Camera0.fits')
+# %%
+# Try multiple possible locations for the last image
+last_image_path = None
+
+# Option 1: Try reading the symlink at last_image.fits
+try:
+    symlink_path = os.path.join(os.path.expanduser("~"), "data", "last_image.fits")
+    if os.path.islink(symlink_path):
+        # Read where the symlink points
+        target = os.readlink(symlink_path)
+        # Resolve it to absolute path in case it's relative
+        last_image_path = str(Path(target).resolve())
+        print(f"Found symlink pointing to: {last_image_path}")
+    elif os.path.exists(symlink_path):
+        # It's a regular file, not a symlink
+        last_image_path = symlink_path
+        print(f"Found direct file: {last_image_path}")
+except Exception as e:
+    print(f"Could not read symlink: {e}")
+
+# Option 2: If symlink didn't work, try the direct path
+if last_image_path is None or not os.path.exists(last_image_path):
+    fallback_path = os.path.join(os.path.expanduser("~"), "data", "last_image.fits")
+    if os.path.exists(fallback_path):
+        last_image_path = fallback_path
+        print(f"Using fallback path: {last_image_path}")
+
+# Option 3: If still nothing, bail
+if last_image_path is None or not os.path.exists(last_image_path):
+    print("ERROR: Could not find last image file")
+    exit(1)
+
+# Now use last_image_path for plotting
+print(f"Using image: {last_image_path}")
+# hdu.writeto(name,overwrite = True)
 
 # check if file exists
 # check if file exists
-imgpath = pathlib.Path(name)
+imgpath = Path(last_image_path)
 timeout = 20
 dt = 0.5
 t_elapsed = 0
@@ -237,7 +318,9 @@ while t_elapsed < timeout:
         t_elapsed += dt
 #%%
 
-header, data = plotFITS(name, xmax = 2048, ymax = 2048, hist = do_hist, min_bin_counts = 10)
+header, data = plotFITS(
+    last_image_path, xmax=2048, ymax=2048, hist=do_hist, min_bin_counts=10
+)
 
 # reading some stuff from the header.
 ## the header is an astropy.io.fits.header.Header object, but it can be queried like a dict
@@ -250,7 +333,7 @@ except:
 #%% Post to slack !
 
 if post_to_slack:
-    lastimagejpg = os.path.join(os.getenv("HOME"), 'data','last_image.jpg')
+    lastimagejpg = os.path.join(os.path.expanduser("~"), "data", "last_image.jpg")
     alertHandler.slack_postImage(lastimagejpg)
 
 

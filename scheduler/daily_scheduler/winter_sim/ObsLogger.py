@@ -66,7 +66,7 @@ class ObsLogger(object):
         try:
             # Get history from Caltech database 
             conn = psycopg.connect('dbname=winter user='+str(auth_config['drp']['USERNAME'])+' password='+str(auth_config['drp']['PASSWORD'])+
-                           ' host='+str(auth_config['drp']['HOSTNAME']))
+                           ' host='+str(auth_config['drp']['HOSTNAME']), connect_timeout=60)
 
             cur = conn.cursor()
 

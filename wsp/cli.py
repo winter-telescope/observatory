@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 wsp: the WINTER Supervisor Program
 
@@ -15,31 +13,19 @@ WINTER instrument.
 
 # system packages
 import getopt
-import os
 import signal
 import sys
-import time
-from pathlib import Path
 
-import numpy as np
-import yaml
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt5 import QtCore
 
-from wsp.utils.paths import CONFIG_DIR, WSP_PATH
+from wsp.control import systemControl
+from wsp.utils import logging_setup, utils
+from wsp.utils.paths import CONFIG_PATH, TELEMETRY_CONFIG_PATH, WSP_PATH
 
 # add the wsp directory to the PATH
 wsp_path = WSP_PATH
-sys.path.insert(1, wsp_path)
 print(f"wsp: wsp_path = {wsp_path}")
 
-# winter modules
-# from power import power
-# from telescope import pwi4
-# from telescope import telescope
-# from command import commandServer_multiClient
-# from housekeeping import easygetdata
-from control import systemControl
-from utils import logging_setup, utils
 
 #######################################################################
 # Captions and menu options for terminal interface
@@ -166,15 +152,17 @@ def sigint_handler(*args):
     QtCore.QCoreApplication.quit()
 
 
-if __name__ == "__main__":
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+
     signal.signal(signal.SIGINT, sigint_handler)
-    app = QtCore.QCoreApplication(sys.argv)
+    app = QtCore.QCoreApplication(argv)
 
     mode = None
 
     # GET ANY COMMAND LINE ARGUMENTS
-    args = sys.argv[1:]
-    print(f"wsp.py: args = {args}")
+    print(f"wsp: args = {argv}")
 
     options = "rimvn:s"
     long_options = [
@@ -192,12 +180,12 @@ if __name__ == "__main__":
         "shell",
         "disablewatchdog",
     ]
-    arguments, values = getopt.getopt(args, options, long_options)
+    arguments, values = getopt.getopt(argv, options, long_options)
     # checking each argument
     print()
-    print(f"wsp.py: Parsing sys.argv...")
-    print(f"wsp.py: arguments = {arguments}")
-    print(f"wsp.py: values = {values}")
+    print(f"wsp: Parsing sys.argv...")
+    print(f"wsp: arguments = {arguments}")
+    print(f"wsp: values = {values}")
     for currentArgument, currentValue in arguments:
         if currentArgument in ("-r", "--robo"):
             mode = "r"
@@ -234,53 +222,20 @@ if __name__ == "__main__":
     print(linebreak)
     print("\033[32m")
 
-    '''
-    #print(f'args = {args}')
-    
-    if len(args)<1:
-        pass
-    
-    # parse the mode
-    elif len(args) >= 1:
-       
-        mode_arg = args[0]
-        opts = args[1:]
-        
-        if mode_arg in modes.keys():
-            # remove the dash when passing the option
-            mode = mode_arg.replace('-','')
-            printlogo()
-            print()
-            if mode == 'm':
-                for line in big_letter[mode]:
-                    print('\t\t\t\t',line)
-            print('\033[32m >>>> ', modes[mode_arg])
-            print()
-            print(linebreak)
-            print('\033[32m')
-            
-        else:
-            print(f'Invalid mode {mode_arg}')
-        
-        
-        
-    """else:
-        print('Too many options specified.')"""
-    '''
     # load the config
-    config_file = wsp_path + "/config/config.yaml"
+    config_file = CONFIG_PATH
     config = utils.loadconfig(config_file)
     # set up the logger
     logger = logging_setup.setup_logger(wsp_path, config)
 
     # housekeeping configuration
-    hk_config_filepath = os.path.join(CONFIG_DIR, "hk_config.yaml")
+    hk_config_filepath = TELEMETRY_CONFIG_PATH
     hk_config = utils.loadconfig(hk_config_filepath)
 
     # START UP THE CONTROL SYSTEM
 
     # If an option was specified from the command line, then use that
-    if not mode is None:
+    if mode is not None:
         # print(f'Starting WSP with mode = {mode}, opts = {opts}')
 
         winter = systemControl.control(
@@ -291,44 +246,11 @@ if __name__ == "__main__":
             logger=logger,
             opts=opts,
         )
-    '''
-    # If no option was specified, then start up the text user interface
     else:
-        try:
-            while True:
-                opt,allowed_opts = dict_menu(captions,main_opts)
-                if opt in allowed_opts:
-                    if opt == "r":
-                        print ("Entering [R]obotic schedule file mode (will initiate observations!)")
-                    elif opt == "i":
-                        print("Entering [I]nstrument mode: initializing instrument subsystems and waiting for commands")
-                    elif opt == "m":
-                        print("Entering fully [M]anual mode: initializing all subsystems and waiting for commands")
-                    # Reset Color of Text
-                    print('\033[0m')
-                    winter = systemControl.control(mode = opt, config = config, base_directory = wsp_path, logger = logger)
-    
-                    break
-    
-                elif opt == "q":
-                    print("Killing WSP...",'\033[0m')
-                    sys.exit()
-                    break
-                else:
-                    print("Please choose a valid option:")
-        except KeyboardInterrupt:
-            pass
-
-
-    # instatiate the control (ie main) class
-    #TODO port this to the real systemControl instead
-    #winter = systemControl_threaded.control(mode = int(opt), config = config, base_directory = wsp_path, logger = logger)
-
-    """
-    # Run the interpreter every so often to catch SIGINT
-    timer = QtCore.QTimer()
-    timer.start(500)
-    timer.timeout.connect(lambda: None)
-    """
-    '''
+        print("\033[31mError: No mode specified. Use -r, -i, or -m\033[0m")
+        sys.exit(1)
     sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    main()

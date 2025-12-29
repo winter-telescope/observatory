@@ -14,37 +14,55 @@ import astropy.units as u
 import numpy as np
 import yaml
 
-config = dict({'site': {
-                   # lat/lon. expects a format that can be read with astropy.coordinates.Angle()
-                   'lat' : '33d21m21.6s',
-                   'lon' : '-116d51m46.8s',
-                   # height (site altitude). height is a number, units are something that can be parsed with astropy.units.Unit()
-                   'height' : 1706,
-                   'height_units': 'm',
-                   'timezone' : 'America/Los_Angeles'},
-    
-                'telescope' : {
-                    'host': 'thor',
-                    'simhost': '192.168.1.106',
-                    'port': 8220,
-                    'home_alt_degs': 45.0,
-                    'home_az_degs': 0,
-                    'min_alt': 30,
-                    'max_alt': 85.0,
-                    'rotator': 
-                        {'winter': {
-                            'rotator_field_angle_zeropoint': 155.0,
-                            'rotator_home_degs': 65.5,
-                            'rotator_max_degs': 120.0,
-                            'rotator_min_degs': -50.0},
-                         'summer': { 
-                             'rotator_field_angle_zeropoint': 155.0,
-                             'rotator_home_degs': -25.0,
-                             'rotator_max_degs': 160.0,
-                             'rotator_min_degs': -120.0}
-                         }
-                        }
-        })
+config = {
+    "telescope": {
+        "host": "thor",
+        "simhost": "localhost",
+        "comm_port": 8220,
+        "home_alt_degs": 45.0,
+        "home_az_degs": 220,
+        "min_alt": 15,
+        "max_alt": 85.0,
+        "ports": {
+            "default": 1,
+            1: {
+                "name": "winter",
+                "rotator": {
+                    "field_angle_zeropoint": 65.0,
+                    "home_degs": 65.5,
+                    "max_degs": 120.0,
+                    "min_degs": -90.0,
+                },
+                "cameras": {
+                    "winter": {
+                        "pointing_model_file": "pointing_model_winter_20250529_downselected.pxp",
+                    }
+                },
+            },
+            2: {
+                "name": "summer",
+                "rotator": {
+                    "field_angle_zeropoint": 155.0,
+                    "home_degs": 65.0,
+                    "max_degs": 225.0,
+                    "min_degs": -95.0,
+                },
+                "cameras": {
+                    "spring": {
+                        "pointing_model_file": "pointing_model_spring_20251022.pxp",
+                    }
+                },
+            },
+        },
+    },
+    "site": {
+        "lat": "33d21m21.6s",
+        "lon": "-116d51m46.8s",
+        "height": 1706,
+        "height_units": "m",
+        "timezone": "America/Los_Angeles",
+    },
+}
 
 
 camname = 'summer'

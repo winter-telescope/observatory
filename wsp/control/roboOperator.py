@@ -11,17 +11,14 @@ operator.py
 
 import glob
 import json
-
-# import json
 import logging
 import os
-import pathlib
 import subprocess
-import sys
 import threading
 import time
 import traceback
 from datetime import datetime
+from typing import Optional
 
 import astropy.coordinates
 import astropy.time
@@ -30,27 +27,23 @@ import numpy as np
 import pandas as pd
 import Pyro5.api
 import Pyro5.client
-import Pyro5.core
 import pytz
-
-# import pandas as pd
 import sqlalchemy as db
 from astropy.io import fits
 from PyQt5 import QtCore
 
-# import wintertoo.validate
-# import winter_utils
+from wsp.cal import cal_tracker
+from wsp.camera.config import CameraConfigManager
+from wsp.ephem import ephem_utils
+from wsp.focuser import focus_tracker, focusing
+from wsp.housekeeping import data_handler
+from wsp.schedule import wintertoo_validate
+from wsp.telescope import pointingModelBuilder
+from wsp.telescope.telescope import WrapWarningInfo
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
-sys.path.insert(1, wsp_path)
 
-from cal import cal_tracker
-from ephem import ephem_utils
-from focuser import focus_tracker, focusing
-from housekeeping import data_handler
-from schedule import wintertoo_validate
-from telescope import pointingModelBuilder
 
 # print all the columns
 pd.set_option("display.max_columns", None)
@@ -141,7 +134,6 @@ class RoboOperatorThread(QtCore.QThread):
         dome,
         chiller,
         ephem,
-        # viscam, ccd,
         camdict,
         fwdict,
         imghandlerdict,
@@ -167,8 +159,6 @@ class RoboOperatorThread(QtCore.QThread):
         self.alertHandler = alertHandler
         self.watchdog = watchdog
         self.ephem = ephem
-        # self.viscam = viscam
-        # self.ccd = ccd
         self.camdict = camdict
         self.fwdict = fwdict
         self.imghandlerdict = imghandlerdict
@@ -310,9 +300,11 @@ class RoboOperator(QtCore.QObject):
         self.dometest = dometest
         self.mountsim = mountsim
 
+        # set up the camera manager
+        self.camera_manager = CameraConfigManager(self.config)
+
         # for now just trying to start leaving places in the code to swap between winter and summer
         self.camname = "winter"
-        self.switchCamera(self.camname)
 
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger=self.logger)
@@ -362,19 +354,12 @@ class RoboOperator(QtCore.QObject):
         # a similar flag to denote whether the observatory is safely stowed
         self.observatory_stowed = False
 
+        self.in_manual_lockout = False  # Track manual lockout state
+
         ### ALARMS ###
         self.active_alarms = []
         self.alarm_enable = True
 
-        """ TO PURGE! # NPL 10-3-23
-        ### SET UP THE WRITER ###
-        # init the database writer
-        writerpath = self.config['obslog_directory'] + '/' + self.config['obslog_database_name']
-        #self.writer = ObsWriter.ObsWriter('WINTER_ObsLog', self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
-        self.writer = ObsWriter.ObsWriter(writerpath, self.base_directory, config = self.config, logger = self.logger) #the ObsWriter initialization
-        # create an empty dict that will hold the data that will get written out to the fits header and the log db
-        self.data_to_log = dict()
-        """
         ### SCHEDULE ATTRIBUTES ###
         # hold a variable to track remaining dithers in kst
         self.remaining_dithers = 0
@@ -383,14 +368,6 @@ class RoboOperator(QtCore.QObject):
         self.waiting_for_exposure = False
         self.exptimer = QtCore.QTimer()
         self.exptimer.setSingleShot(True)
-        # if there's too many things i think they may not all get triggered?
-        # self.exptimer.timeout.connect(self.log_timer_finished)
-        # self.exptimer.timeout.connect(self.log_observation_and_gotoNext)
-        # self.exptimer.timeout.connect(self.rotator_stop_and_reset)
-
-        # when the image is saved, log the observation and go to the next
-        #### FIX THIS SOON! NPL 6-13-21
-        # self.ccd.imageSaved.connect(self.log_observation_and_gotoNext)
 
         ### a QTimer for handling the cadance of checking what to do
         self.checktimer = QtCore.QTimer()
@@ -405,15 +382,6 @@ class RoboOperator(QtCore.QObject):
 
         ### Some methods which will log things we pass to the fits header info
         self.resetObsValues()
-
-        """
-        self.operator = self.config.get('fits_header',{}).get('default_operator','')
-        self.programPI = ''
-        self.programID = 0
-        self.qcomment = ''
-        self.targtype = ''
-        self.targname = ''
-        """
 
         ### CONNECT SIGNALS AND SLOTS ###
         self.startRoboSignal.connect(self.restart_robo)
@@ -474,6 +442,17 @@ class RoboOperator(QtCore.QObject):
             func=self.update_state, dt=500, name="robo_status_update"
         )
 
+        # change the camera to the specified camera for the darks
+        try:
+            self.switchCamera(self.camname)
+        except Exception as e:
+            msg = f"roboOperator: could not switch to camera {self.camname} for dark routine due to {e.__class__.__name__}, {e}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError("roboOperator.__init__", "switchCamera", "telescope", msg)
+            self.hardware_error.emit(err)
+            return
+
     def broadcast_hardware_error(self, error):
         msg = f":redsiren: *{error.system.upper()} ERROR* ocurred when attempting command: *_{error.cmd}_*, {error.msg}"
         group = "operator"
@@ -481,7 +460,10 @@ class RoboOperator(QtCore.QObject):
 
         try:
             # if the telescope is connected and the rotator is enabled, reset it
-            if self.telescope.mount.is_connected and self.telescope.rotator.is_enabled:
+            if (
+                self.telescope.state["mount.is_connected"]
+                and self.telescope.state["rotator.is_enabled"]
+            ):
                 # if the rotator is enabled, stop it and reset it
                 self.rotator_stop_and_reset()
         except Exception as e:
@@ -513,7 +495,9 @@ class RoboOperator(QtCore.QObject):
         using this as a reference: (source: https://stackoverflow.com/questions/6321940/how-to-launch-getattr-function-in-python-with-additional-parameters)
 
         """
-        # print(f'dome: caught doCommand signal: {cmd_obj.cmd}')
+        # self.log(
+        #    f"caught doCommand signal: {cmd_obj.cmd} <args: {cmd_obj.args}, kwargs: {cmd_obj.kwargs}>"
+        # )
         cmd = cmd_obj.cmd
         args = cmd_obj.args
         kwargs = cmd_obj.kwargs
@@ -633,10 +617,15 @@ class RoboOperator(QtCore.QObject):
         """
         self.autostart_override = state
 
-    def handle_wrap_warning(self, angle):
+    def handle_wrap_warning(self, info: WrapWarningInfo):
 
         # create a notification
-        msg = f'*WRAP WARNING!!* rotator angle {angle} outside allowed range [{self.config["telescope"]["rotator_min_degs"]},{self.config["telescope"]["rotator_max_degs"]}])'
+        msg = (
+            f"*WRAP WARNING!!* rotator angle {info.angle} "
+            f"outside allowed range "
+            f"[{info.min_degs},"
+            f"{info.max_degs}] on port {info.port}."
+        )
         context = ""
         system = "rotator"
         cmd = self.lastcmd
@@ -684,49 +673,94 @@ class RoboOperator(QtCore.QObject):
                 f"specified obstype {qcomment} is not a valid string! doing nothing."
             )
 
-    def switchCamera(self, camname):
+    def switchPort(self, port: Optional[int]):
+        self.log(f"got command to switch rotator to port {port}")
+        # port can only be 1 or 2
+        if port is None:
+            msg = "specified port is None! doing nothing."
+            self.log(msg)
+            return
 
-        try:
-            camera = self.camdict[camname]
-            fw = self.fwdict[camname]
+        if port not in [1, 2]:
+            msg = f"specified port {port} is not valid! must be 1 or 2. doing nothing."
+            self.log(msg)
+            return
 
-            # if that worked then switch it
-            self.camera = camera
-            self.fw = fw
-            self.camname = camname
-            msg = f"switched roboOperator's camera to {self.camname}"
+        if port == self.telescope.port:
+            msg = f"rotator already on port {port}, doing nothing"
+            self.log(msg)
+            return
+        else:
+            self.do(f"m3_goto {port}")
+        msg = f"switched rotator to port {port}"
 
-        except Exception as e:
-            msg = f"could not switch camera to {camname}: {e}"
+        # if that worked then update the self.port attribute
+        # do i need to carry self.port?
+        # self.port = active_port
 
         self.log(msg)
-        # print('\n\n\n\n')
-        # print('######################################################')
-        # print(msg)
-        # print('######################################################')
-        # print('\n\n\n\n')
 
-    def getWhichCameraToUse(self, filterID):
-        # look up which camera to use based on the specified filterID
-        try:
-            for camname in self.config["filters"]:
-                for filt in self.config["filters"][camname]:
-                    if filt == filterID:
-                        return camname
+    def switchCamera(self, camname):
+        """
+        Switch the active camera and configure associated hardware
 
-            # if we're here we didn't find the filter
+        Raises:
+            KeyError: if camname not in camdict
+            Exception: if port switching or model loading fails
+        """
+        self.log(f"got command to switch camera to {camname}")
+        # Validate the camera name first
+        if camname not in self.camdict:
+            msg = f"camera '{camname}' is not valid. Available cameras: {list(self.camdict.keys())}"
+            self.log(msg)
+            raise KeyError(msg)
+
+        camera = self.camdict[camname]
+        fw = self.fwdict.get(camname, None)
+
+        # Home and stow the rotator on the port we are *leaving*
+        self.doTry("rotator_enable")
+        self.doTry("rotator_home")
+        # self.doTry("rotator_disable")
+
+        # Switch to the corresponding port (this can raise exceptions)
+        port = self.camera_manager.get_port_for_camera(camname)
+        self.switchPort(port)
+
+        # Enable and home the rotator on the port we are *entering*
+        self.doTry("rotator_enable")
+        self.doTry("rotator_home")
+
+        # Set the focuser to the corresponding camera's focus position
+        camera_focus = self.focusTracker.get_best_focus(camera=camname)
+        if camera_focus is not None:
             self.log(
-                f"no camera found with filter corresponding to filterID: {filterID}"
+                f"setting focuser to best focus for camera {camname}: {camera_focus}"
             )
-            return None
+            # rack focuser to smaller value to approach focus from below
+            self.doTry("m2_focuser_enable")
+            self.doTry(f"m2_focuser_goto {camera_focus - 500}")  # type: ignore
+            self.doTry(f"m2_focuser_goto {camera_focus}")  # type: ignore
+        else:
+            self.log(f"no best focus found for camera {camname}, not moving focuser")
 
-        except Exception as e:
-            self.log(
-                f"could not look up which camera to use for specified filterID = {filterID} due to {type(e)}: {e}"
-            )
-            return None
+        # If that worked then switch the camera references
+        self.camera = camera
+        self.fw = fw
+        self.camname = camname
+
+        # Load the corresponding pointing model (this can raise exceptions)
+        pointing_model_file = self.camera_manager.get_camera_pointing_model_file(
+            camname
+        )
+        self.do(f"mount_model_load {pointing_model_file}")
+
+        msg = f"switched roboOperator's camera to {self.camname}"
+        self.log(msg)
+        return True
 
     def restart_robo(self, arg="auto"):
+        self.log("restarting the WINTER robot")
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
         # if we get passed test mode, or have already started in test mode, then turn on sun_override
         if arg == "test" or self.test_mode == True:
@@ -978,6 +1012,65 @@ class RoboOperator(QtCore.QObject):
                 
             
             """
+
+            # ---------------------------------------------------------------------
+            # check for manual lockout mode
+            # ---------------------------------------------------------------------
+            current_lockout_status = self.get_manual_lockout_status()
+
+            if current_lockout_status:
+                # We are in manual lockout
+                if not self.in_manual_lockout:
+                    # Just entered lockout
+
+                    self.in_manual_lockout = True
+                    self.manual_lockout_start_time = datetime.now().timestamp()
+                    self.manual_lockout_last_reminder_time = None
+
+                    self.announce(
+                        "🛑🔒 *MANUAL LOCKOUT DETECTED* - Dome is in *CONSOLE* mode and/or telescope power is *OFF*. "
+                        "Observatory operations paused while staff perform manual checks. "
+                        "Standing by until lockout is cleared..."
+                    )
+                else:
+                    # Still in lockout
+                    self.log("Manual lockout active, standing by...")
+
+                    # Check if we should send a reminder
+                    if self.should_send_lockout_reminder():
+
+                        self.manual_lockout_last_reminder_time = (
+                            datetime.now().timestamp()
+                        )
+
+                        # Calculate how long we've been locked out
+                        lockout_duration_min = (
+                            datetime.now().timestamp() - self.manual_lockout_start_time
+                        ) / 60  # type: ignore
+
+                        operator_msg = (
+                            f"⚠️ *MANUAL LOCKOUT REMINDER* - The observatory has been in manual lockout "
+                            f"for {lockout_duration_min:.0f} minutes during observing hours "
+                            f"(sun alt = {self.state['sun_alt']:.1f}°). "
+                            f"The system could be observing but is still locked out. Is this expected?"
+                        )
+
+                        self.alertHandler.slack_message_group("operator", operator_msg)
+
+                # Skip everything else and just wait
+                self.checktimer.start()
+                return
+
+            elif self.in_manual_lockout:
+                # Just exited lockout
+                self.in_manual_lockout = False
+                self.manual_lockout_start_time = None
+                self.manual_lockout_last_reminder_time = None
+
+                self.announce(
+                    "🔓✅ *MANUAL LOCKOUT CLEARED* - Resuming normal operations..."
+                )
+
             # WINTER camera
             self.log("checking if the camera should be on")
             if self.get_camera_should_be_running_status():
@@ -1045,13 +1138,13 @@ class RoboOperator(QtCore.QObject):
                                     self.doTry(cal_cmd)
 
                                     self.log(
-                                        f"finished executing cal sequence {cal_desc}:"
+                                        f"finished executing cal sequence {cal_desc}, going to re-check what to do next"
                                     )
                                     QtCore.QCoreApplication.processEvents()
 
-                                self.announce(
-                                    f"finished executing all active requests for cal sequences, going to check what to do next"
-                                )
+                                    # after executing one cal sequence, break out of the for loop to re-check what to do
+                                    break
+
                                 self.checktimer.start()
                                 return
 
@@ -1191,25 +1284,89 @@ class RoboOperator(QtCore.QObject):
                             else:
                                 pass
 
-                            graceperiod_hours = self.config["focus_loop_param"][
-                                "focus_graceperiod_hours"
-                            ]
                             if self.test_mode == True:
                                 self.log(f"not checking focus bc we're in test mode")
                                 pass
                             else:
-                                filterIDs_to_focus = (
-                                    self.focusTracker.getFiltersToFocus(
-                                        obs_timestamp=obstime_timestamp_utc,
-                                        graceperiod_hours=graceperiod_hours,
-                                        cam=self.camname,
-                                    )
+
+                                # filterIDs_to_focus = (
+                                #    self.focusTracker.getFiltersToFocus(
+                                #        obs_timestamp=obstime_timestamp_utc,
+                                #        graceperiod_hours=graceperiod_hours,
+                                #        cam=self.camname,
+                                #    )
+                                # )
+                                cameras_to_focus = self.focusTracker.getCamerasToFocus(
+                                    obs_timestamp=obstime_timestamp_utc,
+                                    graceperiod_hours=self.config["focus_loop_param"][
+                                        "focus_graceperiod_hours"
+                                    ],
+                                    max_attempts=self.config["focus_loop_param"].get(
+                                        "max_focus_attempts", 3
+                                    ),
                                 )
+
+                                if cameras_to_focus:
+                                    self.log(
+                                        f"need to focus cameras: {cameras_to_focus}"
+                                    )
+                                    for cam_to_focus in cameras_to_focus:
+                                        self.announce(
+                                            f"**Out of date focus results**: we need to focus the telescope for camera: {cam_to_focus}"
+                                        )
+
+                                        # Call the focus sequence and capture whether it succeeded
+                                        focus_success = self.do_camera_focus_sequence(
+                                            camname=cam_to_focus
+                                        )
+
+                                        # Record the attempt outcome
+                                        self.focusTracker.record_focus_attempt(
+                                            camera=cam_to_focus,
+                                            success=focus_success,
+                                            timestamp="now",
+                                        )
+
+                                        # If we've hit max attempts, fall back to best known focus
+                                        cam_entry = self.focusTracker.focus_log.get(
+                                            cam_to_focus, {}
+                                        )
+                                        attempts = cam_entry.get(
+                                            "attempts_since_success", 0
+                                        )
+                                        max_attempts = self.config[
+                                            "focus_loop_param"
+                                        ].get("max_focus_attempts", 3)
+
+                                        if (
+                                            attempts >= max_attempts
+                                            and not focus_success
+                                        ):
+                                            best_focus = (
+                                                self.focusTracker.get_best_focus(
+                                                    cam_to_focus
+                                                )
+                                            )
+                                            if best_focus is not None:
+                                                self.announce(
+                                                    f"Camera {cam_to_focus} focus failed {attempts} times. Moving to last known good focus: {best_focus}"
+                                                )
+                                                # You'll need a command to set focus position directly
+                                                self.doTry(
+                                                    f"set_focus {best_focus} --{cam_to_focus}"
+                                                )
+                                            else:
+                                                self.announce(
+                                                    f"Camera {cam_to_focus} focus failed {attempts} times and no fallback focus available!"
+                                                )
+
+                                        self.checktimer.start()
+                                        return
 
                                 # here is a good place to insert a good check on temperature change,
                                 # or even better a check on FWHM of previous images
 
-                                if not filterIDs_to_focus is None:
+                                """ if not filterIDs_to_focus is None:
                                     print(
                                         f"robo: focus attempt #{self.focus_attempt_number}"
                                     )
@@ -1232,7 +1389,7 @@ class RoboOperator(QtCore.QObject):
                                         self.focus_attempt_number += 1
                                         # now exit and rerun the check
                                         self.checktimer.start()
-                                        return
+                                        return """
 
                             # here we should check if the temperature has changed by some amount and nudge the focus if need be
 
@@ -1994,7 +2151,62 @@ class RoboOperator(QtCore.QObject):
         return new_base_ra_hours, new_base_dec_deg
         """
 
-    def get_observatory_ready_status(self):
+    def should_send_lockout_reminder(self):
+        """
+        Check if we should send a reminder about manual lockout.
+
+        Sends reminders if:
+            - System should be observing (sun is low enough)
+            - It's been 30+ minutes since last reminder (or initial lockout)
+
+        Returns:
+            bool: True if reminder should be sent
+        """
+        import time
+
+        # Check if we're in observing hours (sun is low enough)
+        sun_is_low = self.state["sun_alt"] <= self.config["max_sun_alt_for_observing"]
+
+        if not sun_is_low:
+            # Don't send reminders during daytime
+            return False
+
+        current_time = datetime.now().timestamp()
+        reminder_interval_sec = 30 * 60  # 30 minutes
+
+        # Check if enough time has passed since last reminder
+        if self.manual_lockout_last_reminder_time is None:
+            # First reminder - check if it's been long enough since lockout started
+            time_in_lockout = current_time - self.manual_lockout_start_time
+            return time_in_lockout >= reminder_interval_sec
+        else:
+            # Subsequent reminders - check time since last reminder
+            time_since_last_reminder = (
+                current_time - self.manual_lockout_last_reminder_time
+            )
+            return time_since_last_reminder >= reminder_interval_sec
+
+    def get_manual_lockout_status(self):
+        """
+        Check if the dome is in manual lockout mode.
+
+        Manual lockout is indicated by:
+            - dome_control_status == 2 ("CONSOLE")
+            - dome_telescope_power == 0 ("OFF")
+
+        Returns:
+            bool: True if in manual lockout, False otherwise
+        """
+        # Get the current values
+        control_status = self.state.get("dome_control_status", -1)
+        telescope_power = self.state.get("dome_telescope_power", -1)
+
+        # Check if we're in manual lockout (CONSOLE mode with telescope power OFF)
+        is_lockout = (control_status == 2) or (telescope_power == 0)
+
+        return is_lockout
+
+    def get_observatory_ready_status(self, verbose=True):
         """
         Run a check to see if the observatory is ready. Basically:
             - did startup run successfully
@@ -2022,14 +2234,16 @@ class RoboOperator(QtCore.QObject):
         # TODO: UNCOMMENT
         # NPL: commenting out so that we can observe even though mirror cover is stuck open
         # 7-3-23
-        # if not self.test_mode:
-        if not self.mountsim:
+        # if we are not in mount_sim or testmode, check the mirror cover state
+        if not self.mountsim and not self.test_mode:
 
             conds.append(self.state["Mirror_Cover_State"] == 0)
 
         # TODO: add something about the focus here
 
         self.observatory_ready = all(conds)
+
+        # print a summary of the observatory ready status and flag any false conditions
 
         return self.observatory_ready
 
@@ -2226,14 +2440,25 @@ class RoboOperator(QtCore.QObject):
         # conds.append(np.abs(self.state['mount_alt_deg'] - self.config['telescope']['home_alt_degs']) < 45.0) # home is 45 deg, so this isn't really doing anything
 
         if not self.mountsim:
-            delta_rot_angle = np.abs(
-                self.state["rotator_mech_position"]
-                - self.config["telescope"]["rotator_home_degs"]
-            )
-            min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
-            conds.append(
-                min_delta_rot_angle < 15.0
-            )  # NPL 12-15-21 these days it sags to ~ -27 from -25
+            # if the telescope is between ports, then we are not stowed:
+            if self.telescope.port not in [1, 2]:
+                # print(
+                #    f"DEBUG: port value = {self.telescope.port!r}, type = {type(self.telescope.port)}"
+                # )
+                # print(f"DEBUG: port not in [1,2] = {self.telescope.port not in [1, 2]}")
+                conds.append(False)
+            else:
+                # print("DEBUG: Taking FALSE branch")
+                delta_rot_angle = np.abs(
+                    self.state["rotator_mech_position"]
+                    - self.config["telescope"]["ports"][self.telescope.port]["rotator"][
+                        "home_degs"
+                    ]
+                )
+                min_delta_rot_angle = np.min([360 - delta_rot_angle, delta_rot_angle])
+                conds.append(
+                    min_delta_rot_angle < 15.0
+                )  # NPL 12-15-21 these days it sags to ~ -27 from -25
         # NPL 8-9-22 these days it is sagging to ~38 for whatever reason
 
         # make sure the motors are off
@@ -2480,14 +2705,13 @@ class RoboOperator(QtCore.QObject):
             # turn off tracking
             self.do("mount_tracking_off")
 
-            # make sure we load the pointing model explicitly
-            self.do(
-                f'mount_model_load {self.config["pointing_model"]["pointing_model_file"]}'
-            )
-
             # turn on the motors
             self.do("mount_az_on")
             self.do("mount_alt_on")
+
+            # Port-specific actions: try to switch ports (move M3 if needed)
+            # will raise exceptions if it goes wrong
+            self.switchCamera(self.camname)
 
             # turn on the rotator
             if not self.mountsim:
@@ -2622,6 +2846,9 @@ class RoboOperator(QtCore.QObject):
             self.announce("enabling FPA power with labjack")
             system = "labjack"
             self.do("fpa on")
+
+            # turn off the starboard side
+            self.do("fpa off star")
 
             # make sure the purge flow is high
             self.do("pdu off purgeflow")
@@ -3657,14 +3884,26 @@ class RoboOperator(QtCore.QObject):
         do a series of dark exposures in all active filteres
 
         """
-        # change the camera to the specified camera for the darks
-        if camname != self.camname:
-            self.camname = camname
-            self.switchCamera(self.camname)
-
         context = "do_darks"
-        self.log(f"starting dark sequence")
+        self.log(f"starting dark sequence for camera {camname}")
 
+        # change the camera to the specified camera for the darks
+        try:
+            if camname != self.camname:
+                self.log(
+                    f"roboOperator: switching camera from {self.camname} to {camname}"
+                )
+                self.camname = camname
+                self.switchCamera(self.camname)
+        except Exception as e:
+            msg = f"roboOperator: could not switch to camera {camname} for dark routine due to {e.__class__.__name__}, {e}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError(context, "switchCamera", "telescope", msg)
+            self.hardware_error.emit(err)
+            return
+
+        self.log(f"proceeding with darks on camera {self.camname}")
         # set the progID info here for the headers
         self.resetObsValues()
         try:
@@ -3680,24 +3919,23 @@ class RoboOperator(QtCore.QObject):
 
         # How many images do you want to take at each exposure time?
         if n_imgs is None:
-            n_imgs = self.config["cal_params"][self.camname]["dark"]["n_imgs"]
+            n_imgs = self.config["cal_params"][self.camname]["darks"]["n_imgs"]
         # What exposure times should we take darks at?
         # exptimes = [360.0, 180.0]
 
         # commenting this out for the moment to get things working in ndr-slope mode
         if (exptimes is None) or (exptimes == []):
-            exptimes = self.config["cal_params"][self.camname]["dark"]["exptimes"]
-
-            try:
-                # try to run a query of scheduled exposure times:
-                scheduled_exptimes = self.caltracker.getScheduledExptimes(self.camname)
-                for exptime in scheduled_exptimes:
-                    if exptime not in exptimes:
-                        exptimes.append(exptime)
-            except Exception as e:
-                msg = f"could not run query on scheduled exposure times for {self.camname}: {e}"
-                self.announce(msg, group="operator")
-            # now order the exposure times?
+            exptimes = self.config["cal_params"][self.camname]["darks"]["exptimes"]
+            # query ALL schedules and grab any additional exposure times
+            # try:
+            #    # try to run a query of scheduled exposure times:
+            #    scheduled_exptimes = self.caltracker.getScheduledExptimes(self.camname)
+            #    for exptime in scheduled_exptimes:
+            #        if exptime not in exptimes:
+            #            exptimes.append(exptime)
+            # except Exception as e:
+            #    msg = f"could not run query on scheduled exposure times for {self.camname}: {e}"
+            #    self.announce(msg, group="operator")
 
         # stow the rotator
         self.rotator_stop_and_reset()
@@ -3747,7 +3985,7 @@ class RoboOperator(QtCore.QObject):
             )
 
             # send the filter to the specified position from the config file
-            filterID = self.config["cal_params"][self.camname]["dark"]["filterID"]
+            filterID = self.config["cal_params"][self.camname]["darks"]["filterID"]
             # get filter number
             for position in self.config["filter_wheels"][self.camname]["positions"]:
                 if (
@@ -3767,6 +4005,18 @@ class RoboOperator(QtCore.QObject):
                 err = roboError(context, self.lastcmd, system, msg)
                 self.hardware_error.emit(err)
                 return
+
+            # shutter
+            if self.camname in ["spring"]:
+                try:
+                    self.do("shutter close --spring")
+                except Exception as e:
+                    msg = f"roboOperator: could not close {self.camname} shutter due to {e.__class__.__name__}, {e}"
+                    self.log(msg)
+                    self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+                    err = roboError(context, self.lastcmd, "shutter", msg)
+                    self.hardware_error.emit(err)
+                    return
 
             system = "camera"
             # step through the specified exposure times:
@@ -3810,16 +4060,23 @@ class RoboOperator(QtCore.QObject):
         self.announce(":greentick: auto darks image sequence completed successfully!")
         self.announce("setting system back up for observing")
 
-        system = "telescope"
-        self.announce(f"opening mirror covers...")
-        self.doTry("mirror_cover_open", context=context, system=system)
-        self.announce(":greentick: mirror covers open!")
+        if not self.test_mode:
+            system = "telescope"
+            self.announce(f"opening mirror covers...")
+            self.doTry("mirror_cover_open", context=context, system=system)
+            self.announce(":greentick: mirror covers open!")
+        else:
+            self.log(
+                "I would open the mirror covers now, but we're in test mode so skipping."
+            )
 
-        system = "dome"
-        self.announce("opening dome...")
-        self.doTry("dome_open", context=context, system=system)
-        self.announce(":greentick: dome opened")
-
+        if not self.test_mode:
+            system = "dome"
+            self.announce("opening dome...")
+            self.doTry("dome_open", context=context, system=system)
+            self.announce(":greentick: dome opened")
+        else:
+            self.log("I would open the dome now, but we're in test mode so skipping.")
         # cycle through all the active filters:for filterID in
         # filterIDs = self.focusTracker.getActiveFilters()
         self.announce("auto darks completed, continuuing with observations!")
@@ -3860,6 +4117,15 @@ class RoboOperator(QtCore.QObject):
         self.announce("running focus loop!")
         context = "do_focusLoop"
 
+        #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
+        self.check_ok_to_observe(logcheck=True)
+        if self.ok_to_observe:
+            self.log("okay to observe, continuing with focus loop")
+            pass
+        else:
+            self.announce("not okay to observe right now, exiting focus loop routine")
+            return None, False
+
         # set the progID info here for the headers
         self.resetObsValues()
         try:
@@ -3874,55 +4140,83 @@ class RoboOperator(QtCore.QObject):
             self.log(f"could not update the header field values in the focus loop: {e}")
 
         # get the current filter
-
+        self.log(f"getting current filter for camera {self.camname}, fw = {self.fw}")
         try:
 
-            filterpos = self.fw.state["filter_pos"]
-            # pixscale = self.config['focus_loop_param']['pixscale'][self.camname]
-            pixscale = self.config["observing_parameters"][self.camname]["pixscale"]
+            # if spring camera, make sure shutter is open
+            if self.camname == "spring":
+                system = "shutter"
+                if self.fw.state["shutter_status"] != 1:
+                    self.log("spring shutter is closed, opening now")
+                    self.do(f"shutter open --{self.camname}")
 
-            filterID = self.config["filter_wheels"][self.camname]["positions"][
-                filterpos
-            ]  # eg. 'r'
-            filtername = self.config["filters"][self.camname][filterID][
-                "name"
-            ]  # eg. "SDSS r' (Chroma)"
+            # Check if filter wheel is available
+            system = "filter wheel"
+            if self.fw is None:
+                # If no filter wheel, nom_focus must be a numeric position
+                if nom_focus in ["default", "last", "model"]:
+                    msg = f"roboOperator: cannot use nom_focus='{nom_focus}' when filter wheel is unavailable. Please provide a numeric focus position."
+                    self.log(msg)
+                    self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+                    return
 
-            if nom_focus == "last":
-                # TODO: make this query the focusTracker to find the last focus position
-                try:
-                    last_focus, last_focus_timestamp = self.focusTracker.checkLastFocus(
-                        filterID
-                    )
-                    # set the nominal focus to the last focus positiion
-                    nom_focus = last_focus
-                    self.log(
-                        f"focusing around previous best focus location: {nom_focus}"
-                    )
+                # Use the provided numeric nom_focus value
+                # Still need pixscale for the focus loop
+                pixscale = self.config["observing_parameters"][self.camname]["pixscale"]
+                filterID = None
+                filtername = "Unknown (no filter wheel)"
+                filterpos = None
+                self.log(
+                    f"Running focus loop without filter wheel. Using nom_focus = {nom_focus}"
+                )
 
-                    if nom_focus is None:
-                        self.log(
-                            f"no previous focus position found, defaulting to nominal."
+            else:
+                # Normal operation with filter wheel
+                filterpos = self.fw.state["filter_pos"]
+                pixscale = self.config["observing_parameters"][self.camname]["pixscale"]
+
+                filterID = self.config["filter_wheels"][self.camname]["positions"][
+                    filterpos
+                ]  # eg. 'r'
+                filtername = self.config["filters"][self.camname][filterID][
+                    "name"
+                ]  # eg. "SDSS r' (Chroma)"
+
+                if nom_focus == "last":
+                    # TODO: make this query the focusTracker to find the last focus position
+                    try:
+                        last_focus, last_focus_timestamp = (
+                            self.focusTracker.checkLastFocus(filterID)
                         )
-                        nom_focus = self.config["filters"][self.camname][filterID][
-                            "nominal_focus"
-                        ]
+                        # set the nominal focus to the last focus positiion
+                        nom_focus = last_focus
+                        self.log(
+                            f"focusing around previous best focus location: {nom_focus}"
+                        )
 
-                except Exception as e:
-                    self.log(
-                        f"could not get a value for the last focus position. defaulting to default focus. Traceback = {traceback.format_exc()}"
-                    )
-                    nom_focus = self.config["filters"][self.camname][filterID][
-                        "nominal_focus"
-                    ]
-            elif nom_focus == "default":
-                nom_focus = self.config["filters"][self.camname][filterID][
-                    "nominal_focus"
-                ]
+                        if nom_focus is None:
+                            self.log(
+                                f"no previous focus position found, defaulting to nominal."
+                            )
+                            nom_focus = self.config["focus_loop_param"]["cameras"][
+                                self.camname
+                            ]["nominal_focus"]
 
-            elif nom_focus == "model":
-                # put the model here
-                nom_focus = 9.654 * self.state["telescope_temp_ambient"] + 9784.4
+                    except Exception as e:
+                        self.log(
+                            f"could not get a value for the last focus position. defaulting to default focus. Traceback = {traceback.format_exc()}"
+                        )
+                        nom_focus = self.config["focus_loop_param"]["cameras"][
+                            self.camname
+                        ]["nominal_focus"]
+                elif nom_focus == "default":
+                    nom_focus = self.config["focus_loop_param"]["cameras"][
+                        self.camname
+                    ]["nominal_focus"]
+
+                elif nom_focus == "model":
+                    # put the model here
+                    nom_focus = 9.654 * self.state["telescope_temp_ambient"] + 9784.4
 
             if total_throw == "default":
                 # total_throw = self.config['focus_loop_param']['total_throw']
@@ -3958,7 +4252,7 @@ class RoboOperator(QtCore.QObject):
             self.log(f"focus loop: will take images at {loop.filter_range}")
 
         except Exception as e:
-            msg = f"roboOperator: could not run focus loop due to  due to {e.__class__.__name__}, {e}"  #', tb = {traceback.format_exc()}'
+            msg = f"roboOperator: could not run focus loop due to  due to {e.__class__.__name__}, {e} tb = {traceback.format_exc()}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             # err = roboError(context, self.lastcmd, system, msg)
@@ -3996,27 +4290,38 @@ class RoboOperator(QtCore.QObject):
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             return
+
+        self.log(f"reached pre-start focuser position: {focuser_start_pos}")
         # step through the focus positions and take images
 
         focuser_pos = []
         images = []
-        image_log_path = self.config["focus_loop_param"]["image_log_path"]
 
         # keep track of which image we're on
         i = 0
+
+        self.log(f"starting focus loop image collection with {nsteps} steps")
         # for i in range(len(loop.filter_range_nom)):
         for dist in loop.filter_range_nom:
 
             try:
-                self.log(f"taking filter image at focuser position = {dist}")
+                self.log(f"taking focus image at focuser position = {dist}")
 
                 # drive the focuser
                 system = "focuser"
                 self.do(f"m2_focuser_goto {dist}")
 
-                self.exptime = self.config["filters"][self.camname][filterID][
-                    "focus_exptime"
-                ]
+                if self.camname == "winter":
+                    self.exptime = self.config["focus_loop_param"]["cameras"][
+                        self.camname
+                    ]["focus_exptime"]
+                else:
+                    self.exptime = 30.0  # default for now
+                    self.log(
+                        f"no focus exptime specified for camera {self.camname}, defaulting to {self.exptime} s",
+                        level=logging.WARNING,
+                    )
+
                 self.logger.info(
                     f"robo: making sure exposure time on camera to is set to {self.exptime}"
                 )
@@ -4115,7 +4420,7 @@ class RoboOperator(QtCore.QObject):
                                 f"could not observe focus target (error: {e}), exiting..."
                             )
                             raise Exception(e)
-                            return
+                            return None, False
 
                     if firstObsComplete:
                         pass
@@ -4124,28 +4429,40 @@ class RoboOperator(QtCore.QObject):
                         self.announce(
                             f"could not observe ANY of the focus targets from the list. exiting..."
                         )
-                        return
+                        return None, False
 
                 else:
                     # any observation besides the first
-                    # do a dither:
-                    system = "telescope"
-                    dithersize = 5 * 60
-                    self.do(f"mount_random_dither_arcsec {dithersize}")
+                    if self.camname == "winter":
+                        # do a dither:
+                        system = "telescope"
+                        dithersize = 5 * 60
+                        self.do(f"mount_random_dither_arcsec {dithersize}")
+                    else:
+                        self.log(f"no dither for camera {self.camname}")
 
                     system = "camera"
                     # self.do(f'robo_do_exposure --comment "{qcomment}" -foc ')
                     self.do(f"robo_do_exposure -foc ")
 
-                image_directory, image_filename = self.camera.getLastImagePath()
-                image_filepath = os.path.join(image_directory, image_filename)
+                try:
+                    image_directory, image_filename = self.camera.getLastImagePath()
+                    image_filepath = os.path.join(image_directory, image_filename)
+                except Exception as e:
+                    # print error with full traceback
+                    tb = traceback.format_exc()
+                    msg = f"roboOperator: could not get image path after focus exposure due to {e.__class__.__name__}, {e}, traceback: {tb}"
+                    self.log(msg)
+
                 if self.camname == "winter":
                     image_filepath = image_filepath + "_mef.fits"
+                else:
+                    image_filepath = image_filepath + ".fits"
 
                 # add the filter position and image path to the list to analyze
                 focuser_pos.append(dist)
                 images.append(image_filepath)
-                self.log("focus image added to list")
+                self.log(f"focus image added to list: {image_filepath}")
 
             except Exception as e:
                 msg = f"roboOperator: error while running focus loop with {system} due to {e.__class__.__name__}, {e}"
@@ -4170,20 +4487,38 @@ class RoboOperator(QtCore.QObject):
             #          '/home/winter/data/images/20220119/SUMMER_20220119_221541_Camera0.fits',
             #          '/home/winter/data/images/20220119/SUMMER_20220119_221641_Camera0.fits',
             #          '/home/winter/data/images/20220119/SUMMER_20220119_221741_Camera0.fits']
+            if self.camname == "winter":
+                imnames = [
+                    "WINTERcamera_20240913-090922-224",
+                    "WINTERcamera_20240913-091001-328",
+                    "WINTERcamera_20240913-091041-369",
+                    "WINTERcamera_20240913-091120-508",
+                    "WINTERcamera_20240913-091159-246",
+                    "WINTERcamera_20240913-091238-784",
+                ]
 
-            imnames = [
-                "WINTERcamera_20240913-090922-224",
-                "WINTERcamera_20240913-091001-328",
-                "WINTERcamera_20240913-091041-369",
-                "WWINTERcamera_20240913-091120-508",
-                "WINTERcamera_20240913-091159-246",
-                "WINTERcamera_20240913-091238-784",
-            ]
+                images = [
+                    "/home/winter/data/images/sample_focusloop/focusLoop_20240913-090922-224/"
+                    + imname
+                    + "_mef.fits"
+                    for imname in imnames
+                ]
 
-            images = [
-                "/home/winter/data/images/sample_focusloop/" + imname + "_mef.fits"
-                for imname in imnames
-            ]
+            elif self.camname == "spring":
+
+                imnames = [
+                    "scicam_20250804T103631",
+                    "scicam_20250804T103701",
+                    "scicam_20250804T103731",
+                    "scicam_20250804T103801",
+                    "scicam_20250804T103831",
+                    "scicam_20250804T103901",
+                    "scicam_20250804T103931",
+                ]
+                images = [
+                    "~/data/image-daemon-data/raw/pirt/focus/" + imname + ".fits"
+                    for imname in imnames
+                ]
 
         """
         # save the data to a csv for later access
@@ -4271,6 +4606,27 @@ class RoboOperator(QtCore.QObject):
                 else:
                     fit_successful = False
                     # x0_fit = 11797.657
+            elif self.camname == "spring":
+                # use the winter-image-daemon for spring
+                try:
+                    ns = Pyro5.api.locate_ns(host="192.168.1.10")
+                    imagedaemon = Pyro5.api.Proxy(ns.lookup("pirt_daemon"))
+
+                    results = imagedaemon.run_focus_loop(
+                        image_list=images,
+                        output_dir=os.path.join("~", "data", "tmp"),
+                        post_plot=True,
+                    )
+
+                    x0_fit = results["best_focus"]  # may crash out if fit fails
+                    fit_successful = True
+
+                except Exception as e:
+                    msg = f"could not get focus from pirt image daemon: {e}"
+
+                    self.announce(msg)
+
+                    fit_successful = False
 
             else:
                 fit_successful = False
@@ -4286,6 +4642,8 @@ class RoboOperator(QtCore.QObject):
                 self.announce(f"FIT IS TOO BAD. Returning to nominal focus")
                 self.do(f"m2_focuser_goto {nom_focus}")
                 self.focus_attempt_number += 1
+                # log a bad focus attempt with the focus_tracker (not yet implemented)
+                return None, False  # Mark as failed
 
             else:
                 self.logger.info(f"Focuser_going to final position at {x0_fit} microns")
@@ -4327,8 +4685,11 @@ class RoboOperator(QtCore.QObject):
                         f"updating the focus position of filter {filterID} to {x0_fit}, timestamp = {obstime_timestamp_utc}"
                     )
 
-                    self.focusTracker.updateFilterFocus(
-                        filterID, x0_fit, obstime_timestamp_utc
+                    # self.focusTracker.updateFilterFocus(
+                    #    filterID, x0_fit, obstime_timestamp_utc
+                    # )
+                    self.focusTracker.updateCameraFocus(
+                        camera=self.camname, focus_pos=x0_fit
                     )
 
                 # we completed the focus! set the focus attempt number to zero
@@ -4346,7 +4707,7 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            return None, False  # Mark as failed
 
         # now print the best fit focus to the slack
         """
@@ -4362,8 +4723,122 @@ class RoboOperator(QtCore.QObject):
             f":greentick: completed focus loop. going to best focus = {x0_fit}"
         )
 
-        return x0_fit
+        return x0_fit, True  # (focus_position, success)
 
+    def do_camera_focus_sequence(self, camname: Optional[str] = None):
+        """
+        run a focus loop on the specified camera. if camname is None, use self.camname
+
+        """
+        context = "do_camera_focus_sequence"
+        system = ""
+
+        if camname is None:
+            camname = self.camname
+        self.announce(f"running focus sequence for camera {camname}")
+
+        # switch cameras if needed
+        if camname != self.camname:
+            self.announce(
+                f"switching camera from {self.camname} --> {camname} for focus sequence"
+            )
+            try:
+                self.do(f"robo_switch_camera {camname}")
+            except Exception as e:
+                self.log(
+                    f"Error switching camera: aborting focus sequence: {e}, traceback = {traceback.format_exc()}"
+                )
+                return False
+
+        # 1. change to the focus filter for this camera
+        filterID = self.focusTracker.get_focus_filter(self.camname)
+        self.announce(f"changing to focus filter {filterID} for camera {self.camname}")
+
+        # try to move the filter
+        try:
+            system = "filter wheel"
+
+            if self.camname not in ["winter", "spring"]:
+                self.announce(
+                    f"camera {self.camname} has no filter wheel, skipping filter change"
+                )
+            else:
+                # get filter number
+                for position in self.config["filter_wheels"][self.camname]["positions"]:
+                    if (
+                        self.config["filter_wheels"][self.camname]["positions"][
+                            position
+                        ]
+                        == filterID
+                    ):
+                        filter_num = position
+                    else:
+                        pass
+                if filter_num == self.fw.state["filter_pos"]:
+                    self.log(
+                        "requested filter matches current, no further action taken"
+                    )
+                else:
+                    self.log(
+                        f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}'
+                    )
+                    # self.do(f'command_filter_wheel {filter_num}')
+                    self.do(f"fw_goto {filter_num} --{self.camname}")
+        except Exception as e:
+            msg = f"roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return False
+
+        # 2. do a focus loop!!
+        system = "focus_loop"
+        try:
+            # sweeptype = "narrow"  # one of 'narrow' or 'wide'
+            # total_throw = self.config["focus_loop_param"]["sweep_param"][sweeptype][
+            #    "total_throw"
+            # ]
+            # nsteps = self.config["focus_loop_param"]["sweep_param"][sweeptype]["nsteps"]
+            # nom_focus = "default"
+            total_throw = self.config["focus_loop_param"]["cameras"][self.camname][
+                "sweep_param"
+            ]["total_throw"]
+            nsteps = self.config["focus_loop_param"]["cameras"][self.camname][
+                "sweep_param"
+            ]["nsteps"]
+            nom_focus = self.config["focus_loop_param"]["cameras"][self.camname][
+                "nominal_focus"
+            ]
+
+            focusType = "Vcurve"  # <- really??
+
+            result = self.do_focusLoop(
+                nom_focus=nom_focus,
+                total_throw=total_throw,
+                nsteps=nsteps,
+                updateFocusTracker=True,
+                focusType=focusType,
+            )
+
+            # Handle the result
+            if result is None:
+                return False
+            elif isinstance(result, tuple):
+                focus_pos, success = result
+                return success
+            else:
+                # Legacy return (just focus position)
+                return True
+        except Exception as e:
+            msg = f"roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError(context, self.lastcmd, system, msg)
+            self.hardware_error.emit(err)
+            return False
+
+    # deprecated:
     def do_focus_sequence(self, filterIDs="reference", focusType="default"):
         """
         run a focus loop for each of the filters specified
@@ -4547,7 +5022,7 @@ class RoboOperator(QtCore.QObject):
                         3. emit a restartRobo signal so it gets kicked back to the top of the tree
 
         """
-
+        context = "do_currentObs"
         if currentObs == "default":
             currentObs = self.schedule.currentObs
 
@@ -4571,10 +5046,15 @@ class RoboOperator(QtCore.QObject):
         # reset all the header stuff
         self.resetObsValues()
 
-        # print(f'currentObs = {currentObs}')
+        # print(f"currentObs = {currentObs}")
         # first grab some fields from the currentObs
         # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which
         # borks up the housekeeping and the dirfile and is a big fat mess
+        # which camera should be used for the observation?
+        cam_to_use = str(currentObs.get("camera", "winter")).lower()
+        # default to winter if not specified or some kind of nan
+        if cam_to_use not in self.camera_manager.get_active_cameras():
+            cam_to_use = "winter"
         self.obsHistID = int(currentObs["obsHistID"])
         self.ra_deg_scheduled = float(currentObs["raDeg"])
         self.dec_deg_scheduled = float(currentObs["decDeg"])
@@ -4586,6 +5066,20 @@ class RoboOperator(QtCore.QObject):
         self.programName = str(currentObs.get("progName", ""))
         self.validStart = float(currentObs.get("validStart"))
         self.validStop = float(currentObs.get("validStop"))
+
+        # do a check: is the filter valid for the camera?
+        self.log(
+            f"checking that filter {self.filter_scheduled} is valid for camera {cam_to_use}"
+        )
+        if (
+            self.filter_scheduled
+            not in self.camera_manager.get_camera_info(cam_to_use).filters
+        ):
+            self.log(
+                f"filter {self.filter_scheduled} is not valid for camera {cam_to_use}... aborting observation"
+            )
+            return
+
         # self.observed is managed elsewhere
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
         self.maxAirmass = float(
@@ -4628,19 +5122,19 @@ class RoboOperator(QtCore.QObject):
         else:
             center_offset = "center"
 
-        # which camera should be used for the observation?
-        cam_to_use = self.getWhichCameraToUse(filterID=self.filter_scheduled)
-        if cam_to_use is None:
-            self.log(f"not sure which camera to use! aborting current observation.")
-            # NPL: comment this out while hunting the cause of skipped observations
-            # self.checkWhatToDo()
-            return
-
         # if we're in the right camera just continue, otherwise switch cameras
-        if cam_to_use == self.camname:
-            pass
-        else:
-            self.switchCamera(cam_to_use)
+        # change the camera to the specified camera for the darks
+        try:
+            if cam_to_use != self.camname:
+                self.camname = cam_to_use
+                self.switchCamera(self.camname)
+        except Exception as e:
+            msg = f"roboOperator: could not switch to camera {cam_to_use} for dark routine due to {e.__class__.__name__}, {e}"
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            err = roboError(context, "switchCamera", "telescope", msg)
+            self.hardware_error.emit(err)
+            return
 
         # how many pointings will we do?
         pointing_offsets = [{"coords": {"dRA": 0, "dDec": 0}}]
@@ -4820,16 +5314,42 @@ class RoboOperator(QtCore.QObject):
                                 filter_num = position
                             else:
                                 pass
-                        if filter_num == self.fw.state["filter_pos"]:
-                            self.log(
-                                "requested filter matches current, no further action taken"
-                            )
+
+                        self.log(
+                            f"changing filter to scheduled filter: {self.filter_scheduled} (position {filter_num})"
+                        )
+
+                        if self.camname in ["winter", "spring"]:
+                            # check if the filter is already in place
+                            if filter_num == self.fw.state["filter_pos"]:
+                                self.log(
+                                    "requested filter matches current, no further action taken"
+                                )
+                            else:
+                                self.log(
+                                    f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}'
+                                )
+                                # self.do(f'command_filter_wheel {filter_num}')
+                                self.do(f"fw_goto {filter_num} --{self.camname}")
                         else:
+                            # for spring fw is not yet implemented
                             self.log(
-                                f'current filter = {self.fw.state["filter_pos"]}, changing to {filter_num}'
+                                f"skipping filter change for camera {self.camname} (not yet implemented)"
                             )
-                            # self.do(f'command_filter_wheel {filter_num}')
-                            self.do(f"fw_goto {filter_num} --{self.camname}")
+                        ## Shutter: open it unless a dark has been requested ###
+                        if self.camname == "spring":
+                            if self.filter_scheduled.lower() in ["dark"]:
+                                if self.fw.state["shutter_status"] == 0:
+                                    self.log("shutter already closed")
+                                else:
+                                    self.log("closing shutter for dark exposure")
+                                    self.do("shutter_close --spring")
+                            else:
+                                if self.fw.state["shutter_status"] == 1:
+                                    pass
+                                else:
+                                    self.log("opening shutter for science exposure")
+                                    self.do("shutter_open --spring")
 
                         # set up a big descriptive message for slack:
                         msg = f'>> Executing Observation: Pointing Number [{pointing_num}/{num_pointings}]: (dRA, dDec) = ({pointing_offset["coords"]["dRA"]}, {pointing_offset["coords"]["dDec"]})'
@@ -5201,10 +5721,29 @@ class RoboOperator(QtCore.QObject):
             target_field_angle + 180.0,
         ]
 
+        alt_sign = -1
+        if self.telescope.port == 2:
+            if verbose:
+                print("telescope port 2, alt sign = +1")
+            alt_sign = +1
+
+        # Compute candidate mech angles with the port-dependent sign
         possible_target_mech_angles = [
-            (target_field_angle - parallactic_angle - self.target_alt)
-            for target_field_angle in possible_target_field_angles
+            (fa - parallactic_angle + alt_sign * self.target_alt)
+            for fa in possible_target_field_angles
         ]
+
+        if verbose:
+            print(f"target_field_angle = {target_field_angle:0.3f} degs")
+            print(f"parallactic angle = {parallactic_angle:0.3f} degs")
+            print(f"target alt = {self.target_alt:0.3f} degs")
+            print(f"target az = {self.target_az:0.3f} degs")
+
+        # deprecated for port-aware calculation
+        # possible_target_mech_angles = [
+        #   (target_field_angle - parallactic_angle - self.target_alt)
+        #   for target_field_angle in possible_target_field_angles
+        # ]
 
         messages = [
             "No rotator wrap predicted",
@@ -5216,15 +5755,19 @@ class RoboOperator(QtCore.QObject):
 
         if verbose:
             print("\n##########################################")
+
+        angle_margin = 10  # degs of margin for safe operation
         for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
             if self.is_rotator_mech_angle_possible(
                 predicted_rotator_mechangle=possible_target_mech_angle,
-                rotator_min_degs=self.config["telescope"]["rotator"][self.camname][
-                    "rotator_min_degs"
-                ],
-                rotator_max_degs=self.config["telescope"]["rotator"][self.camname][
-                    "rotator_max_degs"
-                ],
+                rotator_min_degs=self.config["telescope"]["ports"][self.telescope.port][
+                    "rotator"
+                ]["min_degs"]
+                + angle_margin,
+                rotator_max_degs=self.config["telescope"]["ports"][self.telescope.port][
+                    "rotator"
+                ]["max_degs"]
+                - angle_margin,
             ):
                 self.target_mech_angle = possible_target_mech_angle
                 self.target_field_angle = possible_target_field_angles[ind]
@@ -5510,9 +6053,9 @@ class RoboOperator(QtCore.QObject):
         # handle the field angle
         if field_angle.lower() == "auto":
             # self.target_field_angle = self.config['telescope'] # this is wrong :D will give 155 instead of 65
-            self.target_field_angle = self.config["telescope"]["rotator"]["winter"][
-                "rotator_field_angle_zeropoint"
-            ]
+            self.target_field_angle = self.config["telescope"]["ports"][
+                self.telescope.port
+            ]["rotator"]["field_angle_zeropoint"]
         else:
             self.target_field_angle = field_angle
 
@@ -5610,8 +6153,8 @@ class RoboOperator(QtCore.QObject):
                     ra_hours=self.target_ra_j2000_hours,
                     dec_deg=self.target_dec_j2000_deg,
                     pa=self.target_field_angle
-                    - self.config["telescope"]["rotator"]["winter"][
-                        "rotator_field_angle_zeropoint"
+                    - self.config["telescope"]["ports"][self.telescope.port]["rotator"][
+                        "field_angle_zeropoint"
                     ],
                     offsettype=offset,
                 )
@@ -5870,10 +6413,11 @@ class RoboOperator(QtCore.QObject):
         # the observation has been completed successfully :D
         self.observation_completed = True
 
-    def remakePointingModel(self, camname, append=False, firstpoint=0):
+    def remakePointingModel(self, append=False, firstpoint=0):
         context = "Pointing Model"
-        self.log("setting up a new pointing model")
-        self.alertHandler.slack_log("Setting Up a New Pointing Model!", group=None)
+        msg = f"Setting up a new pointing model for {self.camname} camera."
+        self.announce(msg)
+        self.announce(f"Test Mode? {self.test_mode}")
         if append:
             # if in append mode, don't clear the old points
             pass
@@ -5885,7 +6429,7 @@ class RoboOperator(QtCore.QObject):
 
         # load up the points
         pointlist_filepath = os.path.join(
-            os.getenv("HOME"),
+            os.path.expanduser("~"),
             self.config["pointing_model"]["default_pointlist"],
         )
         self.pointingModelBuilder.load_point_list(pointlist_filepath)
@@ -5945,11 +6489,11 @@ class RoboOperator(QtCore.QObject):
                     self.log(
                         f'current exptime = {self.camera.state["exptime"]}, changing to {exptime}'
                     )
-                    self.do(f"setExposure {exptime} --{camname}")
+                    self.do(f"setExposure {exptime} --{self.camname}")
 
                 # set up the first observation
                 system = "camera"
-                if camname == "winter":
+                if self.camname == "winter":
                     num_dithers = 4
                 else:
                     num_dithers = 1
@@ -5959,6 +6503,11 @@ class RoboOperator(QtCore.QObject):
                         self.do(
                             f"robo_observe altaz {target_alt} {target_az} --pointing --calibration --offset center"
                         )
+
+                        if self.camname == "spring":
+                            # for now we need to dump the first image for spring because it may be streaked
+                            # do another observation at the same spot
+                            self.do("robo_do_exposure --pointing --calibration")
 
                     else:
                         # any observation besides the first
@@ -5976,6 +6525,37 @@ class RoboOperator(QtCore.QObject):
                     image_filepath = os.path.join(image_directory, image_filename)
                     if self.camname == "winter":
                         image_filepath = image_filepath + "_mef.fits"
+                    else:
+                        image_filepath = image_filepath + ".fits"
+
+                    # handle testing mode where no images are saved
+                    self.log(f"checking test mode: {self.test_mode}")
+                    if self.test_mode:
+                        if self.camname == "winter":
+                            self.log("test mode not implemented yet for winter cam")
+                            return
+                        elif self.camname == "spring":
+                            image_directory = os.path.join(
+                                "~",
+                                "data",
+                                "image-daemon-data",
+                                "raw",
+                                "pirt",
+                                "science",
+                                "WNTR25fejjz",
+                            )
+                            image_filename = "scicam_20250804T111108.fits"
+                            self.log(
+                                f"test mode active, using dir: {image_directory}, file: {image_filename}"
+                            )
+                            image_filepath = os.path.join(
+                                image_directory, image_filename
+                            )
+                        else:
+                            self.log(
+                                f"test mode not implemented yet for cam {self.camname}"
+                            )
+                            return
                     images.append(image_filepath)
                     self.log(f"image {dither_number} filepath: {image_filepath}")
             except Exception as e:
@@ -5992,7 +6572,7 @@ class RoboOperator(QtCore.QObject):
                 ns = Pyro5.api.locate_ns(host="192.168.1.10")
 
                 if self.camname == "winter":
-                    daemon = Pyro5.api.Proxy(ns.lookup(f"{camname}_daemon"))
+                    daemon = Pyro5.api.Proxy(ns.lookup(f"{self.camname}_daemon"))
 
                     science_image = images[-1]
                     addr = "pb"
@@ -6004,36 +6584,42 @@ class RoboOperator(QtCore.QObject):
                         pix_coords=(1864, 530),
                         timeout=10,
                     )
-
-                    self.log(
-                        f"Astrometric solution: {json.dumps(astrom_info, indent = 2)}"
-                    )
-
-                    ra_j2000 = astropy.coordinates.Angle(astrom_info["ra"] * u.deg)
-                    dec_j2000 = astropy.coordinates.Angle(astrom_info["dec"] * u.deg)
-
-                    ra_j2000_hours = ra_j2000.hour
-                    dec_j2000_degrees = dec_j2000.deg
-
-                    # report the nominal ra/dec from the header
-                    ra_j2000_nom = astropy.coordinates.Angle(
-                        astrom_info["ra_guess"] * u.deg
-                    )
-                    dec_j2000_nom = astropy.coordinates.Angle(
-                        astrom_info["dec_guess"] * u.deg
-                    )
-
-                    platescale = astrom_info["pixel_scale"]
-                    field_angle = astrom_info["rotation_deg"]
-
-                    self.announce(
-                        f"solved image: {science_image}, (RA, Dec) deg = ({ra_j2000.deg:0.2f}, {dec_j2000.deg:0.2f}), platescale = {platescale:0.2f}, field angle = {field_angle:0.2f}"
+                elif self.camname == "spring":
+                    daemon = Pyro5.api.Proxy(ns.lookup("pirt_daemon"))
+                    science_image = images[-1]  # should only be one image for spring
+                    astrom_info = daemon.solve_astrometry(
+                        science_image=science_image,
+                        output_dir="~/data/tmp/",
+                        timeout=10,
                     )
                 else:
-                    # no other cameras implemented yet
                     self.log(
-                        f"robo: couldn't handle camera {self.camname} yet, only winter is implemented"
+                        f"no recipe for analyzing camera {self.camname} astrometry yet, returning"
                     )
+                    return
+
+                self.log(f"Astrometric solution: {json.dumps(astrom_info, indent = 2)}")
+
+                ra_j2000 = astropy.coordinates.Angle(astrom_info["ra"] * u.deg)
+                dec_j2000 = astropy.coordinates.Angle(astrom_info["dec"] * u.deg)
+
+                ra_j2000_hours = ra_j2000.hour
+                dec_j2000_degrees = dec_j2000.deg
+
+                # report the nominal ra/dec from the header
+                ra_j2000_nom = astropy.coordinates.Angle(
+                    astrom_info["ra_guess"] * u.deg
+                )
+                dec_j2000_nom = astropy.coordinates.Angle(
+                    astrom_info["dec_guess"] * u.deg
+                )
+
+                platescale = astrom_info["pixel_scale"]
+                field_angle = astrom_info["rotation_deg"]
+
+                self.announce(
+                    f"solved image: {science_image}, (RA, Dec) deg = ({ra_j2000.deg:0.2f}, {dec_j2000.deg:0.2f}), platescale = {platescale:0.2f}, field angle = {field_angle:0.2f}"
+                )
 
             except Exception as e:
                 msg = f"error while running astrometry with {system} due to {e.__class__.__name__}, {e}"
@@ -6055,9 +6641,13 @@ class RoboOperator(QtCore.QObject):
                 msg = f"Adding model point (alt, az) = ({target_alt:0.1f}, {target_az:0.1f}) --> (ra, dec) = ({ra_j2000_hours:0.2f}, {dec_j2000_degrees:0.2f}), Nominal (ra, dec) = ({ra_j2000_nom.hour:0.2f}, {dec_j2000_nom.deg:0.2f})"
                 self.alertHandler.slack_log(msg, group=None)
                 # add the RA_hours and DEC_deg point to the telescope pointing model
-                self.doTry(
-                    f"mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}"
-                )
+                if self.test_mode:
+                    self.announce("test mode active, not adding point to model")
+                    continue
+                else:
+                    self.doTry(
+                        f"mount_model_add_point {ra_j2000_hours} {dec_j2000_degrees}"
+                    )
 
                 radec_mapped.append((ra_j2000_hours, dec_j2000_degrees))
                 # changed this from self.target_alt, self.target_az

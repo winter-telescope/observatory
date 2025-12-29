@@ -30,9 +30,26 @@ import yaml
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 
 # add the wsp directory to the PATH
-wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(1, wsp_path)
-print(f"control: wsp_path = {wsp_path}")
+# sys.path.insert(1, wsp_path)
+# print(f"control: wsp_path = {wsp_path}")
+# winter modules
+from wsp.alerts import alert_handler
+from wsp.camera import camera, winter_image_daemon_local
+from wsp.camera.implementations.spring_camera import SpringCamera
+from wsp.camera.implementations.winter_camera import local_camera
+from wsp.chiller import chiller, small_chiller
+from wsp.command import commandParser, commandServer, wintercmd
+from wsp.control import roboOperator
+from wsp.daemon import daemon_utils, test_daemon_local
+from wsp.dome import dome
+from wsp.ephem import ephem
+from wsp.filterwheel import filterwheel, spring_filterwheel
+from wsp.housekeeping import housekeeping, labjack_handler_local
+from wsp.power import powerManager
+from wsp.schedule import schedule
+from wsp.telescope import mirror_cover, telescope
+from wsp.utils.paths import WSP_PATH
+from wsp.watchdog import local_watchdog
 
 # winter modules
 # from power import power
@@ -76,7 +93,9 @@ class control(QtCore.QObject):
     newcmdRequest = QtCore.pyqtSignal(object)
 
     ## Initialize Class ##
-    def __init__(self, mode, config, base_directory, logger, opts=None, parent=None):
+    def __init__(
+        self, mode, config, hk_config, base_directory, logger, opts=None, parent=None
+    ):
         super(control, self).__init__(parent)
 
         print(f"control: base_directory = {base_directory}")
@@ -85,6 +104,7 @@ class control(QtCore.QObject):
 
         # pass in the config
         self.config = config
+        self.hk_config = hk_config
         # pass in the logger
         self.logger = logger
         # pass in the base directory
@@ -123,8 +143,6 @@ class control(QtCore.QObject):
 
         # Cleanup (kill any!) existing instances of the daemons running
         daemons_to_kill = [  #'ns_daemon',
-            "ccd_daemon.py",
-            "viscamd.py",
             "domed.py",
             "chillerd.py",
             "small_chillerd.py",
@@ -137,6 +155,8 @@ class control(QtCore.QObject):
             "powerd.py",
             "labjackd.py",
             "watchdogd.py",
+            "winterFilterd.py",
+            "springFilterd.py",
         ]
         daemon_utils.cleanup(daemons_to_kill)
 
@@ -213,21 +233,7 @@ class control(QtCore.QObject):
 
         try:
             nameserverd = Pyro5.core.locate_ns(host=self.ns_host)
-            """
-            # Don't think I need to do this...
-            try:
-                # unregister all the entries
-                entrylist = list(nameserverd.list().keys())[1:]
-                print(f'entries in pyro5 nameserver: {entrylist}')
-                for name in entrylist:
-                    print(f'removing {name}...')
-                    nameserverd.remove(name)
-                    
-                entrylist = list(nameserverd.list().keys())[1:]
-                print(f'entries in pyro5 nameserver: {entrylist}')
-            except Exception as e:
-                print(f'could not cleanup nameserver entries: {e}')
-            """
+
         except:
             # the nameserver is not running
             print("control: nameserver not already running. starting from wsp")
@@ -358,6 +364,14 @@ class control(QtCore.QObject):
             )
             self.daemonlist.add_daemon(self.winterfwd)
 
+            springfwargs = ["-n", self.ns_host]
+            self.springfwd = daemon_utils.PyDaemon(
+                name="springfw",
+                filepath=f"{wsp_path}/filterwheel/springFilterd.py",
+                args=springfwargs,
+            )
+            self.daemonlist.add_daemon(self.springfwd)
+
             # watchdog monitor daemon
             if self.disable_watchdog:
                 self.alertHandler.slack_log(
@@ -466,28 +480,20 @@ class control(QtCore.QObject):
             base_directory=self.base_directory, config=self.config, logger=self.logger
         )
 
-        """
-        # init the viscam shutter, filter wheel, and raspberry pi
-        self.viscam = viscam.local_viscam(base_directory = self.base_directory)
-        
-        #TODO: deprecate this
-        # init the viscam ccd
-        self.ccd = ccd.local_ccd(base_directory = self.base_directory, config = self.config, logger = self.logger)
-        
-        """
-        # init the sumnmer camera interface
-        self.summercamera = camera.local_camera(
+        # init the summer camera interface
+        self.springcamera = SpringCamera(
             base_directory=self.base_directory,
             config=self.config,
-            camname="summer",
-            daemon_pyro_name="SUMMERcamera",
-            ns_host=self.ns_host,
-            logger=self.logger,
-            verbose=self.verbose,
+            camname="spring",
+            daemon_pyro_name="SPRINGCamera",
+            ns_host_camera=self.ns_host,
+            ns_host_hk=self.ns_host,
+            logger=None,
+            verbose=False,
         )
 
         # init the winter camera interface
-        self.wintercamera = camera.local_camera(
+        self.wintercamera = local_camera(
             base_directory=self.base_directory,
             config=self.config,
             camname="winter",
@@ -507,6 +513,15 @@ class control(QtCore.QObject):
             verbose=self.verbose,
         )
 
+        self.springfw = spring_filterwheel.local_filterwheel(
+            base_directory=self.base_directory,
+            config=self.config,
+            daemon_pyro_name="SPRINGfw",
+            ns_host=self.ns_host,
+            logger=self.logger,
+            verbose=self.verbose,
+        )
+
         self.winter_image_handler = winter_image_daemon_local.WINTERImageHandler(
             wsp_path,
             config=self.config,
@@ -521,6 +536,7 @@ class control(QtCore.QObject):
         self.camdict = dict(
             {
                 "winter": self.wintercamera,
+                "spring": self.springcamera,
                 #'summer' : self.summercamera,
             }
         )
@@ -529,6 +545,7 @@ class control(QtCore.QObject):
         self.fwdict = dict(
             {
                 "winter": self.winterfw,
+                "spring": self.springfw,
                 #'summer' : self.summerfw,
             }
         )
@@ -573,11 +590,10 @@ class control(QtCore.QObject):
             self.base_directory, self.config, ns_host=self.ns_host, logger=self.logger
         )
         ### SET UP THE HOUSEKEEPING ###
-
-        # if mode == 1:
         # init the housekeeping class (this starts the daq and dirfile write loops)
         self.hk = housekeeping.housekeeping(
-            self.config,
+            config=self.config,
+            hk_config=self.hk_config,
             base_directory=self.base_directory,
             mode=mode,
             watchdog=self.watchdog,
@@ -589,10 +605,6 @@ class control(QtCore.QObject):
             powerManager=self.powerManager,
             counter=self.counter,
             ephem=self.ephem,
-            # viscam = self.viscam,
-            # ccd = self.ccd,
-            # summercamera = self.summercamera,
-            # wintercamera = self.wintercamera,
             camdict=self.camdict,
             fwdict=self.fwdict,
             imghandlerdict=self.imghandlerdict,
@@ -624,21 +636,12 @@ class control(QtCore.QObject):
             labjacks=self.labjacks,
             powerManager=self.powerManager,
             logger=self.logger,
-            # viscam = self.viscam,
-            # ccd = self.ccd,
-            # summercamera = self.summercamera,
-            # wintercamera = self.wintercamera,
             camdict=self.camdict,
             fwdict=self.fwdict,
             imghandlerdict=self.imghandlerdict,
             mirror_cover=self.mirror_cover,
             ephem=self.ephem,
         )
-
-        if mode in ["r", "m"]:
-            # init the schedule executor
-            # self.scheduleExec = schedule_executor.schedule_executor(self.config, self.hk.state, self.telescope, self.wintercmd, self.schedule, self.writer, self.logger)
-            pass
 
         # init the command executor
         self.cmdexecutor = commandParser.cmd_executor(
@@ -673,8 +676,6 @@ class control(QtCore.QObject):
                 dome=self.dome,
                 chiller=self.chiller,
                 ephem=self.ephem,
-                # viscam=self.viscam,
-                # ccd = self.ccd,
                 camdict=self.camdict,
                 fwdict=self.fwdict,
                 imghandlerdict=self.imghandlerdict,
@@ -698,9 +699,4 @@ class control(QtCore.QObject):
 
         ##### START SCHEDULE EXECUTOR #####
         if mode in ["r", "m"]:
-            # self.scheduleExec.start()
             self.roboThread.start()
-            # Now execute a list of commands
-            """cmdlist = ['mount_connect', 'mount_az_on', 'mount_alt_on', 'mount_home','mount_goto_alt_az 35 38.5']
-            self.logger.info(f'control: trying to add a list of commands to the cmd executor')
-            self.newcmd.emit(cmdlist)"""

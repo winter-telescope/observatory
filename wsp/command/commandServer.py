@@ -253,20 +253,10 @@ class command_thread(QtCore.QThread):
         # receive the data in small chunks and retransmit it
         while True:
             cmd = self.client_socket.recv(1024)
-            # print(f'cmdServer: received command {cmd.decode("utf-8")}')
             cmd_txt = cmd.decode("utf-8")
 
-            # Generate a new command request object (commandParser.cmd_request) which will be passed out to commandParser
-            new_cmd_request = commandParser.cmd_request(
-                cmd=cmd_txt,
-                request_addr=self.client_addr,
-                request_port=self.client_port,
-                priority="low",
-            )
-            # signal that the command has been recieved from the client, and pass the command request object to the server thread
-            self.newcmd_from_client.emit(new_cmd_request)
             if cmd:
-                # send a note back to the client that the command was received.
+                # SEND REPLY FIRST (before emitting command signal)
                 try:
                     reply = f'command [{cmd_txt}] received by server. To stop client session enter "quit"'
                     self.client_socket.send(bytes(reply, "utf-8"))
@@ -276,6 +266,16 @@ class command_thread(QtCore.QThread):
                         self.logger.debug(msg)
                     else:
                         print(msg)
+
+                # NOW generate command request and emit signal
+                new_cmd_request = commandParser.cmd_request(
+                    cmd=cmd_txt,
+                    request_addr=self.client_addr,
+                    request_port=self.client_port,
+                    priority="low",
+                )
+                self.newcmd_from_client.emit(new_cmd_request)
+
             else:
                 msg = f"Client at {self.client_addr} | {self.client_port} disconnected"
                 print(msg)
