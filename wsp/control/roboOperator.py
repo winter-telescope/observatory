@@ -5017,6 +5017,9 @@ class RoboOperator(QtCore.QObject):
         self.validStop = float(currentObs.get("validStop"))
 
         # do a check: is the filter valid for the camera?
+        self.log(
+            f"checking that filter {self.filter_scheduled} is valid for camera {cam_to_use}"
+        )
         if (
             self.filter_scheduled
             not in self.camera_manager.get_camera_info(cam_to_use).filters
