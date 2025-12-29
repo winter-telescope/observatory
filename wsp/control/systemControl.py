@@ -19,9 +19,15 @@ parts of the instrument including
 """
 # system packages
 import os
+import signal
+import sys
+import time
 
+import numpy as np
+import Pyro5.client
+import Pyro5.nameserver
 import yaml
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtGui, QtWidgets, uic
 
 # add the wsp directory to the PATH
 # sys.path.insert(1, wsp_path)
@@ -45,7 +51,38 @@ from wsp.telescope import mirror_cover, telescope
 from wsp.utils.paths import WSP_PATH
 from wsp.watchdog import local_watchdog
 
-wsp_path = WSP_PATH
+# winter modules
+# from power import power
+# from telescope import pwi4
+from alerts import alert_handler
+from camera import camera, winter_image_daemon_local
+
+# from dome import dome
+from chiller import chiller, small_chiller
+
+# from command import commandServer_multiClient
+from command import commandParser, commandServer, wintercmd
+
+# from routines import schedule_executor
+from control import roboOperator
+
+# from schedule import ObsWriter
+# from utils import utils
+# from power import power
+# from housekeeping import local_weather
+from daemon import daemon_utils, test_daemon_local
+from dome import dome
+from ephem import ephem
+from filterwheel import filterwheel
+from housekeeping import housekeeping, labjack_handler_local
+
+# from viscam import web_request
+# from viscam import viscam
+# from viscam import ccd
+from power import powerManager
+from schedule import schedule
+from telescope import mirror_cover, telescope
+from watchdog import local_watchdog
 
 
 # Create the control class -- it inherets from QObject
