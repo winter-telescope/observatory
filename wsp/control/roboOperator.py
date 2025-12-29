@@ -1311,18 +1311,55 @@ class RoboOperator(QtCore.QObject):
                                         f"need to focus cameras: {cameras_to_focus}"
                                     )
                                     for cam_to_focus in cameras_to_focus:
-                                        # pick off one camera to focus, then return to checkWhatToDo
                                         self.announce(
                                             f"**Out of date focus results**: we need to focus the telescope for camera: {cam_to_focus}"
                                         )
-                                        # there are filters to focus! run a focus sequence
-                                        self.do_camera_focus_sequence(
+
+                                        # Call the focus sequence and capture whether it succeeded
+                                        focus_success = self.do_camera_focus_sequence(
                                             camname=cam_to_focus
                                         )
-                                        self.announce(
-                                            f"got past the do_focus_sequence call in checkWhatToDo?"
+
+                                        # Record the attempt outcome
+                                        self.focusTracker.record_focus_attempt(
+                                            camera=cam_to_focus,
+                                            success=focus_success,
+                                            timestamp="now",
                                         )
-                                        # now exit and rerun the check
+
+                                        # If we've hit max attempts, fall back to best known focus
+                                        cam_entry = self.focusTracker.focus_log.get(
+                                            cam_to_focus, {}
+                                        )
+                                        attempts = cam_entry.get(
+                                            "attempts_since_success", 0
+                                        )
+                                        max_attempts = self.config[
+                                            "focus_loop_param"
+                                        ].get("max_focus_attempts", 3)
+
+                                        if (
+                                            attempts >= max_attempts
+                                            and not focus_success
+                                        ):
+                                            best_focus = (
+                                                self.focusTracker.get_best_focus(
+                                                    cam_to_focus
+                                                )
+                                            )
+                                            if best_focus is not None:
+                                                self.announce(
+                                                    f"Camera {cam_to_focus} focus failed {attempts} times. Moving to last known good focus: {best_focus}"
+                                                )
+                                                # You'll need a command to set focus position directly
+                                                self.doTry(
+                                                    f"set_focus {best_focus} --{cam_to_focus}"
+                                                )
+                                            else:
+                                                self.announce(
+                                                    f"Camera {cam_to_focus} focus failed {attempts} times and no fallback focus available!"
+                                                )
+
                                         self.checktimer.start()
                                         return
 
@@ -4087,7 +4124,7 @@ class RoboOperator(QtCore.QObject):
             pass
         else:
             self.announce("not okay to observe right now, exiting focus loop routine")
-            return
+            return None, False
 
         # set the progID info here for the headers
         self.resetObsValues()
@@ -4383,7 +4420,7 @@ class RoboOperator(QtCore.QObject):
                                 f"could not observe focus target (error: {e}), exiting..."
                             )
                             raise Exception(e)
-                            return
+                            return None, False
 
                     if firstObsComplete:
                         pass
@@ -4392,7 +4429,7 @@ class RoboOperator(QtCore.QObject):
                         self.announce(
                             f"could not observe ANY of the focus targets from the list. exiting..."
                         )
-                        return
+                        return None, False
 
                 else:
                     # any observation besides the first
@@ -4606,6 +4643,7 @@ class RoboOperator(QtCore.QObject):
                 self.do(f"m2_focuser_goto {nom_focus}")
                 self.focus_attempt_number += 1
                 # log a bad focus attempt with the focus_tracker (not yet implemented)
+                return None, False  # Mark as failed
 
             else:
                 self.logger.info(f"Focuser_going to final position at {x0_fit} microns")
@@ -4669,7 +4707,7 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            return None, False  # Mark as failed
 
         # now print the best fit focus to the slack
         """
@@ -4685,7 +4723,7 @@ class RoboOperator(QtCore.QObject):
             f":greentick: completed focus loop. going to best focus = {x0_fit}"
         )
 
-        return x0_fit
+        return x0_fit, True  # (focus_position, success)
 
     def do_camera_focus_sequence(self, camname: Optional[str] = None):
         """
@@ -4710,7 +4748,7 @@ class RoboOperator(QtCore.QObject):
                 self.log(
                     f"Error switching camera: aborting focus sequence: {e}, traceback = {traceback.format_exc()}"
                 )
-                return
+                return False
 
         # 1. change to the focus filter for this camera
         filterID = self.focusTracker.get_focus_filter(self.camname)
@@ -4752,7 +4790,7 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            return False
 
         # 2. do a focus loop!!
         system = "focus_loop"
@@ -4775,20 +4813,30 @@ class RoboOperator(QtCore.QObject):
 
             focusType = "Vcurve"  # <- really??
 
-            self.do_focusLoop(
+            result = self.do_focusLoop(
                 nom_focus=nom_focus,
                 total_throw=total_throw,
                 nsteps=nsteps,
                 updateFocusTracker=True,
                 focusType=focusType,
             )
+
+            # Handle the result
+            if result is None:
+                return False
+            elif isinstance(result, tuple):
+                focus_pos, success = result
+                return success
+            else:
+                # Legacy return (just focus position)
+                return True
         except Exception as e:
             msg = f"roboOperator: could not run focus loop due to error with {system} due to {e.__class__.__name__}, {e}, traceback = {traceback.format_exc()}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
-            return
+            return False
 
     # deprecated:
     def do_focus_sequence(self, filterIDs="reference", focusType="default"):
