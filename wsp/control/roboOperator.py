@@ -4998,12 +4998,15 @@ class RoboOperator(QtCore.QObject):
         # reset all the header stuff
         self.resetObsValues()
 
-        print(f"currentObs = {currentObs}")
+        # print(f"currentObs = {currentObs}")
         # first grab some fields from the currentObs
         # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which
         # borks up the housekeeping and the dirfile and is a big fat mess
         # which camera should be used for the observation?
-        cam_to_use = str(currentObs.get("camera", "winter"))
+        cam_to_use = str(currentObs.get("camera", "winter")).lower()
+        # default to winter if not specified or some kind of nan
+        if cam_to_use not in self.camera_manager.get_active_cameras():
+            cam_to_use = "winter"
         self.obsHistID = int(currentObs["obsHistID"])
         self.ra_deg_scheduled = float(currentObs["raDeg"])
         self.dec_deg_scheduled = float(currentObs["decDeg"])
