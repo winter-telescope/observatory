@@ -4998,7 +4998,7 @@ class RoboOperator(QtCore.QObject):
         # reset all the header stuff
         self.resetObsValues()
 
-        # print(f'currentObs = {currentObs}')
+        print(f"currentObs = {currentObs}")
         # first grab some fields from the currentObs
         # NOTE THE RECASTING! Some of these things come out of the dataframe as np datatypes, which
         # borks up the housekeeping and the dirfile and is a big fat mess
