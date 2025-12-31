@@ -19,75 +19,54 @@ class WinterCmdSocket(object):
         self.addr = cmd_server_address
         self.port = cmd_server_port
         self.connected = False
-        self.sock = None
 
     def send(self, cmd, max_retries=3, retry_delay=1):
         """
-        Send command with automatic reconnection on failure
+        chatGPT suggested some tweaks to autoreconnect
         """
+        if not self.connected:
+            self.connect_to_server()
+
         retries = 0
         while retries < max_retries:
-            # Try to connect if not connected
-            if not self.connected:
-                self.connect_to_server()
-
-            # Try to send if connected
             if self.connected:
                 try:
                     self.sock.sendall(bytes(cmd, "utf-8"))
                     reply = self.sock.recv(1024).decode("utf-8")
                     print(f"\treceived message back from server: '{reply}'\n")
                     return  # Successful send, exit the loop
-                except (socket.error, BrokenPipeError, ConnectionResetError) as e:
-                    print(f"\terror sending command: {e}")
-                    self.disconnect()
-                    print(f"\tWSP has disconnected. Could not send the command {cmd}")
+                except Exception as e:
+                    print(f"\terror after reconnection attempt: {e}")
+                    self.sock.close()
+                    print(f"\tWSP has disconnected. Could not send the command {cmd}\n")
+                    self.connected = False
                     retries += 1
                     if retries < max_retries:
                         print(f"\tRetrying in {retry_delay} seconds...")
                         time.sleep(retry_delay)
             else:
-                # Connection attempt failed, retry
+                # If not connected after reconnection attempt, retry connecting.
+                self.connect_to_server()
                 retries += 1
                 if retries < max_retries:
                     print(f"\tRetrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
 
-        print(f"\tReached maximum retry attempts ({max_retries}). Command not sent.\n")
-
-    def disconnect(self):
-        """Safely disconnect and clean up socket"""
-        self.connected = False
-        if self.sock:
-            try:
-                self.sock.close()
-            except:
-                pass
-            self.sock = None
+        print(f"\tReached maximum retry attempts ({max_retries}). Command not sent.")
 
     def connect_to_server(self):
-        """Attempt to connect to the server"""
         try:
-            print("\tattempting to connect to wsp...")
-            # Clean up any existing socket
-            self.disconnect()
-
-            # Create a TCP/IP socket
+            print("\tnot connected to wsp. attempting to reconnect...")
+            # create a TCP/IP socket
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            # Set a timeout to avoid hanging indefinitely
-            self.sock.settimeout(5)
-
-            # Connect the socket to the port where the server is listening
+            # connect the socket ot the port where the server is listening
             server_address = (self.addr, self.port)
             self.sock.connect(server_address)
-
-            # Reset to blocking mode after connection
-            self.sock.settimeout(None)
             self.connected = True
-            print("\tsuccessfully connected to wsp")
         except Exception as e:
             print(f"\tcould not connect to WSP: {e}")
-            self.disconnect()
+            self.sock.close()
+            self.connected = False
 
 
 class WinterCmdShell(pycmd.Cmd):
@@ -177,7 +156,6 @@ class WinterCmdShell(pycmd.Cmd):
 
     def quitshell(self):
         print("closing wintercmd shell. bye!")
-        self.wintercmd.disconnect()
         return True
 
 

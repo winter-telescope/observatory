@@ -22,30 +22,33 @@ the extra functionality we need.
 
 @author: nlourie
 """
+import logging
 import os
+import sys
 import time
 from datetime import datetime
 
+import numpy as np
+import yaml
 from PyQt5 import QtCore
-
-from wsp.telescope.pwi4_client import PWI4
-from wsp.utils import utils
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, wsp_path)
+print(f"telescope: wsp_path = {wsp_path}")
+
+# winter modules
+
+try:
+    from telescope.pwi4_client import PWI4
+except:
+    from pwi4_client import PWI4
+from utils import utils
 
 
 class TelescopeSignals(QtCore.QObject):
 
     wrapWarning = QtCore.pyqtSignal(object)
-
-
-class WrapWarningInfo:
-    def __init__(self, port, angle, min_degs, max_degs):
-        self.port = port
-        self.angle = angle
-        self.min_degs = min_degs
-        self.max_degs = max_degs
 
 
 class Telescope(PWI4):
@@ -61,7 +64,6 @@ class Telescope(PWI4):
 
         # create an empty state dictionary that will be updated
         self.state = dict()
-        self.port = -1  # unknown port at start
         self.config = config
         self.signals = TelescopeSignals()
         self.wrap_check_enabled = True  # False
@@ -92,6 +94,16 @@ class Telescope(PWI4):
                 time.sleep(1)
             except Exception as e:
                 self.log(f"could not stop rotator! error: {e}")
+            # DO NOT MOVE THE ROTATOR UNTIL WE FIGURE OUT HOW IT MOVES!!!!!!!
+            # TODO: remove when we've tested the telescope motion with winter
+            # NPL 6-9-23
+            """
+            try:
+                self.rotator_goto_mech(self.config['telescope']['rotator_home_degs'])
+                time.sleep(1)
+            except Exception as e:
+                self.log(f'could not send rotator to home position! error: {e}')
+            """
 
     def log(self, msg):
         msg = f"telescope: {msg}"
@@ -167,8 +179,6 @@ class Telescope(PWI4):
             # merge all status dictionaries into single self.state dictionary
             self.state = {**status, **mirror_temps}
             self.state.update({"rotator_wrap_check_enabled": self.wrap_check_enabled})
-            # update the current port
-
             self.check_for_wrap()
 
         except Exception as e:
@@ -187,8 +197,6 @@ class Telescope(PWI4):
 
             if verbose:
                 print(f"could not update telescope status: {type(e)}: {e}")
-        finally:
-            self.port = self.getTelescopePort()
 
     def enable_wrap_check(self):
         self.wrap_check_enabled = True
@@ -199,11 +207,13 @@ class Telescope(PWI4):
     def check_for_wrap(self):
 
         angle = self.state["rotator.mech_position_degs"]
-
+        # print(f'rotator angle = {angle}')
         active_port = int(self.state["m3.port"])
-        min_angle = self.config["telescope"]["ports"][self.port]["rotator"]["min_degs"]
-        max_angle = self.config["telescope"]["ports"][self.port]["rotator"]["max_degs"]
+        camname = self.config["telescope"]["port"][active_port]
+        min_angle = self.config["telescope"]["rotator"][camname]["rotator_min_degs"]
+        max_angle = self.config["telescope"]["rotator"][camname]["rotator_max_degs"]
         self.wrap_status = (angle <= min_angle) or (angle >= max_angle)
+        # print(f'Wrap Check: Current Field Angle {angle} outside range ({min_angle}, {max_angle})? {self.wrap_status}')
 
         self.state.update({"wrap_status": self.wrap_status})
         if self.wrap_check_enabled:
@@ -211,13 +221,7 @@ class Telescope(PWI4):
 
                 self.log("WRAP WARNING")
                 # we're in danger of wrapping!!
-                wrap_info = WrapWarningInfo(
-                    port=active_port,
-                    angle=angle,
-                    min_degs=min_angle,
-                    max_degs=max_angle,
-                )
-                self.signals.wrapWarning.emit(wrap_info)
+                self.signals.wrapWarning.emit(angle)
                 # set the flag to false so we don't send a billion signals
                 self.wrap_check_enabled = False
 
@@ -236,11 +240,6 @@ class Telescope(PWI4):
         response = self.request("/temperatures/pw1000")
         temp_dict = self.status_text_to_dict_parse(response)
         return temp_dict
-
-    def getTelescopePort(self):
-        port = int(self.state.get("m3.port", -1))
-        self.port = port
-        return port
 
 
 if __name__ == "__main__":

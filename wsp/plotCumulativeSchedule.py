@@ -115,17 +115,12 @@ field_size = 1 # degree on sky
 half_size = field_size / 2
 
 # Create a colormap based on the number of instances
-vmin = np.min(counts)/8
-vmax = np.max(counts)/8
+vmin = np.min(counts)
+vmax = np.max(counts)
 vmin_adjusted = vmin + (vmax - vmin) / 3  # Start a third of the way
 
 norm = colors.Normalize(vmin=vmin, vmax=vmax)
 cmap = cm.cool
-
-from matplotlib.colors import LogNorm
-
-vmin, vmax = counts.min(), counts.max()
-norm = LogNorm(vmin=vmin, vmax=vmax)
 
 # Sort positions by number of visits (ascending order)
 sorted_indices = np.argsort(counts_rounded)
@@ -140,7 +135,7 @@ for pos, count in zip(sorted_positions, sorted_counts):
     radiffB = (half_size * np.pi / 180) / np.cos(decsB * np.pi / 180)
     radiffT = (half_size * np.pi / 180) / np.cos(decsT * np.pi / 180)
     ra1, ra2, ra3, ra4 = rad_ra - radiffB, rad_ra + radiffB, rad_ra + radiffT, rad_ra - radiffT
-    color = cmap(norm(count/8))
+    color = cmap(norm(count))
     ax2.fill([ra1, ra2, ra3, ra4], [rad_dec - half_size * np.pi / 180, rad_dec - half_size * np.pi / 180, rad_dec + half_size * np.pi / 180, rad_dec + half_size * np.pi / 180], color=color, alpha=1, edgecolor='none')
 
 # for pos, count in zip(unique_positions, counts):

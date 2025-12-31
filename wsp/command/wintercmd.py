@@ -1943,39 +1943,10 @@ class Wintercmd(QtCore.QObject):
 
     @cmd
     def doFocusSeq(self):
-        """perform a focus sequence on the specified camera"""
-        group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("--winter", action="store_true")
-        group.add_argument("--summer", action="store_true")
-        group.add_argument("--spring", action="store_true")
-        self.getargs()
-
-        self.logger.info(f"doFocusSeq: args = {self.args}")
-
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
-            camname = "summer"
-        elif self.args.spring:
-            camname = "spring"
-        else:
-            camname = None  # default: current active camera
-
-        if camname is not None:
-            self.logger.info(f"doFocusSeq: performing focus sequence on {camname} cam")
-        else:
-            self.logger.info(f"doFocusSeq: performing focus sequence on active cam")
-
-        sigcmd = signalCmd("do_camera_focus_sequence", camname=camname)
-        self.roboThread.newCommand.emit(sigcmd)
-
-    """
-    @cmd
-    def doFocusSeq(self):
         self.defineCmdParser("do a focus sequence on all active filters")
         sigcmd = signalCmd("do_focus_sequence")
 
-        self.roboThread.newCommand.emit(sigcmd)"""
+        self.roboThread.newCommand.emit(sigcmd)
 
     @cmd
     def doFocusLoop_old(self):
@@ -2437,49 +2408,7 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 5-10-21
         Send the rotator to the home position
         """
-        self.defineCmdParser("turn instrument rotator to home position")
-
-        # need to ensure that a valid rotator is selected, eg,
-        # self.telescope.port is in [1,2]
-        # poll the port for some period until a valid rotator is found
-        # or timeout
-        ## Wait until end condition is satisfied, or timeout ##
-        condition = True
-        timeout = 30.0
-        # wait for the telescope to stop moving before returning
-        # create a buffer list to hold several samples over which the stop condition must be true
-        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
-        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
-
-        # get the current timestamp
-        start_timestamp = datetime.utcnow().timestamp()
-        while True:
-            QtCore.QCoreApplication.processEvents()
-
-            # print('entering loop')
-            # time.sleep(self.config['cmd_status_dt'])
-            QtCore.QThread.msleep(int(self.config["cmd_status_dt"] * 1000))
-            timestamp = datetime.utcnow().timestamp()
-            dt = timestamp - start_timestamp
-            # print(f'wintercmd: wait time so far = {dt}')
-            if dt > timeout:
-                raise TimeoutError(
-                    f"command timed out after {timeout} seconds before completing:"
-                    f" port {self.telescope.port} is not at either allowed ports (1,2)"
-                )
-
-            stop_condition = self.telescope.port in [1, 2]
-            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-            # now replace the last element
-            stop_condition_buffer[-1] = stop_condition
-
-            if all(entry == condition for entry in stop_condition_buffer):
-                break
-
-        angle = self.config["telescope"]["ports"][self.telescope.port]["rotator"][
-            "home_degs"
-        ]
+        angle = self.config["telescope"]["rotator_home_degs"]
         cmd = f"rotator_goto_mech {angle}"
         self.parse(cmd)
 
@@ -3489,28 +3418,6 @@ class Wintercmd(QtCore.QObject):
             self.roboThread.restartRoboSignal.emit("test")
 
     @cmd
-    def robo_switch_camera(self):
-        self.defineCmdParser("switch the active camera for robotic operations")
-        self.cmdparser.add_argument(
-            "camera",
-            nargs=1,
-            action=None,
-            type=str,
-            choices=["winter", "summer", "spring"],
-        )
-
-        self.getargs()
-        self.logger.info(f"robo_switch_camera: args = {self.args}")
-
-        camname = self.args.camera[0]
-
-        self.logger.info(f"wintercmd: switching robotic camera to {camname}")
-
-        sigcmd = signalCmd("switchCamera", camname=camname)
-
-        self.roboThread.newCommand.emit(sigcmd)
-
-    @cmd
     def robo_do_currentObs(self):
         self.defineCmdParser("do the current observation")
         self.roboThread.do_currentObs_Signal.emit()
@@ -3592,9 +3499,9 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the camera name
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("--winter", action="store_true")
-        group.add_argument("--summer", action="store_true")
-        group.add_argument("--spring", action="store_true")
+        group.add_argument("-w", "--winter", action="store_true", default=True)
+        group.add_argument("-c", "--summer", action="store_true", default=False)
+
         self.getargs()
 
         self.logger.info(f"fw_goto: args = {self.args}")
@@ -3603,10 +3510,6 @@ class Wintercmd(QtCore.QObject):
             camname = "winter"
         elif self.args.summer:
             camname = "summer"
-        elif self.args.spring:
-            camname = "spring"
-        else:
-            camname = "winter"  # default
 
         # You call this function like this:
         # robo_do_darks -n 3 -e 1 5 10
@@ -3949,6 +3852,17 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def robo_remakePointingModel(self):
         self.defineCmdParser("remake the pointing model for the telescope")
+        # argument to hold the camera name
+        group = self.cmdparser.add_mutually_exclusive_group()
+        group.add_argument("-w", "--winter", action="store_true", default=True)
+        group.add_argument("-c", "--summer", action="store_true", default=False)
+
+        self.getargs()
+
+        if self.args.winter:
+            camname = "winter"
+        elif self.args.summer:
+            camname = "summer"
 
         self.cmdparser.add_argument(
             "-a",
@@ -3972,7 +3886,9 @@ class Wintercmd(QtCore.QObject):
         # firstpoint = self.args.firstline[0]
         firstpoint = self.args.firstline
 
-        sigcmd = signalCmd("remakePointingModel", append=append, firstpoint=firstpoint)
+        sigcmd = signalCmd(
+            "remakePointingModel", camname=camname, append=append, firstpoint=firstpoint
+        )
         print(f"wintercmd: sending command = {sigcmd.cmd}")
 
         self.roboThread.newCommand.emit(sigcmd)
@@ -4601,9 +4517,8 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("--winter", action="store_true")
-        group.add_argument("--summer", action="store_true")
-        group.add_argument("--spring", action="store_true")
+        group.add_argument("-w", "--winter", action="store_true", default=True)
+        group.add_argument("-c", "--summer", action="store_true", default=False)
 
         self.getargs()
 
@@ -4613,10 +4528,6 @@ class Wintercmd(QtCore.QObject):
             fwname = "winter"
         elif self.args.summer:
             fwname = "summer"
-        elif self.args.spring:
-            fwname = "spring"
-        else:
-            fwname = "winter"  # default
 
         fw = self.fwdict[fwname]
 
@@ -4636,9 +4547,8 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("--winter", action="store_true")
-        group.add_argument("--summer", action="store_true")
-        group.add_argument("--spring", action="store_true")
+        group.add_argument("-w", "--winter", action="store_true", default=True)
+        group.add_argument("-c", "--summer", action="store_true", default=False)
 
         self.getargs()
 
@@ -4648,15 +4558,6 @@ class Wintercmd(QtCore.QObject):
             fwname = "winter"
         elif self.args.summer:
             fwname = "summer"
-        elif self.args.spring:
-            fwname = "spring"
-        else:
-            fwname = "winter"  # default
-
-        # break if fw is spring
-        # if fwname != "winter":
-        #    self.logger.info(f"fw_goto: {fwname} filter wheel not implemented yet!")
-        #    return
 
         fw = self.fwdict[fwname]
 
@@ -4697,96 +4598,6 @@ class Wintercmd(QtCore.QObject):
             if all(entry == condition for entry in stop_condition_buffer):
                 self.logger.info(f"wintercmd: successfully completed filter wheel move")
                 break
-
-    ##### SHUTTER METHODS #####
-    @cmd
-    def shutter(self):
-        """open or close the shutter for the specified camera"""
-        self.defineCmdParser("open or close the shutter for a camera")
-        self.cmdparser.add_argument(
-            "action",
-            nargs=1,
-            action=None,
-            type=str,
-            choices=["open", "close"],
-        )
-
-        group = self.cmdparser.add_mutually_exclusive_group(required=True)
-        group.add_argument("--winter", action="store_true")
-        group.add_argument("--summer", action="store_true")
-        group.add_argument("--spring", action="store_true")
-
-        self.getargs()
-
-        if self.verbose:
-            print(self.args)
-
-        action = self.args.action[0]
-
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
-            camname = "summer"
-        elif self.args.spring:
-            camname = "spring"
-        else:
-            camname = "spring"  # default
-
-        self.logger.info(f"shutter: {action} shutter for {camname} camera")
-
-        if camname == "spring":
-            fw = self.fwdict[camname]
-
-            if action == "open":
-                cmd = "openShutter"
-                shutter_is_open_goal = True
-            elif action == "close":
-                cmd = "closeShutter"
-                shutter_is_open_goal = False
-            else:
-                self.logger.error(f"shutter: unknown action {action}")
-                return
-            sigcmd = signalCmd(cmd)
-
-            fw.newCommand.emit(sigcmd)
-
-            ## Wait until end condition is satisfied, or timeout ##
-            condition = True
-            timeout = 60 * 5
-            # create a buffer list to hold several samples over which the stop condition must be true
-            n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
-            stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
-
-            # get the current timestamp
-            start_timestamp = datetime.utcnow().timestamp()
-            while True:
-                QtCore.QCoreApplication.processEvents()
-                time.sleep(self.config["cmd_status_dt"])
-                timestamp = datetime.utcnow().timestamp()
-                dt = timestamp - start_timestamp
-                # print(f'wintercmd: wait time so far = {dt}')
-                if dt > timeout:
-                    raise TimeoutError(
-                        f"unable to move filter wheel: command timed out after {timeout} seconds before completing."
-                    )
-
-                stop_condition = (
-                    self.state["spring_shutter_is_open"] == shutter_is_open_goal
-                )
-                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-                # now replace the last element
-                stop_condition_buffer[-1] = stop_condition
-
-                if all(entry == condition for entry in stop_condition_buffer):
-                    self.logger.info(
-                        f"wintercmd: successfully completed shutter {action} operation"
-                    )
-                    break
-        else:
-            self.logger.error(
-                f"shutter: shutter control not implemented for {camname} camera"
-            )
 
     ##### CAMERA API METHODS #####
     @cmd
@@ -4914,9 +4725,8 @@ class Wintercmd(QtCore.QObject):
         self.defineCmdParser("take an exposure with the camera")
         # argument to hold the camera
         camgroup = self.cmdparser.add_mutually_exclusive_group()
-        camgroup.add_argument("--winter", action="store_true")
-        camgroup.add_argument("--summer", action="store_true")
-        camgroup.add_argument("--spring", action="store_true")
+        camgroup.add_argument("-w", "--winter", action="store_true", default=False)
+        camgroup.add_argument("-c", "--summer", action="store_true", default=False)
 
         # argument to hold the observation type
         imtypegroup = self.cmdparser.add_mutually_exclusive_group()
@@ -5024,8 +4834,6 @@ class Wintercmd(QtCore.QObject):
             camname = "winter"
         elif self.args.summer:
             camname = "summer"
-        elif self.args.spring:
-            camname = "spring"
         else:
             camname = "winter"
 
@@ -5050,12 +4858,7 @@ class Wintercmd(QtCore.QObject):
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
         # timeout = self.state[f'{camname}_camera_command_timeout']
-        if camname == "winter":
-            timeout = self.state[f"{camname}_camera_exptime"] + 10.0
-        elif camname == "spring":
-            timeout = float(camera.state["exptime"]) * 3 + 10.0
-        else:
-            timeout = 30.0 * 3 + 10.0
+        timeout = self.state[f"{camname}_camera_exptime"] + 10.0
         # create a buffer list to hold several samples over which the stop condition must be true
 
         n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
@@ -5077,14 +4880,9 @@ class Wintercmd(QtCore.QObject):
                     f"doExposure command timed out after {timeout} seconds before completing"
                 )
 
-            if camname == "winter":
-                stop_condition = (
-                    self.state[f"{camname}_camera_doing_exposure"] == False
-                ) & (self.state[f"{camname}_camera_command_pass"] == 1)
-            elif camname == "spring":
-                stop_condition = (camera.state["camera_state"] == "READY") & (
-                    camera.state["command_pass"] == 1
-                )
+            stop_condition = (
+                self.state[f"{camname}_camera_doing_exposure"] == False
+            ) & (self.state[f"{camname}_camera_command_pass"] == 1)
 
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
@@ -5280,21 +5078,17 @@ class Wintercmd(QtCore.QObject):
 
         # argument to hold the observation type
         group = self.cmdparser.add_mutually_exclusive_group()
-        group.add_argument("--winter", action="store_true")  # Remove default=True
-        group.add_argument("--summer", action="store_true")
-        group.add_argument("--spring", action="store_true")
+        group.add_argument("-w", "--winter", action="store_true", default=True)
+        group.add_argument("-c", "--summer", action="store_true", default=False)
 
         self.getargs()
 
         self.logger.info(f"setExposure: args = {self.args}")
 
-        # Default to 'winter' if no camera specified
-        if self.args.spring:
-            camname = "spring"
+        if self.args.winter:
+            camname = "winter"
         elif self.args.summer:
             camname = "summer"
-        else:
-            camname = "winter"  # Default case
 
         camera = self.camdict[camname]
 
@@ -5313,20 +5107,8 @@ class Wintercmd(QtCore.QObject):
             # TODO: ditch this and fix the stop condition
             # if we checking specific addresses then we need a different way to assess success
             return
-
         condition = True
-
-        if camname == "winter":
-            timeout = 10
-        elif camname == "spring":
-            timeout = 3 * exptime + 10
-        else:
-            timeout = 30
-
-        self.logger.info(
-            f"setExposure: timeout set to {timeout} seconds for {camname} and {exptime} sec exposure"
-        )
-
+        timeout = 10
         # create a buffer list to hold several samples over which the stop condition must be true
         n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
         stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
@@ -5345,20 +5127,9 @@ class Wintercmd(QtCore.QObject):
                 )
                 break
 
-            if camname == "winter":
-                stop_condition = (
-                    self.state[f"{camname}_camera_exptime"] == exptime
-                ) & (self.state[f"{camname}_camera_command_pass"] == 1)
-            elif camname == "spring":
-                stop_condition = (camera.state["exptime"] == exptime) & (
-                    camera.state["camera_state"] == "READY"
-                )
-            else:
-                self.logger.info("WARNING! applying generic stop condition!")
-                stop_condition = (camera.state["exptime"] == exptime) & (
-                    camera.state["camera_state"] == "READY"
-                )
-
+            stop_condition = (self.state[f"{camname}_camera_exptime"] == exptime) & (
+                self.state[f"{camname}_camera_command_pass"] == 1
+            )
             # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
             stop_condition_buffer[:-1] = stop_condition_buffer[1:]
             # now replace the last element
@@ -5831,9 +5602,7 @@ class Wintercmd(QtCore.QObject):
             conds.append(
                 np.abs(
                     self.state["rotator_mech_position"]
-                    - self.config["telescope"]["ports"][self.telescope.port]["rotator"][
-                        "home_degs"
-                    ]
+                    - self.config["telescope"]["rotator_home_degs"]
                 )
                 < 1.0
             )  # NPL 12-15-21 these days it sags to ~ -27 from -25

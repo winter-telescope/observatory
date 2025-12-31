@@ -93,33 +93,7 @@ class local_camera(QtCore.QObject):
         self.mode = None
         self.imtype = None
 
-        # TEC parameters
-        self.tec_temp = 0  # Current temperature of TEC
-        self.tec_enabled = 0  # Is the TEC enabled?(0: OFF, 1: ON)
-        self.tec_setpoint = 0.0  # Setpoint temperature for TEC
-        self.tec_voltage = 0.0  # Voltage of TEC
-        self.tec_current = 0.0  # Current of TEC
-        self.tec_percentage = 0.0  # Percentage of TEC power
-
-        # Backwards compatibility attributes
-        self.timestamp = datetime.utcnow().timestamp()
-        self.command_pass = False
-        self.command_active = False
-        self.doing_exposure = False
-        self.is_connected = False
-        self.command_timeout = 0.0
-        self.command_sent_timestamp = 0.0
-        self.command_elapsed_dt = 0.0
-        self.autoShutdownRequested = False
-        self.autoShutdownComplete = False
-        self.autoStartupRequested = False
-        self.autoStartupComplete = False
-
-        # Last image path
-        self.last_image_dir = ""
-        self.last_image_filename = ""
-
-        # Connect signals and slots
+        # connect the signals and slots
         self.newCommand.connect(self.doCommand)
 
         # Startup
@@ -367,26 +341,7 @@ class local_camera(QtCore.QObject):
 
     def doExposure(self, imdir=None, imname=None, imtype=None, mode=None, addrs=None):
 
-        Parameters
-        ----------
-        exptime : float
-            Exposure time in seconds
-        **kwargs
-            Additional camera-specific parameters
-        """
-        self._mark_operation_start()
-        # Don't update local exposure time, let it come from the server because sometimes it is slow
-        try:
-            self.camera_state = CameraState.SETTING_PARAMETERS
-            self.remote_object.setExposure(exptime, **kwargs)
-        except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            print(f"Error setting exposure: {e}")
-            raise
-
-    def doExposure(self, imdir=None, imname=None, imtype=None, mode=None, **kwargs):
-        """Execute exposure"""
+        # now dispatch the observation
         self.log(f"running doExposure")
 
         self.imstarttime = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")[:-3]
@@ -449,12 +404,6 @@ class local_camera(QtCore.QObject):
                 metadata=header,
                 addrs=addrs,
             )
-
-            # grab the filename after exposure command is sent
-            self.last_image_dir, self.last_image_filename = (
-                self.remote_object.getLastImagePath()
-            )
-
         except Exception as e:
             print(f"Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}")
 
@@ -491,14 +440,8 @@ class local_camera(QtCore.QObject):
             startupValidation=startupValidation, addrs=addrs
         )
 
-    def getLastImagePath(self):
-        """Get last image path: returns <imdir>, <filename>"""
-        # return self.remote_object.getLastImagePath()
-        return self.last_image_dir, self.last_image_filename
-
-    def checkCamera(self, **kwargs):
-        """Check camera status"""
-        self.remote_object.checkCamera(**kwargs)
+    def checkCamera(self, addrs=None):
+        self.remote_object.checkCamera(addrs=addrs)
 
     def autoStartupCamera(self):
         self.remote_object.autoStartup()

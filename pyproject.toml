@@ -49,5 +49,4 @@ dev = [
 [tool.setuptools]
 packages = ["wsp"]
 
-[project.scripts]
-wsp = "wsp.cli:main"
+    
