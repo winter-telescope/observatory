@@ -1,25 +1,28 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-camera.py
+Created on Fri Feb 24 14:37:29 2023
 
-Integrated Camera System with standardized state management
-Combines BaseCamera with CameraState for consistent state machine integration
+# camera.py
 
-Architecture:
-1. Camera Hardware Daemon (vendor-specific)
-2. Interface Daemon (standardizes communication, manages state)
-3. BaseCamera Client (communicates with Interface Daemon)
-4. State Machine (uses BaseCamera instances)
+This file is part of WSP
+
+# PURPOSE #
+Generic WSP Camera Object: interface between the camera and camera pyro daemon
+
+@author: nlourie
 """
 
 import json
 import logging
 import os
+
+# import numpy as np
 import sys
 import time
-from abc import ABC, abstractmethod
-from datetime import datetime, timezone
-from enum import Enum, auto
-from typing import Any, Dict, Optional
+
+# import traceback as tb
+from datetime import datetime
 
 import astropy.io.fits as fits
 import Pyro5.core
@@ -27,22 +30,29 @@ import Pyro5.errors
 import Pyro5.server
 from PyQt5 import QtCore
 
-from wsp.camera import fitsheader
-from wsp.camera.state import CameraState
+# add the wsp directory to the PATH
+wsp_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, wsp_path)
+print(f"camera: wsp_path = {wsp_path}")
+from utils import logging_setup, utils
+
+# from housekeeping import data_handler
+try:
+    import fitsheader
+except:
+    from camera import fitsheader
 
 
-class BaseCamera(QtCore.QObject):
+class local_camera(QtCore.QObject):
     """
-    BaseCamera client that communicates with camera daemons.
-
-    The daemon is now responsible for immediate state changes,
-    so this class simply sends commands and polls for state updates.
+    Using a QObject so that it can signals. The problem is that all the Pyro
+    calls for a given proxy have to be handled in a single thread. To execute commands
+    from outside this thread let's try using the signal/slot approach.
     """
 
-    # Qt signals
     newCommand = QtCore.pyqtSignal(object)
+
     imageSaved = QtCore.pyqtSignal()
-    stateChanged = QtCore.pyqtSignal(str, str)  # old_state, new_state
 
     def __init__(
         self,
@@ -50,84 +60,38 @@ class BaseCamera(QtCore.QObject):
         config,
         camname,
         daemon_pyro_name,
-        ns_host_camera=None,
-        ns_host_hk=None,
         ns_host=None,
         logger=None,
         verbose=False,
     ):
-        """
-        Initialize the base camera object.
+        super(local_camera, self).__init__()
 
-        Parameters
-        ----------
-        base_directory : str
-            Base directory path for the camera system
-        config : dict
-            Configuration dictionary
-        camname : str
-            Name identifier for this camera
-        daemon_pyro_name : str
-            Pyro daemon name for this camera
-        ns_host_camera : str, optional
-            IP address of the Pyro name server where camera daemon is registered
-        ns_host_hk : str, optional
-            IP address of the Pyro name server where housekeeping state is registered
-        ns_host : str, optional
-            Deprecated, use ns_host_camera instead
-        logger : logging.Logger, optional
-            Logger instance
-        verbose : bool, optional
-            Enable verbose logging
-        """
-
-        super(BaseCamera, self).__init__()
-
-        # Core attributes
+        # Define attributes
         self.base_directory = base_directory
         self.config = config
         self.camname = camname
-        self.daemonname = daemon_pyro_name
-
-        # ns_host_camera, ns_host_hk: if not provided, fallback to ns_host for backwards compatibility
-        if ns_host_camera is None:
-            self.ns_host_camera = ns_host
-        else:
-            self.ns_host_camera = ns_host_camera
-        if ns_host_hk is None:
-            self.ns_host_hk = ns_host
-        else:
-            self.ns_host_hk = ns_host_hk
-
-        self.logger = logger
-        self.verbose = verbose
-
-        # State management
+        self.daemonname = (
+            daemon_pyro_name  # the name that the camera daemon is registered under
+        )
+        self.ns_host = (
+            ns_host  # the ip address of the pyro name server, eg `192.168.1.10`
+        )
         self.state = dict()
         self.hk_state = dict()
         self.remote_state = dict()
         self.connected = False
         self.hk_connected = False
+        self.logger = logger
+        self.default = self.config["default_value"]
+        self.verbose = verbose
 
-        # Camera state tracking
-        self._camera_state = CameraState.OFF
-        self._previous_state = CameraState.OFF
-        self._state_transition_time = datetime.utcnow()
-
-        # Operation tracking for grace period
-        self.active_operation_time = None
-        self.state_sync_grace_period = 2.0  # seconds to wait for daemon state sync
-
-        # Default value handling
-        self.default = self.config.get("default_value", -999)
-
-        # Image parameters
+        # placeholders for getting the image parameters from ccd_daemon
+        self.connected = 0
         self.imdir = ""
         self.imname = ""
         self.imstarttime = ""
         self.mode = None
         self.imtype = None
-        self.exptime = 0.0
 
         # TEC parameters
         self.tec_temp = 0  # Current temperature of TEC
@@ -158,103 +122,94 @@ class BaseCamera(QtCore.QObject):
         # Connect signals and slots
         self.newCommand.connect(self.doCommand)
 
-        # Initialize connections
+        # Startup
+        # setup connection to pyro ccd
         self.init_remote_object()
         self.update_state()
 
+        # setup connection to pyro state
+        self.init_hk_state_object()
+        self.update_hk_state()
+
     def log(self, msg, level=logging.INFO):
-        msg = f"{self.camname} local interface: {msg}"
+        msg = f"{self.daemonname}_local: {msg}"
         if self.logger is None:
             print(msg)
         else:
             self.logger.log(level=level, msg=msg)
 
+    ### Things for getting the housekeeping state from the Pyro Server ###
+
+    def init_hk_state_object(self):
+        # init the remote object
+        try:
+            ns = Pyro5.core.locate_ns(host=self.ns_host)
+            uri = ns.lookup("state")
+            self.remote_hk_state_object = Pyro5.client.Proxy(uri)
+            self.hk_connected = True
+        except:
+            self.hk_connected = False
+            pass
+        """
+        except Exception:
+            self.log('connection with remote object failed', exc_info = True)
+        """
+
+    def update_hk_state(self):
+        # poll the state, if we're not connected try to reconnect
+        # this should reconnect down the line if we get disconnected
+        if not self.hk_connected:
+            self.init_hk_state_object()
+
+        else:
+            try:
+                self.hk_state = self.remote_hk_state_object.GetStatus()
+
+            except Exception as e:
+                if self.verbose:
+                    self.log(f"could not update remote housekeeping state: {e}")
+                self.hk_connected = False
+
+    ###
     def doCommand(self, cmd_obj):
         """
-        Execute command from signal.
+        This is connected to the newCommand signal. It parses the command and
+        then executes the corresponding command from the list below
+
+        using this as a reference: (source: https://stackoverflow.com/questions/6321940/how-to-launch-getattr-function-in-python-with-additional-parameters)
+
         """
         cmd = cmd_obj.cmd
         args = cmd_obj.args
         kwargs = cmd_obj.kwargs
+
+        # print(f'ccd: caught doCommand signal: {cmd}, args = {args}, kwargs = {kwargs}')
 
         try:
             getattr(self, cmd)(*args, **kwargs)
         except:
             pass
 
-    @property
-    def camera_state(self) -> CameraState:
-        """Get current camera state"""
-        return self._camera_state
-
-    @camera_state.setter
-    def camera_state(self, new_state: CameraState):
-        """Set camera state and emit signal if changed"""
-        if new_state != self._camera_state:
-            old_state = self._camera_state
-            self._previous_state = old_state
-            self._camera_state = new_state
-            self._state_transition_time = datetime.utcnow()
-            self.stateChanged.emit(old_state.value, new_state.value)
-            self.log(
-                f"State changed: {self._state_transition_time}: {old_state.value} -> {new_state.value}"
-            )
-            # Update local state dict immediately
-            self.state["camera_state"] = new_state.value
-
-    def is_valid_state(self, state: CameraState) -> bool:
-        """Check if the given state is a valid CameraState."""
-        return isinstance(state, CameraState) and state in CameraState
-
-    def _mark_operation_start(self):
-        """Mark the start of an operation for grace period tracking"""
-        self.active_operation_time = datetime.now(timezone.utc).timestamp()
-
     def init_remote_object(self):
-        """Initialize connection to remote daemon"""
+        # init the remote object
         try:
             if self.verbose:
                 self.log(f"init_remote_object: trying to connect to {self.daemonname}")
-            ns = Pyro5.core.locate_ns(host=self.ns_host_camera)
+            ns = Pyro5.core.locate_ns(host=self.ns_host)
             uri = ns.lookup(self.daemonname)
             self.remote_object = Pyro5.client.Proxy(uri)
             self.connected = True
-            self.is_connected = True
         except Exception as e:
             self.connected = False
-            self.is_connected = False
             if self.verbose:
                 self.log(f"connection to remote object failed: {e}")
-
-    def init_hk_state_object(self):
-        """Initialize housekeeping state connection"""
-        try:
-            ns = Pyro5.core.locate_ns(host=self.ns_host_hk)
-            uri = ns.lookup("state")
-            self.remote_hk_state_object = Pyro5.client.Proxy(uri)
-            self.hk_connected = True
-        except:
-            self.hk_connected = False
-
-    def update_hk_state(self):
-        """Update housekeeping state"""
-        if not self.hk_connected:
-            self.init_hk_state_object()
-        else:
-            try:
-                self.hk_state = self.remote_hk_state_object.GetStatus()
-            except Exception as e:
-                if self.verbose:
-                    self.log(f"could not update remote housekeeping state: {e}")
-                self.hk_connected = False
+            pass
 
     def update_state(self):
-        """Poll daemon for current state"""
+        # poll the state, if we're not connected try to reconnect
+        # this should reconnect down the line if we get disconnected
+        # self.log(f'updating remote state: self.connected = {self.connected}')
 
-        # Update HK state also
-        self.update_hk_state()
-
-        # Update the System State
         if not self.connected:
             if self.verbose:
                 self.log(
@@ -262,142 +217,68 @@ class BaseCamera(QtCore.QObject):
                 )
             self.init_remote_object()
 
-        if self.connected:
+        if not self.hk_connected:
+            self.init_hk_state_object()
+
+        else:
             try:
+                # self.log(f'updating remote state')
                 self.remote_state = self.remote_object.getStatus()
-
-                # Update camera state from remote BEFORE parsing
-                remote_camera_state = self.remote_state.get("camera_state", "OFF")
+            except Exception as e:
                 if self.verbose:
-                    print(f"Remote camera state: {remote_camera_state}")
+                    self.log(f"camera: could not update remote state: {e}")
+                self.connected = False
+                pass
 
-                try:
-                    new_state = CameraState(remote_camera_state)
-                    if self.is_valid_state(new_state):
-                        # Check if we're within grace period
-                        should_update = True
-
-                        if self.active_operation_time:
-                            time_since_operation = (
-                                datetime.now(timezone.utc).timestamp()
-                                - self.active_operation_time
-                            )
-                            if time_since_operation < self.state_sync_grace_period:
-                                if self.verbose:
-                                    self.log(
-                                        f"Within grace period ({time_since_operation:.1f}s < "
-                                        f"{self.state_sync_grace_period}s), not overwriting state"
-                                    )
-                                should_update = False
-                            else:
-                                # Grace period expired
-                                self.active_operation_time = None
-
-                        # Only update if we should
-                        if should_update and new_state != self._camera_state:
-                            self.camera_state = new_state
-
-                    else:
-                        self.log(
-                            f"Invalid camera state received: {remote_camera_state}",
-                            level=logging.ERROR,
-                        )
-                except ValueError:
-                    self.log(
-                        f"Unknown camera state from remote: {remote_camera_state}",
-                        level=logging.ERROR,
-                    )
-
-                # Update backwards compatibility attributes from remote state
-                self.timestamp = datetime.utcnow().timestamp()
-                self.command_pass = self.remote_state.get("command_pass", False)
-                self.command_active = self.remote_state.get("command_active", False)
-                self.command_timeout = self.remote_state.get("command_timeout", 0.0)
-                self.command_sent_timestamp = self.remote_state.get(
-                    "command_sent_timestamp", 0.0
-                )
-
-                # Calculate elapsed time
-                if self.command_sent_timestamp > 0:
-                    self.command_elapsed_dt = (
-                        self.timestamp - self.command_sent_timestamp
-                    )
-                else:
-                    self.command_elapsed_dt = 0.0
-
-                # Update exposure status based on camera state
-                self.doing_exposure = self._camera_state in [
-                    CameraState.EXPOSING,
-                    CameraState.READING,
-                ]
-
-                # Update startup/shutdown flags based on state
-                self.autoStartupRequested = (
-                    self._camera_state == CameraState.STARTUP_REQUESTED
-                )
-                self.autoStartupComplete = (
-                    self._previous_state == CameraState.STARTUP_REQUESTED
-                    and self._camera_state == CameraState.READY
-                )
-                self.autoShutdownRequested = (
-                    self._camera_state == CameraState.SHUTDOWN_REQUESTED
-                )
-                self.autoShutdownComplete = (
-                    self._previous_state == CameraState.SHUTDOWN_REQUESTED
-                    and self._camera_state == CameraState.OFF
-                )
-
-                # Now parse the rest of the state
+            try:
                 self.parse_state()
 
             except Exception as e:
                 if self.verbose:
-                    self.log(f"camera: could not update/parse remote state: {e}")
-                self.connected = False
-                self.is_connected = False
-                self.camera_state = CameraState.ERROR
+                    self.log(f"camera: could not parse remote state: {e}")
+                # self.connected = False
+                pass
+
+            # get the last image name
+            """
+            try:
+                self.image_directory, self.image_filename = self.remote_object.getLastImagePath()
+            except Exception as e:
+                self.image_directory = 'UNKNOWN'
+                self.image_filename = 'UNKNOWN'
+                if self.verbose:
+                    self.log(f'could not get last image filename due to {e}')#', {tb.format_exc()}')
+            """
+
+    def getLastImagePath(self):
+
+        return self.imdir, self.imname
 
     def parse_state(self):
-        """Parse state - must be implemented by subclasses"""
-        # Base implementation with backwards compatibility attributes
+        """
+        Do any conditioning we need to properly handle and parse the state dictionary
+        """
+
+        # update the rest of the stuff
+        for key in self.remote_state.keys():
+            self.state.update({key: self.remote_state[key]})
+
+        # self.state.update({'is_connected'                   :   bool(self.remote_state.get('is_connected', self.default))})
         self.state.update(
             {
-                "timestamp": self.timestamp,
                 "camname": self.camname,
-                "is_connected": self.is_connected,
-                "camera_state": self.camera_state.value,
+                "is_connected": self.connected,
                 "imdir": self.imdir,
                 "imname": self.imname,
                 "imstarttime": self.imstarttime,
                 "imtype": self.imtype,
                 "immode": self.mode,
-                # TEC
-                "tec_temp": self.remote_state.get("tec_temp", self.default),
-                "tec_enabled": self.remote_state.get("tec_enabled", self.default),
-                "tec_setpoint": self.remote_state.get("tec_setpoint", self.default),
-                "tec_voltage": self.remote_state.get("tec_voltage", self.default),
-                "tec_current": self.remote_state.get("tec_current", self.default),
-                "tec_percentage": self.remote_state.get("tec_percentage", self.default),
-                "tec_steady": self.remote_state.get("tec_steady", False),
-                # Exposure
-                "exptime": self.remote_state.get("exptime", 0.0),
             }
         )
 
-        # Cycle through remote state to add any additional fields that don't exist yet
-        for key, value in self.remote_state.items():
-            try:
-                self.state.update({key: value})
-            except Exception as e:
-                if self.verbose:
-                    self.log(f"could not add {key}:{value} to state: {e}")
-
-    def validate_mode(self, mode: Optional[str], **kwargs) -> str:
-        """Validate readout mode - should be implemented by subclasses"""
-        pass
-
     def getFITSheader(self):
-        """Get FITS header"""
+        # self.log(f'making default header')
+        # make the baseline header
         try:
             header = fitsheader.GetHeader(
                 self.config, self.hk_state, self.state, logger=self.logger
@@ -405,18 +286,86 @@ class BaseCamera(QtCore.QObject):
         except Exception as e:
             self.log(f"could not build default header: {e}")
             header = []
+
+        # get the board ID of the best sensor from the config file
+        try:
+            best_board_id = self.config["observing_parameters"]["winter"][
+                "best_position"
+            ]["board_id"]
+        except Exception as e:
+            self.log(f"could not get best board ID from config: {e}")
+            best_board_id = ""
+
+        header.append(("BESTBRD", best_board_id, "Best Board ID"))
+
+        # self.log('now adding sensor specific fields')
+        # now add some sensor specific stuff
+        for addr in self.state.get("addrs", ["sa", "sb", "sc", "pa", "pb", "pc"]):
+            try:
+                header.append(
+                    (
+                        f"{addr}TPID".upper(),
+                        self.state.get(f"{addr}_T_pid", ""),
+                        f"{addr} FPA PID Temp (C)",
+                    )
+                )
+                header.append(
+                    (
+                        f"{addr}TFPA".upper(),
+                        self.state.get(f"{addr}_T_fpa", ""),
+                        f"{addr} FPA Temp (C)",
+                    )
+                )
+                header.append(
+                    (
+                        f"{addr}TROIC".upper(),
+                        self.state.get(f"{addr}_T_roic", ""),
+                        f"{addr} ROIC Temp (C)",
+                    )
+                )
+                header.append(
+                    (
+                        f"{addr}TECST".upper(),
+                        self.state.get(f"{addr}_tec_status", ""),
+                        f"{addr} TEC Status",
+                    )
+                )
+                header.append(
+                    (
+                        f"{addr}TECSP".upper(),
+                        self.state.get(f"{addr}_tec_setpoint", ""),
+                        f"{addr} TEC Status",
+                    )
+                )
+                header.append(
+                    (
+                        f"{addr}TECV".upper(),
+                        self.state.get(f"{addr}_V_tec", ""),
+                        f"{addr} TEC Voltage (V)",
+                    )
+                )
+                header.append(
+                    (
+                        f"{addr}TECI".upper(),
+                        self.state.get(f"{addr}_I_tec", ""),
+                        f"{addr} TEC Current (A)",
+                    )
+                )
+            except Exception as e:
+                self.log(f"could not add {addr} FPA Card entries: {e}")
+        # print(f'got FITS header: {header}')
         self.header = header
-        return self.header
+        return header
 
     def print_state(self):
-        """Print current state for debugging"""
         self.update_state()
-        print(json.dumps(self.state, indent=2))
+        print(f"state = {json.dumps(self.state, indent = 2)}")
 
-    # === Simplified API Methods - daemon handles state changes ===
+    #### CAMERA API METHODS ####
+    def setExposure(self, exptime, addrs=None):
+        self.remote_object.setExposure(exptime, addrs=addrs)
 
-    def setExposure(self, exptime, **kwargs):
-        """Set exposure time
+    def doExposure(self, imdir=None, imname=None, imtype=None, mode=None, addrs=None):
 
         Parameters
         ----------
@@ -443,10 +392,14 @@ class BaseCamera(QtCore.QObject):
         self.imstarttime = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")[:-3]
 
         if imname is None:
+
             imname = f"{self.daemonname}_{self.imstarttime}"
+
         self.imname = imname
 
         if imdir is None:
+            # imdir = os.path.join(os.getenv("HOME"), 'data', 'images', 'tmp')
+            # imdir = 'default'
             imdir = self.remote_object.getDefaultImageDirectory()
         self.imdir = imdir
 
@@ -454,42 +407,47 @@ class BaseCamera(QtCore.QObject):
             imtype = "test"
 
         if mode is None:
-            mode = "single"
+            # mode = 'cds'
+            # mode = 'ndr_slope'
+            mode = "iwr"
+            # mode = 'ndr_last'
+            # mode = 'ndr_full_text'
+
+        # a little kluge to make the focus images iwr or cds
+        if (mode.lower() in ["ndr", "ndr_slope", "ndr-slope"]) & (
+            imtype.lower() == "focus"
+        ):
+            mode = "cds"
 
         self.imtype = imtype
         self.mode = mode
 
-        self._mark_operation_start()
+        self.log(f"updating state dictionaries")
+        # make sure all the state dictionaries are up-to-date
+        # update the camera state by querying the camera daemon
+        self.update_state()
+        # update the housekeeping state by grabbing it from the housekeeping server
+        self.update_hk_state()
 
+        # print(f'hk_state = {self.hk_state}')
+        # print()
+        # print(f'state = {self.state}')
+
+        # now make the fits header
+        self.log(f"making FITS header")
+        header = self.getFITSheader()
+        # print(f'header = {header}')
+        self.log(
+            f"sending doExposure request to camera: imdir = {self.imdir}, imname = {self.imname}"
+        )
         try:
-            # Optimistically set state to EXPOSING
-            self.camera_state = CameraState.EXPOSING
-            self.doing_exposure = True  # Set exposure flag
-
-            # Update state dictionaries
-            self.log(f"updating state dictionaries")
-            self.update_hk_state()
-            self.update_state()
-
-            self.log(f"making FITS header")
-            header = self.getFITSheader()
-            # header = fitsheader.GetHeader(
-            #   self.config, self.hk_state, self.state, logger=self.logger
-            # )
-
-            self.log(f"header: {header}")
-
-            self.log(
-                f"sending doExposure request to camera: imdir = {self.imdir}, imname = {self.imname}"
-            )
-
             self.remote_object.doExposure(
                 imdir=self.imdir,
                 imname=self.imname,
                 imtype=self.imtype,
                 mode=self.mode,
                 metadata=header,
-                **kwargs,
+                addrs=addrs,
             )
 
             # grab the filename after exposure command is sent
@@ -498,114 +456,39 @@ class BaseCamera(QtCore.QObject):
             )
 
         except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            self.doing_exposure = False
             print(f"Error: {e}, PyroError: {Pyro5.errors.get_pyro_traceback()}")
 
-    def tecSetSetpoint(self, temp, **kwargs):
-        """Set TEC setpoint"""
-        self._mark_operation_start()
-        try:
-            self.camera_state = CameraState.SETTING_PARAMETERS
-            self.remote_object.tecSetSetpoint(temp, **kwargs)
-            self.camera_state = CameraState.READY
-        except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            print(f"Error setting TEC setpoint: {e}")
-            raise
+    def tecSetSetpoint(self, temp, addrs=None):
+        self.remote_object.tecSetSetpoint(temp, addrs=addrs)
 
-    def tecStart(self, **kwargs):
-        """Start TEC"""
-        self._mark_operation_start()
-        try:
-            self.camera_state = CameraState.SETTING_PARAMETERS
-            self.remote_object.tecStart(**kwargs)
-            self.camera_state = CameraState.READY
-        except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            print(f"Error starting TEC: {e}")
-            raise
+    def setDetbias(self, detbias, addrs=None):
+        self.remote_object.setDetbias(detbias, addrs=addrs)
 
-    def tecStop(self, **kwargs):
-        """Stop TEC"""
-        self._mark_operation_start()
-        try:
-            self.camera_state = CameraState.SETTING_PARAMETERS
-            self.remote_object.tecStop(**kwargs)
-            self.camera_state = CameraState.READY
-        except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            print(f"Error stopping TEC: {e}")
-            raise
+    def tecSetCoeffs(self, Kp, Ki, Kd, addrs=None):
+        self.remote_object.tecSetCoeffs(Kp, Ki, Kd, addrs=addrs)
 
-    def startupCamera(self, **kwargs):
-        """Manual startup"""
-        self._mark_operation_start()
-        self.autoStartupRequested = True
-        try:
-            self.camera_state = CameraState.STARTUP_REQUESTED
-            self.remote_object.startupCamera(**kwargs)
-        except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            self.autoStartupRequested = False
-            print(f"Error starting camera: {e}")
-            raise
+    def tecSetVolt(self, volt, addrs=None):
+        self.remote_object.tecSetVolt(volt, addrs=addrs)
 
-    def shutdownCamera(self, **kwargs):
-        """Manual shutdown"""
-        self._mark_operation_start()
-        self.autoShutdownRequested = True
-        try:
-            self.camera_state = CameraState.SHUTDOWN_REQUESTED
-            self.remote_object.shutdownCamera(**kwargs)
-        except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            self.autoShutdownRequested = False
-            print(f"Error shutting down camera: {e}")
-            raise
+    def tecStart(self, addrs=None):
+        self.remote_object.tecStart(addrs=addrs)
 
-    def autoStartupCamera(self, **kwargs):
-        """Auto startup"""
-        self._mark_operation_start()
-        self.autoStartupRequested = True
-        try:
-            self.camera_state = CameraState.STARTUP_REQUESTED
-            self.remote_object.autoStartup(**kwargs)
-        except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            self.autoStartupRequested = False
-            print(f"Error during auto startup: {e}")
-            raise
+    def tecStop(self, addrs=None):
+        self.remote_object.tecStop(addrs=addrs)
 
-    def autoShutdownCamera(self, **kwargs):
-        """Auto shutdown"""
-        self._mark_operation_start()
-        self.autoShutdownRequested = True
-        try:
-            self.camera_state = CameraState.SHUTDOWN_REQUESTED
-            self.remote_object.autoShutdown(**kwargs)
-        except Exception as e:
-            self.active_operation_time = None
-            self.camera_state = CameraState.ERROR
-            self.autoShutdownRequested = False
-            print(f"Error during auto shutdown: {e}")
-            raise
+    def startupCamera(self, addrs=None):
+        self.remote_object.startupCamera(addrs=addrs)
 
-    def restartSensorDaemon(self, **kwargs):
-        """Restart sensor daemon"""
-        self.remote_object.restartSensorDaemon(**kwargs)
+    def shutdownCamera(self, addrs=None):
+        self.remote_object.shutdownCamera(addrs=addrs)
 
-    def updateStartupValidation(self, startupValidation, **kwargs):
-        """Update startup validation"""
+    def restartSensorDaemon(self, addrs=None):
+        self.remote_object.restartSensorDaemon(addrs=addrs)
+        # self.remote_object.reconnect()
+
+    def updateStartupValidation(self, startupValidation, addrs=None):
         self.remote_object.updateStartupValidation(
-            startupValidation=startupValidation, **kwargs
+            startupValidation=startupValidation, addrs=addrs
         )
 
     def getLastImagePath(self):
@@ -617,6 +500,51 @@ class BaseCamera(QtCore.QObject):
         """Check camera status"""
         self.remote_object.checkCamera(**kwargs)
 
-    def killCameraDaemon(self, **kwargs):
-        """Kill camera daemon"""
-        self.remote_object.killCameraDaemon(**kwargs)
+    def autoStartupCamera(self):
+        self.remote_object.autoStartup()
+
+    def autoShutdownCamera(self):
+        self.remote_object.autoShutdown()
+
+    def killCameraDaemon(self):
+        self.remote_object.killCameraDaemon()
+
+
+# Try it out
+if __name__ == "__main__":
+
+    config = utils.loadconfig(wsp_path + "/config/config.yaml")
+
+    logger = logging_setup.setup_logger(wsp_path, config)
+
+    logger = None
+    verbose = True
+
+    """
+    def __init__(self, base_directory, config, daemon_pyro_name,
+                 pyro_ns_host = None,
+                 logger = None, verbose = False,
+                 ):
+    """
+    cam = local_camera(
+        wsp_path,
+        config,
+        camname="winter",
+        daemon_pyro_name="WINTERcamera",
+        ns_host="192.168.1.10",
+        logger=logger,
+        verbose=verbose,
+    )
+
+    cam.print_state()
+
+    """
+    while True:
+        try:
+            #cam.update_state()
+            cam.print_state()
+            time.sleep(1)
+            
+        except KeyboardInterrupt:
+            break
+    """
