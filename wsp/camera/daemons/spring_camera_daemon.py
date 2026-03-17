@@ -28,6 +28,12 @@ class SpringCameraInterface(BaseCameraInterface):
         super().__init__(*args, **kwargs)
         # Additional initialization if needed
 
+    def _attempt_reconnect(self):
+        if self.connected:
+            return
+        self.setup_connection()
+
+
     def setup_connection(self):
         """Set up connections specific to the SPRING camera."""
         self.log("Setting up connection to SPRING camera...")
@@ -66,10 +72,7 @@ class SpringCameraInterface(BaseCameraInterface):
         except Exception as e:
             self.log(f"Error polling camera status: {e}")
             self.connected = False
-        finally:
-            if not self.connected:
-                # Try to reconnect
-                self.setup_connection()
+        
 
     # === Update the Camera Status Dictionary ===
     def update_camera_state_info(self):
