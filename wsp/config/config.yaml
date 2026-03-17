@@ -265,7 +265,7 @@ multi_camera_enabled: True
 active_cameras:
     - "winter"
     #- "summer"
-    - "spring"
+    #- "spring"
 
 ########## TELEMETRY SERVERS ##########
 # define telemetry servers
@@ -642,7 +642,7 @@ focus_loop_param:
     cameras:
         winter:
             filterID: 'J'
-            nominal_focus: 11865
+            nominal_focus: 11915
             sweep_param:
                 total_throw: 500
                 nsteps: 6
