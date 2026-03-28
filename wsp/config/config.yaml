@@ -153,6 +153,17 @@ robotic_manager_triggers:
             sundir: -1
             repeat_on_restart: False
             cmd: 'chiller_start'             
+        # startup:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 5.0
+        #             cond: '<'
+        #     sundir: 0
+        #     repeat_on_restart: False
+        #     #cmd: 'total_startup --cameras'
+        #     #cmd: 'do_startup --cameras'
+        #     cmd: 'do_startup'
         load_schedule:
             conds:
                 cond1:
@@ -162,15 +173,132 @@ robotic_manager_triggers:
             sundir: 0
             repeat_on_restart: True
             cmd: 'load_nightly_schedule'
+        # evening_darks_bias:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 0.0
+        #             cond: '<'
+        #     sundir: 0
+        #     repeat_on_restart: False
+        #     #cmd: 'robo_do_calibration -d -b'
+        #     cmd: 'robo_do_darks'
+        # getting rid of the dome_open call to keep the sequence smoother
+        # open_dome:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: '-4.5'
+        #             cond: '<'
+        #     repeat_on_restart: False
+        #     sundir: -1
+        #     cmd: 'dome_open'
+        # evening_flats:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: -5.0
+        #             cond: '<'
+        #         cond2:
+        #             type: 'sun'
+        #             val: -9.0
+        #             cond: '>'
+        #     repeat_on_restart: False
+        #     sundir: -1
+        #     cmd: 'robo_do_calibration -f'
+
         start_obs:
             conds:
                cond1:
                    type: 'sun'
+                   #val: 10.0
                    val: 1000.0 # this just forces robo_run to be called at all times, should help avoid incomplete shutdowns
                    cond: '<'
+               # make sure we start after the purge starts
+               # cond2:
+               #     type: 'time'
+               #     #val: '18:45:0.0'
+               #     val: '16:15:0.0'
+               #     cond: '>'
             repeat_on_restart: True
             sundir: 0
             cmd: 'robo_run'
+        # pause_obs:
+        #     conds:
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:0:0.0'
+        #            cond: '>'
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:15:0.0'
+        #            cond: '<'
+        #     repeat_on_restart: False
+        #     nextmorning: True
+        #     sundir: 0
+        #     cmd: 'robo_stop'
+        # do_night_darks:
+        #     conds:
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:05:0.0'
+        #            cond: '>'
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:20:0.0'
+        #            cond: '<'
+        #     repeat_on_restart: False
+        #     nextmorning: True
+        #     sundir: 0
+        #     cmd: 'robo_do_darks'
+        # restart_obs:
+        #     conds:
+        #        cond1:
+        #            type: 'time'
+        #            val: '0:30:0.0'
+        #            cond: '>'
+               
+        #     repeat_on_restart: False
+        #     nextmorning: True
+        #     sundir: 0
+        #     cmd: 'robo_run'
+        # stop_obs:
+        #     conds:
+        #         # cond1:
+        #         #     type: 'sun'
+        #         #     val:  -12.0
+        #         #     cond: '>'
+        #         cond1:
+        #             type: 'time'
+        #     nextmorning: True
+        #     sundir: 1
+        #     repeat_on_restart: False
+        #     cmd: 'robo_stop'
+        # morning_flats:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: -9.0
+        #             cond: '>'
+        #         cond2:
+        #             type: 'sun'
+        #             val: -5.0
+        #             cond: '<'  
+        #     nextmorning: True   
+        #     repeat_on_restart: False          
+        #     sundir: 1
+        #     cmd: 'robo_do_calibration -f'
+        #     #cmd: 'robo_do_darks'
+        # shutdown:
+        #     conds:
+        #         cond1:
+        #             type: 'sun'
+        #             val: 0
+        #             cond: '>'
+        #     nextmorning: True
+        #     repeat_on_restart: False
+        #     sundir: 1
+        #     cmd: 'stow_observatory --cameras'
         fans_off:
             conds:
                 cond1:
@@ -229,7 +357,9 @@ telescope:
     simhost: "localhost"
     comm_port: 8220
     home_alt_degs: 45.0
-    home_az_degs: 220 
+    #home_az_degs: 0 # -> this was the standard for a long time
+    home_az_degs: 220 # -> this is the new standard, so that the telescope is anti dome when the dome is home at 40 deg
+    #min_alt: 30
     min_alt: 15
     max_alt: 85.0
     default_port: 1 # default port on startup
@@ -425,6 +555,16 @@ weather_limits:
     DEWPOINT_OUT:
         MIN: -100
         MAX: 100
+    # these are from clear dark skies:
+    TRANSPARENCY:
+        MIN: 3 # average
+        MAX: 5 # transparent
+    SEEING:
+        MIN: 3 # average
+        MAX: 5 # excellent
+    CLOUDS:
+        MIN: 7 # 30pct covered
+        MAX: 10 # CLEAR
 
 ########### EPHEMERIS SET UP ##########
 ephem:
@@ -456,11 +596,7 @@ cal_params:
         linkdir: 'data'
         linkname: 'cal_log.lnk'    
     winter:
-        cals_to_do:
-            - "robo_do_darks"
-            - "domeflats"
-
-        darks:
+        dark:
             n_imgs: 5
             exptimes:
                 #- 0.35
@@ -534,7 +670,7 @@ cal_params:
                     - 0.46
                     
         triggers:
-            darks:
+            midnight_darks:
                 conds:
                     cond1:
                         type: 'time'
@@ -584,7 +720,7 @@ cal_params:
                 sundir: 0
                 cmd: 'robo_do_darks --spring'
     summer:
-        darks:
+        dark:
             n_imgs: 5
             exptimes:
                 - 30
@@ -672,6 +808,10 @@ focus_loop_param:
             - 'J'
         summer:
             - 'r'
+        winter:
+            #- 'Y'
+            #- 'Hs'
+            - 'J'
 
     targets:
         #targ0:
@@ -692,19 +832,44 @@ focus_loop_param:
         targ5:
             target_type: altaz
             target: '40 304'
-
     focus_error_max: 50
     focus_log_path: 'data/focusing/focus_log.json'
     focus_graceperiod_hours: 6
     max_focus_attempts: 2
-
+    #fine_micron_interval: 10
+    #recent_path: '/home/winter/data/last_image.lnk'
+    #file_type: '\*fits'
+    
+    #current_filter: 'rband'
+    #save_dir: '/home/winter/data/images/focusing/'
+    image_log_path: '/home/winter/data/plots_focuser/img_logs/'
+    # nate added these below:
     results_log_parent_dir: 'data/focusing'
     results_log_dir: 'results'
     results_log_last_link: 'last_focus_results.lnk'
     results_plot_last_link: 'last_focus_plot.lnk'
     focus_model_params: 'focus_model_params.json'
 
-########### FILTERS AND FILTER WHEELS ###########
+filt_limits:
+    uband:
+        upper: 10300
+        lower: 10000
+    other2:
+        upper: 11600
+        lower: 8500
+    rband:
+        upper: 11150 
+        lower: 9000
+    other4:
+        upper: 11150
+        lower: 9000
+    other5:
+        upper: 10600
+        lower: 9800
+    other6:
+        upper: 11150
+        lower: 9800
+
 filters:
     spring:
 
@@ -727,32 +892,62 @@ filters:
             name: "MKO J-band (Omega)"
             active: True
     summer:
+        r_chroma:
+            name: "SDSS r' (Chroma)"
+            nominal_focus: 9960
+            active: False
+            focus_exptime: 10
+        u_chroma:
+            name: "SDSS u' (Chroma)"
+            nominal_focus: 9961
+            active: False
+            focus_exptime: 30
+        empty:
+             name: "empty"
+             nominal_focus: 9961
+             active: False
+             focus_exptime: 30    
         u:
             name: "SDSS u'"
+            nominal_focus: 9960
             active: True
+            focus_exptime: 30
         g:
             name: "SDSS g'"
+            nominal_focus: 9960
             active: True
+            focus_exptime: 10
         r:
             name: "SDSS r'"
+            nominal_focus: 9960
             active: True
+            focus_exptime: 10
         i:
             name: "SDSS i'"
+            nominal_focus: 9960
             active: True
-
+            focus_exptime: 10
     winter:
         J:
             name: "MKO J-band (Asahi)"
+            nominal_focus: 12000.0 #11687.0
             active: True
+            focus_exptime: 30
         Y:  
             name: "MKO Y-band (Asahi)"
+            nominal_focus: 10000
             active: True
+            focus_exptime: 30
         Hs: 
             name: "MKO Hs-band (Asahi)"
+            nominal_focus: 10000
             active: True
+            focus_exptime: 30
         dark:
             name: "Dark Mirror"
+            nominal_focus: 10000
             active: True
+            focus_exptime: 30
         
 
 filter_wheels:
@@ -863,10 +1058,6 @@ observing_parameters:
             x_pixel: 0
             y_pixel: 0
             
-        pixscale: 0.411
-        x_pixels: 1280
-        y_pixels: 1024
-
     summer:
         dithers:
             ditherNumber: 32
@@ -880,9 +1071,14 @@ observing_parameters:
             y_pixel: 0
             
         pixscale: 0.466
-        x_pixels: 2048
-        y_pixels: 2048
         
+
+###############################################################################    
+##################### ONLY HOUSEKEEPING DATA BELOW THIS!! #####################     
+###############################################################################
+
+########### HOUSEKEEPING STATE + DIRFILE SET UP ##########
+
 
 # default value for housekeeping fields
 default_value: -999
@@ -894,4 +1090,8 @@ labjacks:
     LJ1:
         config: 'labjack1_config.yaml'
 
+# define fields.
+# Note: each rate must have a corresponding "daq_rate" as given above
+fields:
+#general:
 
