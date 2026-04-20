@@ -2847,8 +2847,6 @@ class RoboOperator(QtCore.QObject):
             system = "labjack"
             self.do("fpa on")
 
-            # turn off the starboard side
-            self.do("fpa off star")
 
             # make sure the purge flow is high
             self.do("pdu off purgeflow")

@@ -252,8 +252,10 @@ telescope:
             rotator:
                 field_angle_zeropoint: 155.0 
                 home_degs: 65.0
-                max_degs: 225.0
-                min_degs: -95.0
+                #max_degs: 225.0
+                #min_degs: -95.0
+                max_degs: 215.0
+                min_degs: -85.0
             cameras:
                 spring:
                     pointing_model_file: "pointing_model_spring_20251022.pxp"
@@ -265,7 +267,7 @@ multi_camera_enabled: True
 active_cameras:
     - "winter"
     #- "summer"
-    #- "spring"
+    - "spring"
 
 ########## TELEMETRY SERVERS ##########
 # define telemetry servers

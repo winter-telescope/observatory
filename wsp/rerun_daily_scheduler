@@ -33,7 +33,7 @@ daily_scheduler_path = os.path.join(code_path, 'scheduler','daily_scheduler')
 # create the arguments
 filepath = os.path.join(daily_scheduler_path,'run_winter_sim.py')
 sky_config = os.path.join(daily_scheduler_path, 'sims', 'winter_1_night.json')
-night_config = os.path.join(daily_scheduler_path, 'config', 'tonight.cfg')
+night_config = os.path.join(daily_scheduler_path, 'config', '2026_month.cfg')
 #print(f'Setting up to run schedule for night of {utils.tonight()}')
 print(f'Setting up to run schedule for night of {utils.tonight_local()}')
 print(f'### RUNNING DAILY WINTER SCHEDULER ###')
