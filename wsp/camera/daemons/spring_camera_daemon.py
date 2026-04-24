@@ -66,8 +66,9 @@ class SpringCameraInterface(BaseCameraInterface):
 
         try:
             self.camera_status = self.cam.get_status()
-            # if self.verbose:
-            #    self.log(self.camera_status)
+            if isinstance(self.camera_status, dict) and self.camera_status.get("status") == "error":
+                self.log(f"Camera GUI error: {self.camera_status.get('message', 'unknown')}")
+                self.connected = False
 
         except Exception as e:
             self.log(f"Error polling camera status: {e}")

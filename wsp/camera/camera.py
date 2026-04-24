@@ -159,6 +159,7 @@ class BaseCamera(QtCore.QObject):
         self.newCommand.connect(self.doCommand)
 
         # Initialize connections
+        self.remote_object = None
         self.init_remote_object()
         self.update_state()
 
@@ -218,6 +219,7 @@ class BaseCamera(QtCore.QObject):
             ns = Pyro5.core.locate_ns(host=self.ns_host_camera)
             uri = ns.lookup(self.daemonname)
             self.remote_object = Pyro5.client.Proxy(uri)
+            self.remote_object._pyroTimeout = 5.0
             self.connected = True
             self.is_connected = True
         except Exception as e:
@@ -262,7 +264,7 @@ class BaseCamera(QtCore.QObject):
                 )
             self.init_remote_object()
 
-        if self.connected:
+        if self.connected and self.remote_object is not None:
             try:
                 self.remote_state = self.remote_object.getStatus()
 
