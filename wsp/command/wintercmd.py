@@ -1944,6 +1944,7 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def doFocusSeq(self):
         """perform a focus sequence on the specified camera"""
+        self.defineCmdParser("perform a focus sequence on the specified camera")
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument("--winter", action="store_true")
         group.add_argument("--summer", action="store_true")
@@ -2604,12 +2605,45 @@ class Wintercmd(QtCore.QObject):
         """
         self.defineCmdParser("set instrument rotator offset")
         self.cmdparser.add_argument(
-            "position", nargs=1, action=None, help="<target_port>"
+            "position", nargs=1, action=None, help="<target_port>", type=int,
         )
 
         self.getargs()
         target_port = self.args.position[0]
         self.telescope.m3_goto(target_port=target_port)
+        
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 30.0
+        self.logger.info(f"waiting up to {timeout} s for M3 to switch to Port {target_port}...")
+        # wait for the telescope to stop moving before returning
+        # create a buffer list to hold several samples over which the stop condition must be true
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            # print('entering loop')
+            time.sleep(self.config["cmd_status_dt"])
+            timestamp = datetime.utcnow().timestamp()
+            dt = timestamp - start_timestamp
+            # print(f'wintercmd: wait time so far = {dt}')
+            if dt > timeout:
+                raise TimeoutError(
+                    f"command timed out after {timeout} seconds before completing"
+                )
+                
+            stop_condition = (int(self.state["telescope_m3_port"]) == target_port)
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+
+            if all(entry == condition for entry in stop_condition_buffer):
+                break
+        self.logger.info(f"wintercmd: port selection complete, M3 @ Port {self.state['telescope_m3_port']}")
 
     @cmd
     def m3_stop(self):
