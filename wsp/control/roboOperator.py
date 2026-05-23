@@ -375,6 +375,12 @@ class RoboOperator(QtCore.QObject):
         self.checktimer.setInterval(30 * 1000)
         self.checktimer.timeout.connect(self.checkWhatToDo)
 
+        # Reentrancy guard: blocking commands inside checkWhatToDo pump the Qt
+        # event loop via processEvents(), which can re-fire the checktimer slot
+        # on the same thread. Without this flag, the body runs concurrently with
+        # itself and clobbers shared state (camname, schedule cursor, etc).
+        self._check_in_progress = False
+
         ### a QTimer for handling a longer pause before checking what to do
         self.waitAndCheckTimer = QtCore.QTimer()
         self.waitAndCheckTimer.setSingleShot(True)
@@ -929,6 +935,23 @@ class RoboOperator(QtCore.QObject):
             checkWhatToDo will be rerun after the wait. This sets up looping events where this code will continue
             to flow as necessary, without firing at unwanted times.
         """
+        # Reentrancy guard. See _check_in_progress comment in __init__ for why.
+        # If a reentrant call arrives (almost always from the checktimer firing
+        # inside a blocking command's processEvents loop), drop it: the outer
+        # call will start checktimer again before it returns, so the next pass
+        # will happen on schedule without two copies of this method racing.
+        if self._check_in_progress:
+            self.log(
+                "checkWhatToDo: reentrant call suppressed (outer call still running)"
+            )
+            return
+        self._check_in_progress = True
+        try:
+            self._checkWhatToDo_body()
+        finally:
+            self._check_in_progress = False
+
+    def _checkWhatToDo_body(self):
         self.log("checking what to do!")
         if self.running:
             self.log("robo operator is running")
@@ -1436,21 +1459,46 @@ class RoboOperator(QtCore.QObject):
                                     # for now, still logging the observation first.
                                     # next step is to move it to after.
 
+                                    # Defensive: -1 is the codebase's "no observation"
+                                    # sentinel (see resetObsValues). A real scheduled
+                                    # observation always has a positive obsHistID from
+                                    # the schedule DB. If we see -1 here it means
+                                    # something corrupted currentObs (historically:
+                                    # reentrancy clobbering state mid-flight). Skip
+                                    # with the full checktimer cooldown so we don't
+                                    # hot-loop on a stuck placeholder.
+                                    currentObs = self.schedule.currentObs
+                                    if currentObs.get("obsHistID", -1) == -1:
+                                        self.announce(
+                                            f"robo: schedule returned a placeholder "
+                                            f"observation (obsHistID="
+                                            f"{currentObs.get('obsHistID', -1)}, "
+                                            f"raDeg={currentObs.get('raDeg', '?')}). "
+                                            f"Skipping and waiting full cooldown."
+                                        )
+                                        self.checktimer.start()
+                                        return
+
                                     self.schedule.log_observation()
 
                                     self.do_currentObs(self.schedule.currentObs)
 
                                     # if we get here, then the observation is complete, either bc it's done or there was an error
 
-                                    # now immediatly check what we should do now (eg don't wait)
-                                    self.checkWhatToDo()
+                                    # Re-check what to do immediately. Don't call
+                                    # self.checkWhatToDo() directly: we're still
+                                    # inside the outer call so the reentrancy guard
+                                    # would drop the call and the loop would die.
+                                    # Fire a 0 ms timer so the next pass runs from
+                                    # a clean stack after we unwind.
+                                    self.checktimer.start(0)
+                                    return
 
                             else:
                                 # if we are here then the sun is not low enough to observe, stand by
                                 self.checktimer.start()
                                 return
 
-                            pass
                         else:
 
                             # camera is not ready but autostart has been requested. stand by
@@ -3335,6 +3383,7 @@ class RoboOperator(QtCore.QObject):
                 system = "filter wheel"
                 try:
                     # get filter number
+                    filter_num = None
                     for position in self.config["filter_wheels"][camname]["positions"]:
                         if (
                             self.config["filter_wheels"][camname]["positions"][
@@ -3345,6 +3394,10 @@ class RoboOperator(QtCore.QObject):
                             filter_num = position
                         else:
                             pass
+                    if filter_num is None:
+                        raise ValueError(
+                            f"no filter wheel position found for filterID '{filterID}' on camera '{camname}'"
+                        )
                     if filter_num == self.fw.state["filter_pos"]:
                         self.log(
                             "requested filter matches current, no further action taken"
@@ -3728,6 +3781,7 @@ class RoboOperator(QtCore.QObject):
             system = "filter wheel"
             try:
                 # get filter number
+                filter_num = None
                 for position in self.config["filter_wheels"][camname]["positions"]:
                     if (
                         self.config["filter_wheels"][camname]["positions"][
@@ -3738,6 +3792,10 @@ class RoboOperator(QtCore.QObject):
                         filter_num = position
                     else:
                         pass
+                if filter_num is None:
+                    raise ValueError(
+                        f"no filter wheel position found for filterID '{filterID}' on camera '{camname}'"
+                    )
                 if filter_num == self.fw.state["filter_pos"]:
                     self.log(
                         "requested filter matches current, no further action taken"
@@ -3987,6 +4045,7 @@ class RoboOperator(QtCore.QObject):
             # send the filter to the specified position from the config file
             filterID = self.config["cal_params"][self.camname]["darks"]["filterID"]
             # get filter number
+            filter_num = None
             for position in self.config["filter_wheels"][self.camname]["positions"]:
                 if (
                     self.config["filter_wheels"][self.camname]["positions"][position]
@@ -3997,6 +4056,10 @@ class RoboOperator(QtCore.QObject):
                     pass
             system = "filter wheel"
             try:
+                if filter_num is None:
+                    raise ValueError(
+                        f"no filter wheel position found for filterID '{filterID}' on camera '{self.camname}'"
+                    )
                 self.do(f"fw_goto {filter_num} --{self.camname}")
             except Exception as e:
                 msg = f"roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}"
@@ -4764,6 +4827,7 @@ class RoboOperator(QtCore.QObject):
                 )
             else:
                 # get filter number
+                filter_num = None
                 for position in self.config["filter_wheels"][self.camname]["positions"]:
                     if (
                         self.config["filter_wheels"][self.camname]["positions"][
@@ -4774,6 +4838,10 @@ class RoboOperator(QtCore.QObject):
                         filter_num = position
                     else:
                         pass
+                if filter_num is None:
+                    raise ValueError(
+                        f"no filter wheel position found for filterID '{filterID}' on camera '{self.camname}'"
+                    )
                 if filter_num == self.fw.state["filter_pos"]:
                     self.log(
                         "requested filter matches current, no further action taken"
@@ -4869,6 +4937,7 @@ class RoboOperator(QtCore.QObject):
                 # 1. change filter to filterID
                 system = "filter wheel"
                 # get filter number
+                filter_num = None
                 for position in self.config["filter_wheels"][self.camname]["positions"]:
                     if (
                         self.config["filter_wheels"][self.camname]["positions"][
@@ -4879,6 +4948,10 @@ class RoboOperator(QtCore.QObject):
                         filter_num = position
                     else:
                         pass
+                if filter_num is None:
+                    raise ValueError(
+                        f"no filter wheel position found for filterID '{filterID}' on camera '{self.camname}'"
+                    )
                 if filter_num == self.fw.state["filter_pos"]:
                     self.log(
                         "requested filter matches current, no further action taken"
@@ -5302,6 +5375,7 @@ class RoboOperator(QtCore.QObject):
                         system = "filter wheel"
 
                         # get filter number
+                        filter_num = None
                         for position in self.config["filter_wheels"][self.camname][
                             "positions"
                         ]:
@@ -5314,6 +5388,12 @@ class RoboOperator(QtCore.QObject):
                                 filter_num = position
                             else:
                                 pass
+                        if filter_num is None:
+                            raise ValueError(
+                                f"no filter wheel position found for scheduled filter "
+                                f"'{self.filter_scheduled}' on camera '{self.camname}' "
+                                f"(obsHistID={self.obsHistID})"
+                            )
 
                         self.log(
                             f"changing filter to scheduled filter: {self.filter_scheduled} (position {filter_num})"
