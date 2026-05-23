@@ -4147,7 +4147,7 @@ class RoboOperator(QtCore.QObject):
             if self.camname == "spring":
                 system = "shutter"
                 if self.fw.state["shutter_status"] != 1:
-                    self.log("spring shutter is closed, opening now")
+                    self.announce("spring shutter is closed, opening now")
                     self.do(f"shutter open --{self.camname}")
 
             # Check if filter wheel is available
@@ -5348,8 +5348,8 @@ class RoboOperator(QtCore.QObject):
                                 if self.fw.state["shutter_status"] == 1:
                                     pass
                                 else:
-                                    self.log("opening shutter for science exposure")
-                                    self.do("shutter_open --spring")
+                                    self.announce("opening shutter for science exposure")
+                                    self.do("shutter open --spring")
 
                         # set up a big descriptive message for slack:
                         msg = f'>> Executing Observation: Pointing Number [{pointing_num}/{num_pointings}]: (dRA, dDec) = ({pointing_offset["coords"]["dRA"]}, {pointing_offset["coords"]["dDec"]})'
