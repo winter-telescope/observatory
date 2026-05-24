@@ -1330,8 +1330,18 @@ class RoboOperator(QtCore.QObject):
                                 self.log(f"need to start up observatory")
                                 # we need to (re)run do_startup
                                 self.do_startup()
-                                # after running do_startup, kick back to the top of the loop
+                                # Kick back to the top of the loop: return now
+                                # and let the 30s checktimer re-enter us. Without
+                                # the return, the body falls through into dome /
+                                # focus / load / do_currentObs, AND the timer
+                                # arms a 30s deadline that fires partway through
+                                # do_currentObs (caught by the reentrancy guard
+                                # in checkWhatToDo, but a waste of a slot).
+                                # Returning also gives systems a moment to
+                                # settle after startup before we attempt to use
+                                # them.
                                 self.checktimer.start()
+                                return
                             # ---------------------------------------------------------------------
                             # check the dome
                             # ---------------------------------------------------------------------
