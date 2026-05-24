@@ -2373,39 +2373,58 @@ class RoboOperator(QtCore.QObject):
         Run a check to see if the observatory is ready. Basically:
             - did startup run successfully
             - has the telescope been focused recently
+
+        Logs (and Slack-announces) which specific checks failed, but only on
+        *state changes* — going not-ready, the failing set changing, or
+        recovering to ready. This function is called at 2 Hz from
+        update_state, so an unconditional announce would spam Slack with
+        thousands of messages per hour.
         """
 
-        conds = []
-
-        ### DOME CHECKS ###
-        conds.append(self.dome.Control_Status == "REMOTE")
-        # conds.append(self.state['dome_tracking_status'] == True)
-        conds.append(self.dome.Home_Status == "READY")
-
-        ### TELESCOPE CHECKS ###
-        conds.append(self.state["mount_is_connected"] == True)
-        conds.append(self.state["mount_alt_is_enabled"] == True)
-        conds.append(self.state["mount_az_is_enabled"] == True)
+        checks = [
+            # name, passed
+            ("dome.Control_Status==REMOTE", self.dome.Control_Status == "REMOTE"),
+            ("dome.Home_Status==READY", self.dome.Home_Status == "READY"),
+            ("mount_is_connected", self.state["mount_is_connected"] == True),
+            ("mount_alt_is_enabled", self.state["mount_alt_is_enabled"] == True),
+            ("mount_az_is_enabled", self.state["mount_az_is_enabled"] == True),
+        ]
         if not self.mountsim:
-            conds.append(self.state["rotator_is_connected"] == True)
-            conds.append(self.state["rotator_is_enabled"] == True)
-            conds.append(self.state["rotator_wrap_check_enabled"] == True)
-            conds.append(self.state["focuser_is_connected"] == True)
-            conds.append(self.state["focuser_is_enabled"] == True)
-
-        # TODO: UNCOMMENT
+            checks += [
+                ("rotator_is_connected", self.state["rotator_is_connected"] == True),
+                ("rotator_is_enabled", self.state["rotator_is_enabled"] == True),
+                (
+                    "rotator_wrap_check_enabled",
+                    self.state["rotator_wrap_check_enabled"] == True,
+                ),
+                ("focuser_is_connected", self.state["focuser_is_connected"] == True),
+                ("focuser_is_enabled", self.state["focuser_is_enabled"] == True),
+            ]
         # NPL: commenting out so that we can observe even though mirror cover is stuck open
         # 7-3-23
         # if we are not in mount_sim or testmode, check the mirror cover state
         if not self.mountsim and not self.test_mode:
-
-            conds.append(self.state["Mirror_Cover_State"] == 0)
+            checks.append(("Mirror_Cover_State==0", self.state["Mirror_Cover_State"] == 0))
 
         # TODO: add something about the focus here
 
-        self.observatory_ready = all(conds)
+        failed = tuple(name for name, passed in checks if not passed)
+        self.observatory_ready = len(failed) == 0
 
-        # print a summary of the observatory ready status and flag any false conditions
+        # Emit on state changes only (see docstring). _last_observatory_ready_failures
+        # is initialized lazily because this function can be called before any
+        # __init__ field for it exists; the getattr default of `None` covers the
+        # very first invocation.
+        last = getattr(self, "_last_observatory_ready_failures", None)
+        if failed != last:
+            if failed:
+                self.announce(
+                    f":caution: observatory not ready: failing checks = {list(failed)}"
+                )
+            elif last is not None:
+                # transitioned back to ready
+                self.announce(":greentick: observatory ready (all checks passing)")
+            self._last_observatory_ready_failures = failed
 
         return self.observatory_ready
 
