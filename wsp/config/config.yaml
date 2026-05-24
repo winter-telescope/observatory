@@ -68,6 +68,11 @@ scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 # ToO: Target of Opportunity Scheduling
 scheduleFile_ToO_directory: 'data/schedules/ToO'
 
+# Maximum number of times an individual scheduled observation will be
+# attempted before being skipped. Each load increments the row's 'attempts'
+# counter; 'observed' is only flipped to 1 on a fully completed observation.
+max_observation_attempts: 2
+
 
 # observation log
 obslog_directory: 'data'

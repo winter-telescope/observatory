@@ -37,6 +37,7 @@ from wsp.ephem import ephem_utils
 from wsp.focuser import focus_tracker, focusing
 from wsp.housekeeping import data_handler
 from wsp.schedule import wintertoo_validate
+from wsp.schedule.schedule import ensure_attempts_column
 from wsp.telescope import pointingModelBuilder
 from wsp.telescope.telescope import WrapWarningInfo
 
@@ -1925,9 +1926,25 @@ class RoboOperator(QtCore.QObject):
                                         self.checktimer.start()
                                         return
 
-                                    self.schedule.log_observation()
+                                    # Register this load as an attempt BEFORE
+                                    # do_currentObs runs. Even if the call below
+                                    # aborts immediately (bad config, hardware
+                                    # snag, etc), we want it counted so the
+                                    # max_observation_attempts cap kicks in
+                                    # rather than re-loading the same broken row
+                                    # every iteration.
+                                    self.schedule.log_attempt()
 
-                                    self.do_currentObs(self.schedule.currentObs)
+                                    obs_fully_completed = self.do_currentObs(
+                                        self.schedule.currentObs
+                                    )
+
+                                    # Only flip observed=1 when the observation
+                                    # actually ran end-to-end. Partial/aborted
+                                    # observations stay observed=0 so they can
+                                    # be retried up to max_observation_attempts.
+                                    if obs_fully_completed:
+                                        self.schedule.log_observation()
 
                                     # if we get here, then the observation is complete, either bc it's done or there was an error
 
@@ -2098,6 +2115,9 @@ class RoboOperator(QtCore.QObject):
                     self.log(f"validating too_file = {too_file}")
                     engine = db.create_engine("sqlite:///" + too_file)
                     conn = engine.connect()
+                    # Ensure 'attempts' column exists in this ToO file before
+                    # the read, so the filter below has it. Idempotent.
+                    ensure_attempts_column(conn, log=self.log)
                     df = pd.read_sql("SELECT * FROM summary;", conn)
 
                     # if targname not in the df, add in a default
@@ -2131,10 +2151,19 @@ class RoboOperator(QtCore.QObject):
                     # Note: if we don't do this we can end up in a situation where do_Observation will reject an
                     #       observation, but this will keep submitting it and we'll get stuck in a useless loop
                     # select only targets within their valid start and stop times
+                    # Skip rows we've already tried more than max_attempts
+                    # times; matches the same cut applied to the survey schedule
+                    # in schedule.getRankedObs.
+                    max_attempts = self.config.get("max_observation_attempts", 2)
+                    if "attempts" in df:
+                        df["attempts"] = df["attempts"].fillna(0)
+                    else:
+                        df["attempts"] = 0
                     df = df.loc[
                         (obstime_mjd >= df["validStart"])
                         & (obstime_mjd <= df["validStop"])
                         & (df["observed"] == 0)
+                        & (df["attempts"] < max_attempts)
                     ]
 
                     select_cols = df[
@@ -5631,7 +5660,7 @@ class RoboOperator(QtCore.QObject):
             """
             # NPL: comment this out while hunting the cause of skipped observations
             # self.checkWhatToDo()
-            return
+            return False
 
         # reset all the header stuff
         self.resetObsValues()
@@ -5681,7 +5710,7 @@ class RoboOperator(QtCore.QObject):
             self.log(
                 f"filter {self.filter_scheduled} is not valid for camera {cam_to_use}... aborting observation"
             )
-            return
+            return False
 
         # self.observed is managed elsewhere
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
@@ -5737,7 +5766,14 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, "switchCamera", "telescope", msg)
             self.hardware_error.emit(err)
-            return
+            return False
+
+        # Tracks whether the observation ran end-to-end without an exception
+        # or a !running/!ok_to_observe abort. Set to False on those paths.
+        # A target_ok==False ephemeris break that skips one pointing but lets
+        # the outer loop move to the next pointing is treated as "recoverable"
+        # and does NOT flip this flag, matching the existing inner-loop design.
+        obs_fully_completed = True
 
         # how many pointings will we do?
         pointing_offsets = [{"coords": {"dRA": 0, "dDec": 0}}]
@@ -6061,6 +6097,10 @@ class RoboOperator(QtCore.QObject):
                         self.log(msg)
                         err = roboError(context, self.lastcmd, system, msg)
                         self.hardware_error.emit(err)
+                        # Mark the observation as not fully completed; the
+                        # caller will leave observed=0 so the row gets retried
+                        # (up to max_observation_attempts).
+                        obs_fully_completed = False
                         # NPL 4-7-22 trying to get it to break out of the dither loop on error
                         break
 
@@ -6078,6 +6118,10 @@ class RoboOperator(QtCore.QObject):
                     # self.restart_robo()
                     # NPL 1/19/22: replacing call to self.checkWhatToDo() with break to handle dither loop
                     # self.checkWhatToDo()
+                    # Mid-observation abort (running or ok_to_observe flipped):
+                    # the observation didn't run end-to-end, so don't flip
+                    # observed=1.
+                    obs_fully_completed = False
                     break
 
                 msg = f"got to the end of the dither loop, should go to top of loop?"
@@ -6088,7 +6132,7 @@ class RoboOperator(QtCore.QObject):
         self.resetObsValues()
         # NPL: comment this out while hunting the cause of skipped observations
         # self.checkWhatToDo()
-        return
+        return obs_fully_completed
 
     def log_observation_and_gotoNext(self, gotoNext=True, logObservation=True):
         self.announce(

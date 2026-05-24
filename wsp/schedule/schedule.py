@@ -87,6 +87,32 @@ except:
     from schedule import wintertoo_validate
 
 
+def ensure_attempts_column(conn, log=None):
+    """
+    Idempotently add the 'attempts' column to the schedule's 'summary' table.
+
+    Schedule SQL files generated before this column existed don't have it. We
+    ALTER TABLE on connection rather than requiring a separate migration. Safe
+    to call repeatedly: PRAGMA table_info tells us if the column is already
+    present.
+
+    ``conn`` is a sqlalchemy Connection. ``log`` is an optional callable for
+    reporting back; defaults to no-op.
+    """
+    if log is None:
+        log = lambda *a, **k: None
+    try:
+        rows = conn.execute("PRAGMA table_info(summary)").fetchall()
+        col_names = {row[1] for row in rows}  # row[1] is the column name
+        if "attempts" not in col_names:
+            conn.execute(
+                "ALTER TABLE summary ADD COLUMN attempts INTEGER DEFAULT 0"
+            )
+            log("added 'attempts' column to schedule (default 0)")
+    except Exception as e:
+        log(f"ensure_attempts_column: could not add column due to {type(e)}: {e}")
+
+
 class Schedule(object):
     # This is a class that handles the connection between WSP/roboOperator and the schedule file SQLite database
 
@@ -129,33 +155,38 @@ class Schedule(object):
         try:
             # first connect to the database
             self.connectToDB()
-            
+
+            # Ensure the 'attempts' column exists. Idempotent — added once per
+            # schedule file, then no-op on subsequent loads. Done BEFORE we read
+            # so the DataFrame has the column for downstream filters.
+            ensure_attempts_column(self.conn, log=self.log)
+
             # get all the rows that can be observed
             stmt = f'SELECT * FROM Summary'
-            
+
             #### THIS DOES THE SORTING USING PANDAS DATAFRAME COMMANDS ####
             #df = pd.read_sql(stmt, self.conn)
             self.log(f'type(self.conn) = {type(self.conn)}')
             df = pd.read_sql('SELECT * FROM Summary;',self.conn)
             # now close the connection to the database
             self.closeConnection
-            
+
             # Now make some additions to the observations
             # Priority: if not in database, add default 0 priority column
             if 'priority' not in df:
                 df['priority'] = 0
-            
+
             ### NOW VALIDATE THE SCHEDULE FILE DATAFRAME ###
             # a bad schedule file will raise an exception here
             wintertoo_validate.validate_schedule_df(df)
 
-            
+
             return True
-        
+
         except Exception as e:
             #print(e)
             self.log(f'schedule not valid: {e}')
-            
+
             return False
     
     
@@ -257,6 +288,16 @@ class Schedule(object):
                 
                 self.df = self.df[self.df["validStop"] >= obstime_mjd]
                 self.df = self.df[self.df["observed"] == 0]
+
+                # Skip rows we've already tried more than max_attempts times.
+                # 'attempts' is added by ensure_attempts_column on schedule load;
+                # fall back to 0 if the column is missing for any reason.
+                max_attempts = self.config.get("max_observation_attempts", 2)
+                if "attempts" in self.df:
+                    self.df["attempts"] = self.df["attempts"].fillna(0)
+                else:
+                    self.df["attempts"] = 0
+                self.df = self.df[self.df["attempts"] < max_attempts]
                 
                 # Now make some additions to the observations
                 # Priority: if not in database, add default 0 priority column
@@ -385,30 +426,61 @@ class Schedule(object):
         """
         Update the schedule file by changing observed to 1 for the row that matchese obsHistID
 
+        Only flip observed to 1 once an observation has fully completed.
+        For "we tried this one, increment the counter," use log_attempt.
         """
-        
+
         if obsHistID == 'current':
             obsHistID = self.currentObsHistID
         else:
             pass
-        
+
         if obsHistID is None:
             return
-        
+
         try:
             # first connect to the database
             self.connectToDB()
-            
+
             stmt = f'UPDATE summary SET observed = 1 WHERE obsHistID = {obsHistID}'
             self.conn.execute(stmt)
-            
+
             # now close the connection to the database
             self.closeConnection
-            
+
         except Exception as e:
             # now close the connection to the database
             self.closeConnection
             self.log(f'ERROR: could not log observation due to {type(e)}: {e}')
+
+    def log_attempt(self, obsHistID='current'):
+        """
+        Increment the 'attempts' counter for this row. Called when an
+        observation is loaded for attempted execution, so we can cap retries
+        on rows that keep failing partway through. Unlike log_observation,
+        this does NOT mark the row as observed.
+        """
+        if obsHistID == 'current':
+            obsHistID = self.currentObsHistID
+
+        if obsHistID is None:
+            return
+
+        try:
+            self.connectToDB()
+            # COALESCE guards against legacy rows where attempts was NULL
+            # before the column got its DEFAULT 0.
+            stmt = (
+                f"UPDATE summary "
+                f"SET attempts = COALESCE(attempts, 0) + 1 "
+                f"WHERE obsHistID = {obsHistID}"
+            )
+            self.conn.execute(stmt)
+            self.closeConnection
+
+        except Exception as e:
+            self.closeConnection
+            self.log(f'ERROR: could not log attempt due to {type(e)}: {e}')
     
     def _reset_observation_log(self):
         """
