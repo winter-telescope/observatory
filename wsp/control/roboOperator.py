@@ -1613,9 +1613,12 @@ class RoboOperator(QtCore.QObject):
                                     # self.checkWhatToDo() directly: we're still
                                     # inside the outer call so the reentrancy guard
                                     # would drop the call and the loop would die.
-                                    # Fire a 0 ms timer so the next pass runs from
-                                    # a clean stack after we unwind.
-                                    self.checktimer.start(0)
+                                    # Use a fresh QTimer.singleShot rather than
+                                    # self.checktimer.start(0) — start(0) permanently
+                                    # sets the shared timer's interval to 0, which
+                                    # then makes every later no-arg checktimer.start()
+                                    # fire immediately and produces a tight loop.
+                                    QtCore.QTimer.singleShot(0, self.checkWhatToDo)
                                     return
 
                             else:
