@@ -381,6 +381,13 @@ class RoboOperator(QtCore.QObject):
         # itself and clobbers shared state (camname, schedule cursor, etc).
         self._check_in_progress = False
 
+        # Reentrancy guard on rotator_stop_and_reset. Same shape, different
+        # cascade: doTry inside the cleanup can emit hardware_error, which is
+        # dispatched synchronously (DirectConnection) to broadcast_hardware_error,
+        # which calls rotator_stop_and_reset again. Without this flag, one
+        # failing rotator_home builds a nested pile of cleanups (~30s each).
+        self._in_rotator_stop_and_reset = False
+
         ### a QTimer for handling a longer pause before checking what to do
         self.waitAndCheckTimer = QtCore.QTimer()
         self.waitAndCheckTimer.setSingleShot(True)
@@ -600,21 +607,75 @@ class RoboOperator(QtCore.QObject):
         )
         self.running = False
 
+    def _rotator_is_stowed_on_current_port(self, tolerance_deg=1.0):
+        """
+        True iff M3 is at a valid port (1 or 2), the rotator is not slewing,
+        and the rotator mech position is within ``tolerance_deg`` of the
+        configured home angle for the current port. Used to enforce the
+        contract that the rotator must be stowed before M3 moves, and to
+        decide whether it's safe to issue rotator commands.
+        """
+        if self.mountsim:
+            return True
+        port = self.telescope.port
+        if port not in [1, 2]:
+            return False
+        if self.state.get("rotator_is_slewing", True):
+            return False
+        try:
+            home_deg = self.config["telescope"]["ports"][port]["rotator"][
+                "home_degs"
+            ]
+        except (KeyError, TypeError):
+            return False
+        pos = self.state.get("rotator_mech_position")
+        if pos is None:
+            return False
+        delta = abs(pos - home_deg)
+        wrapped_delta = min(360 - delta, delta)
+        return wrapped_delta < tolerance_deg
+
     def rotator_stop_and_reset(self):
         if self.mountsim:
             return
 
-        self.log(f"stopping rotator and resetting to home position")
-        # if the rotator is on do this:
-        self.log(f'rotator_is_enabled = {self.state["rotator_is_enabled"]}')
-        if self.state["rotator_is_enabled"]:
-            # stop the rotator
-            self.doTry("rotator_stop")
-            # turn off tracking
-            self.doTry("mount_tracking_off")
-            self.doTry("rotator_home")
-            # turn on wrap check again
-            self.doTry("rotator_wrap_check_enable")
+        # If M3 is mid-transition between ports, rotator commands target an
+        # undefined rotator. Skip the cleanup rather than issue commands with
+        # ambiguous effect; whoever called us will see no recovery, but that's
+        # safer than poking the wrong rotator.
+        port = self.telescope.port
+        if port not in [1, 2]:
+            self.log(
+                f"rotator_stop_and_reset: M3 not at a valid port (port={port}), "
+                f"skipping rotator cleanup to avoid undefined behavior"
+            )
+            return
+
+        # Reentrancy guard. doTry inside this method emits hardware_error on
+        # failure, which DirectConnection-dispatches into broadcast_hardware_error,
+        # which calls us again. Without this guard, one failing rotator_home
+        # produces a stack of nested cleanups (~30s each).
+        if self._in_rotator_stop_and_reset:
+            self.log(
+                "rotator_stop_and_reset: reentrant call suppressed "
+                "(hardware error during cleanup, not retrying further)"
+            )
+            return
+        self._in_rotator_stop_and_reset = True
+        try:
+            self.log(f"stopping rotator and resetting to home position")
+            # if the rotator is on do this:
+            self.log(f'rotator_is_enabled = {self.state["rotator_is_enabled"]}')
+            if self.state["rotator_is_enabled"]:
+                # stop the rotator
+                self.doTry("rotator_stop")
+                # turn off tracking
+                self.doTry("mount_tracking_off")
+                self.doTry("rotator_home")
+                # turn on wrap check again
+                self.doTry("rotator_wrap_check_enable")
+        finally:
+            self._in_rotator_stop_and_reset = False
 
     def toggle_autostart_override(self, state: bool):
         """
@@ -696,8 +757,34 @@ class RoboOperator(QtCore.QObject):
             msg = f"rotator already on port {port}, doing nothing"
             self.log(msg)
             return
-        else:
-            self.do(f"m3_goto {port}")
+
+        # Defensive precondition: M3 must not move unless the rotator on the
+        # port we are *leaving* is stowed. switchCamera already enforces this
+        # before calling us, but any direct caller of switchPort needs the
+        # same guarantee — moving M3 with an unstowed rotator leaves
+        # subsequent rotator commands undefined.
+        if not self._rotator_is_stowed_on_current_port():
+            current_port = self.telescope.port
+            try:
+                home_deg = self.config["telescope"]["ports"][current_port][
+                    "rotator"
+                ]["home_degs"]
+            except (KeyError, TypeError):
+                home_deg = "?"
+            pos = self.state.get("rotator_mech_position", "?")
+            slewing = self.state.get("rotator_is_slewing", "?")
+            msg = (
+                f"refusing to switch M3 to port {port}: rotator on port "
+                f"{current_port} is not stowed "
+                f"(position={pos}, home={home_deg}, slewing={slewing}). "
+                f"Aborting to keep M3 from moving with rotator in an "
+                f"unsafe state."
+            )
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            raise RuntimeError(msg)
+
+        self.do(f"m3_goto {port}")
         msg = f"switched rotator to port {port}"
 
         # if that worked then update the self.port attribute
@@ -728,6 +815,33 @@ class RoboOperator(QtCore.QObject):
         self.doTry("rotator_enable")
         self.doTry("rotator_home")
         # self.doTry("rotator_disable")
+
+        # Enforce the contract: M3 must not move unless the rotator on the
+        # current port is safely stowed. doTry swallows failures, so we have
+        # to verify the stow actually succeeded rather than trusting that it
+        # was attempted. If the rotator isn't stowed, abort the switch —
+        # moving M3 with the rotator in an unknown state can leave undefined
+        # which rotator subsequent commands target.
+        if not self._rotator_is_stowed_on_current_port():
+            current_port = self.telescope.port
+            try:
+                home_deg = self.config["telescope"]["ports"][current_port][
+                    "rotator"
+                ]["home_degs"]
+            except (KeyError, TypeError):
+                home_deg = "?"
+            pos = self.state.get("rotator_mech_position", "?")
+            slewing = self.state.get("rotator_is_slewing", "?")
+            msg = (
+                f"refusing to switch camera to {camname}: rotator on port "
+                f"{current_port} is not stowed "
+                f"(position={pos}, home={home_deg}, slewing={slewing}). "
+                f"Aborting to keep M3 from moving with rotator in an "
+                f"unsafe state."
+            )
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            raise RuntimeError(msg)
 
         # Switch to the corresponding port (this can raise exceptions)
         port = self.camera_manager.get_port_for_camera(camname)
