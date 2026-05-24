@@ -5640,6 +5640,48 @@ class RoboOperator(QtCore.QObject):
                         2. kill the exposure QTimer
                         3. emit a restartRobo signal so it gets kicked back to the top of the tree
 
+        Returns
+        -------
+        bool
+            True if the observation should be marked observed=1 in the
+            schedule (i.e. it ran end-to-end without a fatal abort), False
+            if it should stay observed=0 and be retried (up to
+            max_observation_attempts).
+
+            The criterion distinguishes "fatal abort" from "recoverable
+            hiccup". The row gets marked observed (return True) in all of
+            these cases:
+
+              - every dither in every pointing exposed cleanly
+              - one or more individual exposures failed but the inner
+                dither loop kept going (observation_completed=False with
+                target_ok=True — the code falls through and continues
+                dithering rather than breaking)
+              - target_ok==False on a pointing because an ephemeris body
+                was in the field; the inner loop broke and the outer
+                pointing loop moved to the next pointing. We may have
+                skipped one pointing but got data on the others, so it
+                counts as observed.
+
+            The row stays observed=0 (return False) — and will be retried
+            on the next checkWhatToDo pass until attempts >=
+            max_observation_attempts — in these cases:
+
+              - early return path: currentObs is None, the scheduled
+                filter isn't valid for the camera, or switchCamera raised
+              - an Exception was raised inside the dither loop (typically
+                a hardware timeout). The inner loop breaks on the bad
+                pointing, but the outer pointing loop does NOT continue —
+                we count this as a fatal failure of the observation.
+              - self.running or self.ok_to_observe flipped to False
+                mid-observation (e.g. weather closure, operator stop).
+                The current observation didn't run end-to-end so we
+                shouldn't mark it done; the row will be eligible again
+                once conditions recover.
+
+            In short: "we got at least some real data and weren't bounced
+            out" → observed=1. "We crashed or were asked to stop" →
+            observed stays 0, retry up to the cap.
         """
         context = "do_currentObs"
         if currentObs == "default":
@@ -5768,11 +5810,10 @@ class RoboOperator(QtCore.QObject):
             self.hardware_error.emit(err)
             return False
 
-        # Tracks whether the observation ran end-to-end without an exception
-        # or a !running/!ok_to_observe abort. Set to False on those paths.
-        # A target_ok==False ephemeris break that skips one pointing but lets
-        # the outer loop move to the next pointing is treated as "recoverable"
-        # and does NOT flip this flag, matching the existing inner-loop design.
+        # See the "Returns" section of this function's docstring for the full
+        # decision table on when this stays True vs. gets flipped to False.
+        # Quick summary: True unless an Exception breaks the dither loop or
+        # running/ok_to_observe flips False mid-observation.
         obs_fully_completed = True
 
         # how many pointings will we do?
