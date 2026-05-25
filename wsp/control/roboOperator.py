@@ -388,11 +388,11 @@ class RoboOperator(QtCore.QObject):
         # failing rotator_home builds a nested pile of cleanups (~30s each).
         self._in_rotator_stop_and_reset = False
 
-        # Hysteresis state for get_camera_should_be_running_status. See that
-        # method for the full rule. We track the latched decision plus a
-        # counter of how many consecutive checks have wanted to flip it.
-        self._last_camera_should_be_running = None
-        self._camera_decision_counter = 0
+        # Sun-altitude history window for get_camera_should_be_running_status.
+        # We derive a stable "sun_rising" by comparing first/last entries of
+        # this rolling history, instead of trusting self.state["sun_rising"]
+        # which flickers at the sample level.
+        self._sun_alt_history = []
 
         ### a QTimer for handling a longer pause before checking what to do
         self.waitAndCheckTimer = QtCore.QTimer()
@@ -2464,89 +2464,59 @@ class RoboOperator(QtCore.QObject):
 
     def get_camera_should_be_running_status(self) -> bool:
         """
-        Decide whether the camera *should* be running, with hysteresis
-        to prevent flap.
+        Decide whether the camera *should* be running.
 
         Background
         ----------
-        The previous version of this function returned different answers
-        on consecutive calls if self.state["sun_rising"] flickered, which
-        it can do right around the rising/setting crossover (and may also
-        be subject to short-window jitter from the daq loop at 2 Hz). On
-        the day this hysteresis was added, the symptom was the
-        focal-plane PDU + labjack channels rapidly toggling on/off on
-        consecutive checkWhatToDo passes — each pass running the
-        startup-or-shutdown power sequence in turn.
+        The user's design uses asymmetric thresholds — startup at
+        sun_alt=+10° going down, shutdown at sun_alt=-5° going up —
+        which is NOT a Schmitt trigger. In the twilight band
+        (-5° < sun_alt < +10°) you cannot determine the correct camera
+        state from sun_alt alone; you also need to know which direction
+        the sun is moving. The old code used self.state["sun_rising"]
+        for this, but that flag was flickering True/False between
+        adjacent daq samples (likely because it's computed as
+        sun_alt[now] > sun_alt[prev] over a 0.5 s interval where the
+        sun moves only ~milli-degrees and noise dominates).
 
-        Decision rule (Schmitt trigger on sun_alt, no sun_rising)
-        ---------------------------------------------------------
-        Once latched ON, only flip OFF when sun_alt is sustained
-        above shutdown_alt + margin for n_required consecutive checks.
-        Once latched OFF, only flip ON when sun_alt is sustained below
-        startup_alt - margin for n_required consecutive checks.
+        Fix
+        ---
+        Derive a stable sun_rising from a rolling history of sun_alt
+        samples over a longer window. Over ~2 min of real time the sun
+        moves ~0.5°, well above any noise floor, so first-vs-last
+        comparison gives a reliable direction. Then apply the original
+        three-case decision rule.
 
-        With defaults (shutdown_alt=-5, startup_alt=+10, margin=1.0 deg,
-        n_required=5 samples), at the 2 Hz daq rate the camera commits
-        to a transition only after ~2.5 s of consistent signal — long
-        enough to outlast any flicker but short enough to be
-        operationally invisible.
-
-        Bootstrap (first call): use the old sun_rising-based logic so
-        that the initial latched state is sensible even if startup
-        happens to coincide with the twilight band.
+        Bootstrap: when the history hasn't filled yet, fall back to
+        self.state["sun_rising"] for the very first decision.
         """
         sun_alt = self.state["sun_alt"]
         start_alt = self.config["sun_alt_to_startup_cameras"]  # +10
         shutdown_alt = self.config["sun_alt_to_shutdown_cameras"]  # -5
-        margin = self.config.get("camera_decision_margin_deg", 1.0)
-        n_required = self.config.get("camera_decision_n_samples", 5)
+        history_window = self.config.get("camera_decision_n_samples", 5)
 
-        last = self._last_camera_should_be_running
+        # Append the current sun_alt and trim to window size.
+        self._sun_alt_history.append(sun_alt)
+        if len(self._sun_alt_history) > history_window:
+            self._sun_alt_history.pop(0)
 
-        if last is None:
-            # Bootstrap: pick a sensible initial state. Use the old
-            # sun_rising-based logic for this first call only; from now on
-            # the latched state plus the threshold check governs.
-            sun_rising = self.state.get("sun_rising", False)
-            if (not sun_rising) and (sun_alt <= start_alt):
-                decision = True
-            elif sun_rising and (sun_alt >= shutdown_alt):
-                decision = False
-            else:
-                decision = sun_alt < shutdown_alt
-            self._last_camera_should_be_running = decision
-            self._camera_decision_counter = 0
-            return decision
-
-        # Latched. Determine whether we *want* to flip.
-        if last:
-            # Currently ON. Flip to OFF only if sun_alt is comfortably
-            # above the shutdown threshold (morning has clearly arrived).
-            want_flip = sun_alt > (shutdown_alt + margin)
+        if len(self._sun_alt_history) >= history_window:
+            # Stable derivation: compare oldest and newest samples in the
+            # window. At 30 s call cadence and window=5, the comparison
+            # spans 2 min — sun moves ~0.5° in that time, far above noise.
+            sun_rising = self._sun_alt_history[-1] > self._sun_alt_history[0]
         else:
-            # Currently OFF. Flip to ON only if sun_alt is comfortably
-            # below the startup threshold (evening has clearly arrived).
-            want_flip = sun_alt < (start_alt - margin)
+            # Bootstrap: not enough history yet. Fall back to the (flickery)
+            # state flag, accepting that the first few decisions may be
+            # unstable until the history fills.
+            sun_rising = self.state.get("sun_rising", False)
 
-        if want_flip:
-            self._camera_decision_counter += 1
-            if self._camera_decision_counter >= n_required:
-                new_decision = not last
-                self._camera_decision_counter = 0
-                self.announce(
-                    f"camera-should-be-running latched: "
-                    f"{last} -> {new_decision} "
-                    f"(sun_alt={sun_alt:.2f}°, "
-                    f"after {n_required} consecutive samples)"
-                )
-                self._last_camera_should_be_running = new_decision
-                return new_decision
-            # Not yet confirmed; hold previous.
-            return last
-
-        # No desire to flip — reset the counter and hold.
-        self._camera_decision_counter = 0
-        return last
+        # Original three-case logic.
+        if (not sun_rising) and (sun_alt <= start_alt):
+            return True
+        if sun_rising and (sun_alt >= shutdown_alt):
+            return False
+        return sun_alt < shutdown_alt
 
     def get_winter_camera_ready_to_observe_status(self):
         """
