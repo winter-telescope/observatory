@@ -908,17 +908,19 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             raise RuntimeError(msg)
 
-        # Disable the rotator before moving M3. Stops the PID/position
-        # control loop and de-energizes the motor so that when M3 hands
-        # electrical connection to the destination port, no stale command
-        # or residual loop on the current controller can drive the newly-
-        # active rotator. A brief sleep afterward lets the motor settle
-        # and in-flight telemetry land before we start the M3 move.
-        self.doTry("rotator_disable")
-        settle_seconds = self.config.get(
-            "rotator_settle_seconds_before_m3", 1.5
-        )
-        time.sleep(settle_seconds)
+        # NOTE: leave the rotator ENABLED across the M3 move. We tried
+        # disabling it here (commit 6fb00f37) on the theory that
+        # de-energizing the motor would prevent a residual PID loop from
+        # acting on the destination rotator after M3 hand-over. In
+        # practice, the rotator (at least on port 2) doesn't hold
+        # position when its motor is de-energized — it slumped from
+        # 65° to ~73° in the 4 s between disable and switchPort, which
+        # the post-disable defensive stow check then correctly refused.
+        # Keeping the motor energized lets the PID hold the rotator at
+        # the home angle through the M3 move. The pre-existing
+        # commented-out rotator_disable in this method was commented
+        # out FOR THIS REASON; restoring that comment.
+        # self.doTry("rotator_disable")
 
         # Switch to the corresponding port (this can raise exceptions)
         port = target_port
