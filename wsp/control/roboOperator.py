@@ -2571,11 +2571,13 @@ class RoboOperator(QtCore.QObject):
             - did startup run successfully
             - has the telescope been focused recently
 
-        Logs (and Slack-announces) which specific checks failed, but only on
-        *state changes* — going not-ready, the failing set changing, or
-        recovering to ready. This function is called at 2 Hz from
-        update_state, so an unconditional announce would spam Slack with
-        thousands of messages per hour.
+        Returns a bool. Does not log or announce — the per-check
+        breakdown is computed but only used internally for the
+        observatory_ready boolean, because in practice the state
+        flickers on every transient PWI4 status-poll hiccup during
+        slews/M3/focus moves and announcing on each transition was
+        noise, not signal. If you need to debug what's failing,
+        inspect the contributing self.state[...] fields directly.
         """
 
         checks = [
@@ -2608,21 +2610,14 @@ class RoboOperator(QtCore.QObject):
         failed = tuple(name for name, passed in checks if not passed)
         self.observatory_ready = len(failed) == 0
 
-        # Emit on state changes only (see docstring). _last_observatory_ready_failures
-        # is initialized lazily because this function can be called before any
-        # __init__ field for it exists; the getattr default of `None` covers the
-        # very first invocation.
-        last = getattr(self, "_last_observatory_ready_failures", None)
-        if failed != last:
-            if failed:
-                self.announce(
-                    f":caution: observatory not ready: failing checks = {list(failed)}"
-                )
-            elif last is not None:
-                # transitioned back to ready
-                self.announce(":greentick: observatory ready (all checks passing)")
-            self._last_observatory_ready_failures = failed
-
+        # Previously announced the failing-check set on every transition,
+        # but in practice these triggered on every transient PWI4 status-
+        # poll hiccup during slews/M3/focus moves ("mount_is_connected"
+        # briefly False, then True again), and on intermediate states the
+        # observatory was already in the middle of resolving. Net effect
+        # was Slack/log noise rather than actionable signal. Muted; the
+        # underlying state is still queryable via self.state[...] if
+        # diagnostics are needed.
         return self.observatory_ready
 
     # def get_winter_camera_on_status(self):
