@@ -394,6 +394,19 @@ class RoboOperator(QtCore.QObject):
         # which flickers at the sample level.
         self._sun_alt_history = []
 
+        # Per-port rotator lockout. When a port's rotator can't be brought to
+        # home on arrival after switchCamera (typically because it jammed
+        # outside its allowed wrap range and the telescope is refusing to
+        # enable it), we count the consecutive failures here. After N
+        # failures, the port is added to _locked_out_ports and any further
+        # cals / focus / observations that target a camera on that port are
+        # skipped, so the night can proceed on the other camera instead of
+        # the system spiraling on do_startup attempts. Lockouts persist
+        # until wsp restart (the rotator is physically stuck; only an
+        # operator can clear it).
+        self._port_rotator_failure_count = {1: 0, 2: 0}
+        self._locked_out_ports = set()
+
         ### a QTimer for handling a longer pause before checking what to do
         self.waitAndCheckTimer = QtCore.QTimer()
         self.waitAndCheckTimer.setSingleShot(True)
@@ -641,6 +654,36 @@ class RoboOperator(QtCore.QObject):
         wrapped_delta = min(360 - delta, delta)
         return wrapped_delta < tolerance_deg
 
+    def _camera_is_locked_out(self, camname):
+        """True iff the M3 port for ``camname`` is in self._locked_out_ports."""
+        try:
+            port = self.camera_manager.get_port_for_camera(camname)
+        except Exception:
+            return False
+        return port in self._locked_out_ports
+
+    def _cmd_targets_locked_out_port(self, cmd):
+        """
+        True iff a cal/observation command string targets a camera whose
+        M3 port is locked out. Detects ``--<camera>`` tokens for any
+        camera the camera_manager knows about.
+        """
+        if not self._locked_out_ports:
+            return False
+        try:
+            active_cams = list(self.camera_manager.get_active_cameras())
+        except Exception:
+            return False
+        tokens = cmd.split()
+        for cam in active_cams:
+            if f"--{cam}" in tokens and self._camera_is_locked_out(cam):
+                self.log(
+                    f":lock: cmd '{cmd}' targets camera {cam} on locked-out "
+                    f"port; skipping"
+                )
+                return True
+        return False
+
     def rotator_stop_and_reset(self):
         if self.mountsim:
             return
@@ -805,7 +848,10 @@ class RoboOperator(QtCore.QObject):
 
         Raises:
             KeyError: if camname not in camdict
-            Exception: if port switching or model loading fails
+            RuntimeError: if target port is locked out, if the current
+                port's rotator can't be verified stowed before M3 moves,
+                or if the destination port's rotator doesn't reach home
+                after M3 settles.
         """
         self.log(f"got command to switch camera to {camname}")
         # Validate the camera name first
@@ -814,13 +860,26 @@ class RoboOperator(QtCore.QObject):
             self.log(msg)
             raise KeyError(msg)
 
+        # Bail out early if the destination port is locked out (rotator
+        # has been jammed for too many consecutive switch attempts). This
+        # keeps the night moving on the other camera instead of looping
+        # through do_startup → switchCamera → fail every 30 s.
+        target_port = self.camera_manager.get_port_for_camera(camname)
+        if target_port in self._locked_out_ports:
+            msg = (
+                f"refusing to switch camera to {camname}: port {target_port} "
+                f"is locked out (rotator failed to stow on arrival too many "
+                f"times this session). Resolve manually and restart wsp."
+            )
+            self.log(msg)
+            raise RuntimeError(msg)
+
         camera = self.camdict[camname]
         fw = self.fwdict.get(camname, None)
 
         # Home and stow the rotator on the port we are *leaving*
         self.doTry("rotator_enable")
         self.doTry("rotator_home")
-        # self.doTry("rotator_disable")
 
         # Enforce the contract: M3 must not move unless the rotator on the
         # current port is safely stowed. doTry swallows failures, so we have
@@ -849,13 +908,72 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             raise RuntimeError(msg)
 
+        # Disable the rotator before moving M3. Stops the PID/position
+        # control loop and de-energizes the motor so that when M3 hands
+        # electrical connection to the destination port, no stale command
+        # or residual loop on the current controller can drive the newly-
+        # active rotator. A brief sleep afterward lets the motor settle
+        # and in-flight telemetry land before we start the M3 move.
+        self.doTry("rotator_disable")
+        settle_seconds = self.config.get(
+            "rotator_settle_seconds_before_m3", 1.5
+        )
+        time.sleep(settle_seconds)
+
         # Switch to the corresponding port (this can raise exceptions)
-        port = self.camera_manager.get_port_for_camera(camname)
+        port = target_port
         self.switchPort(port)
 
         # Enable and home the rotator on the port we are *entering*
         self.doTry("rotator_enable")
         self.doTry("rotator_home")
+
+        # Verify the destination rotator actually reached home. The
+        # doTry's above swallow TimeoutError, so a jammed rotator on the
+        # new port (e.g. left at a bad angle by a previous interaction,
+        # disabled by wrap protection during M3 transit, telescope
+        # refusing to re-enable it, ...) would silently sail through and
+        # we'd march into observations with an unusable rotator.
+        if not self._rotator_is_stowed_on_current_port():
+            try:
+                home_deg = self.config["telescope"]["ports"][port][
+                    "rotator"
+                ]["home_degs"]
+            except (KeyError, TypeError):
+                home_deg = "?"
+            pos = self.state.get("rotator_mech_position", "?")
+            slewing = self.state.get("rotator_is_slewing", "?")
+            # Count this as a failure; lock out the port after N strikes.
+            self._port_rotator_failure_count[port] = (
+                self._port_rotator_failure_count.get(port, 0) + 1
+            )
+            max_failures = self.config.get(
+                "port_rotator_lockout_failures", 3
+            )
+            count = self._port_rotator_failure_count[port]
+            if count >= max_failures and port not in self._locked_out_ports:
+                self._locked_out_ports.add(port)
+                self.announce(
+                    f":lock: locking out port {port} after {count} "
+                    f"consecutive rotator-stow failures on arrival. "
+                    f"Future cals/focus/observations targeting cameras on "
+                    f"this port will be skipped for the rest of this "
+                    f"session — operate the other camera and resolve the "
+                    f"jam manually, then restart wsp to clear the lockout."
+                )
+            msg = (
+                f"rotator on port {port} did not reach home after M3 "
+                f"settled (position={pos}, home={home_deg}, "
+                f"slewing={slewing}). Failure {count}/{max_failures} for "
+                f"port {port}."
+            )
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            raise RuntimeError(msg)
+        else:
+            # Successful arrival — clear the consecutive-failure counter
+            # (lockout, if already set, persists; that requires restart).
+            self._port_rotator_failure_count[port] = 0
 
         # Set the focuser to the corresponding camera's focus position
         camera_focus = self.focusTracker.get_best_focus(camera=camname)
@@ -1261,6 +1379,14 @@ class RoboOperator(QtCore.QObject):
                                 sun_rising=self.state["sun_rising"],
                             )
 
+                            # Filter out cals that target a locked-out port.
+                            # See _locked_out_ports notes in __init__.
+                            cals_to_do = [
+                                (desc, cmd)
+                                for (desc, cmd) in cals_to_do
+                                if not self._cmd_targets_locked_out_port(cmd)
+                            ]
+
                             # announce that we're going to dispatch the first cal to do:
                             if len(cals_to_do) > 0:
                                 # announce the list of cals to do:
@@ -1458,6 +1584,14 @@ class RoboOperator(QtCore.QObject):
                                         "max_focus_attempts", 3
                                     ),
                                 )
+
+                                # Skip cameras on locked-out ports — a focus
+                                # loop on a jammed-rotator port will only
+                                # fail and burn time.
+                                cameras_to_focus = [
+                                    c for c in cameras_to_focus
+                                    if not self._camera_is_locked_out(c)
+                                ]
 
                                 if cameras_to_focus:
                                     self.log(
@@ -5305,6 +5439,19 @@ class RoboOperator(QtCore.QObject):
         # default to winter if not specified or some kind of nan
         if cam_to_use not in self.camera_manager.get_active_cameras():
             cam_to_use = "winter"
+
+        # If the target camera is on a locked-out port, skip this
+        # observation. Returning False marks it not-fully-completed, so
+        # the attempts counter increments and (after max_observation_attempts)
+        # the row is permanently filtered out. The caller continues the
+        # check loop on the other camera.
+        if self._camera_is_locked_out(cam_to_use):
+            self.log(
+                f":lock: skipping observation: camera {cam_to_use} is on a "
+                f"locked-out port (obsHistID={int(currentObs.get('obsHistID', -1))})"
+            )
+            return False
+
         self.obsHistID = int(currentObs["obsHistID"])
         self.ra_deg_scheduled = float(currentObs["raDeg"])
         self.dec_deg_scheduled = float(currentObs["decDeg"])
