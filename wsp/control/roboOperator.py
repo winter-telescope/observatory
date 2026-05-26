@@ -922,9 +922,51 @@ class RoboOperator(QtCore.QObject):
         # out FOR THIS REASON; restoring that comment.
         # self.doTry("rotator_disable")
 
+        # Settling pause before M3 starts moving. Lets the PID loop
+        # fully stabilize at the home angle and any in-flight telemetry
+        # update finish landing before electrical hand-over to the
+        # destination rotator.
+        time.sleep(
+            self.config.get("rotator_settle_seconds_before_m3", 1.0)
+        )
+
         # Switch to the corresponding port (this can raise exceptions)
         port = target_port
         self.switchPort(port)
+
+        # Settling pause after M3 settles, before we issue any rotator
+        # commands on the new port. Gives the destination port's
+        # electrical state a moment to stabilize after the connection
+        # is made.
+        time.sleep(
+            self.config.get("rotator_settle_seconds_after_m3", 1.0)
+        )
+
+        # Diagnostic: log the destination rotator's position as soon as
+        # we can read it. In steady-state operation — after each port
+        # has been powered on at least once this session — the previous
+        # switchCamera that LEFT this port should have stowed it, so we
+        # expect to find it already at home. A warning here flags an
+        # anomaly worth investigating (silent stow failure last time,
+        # manual movement, rotator slump after disable, ...). It does
+        # NOT abort the switch; rotator_home below will try to bring
+        # the rotator back to home, and the post-arrival stow check
+        # will catch the case where that also fails.
+        if not self._rotator_is_stowed_on_current_port():
+            try:
+                home_deg = self.config["telescope"]["ports"][port][
+                    "rotator"
+                ]["home_degs"]
+            except (KeyError, TypeError):
+                home_deg = "?"
+            pos = self.state.get("rotator_mech_position", "?")
+            self.announce(
+                f":warning: arrived on port {port}, but rotator is NOT "
+                f"at home (position={pos}, home={home_deg}). After both "
+                f"ports have been powered on once this session this "
+                f"should not happen — investigate prior stow / a slump "
+                f"after disable / manual movement. Attempting to home now."
+            )
 
         # Enable and home the rotator on the port we are *entering*
         self.doTry("rotator_enable")

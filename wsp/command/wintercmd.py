@@ -250,6 +250,13 @@ class Wintercmd(QtCore.QObject):
 
         self.verbose = verbose
 
+        # Set to True for the duration of an m3_goto command. Every rotator
+        # wintercmd command checks this and raises if set, to guarantee we
+        # don't dispatch a rotator command while M3 is in an intermediate
+        # state between ports (where the command would land on an undefined
+        # rotator). See _raise_if_m3_in_transit.
+        self._m3_in_transit = False
+
         self.defineParser()
 
         # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
@@ -360,6 +367,26 @@ class Wintercmd(QtCore.QObject):
         passed to whtaever the command is
         """
         self.cmdparser = ArgumentParser(logger=self.logger, description=description)
+
+    def _raise_if_m3_in_transit(self, cmd_name):
+        """
+        Guard called at the top of every rotator wintercmd command. If M3
+        is mid-port-switch, the electrical hand-over to the destination
+        rotator is in an undefined state — a command issued during this
+        window can land on either rotator depending on exact M3 position,
+        which is the kind of indeterministic behavior we want to avoid.
+        Raises RuntimeError; the caller (typically via doTry) can decide
+        what to do with it.
+        """
+        if self._m3_in_transit:
+            msg = (
+                f"refusing to execute rotator command '{cmd_name}' while M3 "
+                f"is in transit between ports; the destination rotator is "
+                f"not yet electrically connected. Wait for m3_goto to "
+                f"complete, then retry."
+            )
+            self.logger.warning(msg)
+            raise RuntimeError(msg)
 
     def waitForCondition(self, expression, condition, timeout=100.0):
 
@@ -2303,6 +2330,7 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 2-4-21
         """
         self.defineCmdParser("enable the instrument rotator")
+        self._raise_if_m3_in_transit("rotator_enable")
         self.telescope.rotator_enable()
 
         ## Wait until end condition is satisfied, or timeout ##
@@ -2342,6 +2370,7 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 2-4-21
         """
         self.defineCmdParser("disable the instrument rotator")
+        self._raise_if_m3_in_transit("rotator_disable")
         self.telescope.rotator_disable()
 
         ## Wait until end condition is satisfied, or timeout ##
@@ -2384,6 +2413,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument(
             "position", nargs=1, action=None, help="<target_degs>"
         )
+        self._raise_if_m3_in_transit("rotator_goto_mech")
 
         self.getargs()
         target = float(self.args.position[0])
@@ -2439,6 +2469,7 @@ class Wintercmd(QtCore.QObject):
         Send the rotator to the home position
         """
         self.defineCmdParser("turn instrument rotator to home position")
+        self._raise_if_m3_in_transit("rotator_home")
 
         # need to ensure that a valid rotator is selected, eg,
         # self.telescope.port is in [1,2]
@@ -2490,6 +2521,7 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 5-1-21
         Enable the wrap prevention check in the telescope
         """
+        self._raise_if_m3_in_transit("rotator_wrap_check_enable")
         self.telescope.enable_wrap_check()
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -2531,6 +2563,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument(
             "position", nargs=1, action=None, help="<target_degs>"
         )
+        self._raise_if_m3_in_transit("rotator_goto_field")
 
         self.getargs()
         target = float(self.args.position[0])
@@ -2584,6 +2617,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument(
             "position", nargs=1, action=None, help="<target_degs>"
         )
+        self._raise_if_m3_in_transit("rotator_offset")
 
         self.getargs()
         target = self.args.position[0]
@@ -2595,6 +2629,7 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 2-4-21
         """
         self.defineCmdParser("STOP the instrument rotator")
+        self._raise_if_m3_in_transit("rotator_stop")
         self.telescope.rotator_stop()
 
     # M3 STUFF
@@ -2610,40 +2645,50 @@ class Wintercmd(QtCore.QObject):
 
         self.getargs()
         target_port = self.args.position[0]
-        self.telescope.m3_goto(target_port=target_port)
-        
-        ## Wait until end condition is satisfied, or timeout ##
-        condition = True
-        timeout = 30.0
-        self.logger.info(f"waiting up to {timeout} s for M3 to switch to Port {target_port}...")
-        # wait for the telescope to stop moving before returning
-        # create a buffer list to hold several samples over which the stop condition must be true
-        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
-        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
 
-        # get the current timestamp
-        start_timestamp = datetime.utcnow().timestamp()
-        while True:
-            QtCore.QCoreApplication.processEvents()
-            # print('entering loop')
-            time.sleep(self.config["cmd_status_dt"])
-            timestamp = datetime.utcnow().timestamp()
-            dt = timestamp - start_timestamp
-            # print(f'wintercmd: wait time so far = {dt}')
-            if dt > timeout:
-                raise TimeoutError(
-                    f"command timed out after {timeout} seconds before completing"
-                )
-                
-            stop_condition = (int(self.state["telescope_m3_port"]) == target_port)
-            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
-            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
-            # now replace the last element
-            stop_condition_buffer[-1] = stop_condition
+        # Mark M3 as in transit so any concurrent rotator wintercmd command
+        # (e.g. dispatched from a wrap-warning handler or other signal
+        # during processEvents pumping below) raises rather than landing
+        # on an undefined rotator. Cleared in the finally regardless of
+        # how this command exits (success, timeout, exception).
+        self._m3_in_transit = True
+        try:
+            self.telescope.m3_goto(target_port=target_port)
 
-            if all(entry == condition for entry in stop_condition_buffer):
-                break
-        self.logger.info(f"wintercmd: port selection complete, M3 @ Port {self.state['telescope_m3_port']}")
+            ## Wait until end condition is satisfied, or timeout ##
+            condition = True
+            timeout = 30.0
+            self.logger.info(f"waiting up to {timeout} s for M3 to switch to Port {target_port}...")
+            # wait for the telescope to stop moving before returning
+            # create a buffer list to hold several samples over which the stop condition must be true
+            n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+            stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+            # get the current timestamp
+            start_timestamp = datetime.utcnow().timestamp()
+            while True:
+                QtCore.QCoreApplication.processEvents()
+                # print('entering loop')
+                time.sleep(self.config["cmd_status_dt"])
+                timestamp = datetime.utcnow().timestamp()
+                dt = timestamp - start_timestamp
+                # print(f'wintercmd: wait time so far = {dt}')
+                if dt > timeout:
+                    raise TimeoutError(
+                        f"command timed out after {timeout} seconds before completing"
+                    )
+
+                stop_condition = (int(self.state["telescope_m3_port"]) == target_port)
+                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+                # now replace the last element
+                stop_condition_buffer[-1] = stop_condition
+
+                if all(entry == condition for entry in stop_condition_buffer):
+                    break
+            self.logger.info(f"wintercmd: port selection complete, M3 @ Port {self.state['telescope_m3_port']}")
+        finally:
+            self._m3_in_transit = False
 
     @cmd
     def m3_stop(self):
