@@ -908,6 +908,19 @@ class RoboOperator(QtCore.QObject):
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             raise RuntimeError(msg)
 
+        # Halt the rotator's position-target loop before M3 leaves this
+        # port. Without this, the PID continues running on the rotator
+        # we're about to abandon, and if anything subsequently nudges the
+        # target (tracking gets activated, an offset is applied, ...) the
+        # rotator on the de-selected port can drift out of its allowed
+        # range while we're away. We can't see that drift in telemetry
+        # because we don't get readout from a non-selected port — the
+        # problem only surfaces next time we come back and find the
+        # rotator at a bad angle (or wrap-locked). Keep the motor
+        # ENABLED (rotator_stop, not rotator_disable, which slumps under
+        # gravity on port 2 — see commit 7a5a7c53).
+        self.doTry("rotator_stop")
+
         # NOTE: leave the rotator ENABLED across the M3 move. We tried
         # disabling it here (commit 6fb00f37) on the theory that
         # de-energizing the motor would prevent a residual PID loop from
