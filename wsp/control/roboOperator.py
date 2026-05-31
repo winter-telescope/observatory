@@ -8,7 +8,6 @@ operator.py
 @author: nlourie
 """
 
-
 import glob
 import json
 import logging
@@ -642,9 +641,7 @@ class RoboOperator(QtCore.QObject):
         if self.state.get("rotator_is_slewing", True):
             return False
         try:
-            home_deg = self.config["telescope"]["ports"][port]["rotator"][
-                "home_degs"
-            ]
+            home_deg = self.config["telescope"]["ports"][port]["rotator"]["home_degs"]
         except (KeyError, TypeError):
             return False
         pos = self.state.get("rotator_mech_position")
@@ -815,9 +812,9 @@ class RoboOperator(QtCore.QObject):
         if not self._rotator_is_stowed_on_current_port():
             current_port = self.telescope.port
             try:
-                home_deg = self.config["telescope"]["ports"][current_port][
-                    "rotator"
-                ]["home_degs"]
+                home_deg = self.config["telescope"]["ports"][current_port]["rotator"][
+                    "home_degs"
+                ]
             except (KeyError, TypeError):
                 home_deg = "?"
             pos = self.state.get("rotator_mech_position", "?")
@@ -890,9 +887,9 @@ class RoboOperator(QtCore.QObject):
         if not self._rotator_is_stowed_on_current_port():
             current_port = self.telescope.port
             try:
-                home_deg = self.config["telescope"]["ports"][current_port][
-                    "rotator"
-                ]["home_degs"]
+                home_deg = self.config["telescope"]["ports"][current_port]["rotator"][
+                    "home_degs"
+                ]
             except (KeyError, TypeError):
                 home_deg = "?"
             pos = self.state.get("rotator_mech_position", "?")
@@ -939,9 +936,7 @@ class RoboOperator(QtCore.QObject):
         # fully stabilize at the home angle and any in-flight telemetry
         # update finish landing before electrical hand-over to the
         # destination rotator.
-        time.sleep(
-            self.config.get("rotator_settle_seconds_before_m3", 1.0)
-        )
+        time.sleep(self.config.get("rotator_settle_seconds_before_m3", 1.0))
 
         # Switch to the corresponding port (this can raise exceptions)
         port = target_port
@@ -951,9 +946,7 @@ class RoboOperator(QtCore.QObject):
         # commands on the new port. Gives the destination port's
         # electrical state a moment to stabilize after the connection
         # is made.
-        time.sleep(
-            self.config.get("rotator_settle_seconds_after_m3", 1.0)
-        )
+        time.sleep(self.config.get("rotator_settle_seconds_after_m3", 1.0))
 
         # Diagnostic: log the destination rotator's position as soon as
         # we can read it. In steady-state operation — after each port
@@ -967,9 +960,9 @@ class RoboOperator(QtCore.QObject):
         # will catch the case where that also fails.
         if not self._rotator_is_stowed_on_current_port():
             try:
-                home_deg = self.config["telescope"]["ports"][port][
-                    "rotator"
-                ]["home_degs"]
+                home_deg = self.config["telescope"]["ports"][port]["rotator"][
+                    "home_degs"
+                ]
             except (KeyError, TypeError):
                 home_deg = "?"
             pos = self.state.get("rotator_mech_position", "?")
@@ -993,9 +986,9 @@ class RoboOperator(QtCore.QObject):
         # we'd march into observations with an unusable rotator.
         if not self._rotator_is_stowed_on_current_port():
             try:
-                home_deg = self.config["telescope"]["ports"][port][
-                    "rotator"
-                ]["home_degs"]
+                home_deg = self.config["telescope"]["ports"][port]["rotator"][
+                    "home_degs"
+                ]
             except (KeyError, TypeError):
                 home_deg = "?"
             pos = self.state.get("rotator_mech_position", "?")
@@ -1004,9 +997,7 @@ class RoboOperator(QtCore.QObject):
             self._port_rotator_failure_count[port] = (
                 self._port_rotator_failure_count.get(port, 0) + 1
             )
-            max_failures = self.config.get(
-                "port_rotator_lockout_failures", 3
-            )
+            max_failures = self.config.get("port_rotator_lockout_failures", 3)
             count = self._port_rotator_failure_count[port]
             if count >= max_failures and port not in self._locked_out_ports:
                 self._locked_out_ports.add(port)
@@ -1648,7 +1639,8 @@ class RoboOperator(QtCore.QObject):
                                 # return None (vs. []) when nothing needs
                                 # focusing, so coalesce that case here.
                                 cameras_to_focus = [
-                                    c for c in (cameras_to_focus or [])
+                                    c
+                                    for c in (cameras_to_focus or [])
                                     if not self._camera_is_locked_out(c)
                                 ]
 
@@ -2618,7 +2610,9 @@ class RoboOperator(QtCore.QObject):
         # 7-3-23
         # if we are not in mount_sim or testmode, check the mirror cover state
         if not self.mountsim and not self.test_mode:
-            checks.append(("Mirror_Cover_State==0", self.state["Mirror_Cover_State"] == 0))
+            checks.append(
+                ("Mirror_Cover_State==0", self.state["Mirror_Cover_State"] == 0)
+            )
 
         # TODO: add something about the focus here
 
@@ -4574,7 +4568,7 @@ class RoboOperator(QtCore.QObject):
             # if spring camera, make sure shutter is open
             if self.camname == "spring":
                 system = "shutter"
-                if self.fw.state["shutter_status"] != 1:
+                if self.state["shutter_open"] != 1:
                     self.announce("spring shutter is closed, opening now")
                     self.do(f"shutter open --{self.camname}")
 
@@ -5806,7 +5800,9 @@ class RoboOperator(QtCore.QObject):
                                 if self.fw.state["shutter_status"] == 1:
                                     pass
                                 else:
-                                    self.announce("opening shutter for science exposure")
+                                    self.announce(
+                                        "opening shutter for science exposure"
+                                    )
                                     self.do("shutter open --spring")
 
                         # set up a big descriptive message for slack:
