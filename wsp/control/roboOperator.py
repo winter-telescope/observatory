@@ -1644,9 +1644,11 @@ class RoboOperator(QtCore.QObject):
 
                                 # Skip cameras on locked-out ports — a focus
                                 # loop on a jammed-rotator port will only
-                                # fail and burn time.
+                                # fail and burn time. focusTracker can
+                                # return None (vs. []) when nothing needs
+                                # focusing, so coalesce that case here.
                                 cameras_to_focus = [
-                                    c for c in cameras_to_focus
+                                    c for c in (cameras_to_focus or [])
                                     if not self._camera_is_locked_out(c)
                                 ]
 

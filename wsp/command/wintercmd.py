@@ -5742,16 +5742,51 @@ class Wintercmd(QtCore.QObject):
 
         camera = self.camdict[camname]
 
-        if camname == "winter":
-            # sigcmd = signalCmd('checkWINTERCamera')
-            # self.roboThread.newCommand.emit(sigcmd)
-
-            sigcmd = signalCmd("autoStartupCamera")
-            camera = self.camdict[camname]
-            camera.newCommand.emit(sigcmd)
-
-        else:
+        if camname != "winter":
             self.logger.info(f"wintercmd: autoStartupCamera only defined for WINTER")
+            return
+
+        # Fire the daemon request.
+        sigcmd = signalCmd("autoStartupCamera")
+        camera.newCommand.emit(sigcmd)
+
+        # Wait for the camera daemon to acknowledge the request by
+        # flipping its autoStartRequested flag to True. The emit()
+        # above is fire-and-forget on the Qt signal side; the actual
+        # Pyro5 dispatch + daemon-side state update can lag by tens of
+        # seconds to minutes when the daemon is backlogged at startup.
+        # Without this wait, the caller returns immediately, and the
+        # next checkWhatToDo pass (30 s later) still sees
+        # autoStartRequested = False and helpfully queues ANOTHER
+        # startup — pile-up of 3+ startups observed in the
+        # 2026-05-27 18:56 log.
+        timeout = self.config.get("camera_autostart_ack_timeout_s", 300.0)
+        poll_dt = self.config["cmd_status_dt"]
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [False for _ in range(n_buffer_samples)]
+        self.logger.info(
+            f"autoStartupCamera: waiting up to {timeout} s for {camname} "
+            f"camera daemon to ack autoStartRequested..."
+        )
+        start_ts = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(poll_dt)
+            elapsed = datetime.utcnow().timestamp() - start_ts
+            if elapsed > timeout:
+                raise TimeoutError(
+                    f"autoStartupCamera: {camname} camera daemon did not "
+                    f"ack autoStartRequested within {timeout} s"
+                )
+            stop_condition = bool(camera.state.get("autoStartRequested", False))
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            stop_condition_buffer[-1] = stop_condition
+            if all(stop_condition_buffer):
+                break
+        self.logger.info(
+            f"autoStartupCamera: {camname} daemon acknowledged "
+            f"autoStartRequested after {elapsed:.1f} s"
+        )
 
     @cmd
     def autoShutdownCamera(self):
@@ -5773,16 +5808,47 @@ class Wintercmd(QtCore.QObject):
 
         camera = self.camdict[camname]
 
-        if camname == "winter":
-            # sigcmd = signalCmd('checkWINTERCamera')
-            # self.roboThread.newCommand.emit(sigcmd)
-
-            sigcmd = signalCmd("autoShutdownCamera")
-            camera = self.camdict[camname]
-            camera.newCommand.emit(sigcmd)
-
-        else:
+        if camname != "winter":
             self.logger.info(f"wintercmd: autoShutdownCamera only defined for WINTER")
+            return
+
+        # Fire the daemon request.
+        sigcmd = signalCmd("autoShutdownCamera")
+        camera.newCommand.emit(sigcmd)
+
+        # Wait for the camera daemon to acknowledge the request by
+        # flipping autoShutdownRequested = True. Same bug shape as
+        # autoStartupCamera above: emit() returns immediately, the
+        # daemon-side state update lags, and without a wait the next
+        # checkWhatToDo pass keeps re-firing shutdowns until the
+        # state catches up.
+        timeout = self.config.get("camera_autoshutdown_ack_timeout_s", 300.0)
+        poll_dt = self.config["cmd_status_dt"]
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [False for _ in range(n_buffer_samples)]
+        self.logger.info(
+            f"autoShutdownCamera: waiting up to {timeout} s for {camname} "
+            f"camera daemon to ack autoShutdownRequested..."
+        )
+        start_ts = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(poll_dt)
+            elapsed = datetime.utcnow().timestamp() - start_ts
+            if elapsed > timeout:
+                raise TimeoutError(
+                    f"autoShutdownCamera: {camname} camera daemon did not "
+                    f"ack autoShutdownRequested within {timeout} s"
+                )
+            stop_condition = bool(camera.state.get("autoShutdownRequested", False))
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            stop_condition_buffer[-1] = stop_condition
+            if all(stop_condition_buffer):
+                break
+        self.logger.info(
+            f"autoShutdownCamera: {camname} daemon acknowledged "
+            f"autoShutdownRequested after {elapsed:.1f} s"
+        )
 
     @cmd
     def generate_supernovae_db(self):
