@@ -567,6 +567,7 @@ cal_params:
             n_imgs: 5
             exptimes:
                 - 30.0
+                - 60.0
             filterID: 'J'
         triggers:
             darks:
