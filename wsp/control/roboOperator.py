@@ -4568,7 +4568,7 @@ class RoboOperator(QtCore.QObject):
             # if spring camera, make sure shutter is open
             if self.camname == "spring":
                 system = "shutter"
-                if self.state["shutter_open"] != 1:
+                if self.fw.state["shutter_open"] != 1:
                     self.announce("spring shutter is closed, opening now")
                     self.do(f"shutter open --{self.camname}")
 
@@ -5791,13 +5791,13 @@ class RoboOperator(QtCore.QObject):
                         ## Shutter: open it unless a dark has been requested ###
                         if self.camname == "spring":
                             if self.filter_scheduled.lower() in ["dark"]:
-                                if self.fw.state["shutter_status"] == 0:
+                                if self.fw.state["shutter_open"] == 0:
                                     self.log("shutter already closed")
                                 else:
                                     self.log("closing shutter for dark exposure")
-                                    self.do("shutter_close --spring")
+                                    self.do("shutter close --spring")
                             else:
-                                if self.fw.state["shutter_status"] == 1:
+                                if self.fw.state["shutter_open"] == 1:
                                     pass
                                 else:
                                     self.announce(
