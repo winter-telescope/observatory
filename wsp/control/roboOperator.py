@@ -305,6 +305,18 @@ class RoboOperator(QtCore.QObject):
         # for now just trying to start leaving places in the code to swap between winter and summer
         self.camname = "winter"
 
+        # Pre-bind self.camera and self.fw from the default camname.
+        # switchCamera (called later in __init__) only assigns these
+        # attributes at the END of its body, after a long chain of
+        # rotator/M3 checks. If any check raises before that — e.g. M3
+        # starts between ports → _rotator_is_stowed_on_current_port
+        # returns False → switchCamera raises — these attributes were
+        # never created, and the very next observation crashed with
+        # AttributeError on self.camera.state[...]. switchCamera will
+        # overwrite both once it succeeds.
+        self.camera = self.camdict[self.camname]
+        self.fw = self.fwdict.get(self.camname, None)
+
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger=self.logger)
         # a variable to keep track of how many times we've attempted to focus. different numbers have different affects on focus routine
@@ -472,6 +484,22 @@ class RoboOperator(QtCore.QObject):
         self.updateThread = data_handler.daq_loop(
             func=self.update_state, dt=500, name="robo_status_update"
         )
+
+        # If wsp starts with M3 between ports, the initial switchCamera
+        # below will raise on its stow check (port not in [1, 2] →
+        # _rotator_is_stowed_on_current_port returns False). Try to
+        # recover M3 to a known port first; if recovery fails the
+        # switchCamera below will surface the issue, and the
+        # AttributeError protection earlier in __init__ keeps the
+        # downstream observation code from blowing up.
+        try:
+            self.recover_m3_to_valid_port_if_needed()
+        except Exception as e:
+            self.log(
+                f"roboOperator: M3 recovery during __init__ failed: "
+                f"{type(e).__name__}: {e}. Continuing — switchCamera "
+                f"below will see the bad state and raise."
+            )
 
         # change the camera to the specified camera for the darks
         try:
@@ -681,6 +709,101 @@ class RoboOperator(QtCore.QObject):
                 return True
         return False
 
+    def recover_m3_to_valid_port_if_needed(self, target_port=None):
+        """
+        Ensure M3 is at a known port (1 or 2). If not, issue m3_goto to
+        nudge it to a known port and verify the result.
+
+        Idempotent: if M3 is already at a valid port, returns
+        immediately without side effects. Safe to call multiple times.
+
+        Args:
+            target_port: int or None. The port to recover to. If None,
+                         uses the port for ``self.camname``; falls back
+                         to port 1 (winter) if the camera_manager can't
+                         resolve.
+
+        Raises:
+            RuntimeError: if m3_goto raises, OR if M3 is still not at a
+                valid port after the m3_goto returned. Either case also
+                increments the ``target_port``'s entry in
+                ``_port_rotator_failure_count`` and triggers a port
+                lockout once the counter reaches
+                ``port_rotator_lockout_failures`` (same mechanism used
+                by switchCamera's rotator-stow failures, so M3 failures
+                and rotator-stow failures both count toward the same
+                cap).
+        """
+        if self.mountsim:
+            return
+        current_port = self.telescope.port
+        if current_port in [1, 2]:
+            return  # nothing to do
+
+        if target_port is None:
+            try:
+                target_port = self.camera_manager.get_port_for_camera(
+                    self.camname
+                )
+            except Exception:
+                target_port = 1
+
+        self.announce(
+            f":warning: M3 is between ports (port={current_port}). "
+            f"Attempting auto-recovery to port {target_port} via "
+            f"m3_goto..."
+        )
+        try:
+            self.do(f"m3_goto {target_port}")
+        except Exception as e:
+            self._register_m3_recovery_failure(target_port)
+            msg = (
+                f"M3 recovery failed: m3_goto {target_port} raised "
+                f"{type(e).__name__}: {e}"
+            )
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            raise RuntimeError(msg) from e
+
+        if self.telescope.port not in [1, 2]:
+            self._register_m3_recovery_failure(target_port)
+            msg = (
+                f"M3 recovery failed: still at port "
+                f"{self.telescope.port} after m3_goto {target_port}"
+            )
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            raise RuntimeError(msg)
+
+        self.announce(
+            f":greentick: M3 recovery successful, now at port "
+            f"{self.telescope.port}"
+        )
+
+    def _register_m3_recovery_failure(self, target_port):
+        """
+        Bump the per-port failure counter when an M3 recovery attempt
+        fails for ``target_port``. Folded into the same counter used by
+        the switchCamera arrival stow check, so 3 mixed failures
+        (rotator-stow + m3_goto) also lock out the port.
+        """
+        self._port_rotator_failure_count[target_port] = (
+            self._port_rotator_failure_count.get(target_port, 0) + 1
+        )
+        count = self._port_rotator_failure_count[target_port]
+        max_failures = self.config.get("port_rotator_lockout_failures", 3)
+        if (count >= max_failures
+                and target_port not in self._locked_out_ports):
+            self._locked_out_ports.add(target_port)
+            self.announce(
+                f":lock: locking out port {target_port} after {count} "
+                f"consecutive M3-recovery / rotator-stow failures. "
+                f"Future cals/focus/observations targeting cameras on "
+                f"this port will be skipped for the rest of this "
+                f"session. Restart wsp to clear after resolving the "
+                f"underlying hardware issue."
+            )
+
     def rotator_stop_and_reset(self):
         if self.mountsim:
             return
@@ -870,6 +993,14 @@ class RoboOperator(QtCore.QObject):
             )
             self.log(msg)
             raise RuntimeError(msg)
+
+        # Recovery: if M3 is currently between ports, nudge it to the
+        # target port directly so the leaving-port stow logic below can
+        # reason about a defined rotator. The helper is a no-op when M3
+        # is already at a valid port, and folds m3_goto failures into
+        # the same port lockout counter that the arrival stow check
+        # uses, so a hard-stuck M3 also gets locked out after N tries.
+        self.recover_m3_to_valid_port_if_needed(target_port=target_port)
 
         camera = self.camdict[camname]
         fw = self.fwdict.get(camname, None)
