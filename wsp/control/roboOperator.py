@@ -363,6 +363,11 @@ class RoboOperator(QtCore.QObject):
 
         # a flag to denote whether the observatory (ie telescope and dome) are ready to observe, not including whether dome is open
         self.observatory_ready = False
+        # Last set of failing checks from get_observatory_ready_status,
+        # used to log only when the failure signature changes (avoids
+        # spamming the log every 30 s with the same list while the loop
+        # waits for state to settle).
+        self._last_observatory_failed_checks = None
         # a similar flag to denote whether the observatory is safely stowed
         self.observatory_stowed = False
 
@@ -2890,14 +2895,22 @@ class RoboOperator(QtCore.QObject):
         failed = tuple(name for name, passed in checks if not passed)
         self.observatory_ready = len(failed) == 0
 
-        # Previously announced the failing-check set on every transition,
-        # but in practice these triggered on every transient PWI4 status-
-        # poll hiccup during slews/M3/focus moves ("mount_is_connected"
-        # briefly False, then True again), and on intermediate states the
-        # observatory was already in the middle of resolving. Net effect
-        # was Slack/log noise rather than actionable signal. Muted; the
-        # underlying state is still queryable via self.state[...] if
-        # diagnostics are needed.
+        # Log the failing checks ONLY when the failure signature changes,
+        # so we don't spam every 30 s while checkWhatToDo loops waiting
+        # for state to settle, but we still get a clear breadcrumb of
+        # *which* check is keeping observatory_ready False when the
+        # loop is stuck (e.g. rotator_wrap_check_enabled never set
+        # after a force-leave). Previously this was muted entirely,
+        # which made the do_startup retry loop opaque to diagnose.
+        if failed != self._last_observatory_failed_checks:
+            if failed:
+                self.log(
+                    f"observatory_ready=False; failing checks: {list(failed)}"
+                )
+            else:
+                self.log("observatory_ready=True (all checks pass)")
+            self._last_observatory_failed_checks = failed
+
         return self.observatory_ready
 
     # def get_winter_camera_on_status(self):
@@ -3396,6 +3409,16 @@ class RoboOperator(QtCore.QObject):
                 self.do("rotator_enable")
                 # home the rotator
                 self.do("rotator_home")
+                # Re-enable wrap protection. A wrap warning earlier in
+                # the session disables wrap_check and rotator_stop_and_reset
+                # only re-enables it on the port where the warning fired —
+                # which, if that port got locked out and we force-left to
+                # the other port, leaves wrap_check disabled here on the
+                # healthy port. get_observatory_ready_status checks
+                # rotator_wrap_check_enabled, so without this re-enable
+                # checkWhatToDo loops on do_startup forever after a
+                # successful force-leave recovery.
+                self.do("rotator_wrap_check_enable")
 
             # turn on the focuser
             if not self.mountsim:
