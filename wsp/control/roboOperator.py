@@ -2718,14 +2718,31 @@ class RoboOperator(QtCore.QObject):
         inspect the contributing self.state[...] fields directly.
         """
 
+        # mount_is_connected is unreliable while M3 is in the
+        # intermediate port-0 state: the telemetry reports False even
+        # though the mount is still connected. Without this guard,
+        # checkWhatToDo sees observatory_ready=False during an M3
+        # transit, calls do_startup, do_startup's mount_connect times
+        # out (no real fix needed — the mount is fine, it's M3 that
+        # needs to move), and the cycle repeats every 30 s. Skip the
+        # check during M3 transit; the M3 recovery in switchCamera
+        # will get M3 settled, and the next pass will see the real
+        # mount_is_connected value.
+        m3_in_transit = (
+            not self.mountsim and self.telescope.port not in [1, 2]
+        )
+
         checks = [
             # name, passed
             ("dome.Control_Status==REMOTE", self.dome.Control_Status == "REMOTE"),
             ("dome.Home_Status==READY", self.dome.Home_Status == "READY"),
-            ("mount_is_connected", self.state["mount_is_connected"] == True),
             ("mount_alt_is_enabled", self.state["mount_alt_is_enabled"] == True),
             ("mount_az_is_enabled", self.state["mount_az_is_enabled"] == True),
         ]
+        if not m3_in_transit:
+            checks.append(
+                ("mount_is_connected", self.state["mount_is_connected"] == True)
+            )
         if not self.mountsim:
             checks += [
                 ("rotator_is_connected", self.state["rotator_is_connected"] == True),
