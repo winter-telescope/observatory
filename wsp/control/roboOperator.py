@@ -3581,6 +3581,16 @@ class RoboOperator(QtCore.QObject):
         msg = "starting telescope shutdown..."
         self.announce(msg)
         try:
+            # If M3 is wedged between ports, get it to a valid port
+            # before issuing any rotator commands below. Without this,
+            # rotator_home's wait-for-port-stable loop times out after
+            # 30 s ("port 0 is not at either allowed ports (1,2)"),
+            # which raises and skips the rest of the telescope
+            # shutdown (rotator_disable + mount_az_off + mount_alt_off).
+            # No-op if M3 is already at port 1 or 2; failures fold
+            # into the existing port lockout counter.
+            self.recover_m3_to_valid_port_if_needed(target_port=1)
+
             # start up the mount:
             # splitting this up so we get more feedback on where things crash
             # self.do('mount_startup')
