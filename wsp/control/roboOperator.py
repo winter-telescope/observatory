@@ -680,6 +680,35 @@ class RoboOperator(QtCore.QObject):
         wrapped_delta = min(360 - delta, delta)
         return wrapped_delta < tolerance_deg
 
+    def _rotator_position_outside_allowed_limits(self):
+        """
+        True iff the rotator on the current port is at a mech position
+        outside its configured min_degs/max_degs envelope. Strong signal
+        that the rotator is physically wedged (the telescope wrap
+        protection will refuse to drive it back in, the only fix is
+        manual). switchCamera uses this as an immediate-lockout trigger
+        when the leaving-stow check fails — no need to wait for N
+        consecutive failures to accumulate.
+        """
+        if self.mountsim:
+            return False
+        port = self.telescope.port
+        if port not in [1, 2]:
+            return False
+        try:
+            min_degs = self.config["telescope"]["ports"][port]["rotator"][
+                "min_degs"
+            ]
+            max_degs = self.config["telescope"]["ports"][port]["rotator"][
+                "max_degs"
+            ]
+        except (KeyError, TypeError):
+            return False
+        pos = self.state.get("rotator_mech_position")
+        if pos is None:
+            return False
+        return pos < min_degs or pos > max_degs
+
     def _camera_is_locked_out(self, camname):
         """True iff the M3 port for ``camname`` is in self._locked_out_ports."""
         try:
@@ -928,31 +957,41 @@ class RoboOperator(QtCore.QObject):
             self.log(msg)
             return
 
-        # Defensive precondition: M3 must not move unless the rotator on the
-        # port we are *leaving* is stowed. switchCamera already enforces this
-        # before calling us, but any direct caller of switchPort needs the
-        # same guarantee — moving M3 with an unstowed rotator leaves
-        # subsequent rotator commands undefined.
+        # Defensive precondition: M3 must not move unless the rotator on
+        # the port we are *leaving* is stowed — UNLESS that port is
+        # already locked out, in which case we allow M3 to escape it
+        # even with the rotator unstowed (the port is wedged and that's
+        # the whole point of the lockout). switchCamera does the
+        # detection / dire-warning announce; this is just the
+        # "if locked out, let M3 dispatch" companion check.
         if not self._rotator_is_stowed_on_current_port():
             current_port = self.telescope.port
-            try:
-                home_deg = self.config["telescope"]["ports"][current_port]["rotator"][
-                    "home_degs"
-                ]
-            except (KeyError, TypeError):
-                home_deg = "?"
-            pos = self.state.get("rotator_mech_position", "?")
-            slewing = self.state.get("rotator_is_slewing", "?")
-            msg = (
-                f"refusing to switch M3 to port {port}: rotator on port "
-                f"{current_port} is not stowed "
-                f"(position={pos}, home={home_deg}, slewing={slewing}). "
-                f"Aborting to keep M3 from moving with rotator in an "
-                f"unsafe state."
-            )
-            self.log(msg)
-            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
-            raise RuntimeError(msg)
+            if current_port in self._locked_out_ports:
+                pos = self.state.get("rotator_mech_position", "?")
+                self.log(
+                    f"switchPort: force-leaving locked-out port "
+                    f"{current_port} (rotator at {pos}°, NOT stowed). "
+                    f"Dispatching m3_goto {port}."
+                )
+            else:
+                try:
+                    home_deg = self.config["telescope"]["ports"][current_port][
+                        "rotator"
+                    ]["home_degs"]
+                except (KeyError, TypeError):
+                    home_deg = "?"
+                pos = self.state.get("rotator_mech_position", "?")
+                slewing = self.state.get("rotator_is_slewing", "?")
+                msg = (
+                    f"refusing to switch M3 to port {port}: rotator on port "
+                    f"{current_port} is not stowed "
+                    f"(position={pos}, home={home_deg}, slewing={slewing}). "
+                    f"Aborting to keep M3 from moving with rotator in an "
+                    f"unsafe state."
+                )
+                self.log(msg)
+                self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+                raise RuntimeError(msg)
 
         self.do(f"m3_goto {port}")
         msg = f"switched rotator to port {port}"
@@ -1011,11 +1050,13 @@ class RoboOperator(QtCore.QObject):
         self.doTry("rotator_home")
 
         # Enforce the contract: M3 must not move unless the rotator on the
-        # current port is safely stowed. doTry swallows failures, so we have
-        # to verify the stow actually succeeded rather than trusting that it
-        # was attempted. If the rotator isn't stowed, abort the switch —
-        # moving M3 with the rotator in an unknown state can leave undefined
-        # which rotator subsequent commands target.
+        # current port is safely stowed — UNLESS the current port is
+        # already locked out, or we've just discovered the rotator is
+        # outside its allowed mechanical limits (i.e. physically wedged
+        # and can't be brought back by software). In either of those
+        # cases we FORCE the leave — abandoning a locked-out port is
+        # safer than getting permanently stuck on it.
+        force_leave = False
         if not self._rotator_is_stowed_on_current_port():
             current_port = self.telescope.port
             try:
@@ -1026,29 +1067,76 @@ class RoboOperator(QtCore.QObject):
                 home_deg = "?"
             pos = self.state.get("rotator_mech_position", "?")
             slewing = self.state.get("rotator_is_slewing", "?")
-            msg = (
-                f"refusing to switch camera to {camname}: rotator on port "
-                f"{current_port} is not stowed "
-                f"(position={pos}, home={home_deg}, slewing={slewing}). "
-                f"Aborting to keep M3 from moving with rotator in an "
-                f"unsafe state."
-            )
-            self.log(msg)
-            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
-            raise RuntimeError(msg)
+
+            if current_port in self._locked_out_ports:
+                # Port already known to be dead → just escape.
+                self.announce(
+                    f":rotating_light: *FORCE-LEAVING locked-out port "
+                    f"{current_port}*. Rotator NOT stowed "
+                    f"(position={pos}, home={home_deg}, slewing={slewing}) "
+                    f"and cannot be recovered automatically. Moving M3 "
+                    f"to port {target_port} to keep the night going. "
+                    f"Manual intervention required to clear port "
+                    f"{current_port}."
+                )
+                force_leave = True
+            elif self._rotator_position_outside_allowed_limits():
+                # First-time detection of wedged rotator → lock out
+                # immediately AND force-leave on this same attempt.
+                self._locked_out_ports.add(current_port)
+                self.announce(
+                    f":rotating_light: *PORT {current_port} LOCKED OUT* "
+                    f"— rotator position {pos}° is outside its allowed "
+                    f"limits (home={home_deg}, slewing={slewing}). The "
+                    f"rotator is wedged and cannot be moved by software; "
+                    f"wrap protection will reject any drive command. "
+                    f"FORCE-LEAVING to port {target_port}. Future cals / "
+                    f"focus / observations targeting cameras on port "
+                    f"{current_port} will be skipped. Manual intervention "
+                    f"required to clear the lockout."
+                )
+                force_leave = True
+            else:
+                # Count the leaving-stow failure into the same lockout
+                # counter used by arrival-stow and m3_goto recovery.
+                # After N consecutive failures we lock out on the
+                # *next* attempt, which will then take the force-leave
+                # path above.
+                self._port_rotator_failure_count[current_port] = (
+                    self._port_rotator_failure_count.get(current_port, 0) + 1
+                )
+                count = self._port_rotator_failure_count[current_port]
+                max_failures = self.config.get(
+                    "port_rotator_lockout_failures", 3
+                )
+                if (count >= max_failures
+                        and current_port not in self._locked_out_ports):
+                    self._locked_out_ports.add(current_port)
+                    self.announce(
+                        f":rotating_light: *PORT {current_port} LOCKED OUT* "
+                        f"after {count} consecutive leaving-stow failures. "
+                        f"Future cals / focus / observations targeting "
+                        f"cameras on this port will be skipped. The next "
+                        f"switchCamera call will force M3 away from this "
+                        f"port even with the rotator unstowed. Manual "
+                        f"intervention required to clear the lockout."
+                    )
+                msg = (
+                    f"refusing to switch camera to {camname}: rotator on "
+                    f"port {current_port} is not stowed "
+                    f"(position={pos}, home={home_deg}, slewing={slewing}). "
+                    f"Failure {count}/{max_failures} for port "
+                    f"{current_port}."
+                )
+                self.log(msg)
+                self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+                raise RuntimeError(msg)
 
         # Halt the rotator's position-target loop before M3 leaves this
-        # port. Without this, the PID continues running on the rotator
-        # we're about to abandon, and if anything subsequently nudges the
-        # target (tracking gets activated, an offset is applied, ...) the
-        # rotator on the de-selected port can drift out of its allowed
-        # range while we're away. We can't see that drift in telemetry
-        # because we don't get readout from a non-selected port — the
-        # problem only surfaces next time we come back and find the
-        # rotator at a bad angle (or wrap-locked). Keep the motor
-        # ENABLED (rotator_stop, not rotator_disable, which slumps under
-        # gravity on port 2 — see commit 7a5a7c53).
-        self.doTry("rotator_stop")
+        # port. Skipped in the force-leave path: the rotator is already
+        # wedged and unresponsive, no point in waiting on rotator_stop.
+        if not force_leave:
+            self.doTry("rotator_stop")
 
         # NOTE: leave the rotator ENABLED across the M3 move. We tried
         # disabling it here (commit 6fb00f37) on the theory that
@@ -1067,10 +1155,16 @@ class RoboOperator(QtCore.QObject):
         # Settling pause before M3 starts moving. Lets the PID loop
         # fully stabilize at the home angle and any in-flight telemetry
         # update finish landing before electrical hand-over to the
-        # destination rotator.
-        time.sleep(self.config.get("rotator_settle_seconds_before_m3", 1.0))
+        # destination rotator. Skipped in the force-leave path —
+        # there's nothing to settle, the rotator is already stuck.
+        if not force_leave:
+            time.sleep(
+                self.config.get("rotator_settle_seconds_before_m3", 1.0)
+            )
 
-        # Switch to the corresponding port (this can raise exceptions)
+        # Switch to the corresponding port. switchPort's own stow check
+        # also recognizes the force_leave path via _locked_out_ports
+        # (see that method for the matching guard).
         port = target_port
         self.switchPort(port)
 
