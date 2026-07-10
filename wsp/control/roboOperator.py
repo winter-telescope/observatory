@@ -7128,7 +7128,9 @@ class RoboOperator(QtCore.QObject):
                     # just go to the home position and then start tracking
                     self.do("rotator_home")
                     # now send a command to go to the current field angle
-                    self.do(f"rotator_goto_field {self.telescope.rotator_field_angle}")
+                    self.do(
+                        f"rotator_goto_field {self.telescope.state['rotator.field_angle_degs']}"
+                    )
 
                 # TODO: remove when we know how to run the winter rotator
                 # NPL 6-11-23
