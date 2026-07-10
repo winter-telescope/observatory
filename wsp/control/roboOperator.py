@@ -701,12 +701,8 @@ class RoboOperator(QtCore.QObject):
         if port not in [1, 2]:
             return False
         try:
-            min_degs = self.config["telescope"]["ports"][port]["rotator"][
-                "min_degs"
-            ]
-            max_degs = self.config["telescope"]["ports"][port]["rotator"][
-                "max_degs"
-            ]
+            min_degs = self.config["telescope"]["ports"][port]["rotator"]["min_degs"]
+            max_degs = self.config["telescope"]["ports"][port]["rotator"]["max_degs"]
         except (KeyError, TypeError):
             return False
         pos = self.state.get("rotator_mech_position")
@@ -777,9 +773,7 @@ class RoboOperator(QtCore.QObject):
 
         if target_port is None:
             try:
-                target_port = self.camera_manager.get_port_for_camera(
-                    self.camname
-                )
+                target_port = self.camera_manager.get_port_for_camera(self.camname)
             except Exception:
                 target_port = 1
 
@@ -811,8 +805,7 @@ class RoboOperator(QtCore.QObject):
             raise RuntimeError(msg)
 
         self.announce(
-            f":greentick: M3 recovery successful, now at port "
-            f"{self.telescope.port}"
+            f":greentick: M3 recovery successful, now at port " f"{self.telescope.port}"
         )
 
     def _register_m3_recovery_failure(self, target_port):
@@ -827,8 +820,7 @@ class RoboOperator(QtCore.QObject):
         )
         count = self._port_rotator_failure_count[target_port]
         max_failures = self.config.get("port_rotator_lockout_failures", 3)
-        if (count >= max_failures
-                and target_port not in self._locked_out_ports):
+        if count >= max_failures and target_port not in self._locked_out_ports:
             self._locked_out_ports.add(target_port)
             self.announce(
                 f":lock: locking out port {target_port} after {count} "
@@ -1111,11 +1103,8 @@ class RoboOperator(QtCore.QObject):
                     self._port_rotator_failure_count.get(current_port, 0) + 1
                 )
                 count = self._port_rotator_failure_count[current_port]
-                max_failures = self.config.get(
-                    "port_rotator_lockout_failures", 3
-                )
-                if (count >= max_failures
-                        and current_port not in self._locked_out_ports):
+                max_failures = self.config.get("port_rotator_lockout_failures", 3)
+                if count >= max_failures and current_port not in self._locked_out_ports:
                     self._locked_out_ports.add(current_port)
                     self.announce(
                         f":rotating_light: *PORT {current_port} LOCKED OUT* "
@@ -1163,9 +1152,7 @@ class RoboOperator(QtCore.QObject):
         # destination rotator. Skipped in the force-leave path —
         # there's nothing to settle, the rotator is already stuck.
         if not force_leave:
-            time.sleep(
-                self.config.get("rotator_settle_seconds_before_m3", 1.0)
-            )
+            time.sleep(self.config.get("rotator_settle_seconds_before_m3", 1.0))
 
         # Switch to the corresponding port. switchPort's own stow check
         # also recognizes the force_leave path via _locked_out_ports
@@ -2856,9 +2843,7 @@ class RoboOperator(QtCore.QObject):
         # check during M3 transit; the M3 recovery in switchCamera
         # will get M3 settled, and the next pass will see the real
         # mount_is_connected value.
-        m3_in_transit = (
-            not self.mountsim and self.telescope.port not in [1, 2]
-        )
+        m3_in_transit = not self.mountsim and self.telescope.port not in [1, 2]
 
         checks = [
             # name, passed
@@ -2904,9 +2889,7 @@ class RoboOperator(QtCore.QObject):
         # which made the do_startup retry loop opaque to diagnose.
         if failed != self._last_observatory_failed_checks:
             if failed:
-                self.log(
-                    f"observatory_ready=False; failing checks: {list(failed)}"
-                )
+                self.log(f"observatory_ready=False; failing checks: {list(failed)}")
             else:
                 self.log("observatory_ready=True (all checks pass)")
             self._last_observatory_failed_checks = failed
@@ -7139,6 +7122,13 @@ class RoboOperator(QtCore.QObject):
             # slew the rotator
             if not self.mountsim:
                 self.do(f"rotator_goto_field {self.target_field_angle}")
+
+                # TODO: remove when the spring rotator moves reliably
+                if self.camname in ["spring"]:
+                    # just go to the home position and then start tracking
+                    self.do("rotator_home")
+                    # now send a command to go to the current field angle
+                    self.do(f"rotator_goto_field {self.telescope.rotator_field_angle}")
 
                 # TODO: remove when we know how to run the winter rotator
                 # NPL 6-11-23
