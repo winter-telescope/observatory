@@ -4820,19 +4820,19 @@ class Wintercmd(QtCore.QObject):
             try:
                 self.logger.info(f"self.state['spring_shutter_is_open'] = {self.state['spring_shutter_is_open']}")
             except Exception as e:
-                print(e)
+                self.logger.error(e)
             try:
                 self.logger.info(f"self.fw.state = {self.fw.state}")
             except Exception as e:
-                print(e)
+                self.logger.error(e)
             try:
                 self.logger.info(f"self.fw.state['shutter_open'] = {self.fw.state['shutter_open']}")
             except Exception as e:
-                print(e)
+                self.logger.error(e)
             try:
                 self.logger.info(f"type(self.fw.state['shutter_open']) = {type(self.fw.state['shutter_open'])}")
             except Exception as e:
-                print(e)
+                self.logger.error(e)
 
             if action == "open":
                 cmd = "openShutter"
