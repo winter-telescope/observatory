@@ -4817,10 +4817,22 @@ class Wintercmd(QtCore.QObject):
             fw = self.fwdict[camname]
 
             # diagnostis
-            self.log(f"self.state['spring_shutter_is_open'] = {self.state['spring_shutter_is_open']}")
-            self.log(f"self.fw.state = {self.fw.state}")
-            self.log(f"self.fw.state['shutter_open'] = {self.fw.state['shutter_open']}")
-            self.log(f"type(self.fw.state['shutter_open']) = {type(self.fw.state['shutter_open'])}")
+            try:
+                self.logger.info(f"self.state['spring_shutter_is_open'] = {self.state['spring_shutter_is_open']}")
+            except Exception as e:
+                print(e)
+            try:
+                self.logger.info(f"self.fw.state = {self.fw.state}")
+            except Exception as e:
+                print(e)
+            try:
+                self.logger.info(f"self.fw.state['shutter_open'] = {self.fw.state['shutter_open']}")
+            except Exception as e:
+                print(e)
+            try:
+                self.logger.info(f"type(self.fw.state['shutter_open']) = {type(self.fw.state['shutter_open'])}")
+            except Exception as e:
+                print(e)
 
             if action == "open":
                 cmd = "openShutter"
