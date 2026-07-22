@@ -4789,7 +4789,7 @@ class RoboOperator(QtCore.QObject):
         # cycle through all the active filters:for filterID in
         # filterIDs = self.focusTracker.getActiveFilters()
         self.announce("auto darks completed, continuuing with observations!")
-
+    
     def do_focusLoop(
         self,
         nom_focus="model",

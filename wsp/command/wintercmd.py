@@ -4822,15 +4822,15 @@ class Wintercmd(QtCore.QObject):
             except Exception as e:
                 self.logger.error(e)
             try:
-                self.logger.info(f"self.fw.state = {self.fw.state}")
+                self.logger.info(f"fw.state = {fw.state}")
             except Exception as e:
                 self.logger.error(e)
             try:
-                self.logger.info(f"self.fw.state['shutter_open'] = {self.fw.state['shutter_open']}")
+                self.logger.info(f"fw.state['shutter_open'] = {fw.state['shutter_open']}")
             except Exception as e:
                 self.logger.error(e)
             try:
-                self.logger.info(f"type(self.fw.state['shutter_open']) = {type(self.fw.state['shutter_open'])}")
+                self.logger.info(f"type(fw.state['shutter_open']) = {type(fw.state['shutter_open'])}")
             except Exception as e:
                 self.logger.error(e)
 
