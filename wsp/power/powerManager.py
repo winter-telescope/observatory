@@ -114,9 +114,9 @@ class local_PowerManager(QtCore.QObject):
         def pdu_on(self, pduname, outlet):
             try:
                 self.log(f'sending ON command to {pduname}, outlet {outlet}')
-                self.remote_object.pdu_off(pduname, outlet)
+                self.remote_object.pdu_on(pduname, outlet)
             except Exception as e:
-                self.log(f'could not send OFF command to {pduname}, outlet {outlet}: {e}')
+                self.log(f'could not send ON command to {pduname}, outlet {outlet}: {e}')
                 pass
             
         def pdu_cycle(self, pduname, outlet):

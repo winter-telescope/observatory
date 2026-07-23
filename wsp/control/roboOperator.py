@@ -3691,7 +3691,7 @@ class RoboOperator(QtCore.QObject):
         if all(systems_started):
             self.camera_startup_complete = True
             self.announce(
-                ":greentick: startup initiation sequence complete. waitint for cameras to finish starting up!"
+                ":greentick: startup initiation sequence complete. waiting for cameras to finish starting up!"
             )
         else:
             self.camera_startup_complete = False
@@ -3701,9 +3701,7 @@ class RoboOperator(QtCore.QObject):
 
     def do_camera_power_shutdown(self, camname):
         system = "camera"
-        context = "do_camera_startup"
-        systems_started = []
-
+        context = "do_camera_power_shutdown"
         systems_started = []
         msg = "shutting off the focal plane power"
         self.announce(msg)
@@ -3723,22 +3721,18 @@ class RoboOperator(QtCore.QObject):
             self.announce(":greentick: camera power shutdown complete")
             systems_started.append(True)
         except Exception as e:
-            msg = f"roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}"
+            msg = f"roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             systems_started.append(False)
 
-        # if we made it all the way to the bottom, say the startup is complete!
+        # if we made it all the way to the bottom, say the shutdown is complete!
 
         if all(systems_started):
-            self.camera_startup_complete = True
-            self.announce(":greentick: startup complete!")
-            self.log(f"robo: do_camera_startup complete")
+            self.log(f"robo: do_camera_power_shutdown complete")
         else:
-            self.camera_startup_complete = False
-
             self.announce(
                 ":caution: camera power shutdown complete but with some errors"
             )
@@ -3746,40 +3740,33 @@ class RoboOperator(QtCore.QObject):
 
     def do_camera_shutdown(self, camname):
         system = "camera"
-        context = "do_camera_startup"
+        context = "do_camera_shutdown"
         systems_started = []
-
-        systems_started = []
-        msg = "powering on the focal planes"
+        msg = "shutting down the camera"
         self.announce(msg)
 
         try:
-            # make sure the pdu is on
             system = "camera"
             msg = f":hot_garbage: running auto shutdown routine on {camname}!"
             self.announce(msg)
             self.do(f"autoShutdownCamera --{camname}")
 
-            self.announce(":greentick: camera power startup complete")
             systems_started.append(True)
         except Exception as e:
-            msg = f"roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}"
+            msg = f"roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             systems_started.append(False)
 
-        # if we made it all the way to the bottom, say the startup is complete!
+        # if we made it all the way to the bottom, say the shutdown is initiated!
 
         if all(systems_started):
-            self.camera_startup_complete = True
             self.announce(
                 ":greentick: camera shutdown sequence initiated! waiting for camera to finish shutting down."
             )
         else:
-            self.camera_startup_complete = False
-
             self.announce(
                 ":caution: camera shutdown sequence initiated but with some errors"
             )

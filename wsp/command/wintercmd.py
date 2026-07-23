@@ -3310,6 +3310,77 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd("dio_do", action=action, outlet_specifier=channel)
         self.labjacks.newCommand.emit(sigcmd)
 
+    def lookupPduChannel(self, outlet_specifier):
+        """
+        resolve a pdu outlet specifier to (pduaddr, outletnum).
+        mirrors powerd's lookup_channel, but uses the local mirror of the
+        power daemon state (self.powerManager.state) so it doesn't need a
+        remote call. the specifier is a list: either [<outlet name>] or
+        [<pdu_num>, <outlet_num>]. returns (None, None) if it can't be
+        resolved, eg if the power state hasn't been populated yet or the
+        outlet name is unknown or ambiguous.
+        """
+        try:
+            if len(outlet_specifier) == 2:
+                return int(outlet_specifier[0]), int(outlet_specifier[1])
+
+            chan = str(outlet_specifier[0])
+            matches = []
+            for pduaddr, pdustate in self.powerManager.state.items():
+                try:
+                    names2nums = pdustate.get("outletnames2nums", {})
+                except AttributeError:
+                    continue
+                for name, num in names2nums.items():
+                    # match case-insensitively, like powerd does
+                    if str(name).lower() == chan.lower():
+                        matches.append((int(pduaddr), int(num)))
+            if len(matches) == 1:
+                return matches[0]
+            return None, None
+        except Exception:
+            return None, None
+
+    def waitForPduOutletState(self, pduaddr, outletnum, target_state, timeout=30):
+        """
+        wait until the housekeeping state shows the specified outlet in
+        target_state (1 = on, 0 = off) for cmd_satisfied_N_samples
+        consecutive samples, following the same pattern as the other
+        state-tracked commands (eg dome_tracking_off). the pdu chain is
+        slow: the command is queued to the powerManager slot, the pdu http
+        exchange takes a few seconds, and the result only lands in the hk
+        state on the next housekeeping poll -- hence the long default
+        timeout.
+        """
+        field = f"pdu{pduaddr}_{outletnum}"
+
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [False for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config["cmd_status_dt"])
+            timestamp = datetime.utcnow().timestamp()
+            dt = timestamp - start_timestamp
+            if dt > timeout:
+                raise TimeoutError(
+                    f"unable to verify pdu outlet {field} reached state {target_state}: command timed out after {timeout} seconds before completing."
+                )
+
+            stop_condition = self.state.get(field) == target_state
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+
+            if all(stop_condition_buffer):
+                self.logger.info(
+                    f"wintercmd: confirmed pdu outlet {field} in state {target_state}"
+                )
+                break
+
     @cmd
     def pdu(self):
         """
@@ -3351,6 +3422,25 @@ class Wintercmd(QtCore.QObject):
 
         sigcmd = signalCmd("pdu_do", action=action, outlet_specifier=channel)
         self.powerManager.newCommand.emit(sigcmd)
+
+        ## Wait until the state reflects the requested outlet state, or timeout ##
+        # nb: the emit above is fire-and-forget, so without this wait the
+        # caller (eg roboOperator) races ahead while the pdu command is
+        # still queued/executing in the powerManager thread
+        if action.lower() in ["on", "off"]:
+            target_state = 1 if action.lower() == "on" else 0
+            pduaddr, outletnum = self.lookupPduChannel(channel)
+            if pduaddr is None:
+                # can't resolve the outlet locally (eg power state not
+                # populated yet): the command was still sent, but we can't
+                # confirm completion
+                self.logger.warning(
+                    f"wintercmd: could not resolve pdu outlet {channel} from the power state, not waiting for confirmation"
+                )
+            else:
+                self.waitForPduOutletState(pduaddr, outletnum, target_state)
+        # nb: 'cycle' has no stable end state to confirm within the wait
+        # window, so it stays fire-and-forget
 
     @cmd
     def pdu_off(self):
