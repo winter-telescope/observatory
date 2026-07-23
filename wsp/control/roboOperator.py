@@ -4592,13 +4592,19 @@ class RoboOperator(QtCore.QObject):
         self.log(f"starting dark sequence for camera {camname}")
 
         # change the camera to the specified camera for the darks
+        # NOTE: do NOT assign self.camname here — switchCamera sets
+        # camname/camera/fw together only after the switch fully succeeds.
+        # Assigning it before the call meant a failed switch left
+        # self.camname claiming the new camera while self.fw/self.camera
+        # still pointed at the old one, and the `camname != self.camname`
+        # guard then suppressed every retry (KeyError 'shutter_open'
+        # desync, 2026-07-21).
         try:
             if camname != self.camname:
                 self.log(
                     f"roboOperator: switching camera from {self.camname} to {camname}"
                 )
-                self.camname = camname
-                self.switchCamera(self.camname)
+                self.switchCamera(camname)
         except Exception as e:
             msg = f"roboOperator: could not switch to camera {camname} for dark routine due to {e.__class__.__name__}, {e}"
             self.log(msg)
@@ -5893,11 +5899,17 @@ class RoboOperator(QtCore.QObject):
             center_offset = "center"
 
         # if we're in the right camera just continue, otherwise switch cameras
-        # change the camera to the specified camera for the darks
+        # NOTE: do NOT assign self.camname here — switchCamera sets
+        # camname/camera/fw together only after the switch fully succeeds.
+        # Assigning it before the call meant a failed switch left
+        # self.camname claiming the new camera while self.fw/self.camera
+        # still pointed at the old one, and the `cam_to_use != self.camname`
+        # guard then suppressed every retry, so every spring observation
+        # died on self.fw.state['shutter_open'] (winter fw has no shutter
+        # key) until wsp restart (2026-07-21).
         try:
             if cam_to_use != self.camname:
-                self.camname = cam_to_use
-                self.switchCamera(self.camname)
+                self.switchCamera(cam_to_use)
         except Exception as e:
             msg = f"roboOperator: could not switch to camera {cam_to_use} for dark routine due to {e.__class__.__name__}, {e}"
             self.log(msg)
