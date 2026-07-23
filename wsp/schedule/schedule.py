@@ -389,15 +389,20 @@ class Schedule(object):
                 self.end_of_schedule = False
         
     
-    def getTopRankedObs(self, obstime_mjd = 'now'):
-        
+    def getTopRankedObs(self, obstime_mjd = 'now', allowed_cameras = None):
+
         """
         run a SQL query to rank all the valid observations, and then return the row of the top ranked one
+
+        allowed_cameras: optional whitelist of camera names (lowercase). Rows
+        targeting any other camera are skipped — e.g. cameras missing from
+        config active_cameras, or on a locked-out M3 port. Rows with no
+        'camera' column are treated as 'winter'. None means no camera cut.
         """
         # by default just evaluate the current time and use that to compare against the obstime, but can also take in one
         if obstime_mjd == 'now':
             obstime_mjd = astropy.time.Time(datetime.utcnow()).mjd
-        
+
         # check if the schedule is invalid
         if self.schedule_is_valid is False:
             dataRanked = None
@@ -405,6 +410,17 @@ class Schedule(object):
         else:
             # if the schedule is okay then rank valid observations
             dataRanked = self.getRankedObs(obstime_mjd)
+            if dataRanked is not None and allowed_cameras is not None:
+                n_before = len(dataRanked)
+                dataRanked = [
+                    row for row in dataRanked
+                    if str(row.get('camera', 'winter')).lower() in allowed_cameras
+                ]
+                if len(dataRanked) < n_before:
+                    self.log(
+                        f'dropped {n_before - len(dataRanked)} entries targeting '
+                        f'cameras not in the observable list {allowed_cameras}'
+                    )
         #print(dataRanked)
         if dataRanked is None:
             self.remaining_valid_observations = 0

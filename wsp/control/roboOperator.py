@@ -424,6 +424,16 @@ class RoboOperator(QtCore.QObject):
         self._port_rotator_failure_count = {1: 0, 2: 0}
         self._locked_out_ports = set()
 
+        # Parsed ToO schedule cache: {filepath: {"stamp": (mtime, size),
+        # "df": DataFrame, or None if the file failed schema validation}}.
+        # See _get_too_df — each file is read & schema-validated once
+        # (primed at startup) and only re-parsed when it changes on disk.
+        # "Changed on disk" covers both hand edits to the .db files
+        # mid-night (no wsp restart needed) and our own writes: log_attempt
+        # / log_observation UPDATE the active schedule file, bumping its
+        # mtime, so the observed/attempts cuts always see fresh values.
+        self._too_schedule_cache = {}
+
         ### a QTimer for handling a longer pause before checking what to do
         self.waitAndCheckTimer = QtCore.QTimer()
         self.waitAndCheckTimer.setSingleShot(True)
@@ -465,6 +475,13 @@ class RoboOperator(QtCore.QObject):
         ### SET UP THE SCHEDULE ###
         # dictionary to hold TOO schedules
         self.ToOschedules = dict()
+
+        # parse & schema-validate all the ToO schedule files up front, so
+        # the night-time target scans only pay for new/changed files
+        try:
+            self._prime_too_schedule_cache()
+        except Exception as e:
+            self.log(f"could not prime the ToO schedule cache: {e}")
 
         # set up the survey schedule. init it as self.schedule, but later self.schedule will switch if there's a TOO
         # self.surveySchedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
@@ -717,6 +734,20 @@ class RoboOperator(QtCore.QObject):
         except Exception:
             return False
         return port in self._locked_out_ports
+
+    def _get_observable_cameras(self):
+        """
+        Camera names (lowercase) that scheduled targets may currently use:
+        listed in config active_cameras AND not on a locked-out M3 port.
+        Target selection ignores rows for any other camera.
+        """
+        try:
+            active = list(self.camera_manager.get_active_cameras())
+        except Exception:
+            active = ["winter"]
+        return [
+            str(c).lower() for c in active if not self._camera_is_locked_out(c)
+        ]
 
     def _cmd_targets_locked_out_port(self, cmd):
         """
@@ -2171,6 +2202,97 @@ class RoboOperator(QtCore.QObject):
             #     self.checktimer.start()
             #     return
 
+    def _get_too_schedule_directory(self):
+        return os.path.join(
+            os.getenv("HOME", ""), self.config["scheduleFile_ToO_directory"]
+        )
+
+    def _get_too_df(self, too_file):
+        """
+        Return the parsed & schema-validated summary dataframe for a ToO
+        schedule file, or None if the file can't be read or fails schema
+        validation.
+
+        Results are cached keyed on the file's (mtime, size): each file is
+        parsed once (primed at wsp startup) and re-parsed only when it
+        changes on disk. That includes our own writes — log_attempt /
+        log_observation UPDATE the active schedule file after every attempt,
+        which bumps its mtime and forces a re-read here, so the
+        observed/attempts cuts never operate on stale values. It also means
+        schedules can be hand-edited (or new files dropped in) mid-night
+        with no wsp restart. The stat is taken BEFORE parsing so an edit
+        landing during the parse costs one extra re-parse on the next scan
+        rather than ever serving stale data.
+
+        Schema-invalid files are cached as None and skipped (silently) until
+        the file is modified. Transient read errors are NOT cached, so e.g.
+        a file that is sqlite-locked mid-write gets retried on the next scan.
+        """
+        try:
+            st = os.stat(too_file)
+            stamp = (st.st_mtime, st.st_size)
+        except OSError as e:
+            self.log(f"could not stat ToO schedule {too_file}: {e}")
+            return None
+
+        entry = self._too_schedule_cache.get(too_file)
+        if entry is not None and entry["stamp"] == stamp:
+            return entry["df"]
+
+        self.log(f"parsing new/changed ToO schedule file: {too_file}")
+        try:
+            engine = db.create_engine("sqlite:///" + too_file)
+            conn = engine.connect()
+            # Ensure 'attempts' column exists in this ToO file before the
+            # read, so the attempts cut has it. Idempotent. (On first
+            # contact this writes to the file, bumping its mtime and
+            # costing one extra re-parse on the next scan. Harmless.)
+            ensure_attempts_column(conn, log=self.log)
+            df = pd.read_sql("SELECT * FROM summary;", conn)
+            conn.close()
+
+            # if targname not in the df, add in a default
+            if "targName" not in df:
+                df["targName"] = ""
+            df["origin_filepath"] = too_file
+            df["origin_filename"] = os.path.basename(too_file)
+
+            ### check to make sure the schema are correct
+            wintertoo_validate.validate_schedule_df(df)
+
+        except wintertoo_validate.RequestValidationError:
+            self.log(traceback.format_exc())
+            self.log(
+                f"ToO schedule {os.path.basename(too_file)} failed schema "
+                f"validation: ignoring it until the file is modified"
+            )
+            df = None
+        except Exception as e:
+            # transient error (eg db locked by a concurrent writer): don't
+            # cache, just skip this scan and retry next time
+            self.log(f"could not parse ToO schedule {too_file}: {e}")
+            self.log(traceback.format_exc())
+            return None
+
+        self._too_schedule_cache[too_file] = {"stamp": stamp, "df": df}
+        return df
+
+    def _prime_too_schedule_cache(self):
+        """
+        Parse & schema-validate every ToO schedule file once, at wsp
+        startup, so the night-time scans in load_best_observing_target only
+        pay for new/changed files.
+        """
+        ToOscheduleFiles = glob.glob(
+            os.path.join(self._get_too_schedule_directory(), "*.db")
+        )
+        self.log(
+            f"priming ToO schedule cache with {len(ToOscheduleFiles)} files "
+            f"from {self._get_too_schedule_directory()}"
+        )
+        for too_file in ToOscheduleFiles:
+            self._get_too_df(too_file)
+
     def load_best_observing_target(self, obstime_mjd):
         """
         query all available schedules (survey + any schedules in the TOO folder),
@@ -2183,64 +2305,70 @@ class RoboOperator(QtCore.QObject):
             obstime_mjd = float(astropy.time.Time(datetime.utcnow()).mjd)
 
         # get all the files in the ToO High Priority folder
-        ToO_schedule_directory = os.path.join(
-            os.getenv("HOME"), self.config["scheduleFile_ToO_directory"]
+        ToOscheduleFiles = glob.glob(
+            os.path.join(self._get_too_schedule_directory(), "*.db")
         )
-        ToOscheduleFiles = glob.glob(os.path.join(ToO_schedule_directory, "*.db"))
 
-        self.log(f"found these schedule files in the TOO directory: {ToOscheduleFiles}")
-        self.log(f"analyzing schedules...")
+        self.log(
+            f"found {len(ToOscheduleFiles)} schedule files in the TOO directory"
+        )
+
+        # prune cache entries for files that have been deleted from the folder
+        for cached_path in list(self._too_schedule_cache.keys()):
+            if cached_path not in ToOscheduleFiles:
+                self._too_schedule_cache.pop(cached_path)
 
         if len(ToOscheduleFiles) > 0:
+            self.log(f"analyzing schedules at obstime_mjd = {obstime_mjd}...")
+
+            observable_cams = self._get_observable_cameras()
+            max_attempts = self.config.get("max_observation_attempts", 2)
+
+            obstime_astropy = astropy.time.Time(obstime_mjd, format="mjd")
+            frame = astropy.coordinates.AltAz(
+                obstime=obstime_astropy, location=self.ephem.site
+            )
+            # The ephemeris body positions depend only on the obstime and
+            # the site, not on the targets: compute them once per scan
+            # instead of once per schedule file (get_body is one of the
+            # most expensive calls in this routine).
+            body_positions = []
+            for body, mindist in self.config["ephem"][
+                "min_target_separation"
+            ].items():
+                body_coords = astropy.coordinates.get_body(
+                    body, time=obstime_astropy, location=self.ephem.site
+                ).transform_to(frame)
+                body_positions.append(
+                    (body_coords.alt.deg, body_coords.az.deg, mindist)
+                )
+
             # bundle up all the schedule files in a single pandas dataframe
             full_df = pd.DataFrame()
             # add all the ToOs
             for too_file in ToOscheduleFiles:
+                too_name = os.path.basename(too_file)
                 try:
-                    ### try to read in the SQL file
-                    self.log(f"validating too_file = {too_file}")
-                    engine = db.create_engine("sqlite:///" + too_file)
-                    conn = engine.connect()
-                    # Ensure 'attempts' column exists in this ToO file before
-                    # the read, so the filter below has it. Idempotent.
-                    ensure_attempts_column(conn, log=self.log)
-                    df = pd.read_sql("SELECT * FROM summary;", conn)
+                    # cached parse + schema validation: only new/changed
+                    # files are actually re-read from disk (see _get_too_df)
+                    cached_df = self._get_too_df(too_file)
+                    if cached_df is None or len(cached_df) == 0:
+                        continue
+                    # work on a copy so the cuts below never touch the cache
+                    df = cached_df.copy()
 
-                    # if targname not in the df, add in a default
-                    if "targName" not in df:
-                        df["targName"] = ""
+                    n_total = len(df)
 
-                    # keep analyzing and making cuts unless you throw away all the entries
-                    df["origin_filepath"] = too_file
-                    df["origin_filename"] = os.path.basename(too_file)
-                    conn.close()
-
-                    ### if we were able to load and query the SQL db, check to make sure the schema are correct
-                    wintertoo_validate.validate_schedule_df(df)
-                    self.log(f"obstime_mjd = {obstime_mjd}")
-                    select_cols = df[
-                        [
-                            "raDeg",
-                            "decDeg",
-                            "filter",
-                            "progPI",
-                            "priority",
-                            "obsHistID",
-                            "targName",
-                            "observed",
-                            "origin_filename",
-                        ]
-                    ]
-                    self.log(f"entries before making any cuts: df = \n{select_cols}")
-
-                    ### if the schema were correct, make cuts based on observability
+                    ### make cuts based on observability
                     # Note: if we don't do this we can end up in a situation where do_Observation will reject an
                     #       observation, but this will keep submitting it and we'll get stuck in a useless loop
                     # select only targets within their valid start and stop times
                     # Skip rows we've already tried more than max_attempts
                     # times; matches the same cut applied to the survey schedule
-                    # in schedule.getRankedObs.
-                    max_attempts = self.config.get("max_observation_attempts", 2)
+                    # in schedule.getRankedObs. The observed/attempts values
+                    # here are fresh even though the parse is cached: our own
+                    # log_observation/log_attempt writes bump the file's
+                    # mtime, which forces _get_too_df to re-read it.
                     if "attempts" in df:
                         df["attempts"] = df["attempts"].fillna(0)
                     else:
@@ -2252,30 +2380,42 @@ class RoboOperator(QtCore.QObject):
                         & (df["attempts"] < max_attempts)
                     ]
 
-                    select_cols = df[
-                        [
-                            "raDeg",
-                            "decDeg",
-                            "filter",
-                            "progPI",
-                            "priority",
-                            "obsHistID",
-                            "targName",
-                            "observed",
-                            "origin_filename",
-                        ]
-                    ]
-                    self.log(
-                        f"after making cuts on start/stop times and observed status: df = \n{select_cols}"
-                    )
-
                     if len(df) == 0:
                         self.log(
-                            f"{too_file}: no valid entries after start/stop/observed cuts"
+                            f"{too_name}: no valid entries after "
+                            f"start/stop/observed cuts (of {n_total} total)"
                         )
                         continue
                     else:
                         pass
+
+                    # Skip rows whose target camera is not currently
+                    # observable: not in config.yaml's active_cameras list, or
+                    # on a locked-out M3 port. Rows with no camera column are
+                    # treated as winter. Without the lockout half of this cut
+                    # the scheduler keeps picking locked-out rows, each pick
+                    # fast-fails do_currentObs's lockout check, and every one
+                    # of the max_observation_attempts failures costs a full
+                    # re-scan of this directory (2026-07-23: ~30 min of churn
+                    # through spring rows after the port 2 lockout before
+                    # reaching a winter target).
+                    if "camera" in df:
+                        row_cams = (
+                            df["camera"].fillna("winter").astype(str).str.lower()
+                        )
+                    else:
+                        row_cams = pd.Series("winter", index=df.index)
+                    unobservable = ~row_cams.isin(observable_cams)
+                    if unobservable.any():
+                        self.log(
+                            f"{too_name}: dropping {int(unobservable.sum())} "
+                            f"entries targeting cameras that are disabled or "
+                            f"locked out (observable cameras: {observable_cams})"
+                        )
+                        df = df.loc[~unobservable]
+                    if len(df) == 0:
+                        continue
+
                     # if the maxAirmass is not specified, add it in
                     if "maxAirmass" not in df:
                         default_max_airmass = 1.0 / np.cos(
@@ -2284,15 +2424,8 @@ class RoboOperator(QtCore.QObject):
                         df["maxAirmass"] = default_max_airmass
 
                     # calculate the current airmass of all targets
-
-                    obstime_astropy = astropy.time.Time(obstime_mjd, format="mjd")
-
-                    frame = astropy.coordinates.AltAz(
-                        obstime=obstime_astropy, location=self.ephem.site
-                    )
-                    self.log("made the frame ?")
-                    self.log(f"df['raDeg'] = {df['raDeg']}")
-                    self.log(f"df['decDeg'] = {df['decDeg']}")
+                    # (obstime_astropy and the AltAz frame are computed once
+                    # per scan, above the file loop)
 
                     # make a list of the j2000 coords
                     j2000_coords = astropy.coordinates.SkyCoord(
@@ -2300,7 +2433,6 @@ class RoboOperator(QtCore.QObject):
                         dec=df["decDeg"].values * u.deg,
                         frame="icrs",
                     )
-                    self.log(f"made the j2000 coords: {j2000_coords}")
 
                     local_coords = j2000_coords.transform_to(frame)
                     local_alt_deg = local_coords.alt.deg
@@ -2315,19 +2447,6 @@ class RoboOperator(QtCore.QObject):
                         (df["currentAirmass"] < df["maxAirmass"])
                         & (df["currentAirmass"] > 0)
                     ]
-                    select_cols = df[
-                        [
-                            "raDeg",
-                            "decDeg",
-                            "filter",
-                            "progPI",
-                            "priority",
-                            "obsHistID",
-                            "targName",
-                            "origin_filename",
-                        ]
-                    ]
-                    self.log(f"after airmass cuts: df = \n{select_cols}")
 
                     # do a cut on max altitude also to make sure we don't point too high
                     df = df.loc[
@@ -2335,93 +2454,53 @@ class RoboOperator(QtCore.QObject):
                         & (df["currentAltDeg"] >= self.config["telescope"]["min_alt"])
                     ]
 
-                    select_cols = df[
-                        [
-                            "raDeg",
-                            "decDeg",
-                            "filter",
-                            "progPI",
-                            "priority",
-                            "obsHistID",
-                            "targName",
-                            "origin_filename",
-                        ]
-                    ]
-                    self.log(f"after elevation cuts: df = \n{select_cols}")
-
                     if len(df) == 0:
                         self.log(
-                            f"{too_file}: no valid entries after elevation & airmass cuts"
+                            f"{too_name}: no valid entries after elevation & airmass cuts"
                         )
                         continue
                     else:
                         pass
 
-                    # calculate whether each target will be too close to ephemeris at the current obstime
-                    bodies_inview = np.array([])
-                    bodies = list(self.config["ephem"]["min_target_separation"].keys())
-                    for i in range(len(bodies)):
-
-                        body = bodies[i]
-                        mindist = self.config["ephem"]["min_target_separation"][body]
-
-                        body_loc = astropy.coordinates.get_body(
-                            body,
-                            time=obstime_astropy,
-                            location=self.ephem.site,
-                        )
-                        body_coords = body_loc.transform_to(frame)
-                        body_alt = body_coords.alt
-                        body_az = body_coords.az
-
+                    # calculate whether each target is too close to any
+                    # ephemeris body, using the per-scan body positions
+                    # computed above the file loop
+                    ephem_inview = np.zeros(len(df), dtype=bool)
+                    for body_alt_deg, body_az_deg, mindist in body_positions:
                         dist = np.array(
                             (
-                                (df["currentAzDeg"] - body_az.deg) ** 2
-                                + (df["currentAltDeg"] - body_alt.deg) ** 2
+                                (df["currentAzDeg"] - body_az_deg) ** 2
+                                + (df["currentAltDeg"] - body_alt_deg) ** 2
                             )
                             ** 0.5
                         )
-
-                        # make a list of whether the body is in view for each target
-                        body_inview = dist < mindist
-
-                        # now make a big array of all bodies and all targets
-                        if i == 0:
-                            bodies_inview = body_inview
-                        else:
-                            bodies_inview = np.vstack((bodies_inview, body_inview))
-
-                        # now collapse the array of bodies and targests so it's just a list of targets and w
-                        # wheather there are ANY bodies in view
-                        ephem_inview = np.any(bodies_inview, axis=0)
+                        # flag targets with ANY body within mindist
+                        ephem_inview |= dist < mindist
 
                     # add the ephem in view to the dataframe
                     df["ephem_inview"] = ephem_inview
-
-                    self.log(f'df["ephem_inview"]: \n{df["ephem_inview"]}')
 
                     # make a cut on only targets without ephemeris in the way
                     df = df.loc[df["ephem_inview"] == False]
 
                     if len(df) == 0:
                         self.log(
-                            f"{too_file}: no valid entries after making cuts on nearby ephemeris"
+                            f"{too_name}: no valid entries after making cuts on nearby ephemeris"
                         )
                         continue
                     else:
                         pass
 
                     # if we got here then the list isn't empty
+                    self.log(
+                        f"{too_name}: {len(df)}/{n_total} entries pass all cuts"
+                    )
 
                     # now add the schedule to the master TOO list
                     full_df = pd.concat([full_df, df])
 
-                except wintertoo_validate.RequestValidationError as e:
-                    too_filename = os.path.basename(os.path.normpath(too_file))
-                    # self.log(f'skipping TOO schedule {too_filename}, schema not valid: {e}')
-                    self.log(traceback.format_exc())
                 except Exception as e:
-                    self.log(f"error running load_best_observing_target: {e}")
+                    self.log(f"error analyzing ToO schedule {too_name}: {e}")
                     self.log(traceback.format_exc())
 
             if len(full_df) == 0:
@@ -2474,7 +2553,12 @@ class RoboOperator(QtCore.QObject):
         # point self.schedule to the survey
         self.announce(f"loading survey schedule: {scheduleFile}")
         self.schedule.loadSchedule(scheduleFile)
-        currentObs = self.schedule.getTopRankedObs(obstime_mjd)
+        # only consider survey rows targeting currently-observable cameras
+        # (in config active_cameras and not locked out), same as the ToO
+        # cut above
+        currentObs = self.schedule.getTopRankedObs(
+            obstime_mjd, allowed_cameras=self._get_observable_cameras()
+        )
         # self.announce(f'currentObs = {currentObs}')
         self.schedule.updateCurrentObs(currentObs, obstime_mjd)
         return
@@ -3384,8 +3468,28 @@ class RoboOperator(QtCore.QObject):
             self.do("mount_alt_on")
 
             # Port-specific actions: try to switch ports (move M3 if needed)
-            # will raise exceptions if it goes wrong
-            self.switchCamera(self.camname)
+            # will raise exceptions if it goes wrong.
+            # If self.camname's port is locked out, don't try to set up there:
+            # switchCamera will refuse, the exception marks the whole startup
+            # failed, observatory_ready stays False, and checkWhatToDo re-runs
+            # do_startup every ~50 s indefinitely (2026-07-23, ~25 min of this
+            # after the port 2 lockout). Set up on a healthy port instead.
+            cam_for_startup = self.camname
+            if self._camera_is_locked_out(cam_for_startup):
+                healthy_cams = [
+                    c
+                    for c in self.camera_manager.get_active_cameras()
+                    if not self._camera_is_locked_out(c)
+                ]
+                if healthy_cams:
+                    self.announce(
+                        f"do_startup: camera {cam_for_startup} is on a "
+                        f"locked-out port, setting up on {healthy_cams[0]} instead"
+                    )
+                    cam_for_startup = healthy_cams[0]
+                # if no healthy cameras remain, fall through and let
+                # switchCamera raise: the observatory genuinely can't observe
+            self.switchCamera(cam_for_startup)
 
             # turn on the rotator
             if not self.mountsim:
@@ -5815,9 +5919,21 @@ class RoboOperator(QtCore.QObject):
         # borks up the housekeeping and the dirfile and is a big fat mess
         # which camera should be used for the observation?
         cam_to_use = str(currentObs.get("camera", "winter")).lower()
-        # default to winter if not specified or some kind of nan
-        if cam_to_use not in self.camera_manager.get_active_cameras():
+        # rows with a missing/blank camera field are winter by convention
+        if cam_to_use in ("", "nan", "none"):
             cam_to_use = "winter"
+        # A target for a camera that is not enabled in config active_cameras
+        # is ignored, not remapped. (This used to silently remap to winter,
+        # which would observe e.g. a summer target with the wrong camera.)
+        # Selection in load_best_observing_target already cuts these rows;
+        # this backstop covers manually loaded schedules and legacy paths.
+        if cam_to_use not in self.camera_manager.get_active_cameras():
+            self.log(
+                f"skipping observation: camera '{cam_to_use}' is not in the "
+                f"config active_cameras list "
+                f"(obsHistID={int(currentObs.get('obsHistID', -1))})"
+            )
+            return False
 
         # If the target camera is on a locked-out port, skip this
         # observation. Returning False marks it not-fully-completed, so
