@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 import pytz
@@ -228,6 +228,49 @@ class FocusTracker:
         self.focus_log[camera]["last_attempt_timestamp_utc"] = timestamp
         self.updateFocusLogFile()
 
+    def _night_id(self, timestamp_utc: float):
+        """
+        Local observing-night identifier for a unix timestamp: nights run
+        local noon to local noon, so everything from one sunset through the
+        following dawn shares an id.
+        """
+        tz = pytz.timezone(self.config["site"]["timezone"])
+        dt_local = datetime.fromtimestamp(timestamp_utc, tz=pytz.utc).astimezone(tz)
+        return (dt_local - timedelta(hours=12)).date()
+
+    def resetStaleAttempts(self, now="now"):
+        """
+        Zero attempts_since_success for any camera whose last focus attempt
+        was on a previous observing night. Without this, a night of failed
+        focus attempts leaves the counter at/above max_attempts, and the
+        next night the camera only ever gets one retry per grace period
+        instead of a fresh set of attempts.
+        """
+        now = self._normalize_timestamp(now)
+        changed = False
+        for cam, entry in self.focus_log.items():
+            attempts = int(entry.get("attempts_since_success", 0) or 0)
+            ts_last = entry.get("last_attempt_timestamp_utc")
+            if attempts == 0 or ts_last is None:
+                continue
+            try:
+                stale = self._night_id(ts_last) != self._night_id(now)
+            except Exception as e:
+                self.log(
+                    f"could not compare observing nights for {cam}: {e}",
+                    logging.WARNING,
+                )
+                continue
+            if stale:
+                self.log(
+                    f"resetting focus attempts for camera {cam}: last attempt "
+                    f"was on a previous night ({attempts} attempts cleared)"
+                )
+                entry["attempts_since_success"] = 0
+                changed = True
+        if changed:
+            self.updateFocusLogFile()
+
     def getCamerasToFocus(
         self,
         obs_timestamp="now",
@@ -244,9 +287,16 @@ class FocusTracker:
             DO NOT include (cool-down). Otherwise include.
         Returns None if nothing needs focus.
 
+        Attempt counters left over from a previous observing night are
+        cleared first (see resetStaleAttempts), so each night starts with
+        the full max_attempts budget.
+
         Only returns cameras that are in active_cameras config.
         """
         obs_timestamp = self._normalize_timestamp(obs_timestamp)
+
+        # start each observing night with a clean attempt budget
+        self.resetStaleAttempts(now=obs_timestamp)
         grace_s = graceperiod_hours * 3600.0
 
         # Get active cameras from config

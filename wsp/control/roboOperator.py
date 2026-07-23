@@ -322,6 +322,12 @@ class RoboOperator(QtCore.QObject):
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger=self.logger)
         # a variable to keep track of how many times we've attempted to focus. different numbers have different affects on focus routine
         self.focus_attempt_number = 0
+        # interlock: True while any focus loop/sequence is running. The
+        # checkWhatToDo autofocus trigger must not start a competing focus
+        # sequence (which switches cameras) while this is set — a mid-loop
+        # camera switch makes the tracker write land on the wrong camera
+        # (2026-07-23: spring's best focus got written into winter's entry)
+        self.focus_loop_in_progress = False
 
         ### A class to keep track of the calibration sequences
         self.caltracker = cal_tracker.CalTracker(
@@ -1872,15 +1878,25 @@ class RoboOperator(QtCore.QObject):
                                 #        cam=self.camname,
                                 #    )
                                 # )
-                                cameras_to_focus = self.focusTracker.getCamerasToFocus(
-                                    obs_timestamp=obstime_timestamp_utc,
-                                    graceperiod_hours=self.config["focus_loop_param"][
-                                        "focus_graceperiod_hours"
-                                    ],
-                                    max_attempts=self.config["focus_loop_param"].get(
-                                        "max_focus_attempts", 3
-                                    ),
-                                )
+                                if self.focus_loop_in_progress:
+                                    # a focus loop is mid-flight (e.g. a
+                                    # manually commanded one on another
+                                    # thread): starting a focus sequence now
+                                    # would switch cameras out from under it
+                                    self.log(
+                                        "a focus loop is already in progress; skipping autofocus check"
+                                    )
+                                    cameras_to_focus = None
+                                else:
+                                    cameras_to_focus = self.focusTracker.getCamerasToFocus(
+                                        obs_timestamp=obstime_timestamp_utc,
+                                        graceperiod_hours=self.config[
+                                            "focus_loop_param"
+                                        ]["focus_graceperiod_hours"],
+                                        max_attempts=self.config[
+                                            "focus_loop_param"
+                                        ].get("max_focus_attempts", 3),
+                                    )
 
                                 # Skip cameras on locked-out ports — a focus
                                 # loop on a jammed-rotator port will only
@@ -4909,6 +4925,36 @@ class RoboOperator(QtCore.QObject):
         focusType="Vcurve",
     ):
         """
+        Wrapper around _do_focusLoop_inner that holds the
+        focus_loop_in_progress interlock for the full duration of the loop,
+        so the checkWhatToDo autofocus trigger can't start a competing focus
+        sequence (and camera switch) mid-loop.
+        """
+        # save/restore rather than set/clear so nested calls (e.g. from
+        # do_camera_focus_sequence, which also holds the flag) don't drop
+        # the interlock early
+        prev = self.focus_loop_in_progress
+        self.focus_loop_in_progress = True
+        try:
+            return self._do_focusLoop_inner(
+                nom_focus=nom_focus,
+                total_throw=total_throw,
+                nsteps=nsteps,
+                updateFocusTracker=updateFocusTracker,
+                focusType=focusType,
+            )
+        finally:
+            self.focus_loop_in_progress = prev
+
+    def _do_focusLoop_inner(
+        self,
+        nom_focus="model",
+        total_throw="default",
+        nsteps="default",
+        updateFocusTracker=True,
+        focusType="Vcurve",
+    ):
+        """
         Runs a focus loop in the CURRENT filter.
         Adaptation of Cruz Soto's doFocusLoop in wintercmd
 
@@ -4935,6 +4981,13 @@ class RoboOperator(QtCore.QObject):
         """
         self.announce("running focus loop!")
         context = "do_focusLoop"
+
+        # latch the camera this loop is running on: self.camname is live
+        # state that another thread can flip via switchCamera, and the fit
+        # daemon choice + focus tracker write below must stay tied to the
+        # camera the images actually came from (NPL 7-23-26: winter's
+        # tracker entry got clobbered with a spring focus result this way)
+        loop_camname = self.camname
 
         #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
         self.check_ok_to_observe(logcheck=True)
@@ -5380,7 +5433,7 @@ class RoboOperator(QtCore.QObject):
             # TODO: this is where the focus is fit this will need to be updated
             # x0_fit = loop.analyzeData(focuser_pos, images)
             # for now just return 12000
-            if self.camname == "winter":
+            if loop_camname == "winter":
                 # make this better and less specific if possible...
                 try:
                     ns = Pyro5.api.locate_ns(host="192.168.1.10")
@@ -5425,7 +5478,7 @@ class RoboOperator(QtCore.QObject):
                 else:
                     fit_successful = False
                     # x0_fit = 11797.657
-            elif self.camname == "spring":
+            elif loop_camname == "spring":
                 # use the winter-image-daemon for spring
                 try:
                     ns = Pyro5.api.locate_ns(host="192.168.1.10")
@@ -5453,6 +5506,22 @@ class RoboOperator(QtCore.QObject):
             # print(f'x0_err = {x0_err}, type(x0_err) = {type(x0_err)}')
 
             # self.announce(f'Fit Results: x0 = [{x0_fit:.0f} +/- {x0_err:.0f}] microns ({(x0_err/x0_fit*100):.0f}%)')
+
+            # reject fits whose vertex landed outside the scanned range:
+            # that's an extrapolation, not a measurement (NPL 7-23-26: a
+            # 19275-19525 spring sweep returned 19163.99 and got saved)
+            if fit_successful:
+                scan_min = float(np.min(loop.filter_range_nom))
+                scan_max = float(np.max(loop.filter_range_nom))
+                if not (scan_min <= x0_fit <= scan_max):
+                    self.announce(
+                        f"best focus fit {x0_fit:.1f} is outside the scanned "
+                        f"range [{scan_min:.1f}, {scan_max:.1f}]: rejecting "
+                        f"fit and returning to nominal focus"
+                    )
+                    self.do(f"m2_focuser_goto {nom_focus}")
+                    self.focus_attempt_number += 1
+                    return None, False  # Mark as failed
 
             # validate that the fit was good enough
             if (
@@ -5500,15 +5569,22 @@ class RoboOperator(QtCore.QObject):
 
                 if updateFocusTracker:
 
+                    if self.camname != loop_camname:
+                        self.announce(
+                            f"camera changed from {loop_camname} to "
+                            f"{self.camname} during the focus loop! logging "
+                            f"result under {loop_camname}"
+                        )
+
                     self.announce(
-                        f"updating the focus position of filter {filterID} to {x0_fit}, timestamp = {obstime_timestamp_utc}"
+                        f"updating the focus position of camera {loop_camname} filter {filterID} to {x0_fit}, timestamp = {obstime_timestamp_utc}"
                     )
 
                     # self.focusTracker.updateFilterFocus(
                     #    filterID, x0_fit, obstime_timestamp_utc
                     # )
                     self.focusTracker.updateCameraFocus(
-                        camera=self.camname, focus_pos=x0_fit
+                        camera=loop_camname, focus_pos=x0_fit
                     )
 
                 # we completed the focus! set the focus attempt number to zero
@@ -5549,6 +5625,14 @@ class RoboOperator(QtCore.QObject):
         run a focus loop on the specified camera. if camname is None, use self.camname
 
         """
+        prev = self.focus_loop_in_progress
+        self.focus_loop_in_progress = True
+        try:
+            return self._do_camera_focus_sequence(camname=camname)
+        finally:
+            self.focus_loop_in_progress = prev
+
+    def _do_camera_focus_sequence(self, camname: Optional[str] = None):
         context = "do_camera_focus_sequence"
         system = ""
 
