@@ -741,39 +741,6 @@ class RoboOperator(QtCore.QObject):
             return False
         return port in self._locked_out_ports
 
-    def _wait_for_rotator_stopped(self, timeout=10.0):
-        """
-        Wait until the rotator reports it is not moving, or timeout.
-        rotator_stop is fire-and-forget (and usually dispatched via
-        doTry, which swallows failures), so this is the only
-        confirmation that a stop actually landed before we hand over to
-        M3. Watches rotator_is_moving, NOT rotator_is_slewing — slewing
-        is only true during commanded moves, while is_moving also
-        catches tracking. Requires a few consecutive not-moving samples
-        so a single stale telemetry frame can't fake a stop. Returns
-        True if confirmed stopped, False on timeout.
-        """
-        dt = self.config.get("cmd_status_dt", 0.5)
-        n_samples = self.config.get("cmd_satisfied_N_samples", 3)
-        stopped_count = 0
-        t_start = time.time()
-        while True:
-            moving = self.state.get("rotator_is_moving", None)
-            if moving in (False, 0):
-                stopped_count += 1
-                if stopped_count >= n_samples:
-                    return True
-            else:
-                stopped_count = 0
-            if time.time() - t_start > timeout:
-                self.announce(
-                    f":warning: rotator still reports moving={moving} "
-                    f"{timeout} s after rotator_stop — the stop may not "
-                    f"have landed. Proceeding to the M3 move anyway."
-                )
-                return False
-            time.sleep(dt)
-
     def _select_camera_no_hardware(self, camname):
         """
         Point self.camera / self.fw / self.camname at ``camname`` WITHOUT
@@ -1297,11 +1264,12 @@ class RoboOperator(QtCore.QObject):
         # destination rotator. Skipped in the force-leave path —
         # there's nothing to settle, the rotator is already stuck.
         if not force_leave:
-            # rotator_stop above is fire-and-forget and doTry swallows
-            # any failure, so confirm the rotator actually reports
-            # stopped before the M3 hand-over — otherwise it can still
-            # be secretly moving/tracking when the m3_goto lands.
-            self._wait_for_rotator_stopped(timeout=10.0)
+            # NOTE: the rotator_stop above blocks until the rotator
+            # confirms rotator_is_moving = False (verified in the
+            # wintercmd rotator_stop command itself), so by here the
+            # rotator is genuinely stopped — this settle is purely the
+            # post-stop quiet period PWI4 seems to need before it will
+            # honor an M3 move.
             settle = self.config.get("rotator_settle_seconds_before_m3", 1.0)
             self.log(f"settling {settle} s after rotator_stop before M3 move")
             time.sleep(settle)

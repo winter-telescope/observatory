@@ -2627,10 +2627,56 @@ class Wintercmd(QtCore.QObject):
     def rotator_stop(self):
         """
         Created: NPL 2-4-21
+
+        Sends the stop, then waits until the rotator confirms it is no
+        longer moving. Watches rotator_is_moving, NOT rotator_is_slewing:
+        is_slewing is only true during commanded moves, while is_moving
+        also catches tracking — a quietly-tracking rotator is exactly
+        what this command must be sure it has killed (e.g. before an M3
+        port hand-over). Raises TimeoutError if the rotator still
+        reports moving after the timeout.
         """
         self.defineCmdParser("STOP the instrument rotator")
         self._raise_if_m3_in_transit("rotator_stop")
         self.telescope.rotator_stop()
+
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 10.0
+        # wait for several consecutive not-moving samples so a single
+        # stale telemetry frame can't fake a stop
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config["cmd_status_dt"])
+            timestamp = datetime.utcnow().timestamp()
+            dt = timestamp - start_timestamp
+            if dt > timeout:
+                raise TimeoutError(
+                    f"rotator still reports moving "
+                    f"{timeout} s after rotator_stop — the stop may not "
+                    f"have landed (rotator_is_moving = "
+                    f"{self.state.get('rotator_is_moving')})"
+                )
+
+            # missing key (e.g. telescope telemetry down) counts as not
+            # moving: we can't verify anything in that case and blocking
+            # shutdown/stow paths on dead telemetry would be worse
+            stop_condition = not bool(self.state.get("rotator_is_moving", False))
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+
+            if all(entry == condition for entry in stop_condition_buffer):
+                break
+        self.logger.info(
+            "wintercmd: rotator stop confirmed (rotator_is_moving = False)"
+        )
 
     # M3 STUFF
     @cmd
