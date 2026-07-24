@@ -95,6 +95,10 @@ cmd_satisfied_N_samples: 3 # number of samples to make sure that status is verif
 # to test whether PWI4 needs the rotator to sit longer after a stop.
 rotator_settle_seconds_before_m3: 3.0
 rotator_settle_seconds_after_m3: 1.0
+# 20260723 2325: even with the 3 s settle the silent no-move still happens
+# intermittently (two ignored, third identical request worked), so switchPort
+# retries the m3_goto in place this many times before raising.
+m3_goto_attempts: 3
 
 ########### ALERTS ##########
 # base directory is wsp path

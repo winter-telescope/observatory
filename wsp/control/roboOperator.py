@@ -1062,7 +1062,33 @@ class RoboOperator(QtCore.QObject):
                 self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
                 raise RuntimeError(msg)
 
-        self.do(f"m3_goto {port}")
+        # PWI4 sometimes accepts /m3/goto (HTTP OK) but never moves M3 —
+        # 20260723: three back-to-back identical requests, two silently
+        # ignored, third moved normally. Since an identical retry is
+        # empirically all it takes, retry in place here rather than
+        # failing the whole camera switch and letting the caller churn
+        # through schedule targets (~90 s of preamble + reload per retry
+        # that way).
+        max_attempts = self.config.get("m3_goto_attempts", 3)
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.do(f"m3_goto {port}")
+                break
+            except TimeoutError:
+                if attempt >= max_attempts:
+                    self.log(
+                        f"m3_goto {port} still ignored after {max_attempts} "
+                        f"attempts, giving up"
+                    )
+                    raise
+                self.log(
+                    f"m3_goto {port} attempt {attempt}/{max_attempts} timed "
+                    f"out with M3 still at port {self.telescope.port} — "
+                    f"probably the silent PWI4 no-move failure; retrying"
+                )
+                time.sleep(
+                    self.config.get("rotator_settle_seconds_before_m3", 1.0)
+                )
         msg = f"switched rotator to port {port}"
 
         # if that worked then update the self.port attribute
@@ -6165,7 +6191,7 @@ class RoboOperator(QtCore.QObject):
             if cam_to_use != self.camname:
                 self.switchCamera(cam_to_use)
         except Exception as e:
-            msg = f"roboOperator: could not switch to camera {cam_to_use} for dark routine due to {e.__class__.__name__}, {e}"
+            msg = f"roboOperator: could not switch to camera {cam_to_use} for scheduled observation due to {e.__class__.__name__}, {e}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, "switchCamera", "telescope", msg)
