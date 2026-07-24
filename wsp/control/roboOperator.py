@@ -741,6 +741,34 @@ class RoboOperator(QtCore.QObject):
             return False
         return port in self._locked_out_ports
 
+    def _select_camera_no_hardware(self, camname):
+        """
+        Point self.camera / self.fw / self.camname at ``camname`` WITHOUT
+        touching any hardware (no M3, rotator, focuser, or pointing-model
+        moves). Only for port-independent sequences like darks, where the
+        camera daemon does all the work and it doesn't matter which port
+        M3 is aimed at.
+
+        WARNING: this deliberately breaks the invariant that self.camname
+        matches the camera on the active M3 port. The caller MUST restore
+        the previous (camera, fw, camname) references when the sequence
+        finishes — a stale mismatch here is exactly what caused the
+        2026-07-21 shutter_open desync and the 2026-07-23 focus churn.
+        """
+        if camname not in self.camdict:
+            raise KeyError(
+                f"camera '{camname}' is not valid. "
+                f"Available cameras: {list(self.camdict.keys())}"
+            )
+        self.camera = self.camdict[camname]
+        self.fw = self.fwdict.get(camname, None)
+        self.camname = camname
+        self.log(
+            f"selected camera {camname} in software only "
+            f"(no M3/rotator/focuser moves; M3 stays on port "
+            f"{self.telescope.port})"
+        )
+
     def _get_observable_cameras(self):
         """
         Camera names (lowercase) that scheduled targets may currently use:
@@ -760,14 +788,21 @@ class RoboOperator(QtCore.QObject):
         True iff a cal/observation command string targets a camera whose
         M3 port is locked out. Detects ``--<camera>`` tokens for any
         camera the camera_manager knows about.
+
+        Darks are exempt: they don't need light through the telescope,
+        so they run fine with M3 parked on any port (do_darks falls back
+        to a software-only camera selection when the switch can't
+        happen).
         """
         if not self._locked_out_ports:
+            return False
+        tokens = cmd.split()
+        if tokens and tokens[0] == "robo_do_darks":
             return False
         try:
             active_cams = list(self.camera_manager.get_active_cameras())
         except Exception:
             return False
-        tokens = cmd.split()
         for cam in active_cams:
             if f"--{cam}" in tokens and self._camera_is_locked_out(cam):
                 self.log(
@@ -4696,32 +4731,62 @@ class RoboOperator(QtCore.QObject):
         """
         do a series of dark exposures in all active filteres
 
+        Darks don't need light through the telescope, so the sequence
+        doesn't need M3 pointed at the camera's port. Normally we still
+        do the full switchCamera, but if the camera's port is locked out
+        (or the switch fails), fall back to pointing the camera/fw
+        references at the requested camera in software only, take the
+        darks anyway, and restore the previous references afterward so
+        nothing outside this sequence ever sees a camname that disagrees
+        with the actual M3 port.
         """
-        context = "do_darks"
         self.log(f"starting dark sequence for camera {camname}")
 
         # change the camera to the specified camera for the darks
-        # NOTE: do NOT assign self.camname here — switchCamera sets
-        # camname/camera/fw together only after the switch fully succeeds.
-        # Assigning it before the call meant a failed switch left
-        # self.camname claiming the new camera while self.fw/self.camera
-        # still pointed at the old one, and the `camname != self.camname`
-        # guard then suppressed every retry (KeyError 'shutter_open'
-        # desync, 2026-07-21).
-        try:
-            if camname != self.camname:
-                self.log(
-                    f"roboOperator: switching camera from {self.camname} to {camname}"
+        # NOTE: do NOT assign self.camname directly here — switchCamera
+        # sets camname/camera/fw together only after the switch fully
+        # succeeds (KeyError 'shutter_open' desync, 2026-07-21). The
+        # software-only fallback below does assign it, but saves the old
+        # references and the finally block restores them.
+        restore_refs = None
+        if camname != self.camname:
+            if self._camera_is_locked_out(camname):
+                self.announce(
+                    f"port for camera {camname} is locked out — taking darks "
+                    f"without switching M3 (darks don't need the telescope)"
                 )
-                self.switchCamera(camname)
-        except Exception as e:
-            msg = f"roboOperator: could not switch to camera {camname} for dark routine due to {e.__class__.__name__}, {e}"
-            self.log(msg)
-            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
-            err = roboError(context, "switchCamera", "telescope", msg)
-            self.hardware_error.emit(err)
-            return
+                restore_refs = (self.camera, self.fw, self.camname)
+                self._select_camera_no_hardware(camname)
+            else:
+                try:
+                    self.log(
+                        f"roboOperator: switching camera from {self.camname} to {camname}"
+                    )
+                    self.switchCamera(camname)
+                except Exception as e:
+                    msg = (
+                        f"roboOperator: could not switch to camera {camname} for "
+                        f"dark routine due to {e.__class__.__name__}, {e} — "
+                        f"taking darks without the port switch (darks don't "
+                        f"need the telescope)"
+                    )
+                    self.log(msg)
+                    self.alertHandler.slack_log(f"*WARNING:* {msg}", group=None)
+                    restore_refs = (self.camera, self.fw, self.camname)
+                    self._select_camera_no_hardware(camname)
 
+        try:
+            self._do_darks_inner(n_imgs=n_imgs, exptimes=exptimes)
+        finally:
+            if restore_refs is not None:
+                self.camera, self.fw, self.camname = restore_refs
+                self.log(
+                    f"restored active camera references to {self.camname} "
+                    f"after software-only dark sequence"
+                )
+
+    def _do_darks_inner(self, n_imgs=None, exptimes=None):
+        context = "do_darks"
         self.log(f"proceeding with darks on camera {self.camname}")
         # set the progID info here for the headers
         self.resetObsValues()
