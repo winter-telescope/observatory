@@ -1189,7 +1189,9 @@ class RoboOperator(QtCore.QObject):
         # destination rotator. Skipped in the force-leave path —
         # there's nothing to settle, the rotator is already stuck.
         if not force_leave:
-            time.sleep(self.config.get("rotator_settle_seconds_before_m3", 1.0))
+            settle = self.config.get("rotator_settle_seconds_before_m3", 1.0)
+            self.log(f"settling {settle} s after rotator_stop before M3 move")
+            time.sleep(settle)
 
         # Switch to the corresponding port. switchPort's own stow check
         # also recognizes the force_leave path via _locked_out_ports
