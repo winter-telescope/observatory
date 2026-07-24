@@ -743,21 +743,23 @@ class RoboOperator(QtCore.QObject):
 
     def _wait_for_rotator_stopped(self, timeout=10.0):
         """
-        Wait until the rotator reports it is not slewing, or timeout.
+        Wait until the rotator reports it is not moving, or timeout.
         rotator_stop is fire-and-forget (and usually dispatched via
         doTry, which swallows failures), so this is the only
         confirmation that a stop actually landed before we hand over to
-        M3. Requires a few consecutive not-slewing samples so a single
-        stale telemetry frame can't fake a stop. Returns True if
-        confirmed stopped, False on timeout.
+        M3. Watches rotator_is_moving, NOT rotator_is_slewing — slewing
+        is only true during commanded moves, while is_moving also
+        catches tracking. Requires a few consecutive not-moving samples
+        so a single stale telemetry frame can't fake a stop. Returns
+        True if confirmed stopped, False on timeout.
         """
         dt = self.config.get("cmd_status_dt", 0.5)
         n_samples = self.config.get("cmd_satisfied_N_samples", 3)
         stopped_count = 0
         t_start = time.time()
         while True:
-            slewing = self.state.get("rotator_is_slewing", None)
-            if slewing in (False, 0):
+            moving = self.state.get("rotator_is_moving", None)
+            if moving in (False, 0):
                 stopped_count += 1
                 if stopped_count >= n_samples:
                     return True
@@ -765,7 +767,7 @@ class RoboOperator(QtCore.QObject):
                 stopped_count = 0
             if time.time() - t_start > timeout:
                 self.announce(
-                    f":warning: rotator still reports slewing={slewing} "
+                    f":warning: rotator still reports moving={moving} "
                     f"{timeout} s after rotator_stop — the stop may not "
                     f"have landed. Proceeding to the M3 move anyway."
                 )
@@ -1107,6 +1109,7 @@ class RoboOperator(QtCore.QObject):
             # we hunt the PWI4-side cause.
             self.log(
                 f"dispatching m3_goto {port} (attempt {attempt}/{max_attempts}): "
+                f"rotator_is_moving={self.state.get('rotator_is_moving')}, "
                 f"rotator_is_slewing={self.state.get('rotator_is_slewing')}, "
                 f"rotator_is_enabled={self.state.get('rotator_is_enabled')}, "
                 f"rotator_mech_position={self.state.get('rotator_mech_position')}, "
