@@ -741,6 +741,37 @@ class RoboOperator(QtCore.QObject):
             return False
         return port in self._locked_out_ports
 
+    def _wait_for_rotator_stopped(self, timeout=10.0):
+        """
+        Wait until the rotator reports it is not slewing, or timeout.
+        rotator_stop is fire-and-forget (and usually dispatched via
+        doTry, which swallows failures), so this is the only
+        confirmation that a stop actually landed before we hand over to
+        M3. Requires a few consecutive not-slewing samples so a single
+        stale telemetry frame can't fake a stop. Returns True if
+        confirmed stopped, False on timeout.
+        """
+        dt = self.config.get("cmd_status_dt", 0.5)
+        n_samples = self.config.get("cmd_satisfied_N_samples", 3)
+        stopped_count = 0
+        t_start = time.time()
+        while True:
+            slewing = self.state.get("rotator_is_slewing", None)
+            if slewing in (False, 0):
+                stopped_count += 1
+                if stopped_count >= n_samples:
+                    return True
+            else:
+                stopped_count = 0
+            if time.time() - t_start > timeout:
+                self.announce(
+                    f":warning: rotator still reports slewing={slewing} "
+                    f"{timeout} s after rotator_stop — the stop may not "
+                    f"have landed. Proceeding to the M3 move anyway."
+                )
+                return False
+            time.sleep(dt)
+
     def _select_camera_no_hardware(self, camname):
         """
         Point self.camera / self.fw / self.camname at ``camname`` WITHOUT
@@ -1071,6 +1102,16 @@ class RoboOperator(QtCore.QObject):
         # that way).
         max_attempts = self.config.get("m3_goto_attempts", 3)
         for attempt in range(1, max_attempts + 1):
+            # Snapshot the axis state at each dispatch so an ignored
+            # request and an honored one can be diffed in the log while
+            # we hunt the PWI4-side cause.
+            self.log(
+                f"dispatching m3_goto {port} (attempt {attempt}/{max_attempts}): "
+                f"rotator_is_slewing={self.state.get('rotator_is_slewing')}, "
+                f"rotator_is_enabled={self.state.get('rotator_is_enabled')}, "
+                f"rotator_mech_position={self.state.get('rotator_mech_position')}, "
+                f"mount_is_tracking={self.state.get('mount_is_tracking')}"
+            )
             try:
                 self.do(f"m3_goto {port}")
                 break
@@ -1224,10 +1265,13 @@ class RoboOperator(QtCore.QObject):
                 self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
                 raise RuntimeError(msg)
 
-        # Halt the rotator's position-target loop before M3 leaves this
-        # port. Skipped in the force-leave path: the rotator is already
-        # wedged and unresponsive, no point in waiting on rotator_stop.
+        # Halt any motion sources before M3 leaves this port: kill mount
+        # tracking first (so nothing keeps re-driving the field), then
+        # stop the rotator's position-target loop. Skipped in the
+        # force-leave path: the rotator is already wedged and
+        # unresponsive, no point in waiting on rotator_stop.
         if not force_leave:
+            self.doTry("mount_tracking_off")
             self.doTry("rotator_stop")
 
         # NOTE: leave the rotator ENABLED across the M3 move. We tried
@@ -1250,6 +1294,11 @@ class RoboOperator(QtCore.QObject):
         # destination rotator. Skipped in the force-leave path —
         # there's nothing to settle, the rotator is already stuck.
         if not force_leave:
+            # rotator_stop above is fire-and-forget and doTry swallows
+            # any failure, so confirm the rotator actually reports
+            # stopped before the M3 hand-over — otherwise it can still
+            # be secretly moving/tracking when the m3_goto lands.
+            self._wait_for_rotator_stopped(timeout=10.0)
             settle = self.config.get("rotator_settle_seconds_before_m3", 1.0)
             self.log(f"settling {settle} s after rotator_stop before M3 move")
             time.sleep(settle)
