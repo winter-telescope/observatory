@@ -267,9 +267,9 @@ telescope:
             name: 'summer'
             rotator:
                 field_angle_zeropoint: 155.0 
-                home_degs: 65.0
-                max_degs: 225.0
-                min_degs: -95.0
+                home_degs: 25.0
+                max_degs: 70.0
+                min_degs: -120.0
             cameras:
                 spring:
                     pointing_model_file: "pointing_model_spring_20251022.pxp"
@@ -786,26 +786,25 @@ filters:
 filter_wheels:
     spring:
         positions:
-            0: 'u' # FW Position 0
-            1: 'g' # FW Position 1
-            2: 'r' # FW Position 2
-            3: 'i' # FW Position 3
-            4: 'Y' # FW Position 4
-            5: 'J' # FW Position 5
+            0: 'Y' # FW Position 0
+            1: 'J' # FW Position 1
+            2: 'EMPTY' # FW Position 2
+            3: 'Hs' # FW Position 3
+            4: 'EMPTY' # FW Position 4
+            5: 'dark' # FW Position 5
             6: 'EMPTY' # FW Position 6
     # SUMMER: ZWO 7-position EFW on the viscam raspberry pi. Slots are
     # 1-INDEXED, matching the labels printed on the physical wheel.
-    # PLACEHOLDER LOADOUT — update to match what is physically installed
     # (must stay in sync with wsp/filterwheel/summerfw_config.yaml)
     summer:
         positions:
             1: 'u' # FW Slot 1
             2: 'g' # FW Slot 2
-            3: 'r' # FW Slot 3
-            4: 'i' # FW Slot 4
-            5: 'EMPTY' # FW Slot 5
+            3: 'EMPTY' # FW Slot 3
+            4: 'r' # FW Slot 4
+            5: 'i' # FW Slot 5
             6: 'EMPTY' # FW Slot 6
-            7: 'dark' # FW Slot 7 (blocked; used for darks - no shutter on summer)
+            7: 'dark' # FW Slot 7 (blocked; used for darks)
     winter:
         positions:
             1: 'dark'
