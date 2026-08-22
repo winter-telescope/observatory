@@ -1,0 +1,34 @@
+# Configuration for Summer Filter Wheel (ZWO 7-position EFW)
+# Shares the viscam raspberry pi with the spring FLI wheel + shutter, but is
+# served by its OWN server on port 5002 (wsp/viscam/summer_fw_server.py,
+# python >= 3.12) - the legacy web_server.py on 5001 stays on python 3.9.
+
+# Web interface connection settings
+web_interface:
+  base_url: "http://192.168.1.228:5002"
+  endpoint: "/summer_filter_wheel"
+  request_timeout: 35  # seconds; ZWO moves block server-side (worst ~few s + margin)
+
+# Filter positions (ZWO EFW slots are 1-INDEXED, 1-7, matching the labels
+# printed on the physical wheel; zwo_efw library is also 1-indexed)
+# PLACEHOLDER LOADOUT — update names to match what is physically installed!
+filters:
+  positions: [1, 2, 3, 4, 5, 6, 7]
+  dark_filter: 7  # blocked slot used for darks (summer has no shutter)
+  names:
+    1: "u"
+    2: "g"
+    3: "r"
+    4: "i"
+    5: "empty"
+    6: "empty"
+    7: "dark"
+
+# Timing settings
+state_update_dt: 0.5  # seconds between status polls during moves
+timeout_secs: 60  # maximum time to wait for a move to complete
+
+# where to put the log. base directory is home
+log_directory: 'data/log'
+log_link_directory: 'data'
+log_link_name: 'winter.log'

@@ -5048,10 +5048,11 @@ class Wintercmd(QtCore.QObject):
 
         self.logger.info(f"startupCamera: args = {self.args}")
 
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
+        # note: --winter defaults True, so check --summer first
+        if self.args.summer:
             camname = "summer"
+        else:
+            camname = "winter"
 
         addrs = self.args.addrs
 
@@ -5085,14 +5086,15 @@ class Wintercmd(QtCore.QObject):
 
         self.getargs()
 
-        self.logger.info(f"startupCamera: args = {self.args}")
+        self.logger.info(f"shutdownCamera: args = {self.args}")
 
         addrs = self.args.addrs
 
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
+        # note: --winter defaults True, so check --summer first
+        if self.args.summer:
             camname = "summer"
+        else:
+            camname = "winter"
 
         camera = self.camdict[camname]
 
@@ -5285,7 +5287,7 @@ class Wintercmd(QtCore.QObject):
         # timeout = self.state[f'{camname}_camera_command_timeout']
         if camname == "winter":
             timeout = self.state[f"{camname}_camera_exptime"] + 10.0
-        elif camname == "spring":
+        elif camname in ("spring", "summer"):
             timeout = float(camera.state["exptime"]) * 3 + 10.0
         else:
             timeout = 30.0 * 3 + 10.0
@@ -5314,7 +5316,7 @@ class Wintercmd(QtCore.QObject):
                 stop_condition = (
                     self.state[f"{camname}_camera_doing_exposure"] == False
                 ) & (self.state[f"{camname}_camera_command_pass"] == 1)
-            elif camname == "spring":
+            elif camname in ("spring", "summer"):
                 stop_condition = (camera.state["camera_state"] == "READY") & (
                     camera.state["command_pass"] == 1
                 )
@@ -5364,10 +5366,11 @@ class Wintercmd(QtCore.QObject):
 
         self.logger.info(f"tecSetSetpoint: args = {self.args}")
 
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
+        # note: --winter defaults True, so check --summer first
+        if self.args.summer:
             camname = "summer"
+        else:
+            camname = "winter"
 
         camera = self.camdict[camname]
 
@@ -5551,7 +5554,7 @@ class Wintercmd(QtCore.QObject):
 
         if camname == "winter":
             timeout = 10
-        elif camname == "spring":
+        elif camname in ("spring", "summer"):
             timeout = 3 * exptime + 10
         else:
             timeout = 30
@@ -5582,7 +5585,7 @@ class Wintercmd(QtCore.QObject):
                 stop_condition = (
                     self.state[f"{camname}_camera_exptime"] == exptime
                 ) & (self.state[f"{camname}_camera_command_pass"] == 1)
-            elif camname == "spring":
+            elif camname in ("spring", "summer"):
                 stop_condition = (camera.state["exptime"] == exptime) & (
                     camera.state["camera_state"] == "READY"
                 )
@@ -5640,10 +5643,11 @@ class Wintercmd(QtCore.QObject):
 
         self.logger.info(f"tecStart: args = {self.args}")
 
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
+        # note: --winter defaults True, so check --summer first
+        if self.args.summer:
             camname = "summer"
+        else:
+            camname = "winter"
 
         camera = self.camdict[camname]
 
@@ -5679,10 +5683,11 @@ class Wintercmd(QtCore.QObject):
 
         self.logger.info(f"tecStop: args = {self.args}")
 
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
+        # note: --winter defaults True, so check --summer first
+        if self.args.summer:
             camname = "summer"
+        else:
+            camname = "winter"
 
         camera = self.camdict[camname]
 
@@ -5773,10 +5778,11 @@ class Wintercmd(QtCore.QObject):
 
         self.logger.info(f"Kill camera daemon: args = {self.args}")
 
-        if self.args.winter:
-            camname = "winter"
-        elif self.args.summer:
+        # note: --winter defaults True, so check --summer first
+        if self.args.summer:
             camname = "summer"
+        else:
+            camname = "winter"
 
         camera = self.camdict[camname]
 

@@ -2255,7 +2255,90 @@ fields:
         rate: 'hk'
         var: camdict['spring'].state['exptime']
 
-        
+
+########### SUMMER FILTER WHEEL FIELDS ###########
+    summer_fw_timestamp:
+        ftype: raw
+        label: 'time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: fwdict['summer'].state['timestamp']
+    summer_fw_connected:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: fwdict['summer'].state['is_connected']
+    summer_fw_filter_pos:
+        ftype: raw
+        label: 'Position'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: fwdict['summer'].state['filter_pos']
+    summer_fw_filter_goal:
+        ftype: raw
+        label: 'Position'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: fwdict['summer'].state['filter_goal']
+    summer_fw_is_moving:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: fwdict['summer'].state['is_moving']
+    summer_fw_is_homed:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: fwdict['summer'].state['homed']
+
+
+########### SUMMER CAMERA FIELDS ###########
+    summer_camera_exptime:
+        ftype: raw
+        label: 'Time'
+        units: 's'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['summer'].state['exptime']
+    summer_camera_tec_temp:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['summer'].state['tec_temp']
+    summer_camera_tec_setpoint:
+        ftype: raw
+        label: 'T'
+        units: 'C'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['summer'].state['tec_setpoint']
+    summer_camera_tec_enabled:
+        ftype: raw
+        label: 'Status'
+        units: None
+        dtype: int64
+        rate: 'hk'
+        var: camdict['summer'].state['tec_enabled']
+    summer_camera_tec_power_pct:
+        ftype: raw
+        label: 'Power'
+        units: '%'
+        dtype: float64
+        rate: 'hk'
+        var: camdict['summer'].state['tec_power_pct']
+
+
 ########### WINTER CAMERA FIELDS ##########
     winter_camera_timestamp:
         ftype: raw

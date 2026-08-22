@@ -30,6 +30,7 @@ from PyQt5 import QtCore
 from wsp.alerts import alert_handler
 from wsp.camera import camera, winter_image_daemon_local
 from wsp.camera.implementations.spring_camera import SpringCamera
+from wsp.camera.implementations.summer_camera import SummerCamera
 from wsp.camera.implementations.winter_camera import local_camera
 from wsp.chiller import chiller, small_chiller
 from wsp.command import commandParser, commandServer, wintercmd
@@ -37,7 +38,7 @@ from wsp.control import roboOperator
 from wsp.daemon import daemon_utils, test_daemon_local
 from wsp.dome import dome
 from wsp.ephem import ephem
-from wsp.filterwheel import filterwheel, spring_filterwheel
+from wsp.filterwheel import filterwheel, spring_filterwheel, summer_filterwheel
 from wsp.housekeeping import housekeeping, labjack_handler_local
 from wsp.power import powerManager
 from wsp.schedule import schedule
@@ -335,6 +336,14 @@ class control(QtCore.QObject):
             )
             self.daemonlist.add_daemon(self.springfwd)
 
+            summerfwargs = ["-n", self.ns_host]
+            self.summerfwd = daemon_utils.PyDaemon(
+                name="summerfw",
+                filepath=f"{wsp_path}/filterwheel/summerFilterd.py",
+                args=summerfwargs,
+            )
+            self.daemonlist.add_daemon(self.summerfwd)
+
             # watchdog monitor daemon
             if self.disable_watchdog:
                 self.alertHandler.slack_log(
@@ -443,12 +452,24 @@ class control(QtCore.QObject):
             base_directory=self.base_directory, config=self.config, logger=self.logger
         )
 
-        # init the summer camera interface
+        # init the spring camera interface
         self.springcamera = SpringCamera(
             base_directory=self.base_directory,
             config=self.config,
             camname="spring",
             daemon_pyro_name="SPRINGCamera",
+            ns_host_camera=self.ns_host,
+            ns_host_hk=self.ns_host,
+            logger=None,
+            verbose=False,
+        )
+
+        # init the summer camera interface
+        self.summercamera = SummerCamera(
+            base_directory=self.base_directory,
+            config=self.config,
+            camname="summer",
+            daemon_pyro_name="SUMMERCamera",
             ns_host_camera=self.ns_host,
             ns_host_hk=self.ns_host,
             logger=None,
@@ -485,6 +506,15 @@ class control(QtCore.QObject):
             verbose=self.verbose,
         )
 
+        self.summerfw = summer_filterwheel.local_filterwheel(
+            base_directory=self.base_directory,
+            config=self.config,
+            daemon_pyro_name="SUMMERfw",
+            ns_host=self.ns_host,
+            logger=self.logger,
+            verbose=self.verbose,
+        )
+
         self.winter_image_handler = winter_image_daemon_local.WINTERImageHandler(
             wsp_path,
             config=self.config,
@@ -500,7 +530,7 @@ class control(QtCore.QObject):
             {
                 "winter": self.wintercamera,
                 "spring": self.springcamera,
-                #'summer' : self.summercamera,
+                "summer": self.summercamera,
             }
         )
 
@@ -509,7 +539,7 @@ class control(QtCore.QObject):
             {
                 "winter": self.winterfw,
                 "spring": self.springfw,
-                #'summer' : self.summerfw,
+                "summer": self.summerfw,
             }
         )
 
