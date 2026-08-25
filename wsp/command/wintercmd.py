@@ -3726,6 +3726,14 @@ class Wintercmd(QtCore.QObject):
         self.roboThread.newCommand.emit(sigcmd)
 
     @cmd
+    def robo_post_night_summary(self):
+        self.defineCmdParser(
+            "post the end-of-night observing summary to slack"
+        )
+        sigcmd = signalCmd("post_night_summary")
+        self.roboThread.newCommand.emit(sigcmd)
+
+    @cmd
     def robo_do_currentObs(self):
         self.defineCmdParser("do the current observation")
         self.roboThread.do_currentObs_Signal.emit()

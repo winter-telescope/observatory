@@ -41,6 +41,7 @@ from wsp.schedule.schedule import ensure_attempts_column
 from wsp.telescope import pointingModelBuilder
 from wsp.telescope.telescope import WrapWarningInfo
 from wsp.utils import utils
+from wsp.control import night_report
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -441,6 +442,41 @@ class RoboOperator(QtCore.QObject):
         # mtime, so the observed/attempts cuts always see fresh values.
         self._too_schedule_cache = {}
 
+        ### NIGHT REPORTING ###
+        # Error context recorder: a logging.Handler on the shared wsp
+        # logger that keeps a rolling buffer of the log and, on each
+        # error (roboError via broadcast_hardware_error, or any
+        # ERROR-level log record), writes a self-contained report file
+        # with N lines of log from before and after the error — made to
+        # be debugged after the fact from the file alone. Plus a
+        # json-backed per-night tally of attempts / completions /
+        # failures / errors that post_night_summary() renders to slack
+        # each morning (roboManager trigger) or on demand.
+        err_cfg = self.config.get("error_reports", {})
+        self._error_report_base = os.path.join(
+            os.getenv("HOME", ""),
+            err_cfg.get("directory", "data/error_reports"),
+        )
+        self.errorRecorder = night_report.ErrorContextRecorder(
+            report_dir_func=lambda: os.path.join(
+                self._error_report_base, utils.tonight_local()
+            ),
+            n_before=err_cfg.get("lines_before", 500),
+            n_after=err_cfg.get("lines_after", 500),
+            timeout_s=err_cfg.get("capture_timeout_s", 300.0),
+            max_reports_per_night=err_cfg.get("max_reports_per_night", 50),
+        )
+        if self.logger is not None:
+            self.logger.addHandler(self.errorRecorder)
+        self.nightTally = night_report.NightTally(
+            summary_dir=os.path.join(
+                os.getenv("HOME", ""),
+                self.config.get("night_summary_directory", "data/night_summaries"),
+            ),
+            night_func=utils.tonight_local,
+            log_func=self.log,
+        )
+
         # Night marker for the once-per-night ToO attempts reset. Read
         # from a file that lives alongside the ToO schedules, so the
         # reset happens once per OBSERVING NIGHT even across wsp
@@ -554,6 +590,27 @@ class RoboOperator(QtCore.QObject):
         msg = f":redsiren: *{error.system.upper()} ERROR* ocurred when attempting command: *_{error.cmd}_*, {error.msg}"
         group = "operator"
         self.alertHandler.slack_log(msg, group=group)
+
+        # capture the surrounding log context to a standalone report file
+        # and tally the error for the end-of-night summary. Never let the
+        # reporting machinery interfere with actual error handling.
+        try:
+            report_path = self.errorRecorder.trigger(
+                context=error.context,
+                cmd=error.cmd,
+                system=error.system,
+                msg=error.msg,
+            )
+            self.nightTally.record_error(
+                system=error.system,
+                cmd=error.cmd,
+                msg=error.msg,
+                report_path=report_path,
+            )
+            if report_path is not None:
+                self.log(f"error context report: {report_path}")
+        except Exception as e:
+            self.log(f"could not record error report/tally: {e}")
 
         try:
             # if the telescope is connected and the rotator is enabled, reset it
@@ -1543,6 +1600,36 @@ class RoboOperator(QtCore.QObject):
         self.log(msg)
         return True
 
+    def post_night_summary(self):
+        """
+        Post the end-of-night summary to slack: targets observed with
+        their total exposure time, attempted/failed/aborted counts, and
+        errors (grouped, with pointers to their context report files).
+        Fired by the roboManager 'post_night_summary' trigger at dawn;
+        also callable any time via the robo_post_night_summary wintercmd
+        for a mid-night check.
+        """
+        try:
+            # close out any error capture still waiting on "after" lines
+            self.errorRecorder.flush_pending()
+        except Exception:
+            pass
+        try:
+            report_dir = os.path.join(
+                self._error_report_base, utils.tonight_local()
+            )
+            summary = self.nightTally.format_summary(
+                error_report_dir=(
+                    report_dir if os.path.isdir(report_dir) else None
+                )
+            )
+            self.announce(summary)
+        except Exception as e:
+            self.log(
+                f"could not post night summary: {type(e).__name__}: {e}, "
+                f"traceback = {traceback.format_exc()}"
+            )
+
     def restart_robo(self, arg="auto"):
         self.log("restarting the WINTER robot")
         # run through the whole routine. if something isn't ready, then it waits a short period and restarts
@@ -2304,9 +2391,27 @@ class RoboOperator(QtCore.QObject):
                                     # rather than re-loading the same broken row
                                     # every iteration.
                                     self._log_schedule_write("attempt")
+                                    self.nightTally.record_attempt(currentObs)
 
                                     obs_fully_completed = self.do_currentObs(
                                         self.schedule.currentObs
+                                    )
+
+                                    # Tally the outcome for the night summary.
+                                    # "aborted" = the failure came from the
+                                    # loop being stopped (operator stop /
+                                    # weather closure) rather than the target
+                                    # or hardware.
+                                    self.nightTally.record_result(
+                                        currentObs,
+                                        completed=bool(obs_fully_completed),
+                                        aborted=(
+                                            not obs_fully_completed
+                                            and (
+                                                not self.running
+                                                or not self.ok_to_observe
+                                            )
+                                        ),
                                     )
 
                                     # Only flip observed=1 when the observation

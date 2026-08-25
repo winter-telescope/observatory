@@ -110,6 +110,23 @@ m3_goto_attempts: 3
 m3_switch_altitude_degs: 85.0
 m3_switch_altitude_tolerance_degs: 1.0
 
+########### NIGHT REPORTING ##########
+# Per-error debug reports: when an error fires (roboError, or any
+# ERROR-level log record), the surrounding wsp log lines are written to a
+# self-contained report file under <directory>/<night>/ that can be
+# debugged after the fact on its own. Errors during an open capture are
+# folded into that report (cascades make one report, not fifty).
+error_reports:
+    directory: 'data/error_reports' # relative to home
+    lines_before: 500
+    lines_after: 500
+    capture_timeout_s: 300.0  # flush a report early if the log goes quiet
+    max_reports_per_night: 50
+# json-backed per-night observing tally behind the end-of-night slack
+# summary (posted by the roboManager post_night_summary trigger at dawn,
+# or any time via the robo_post_night_summary wintercmd)
+night_summary_directory: 'data/night_summaries' # relative to home
+
 ########### ALERTS ##########
 # base directory is wsp path
 alert_handler:
@@ -207,6 +224,16 @@ robotic_manager_triggers:
             repeat_on_restart: False
             sundir: 1
             cmd: 'mount_fans_off'
+        post_night_summary:
+            conds:
+                cond1:
+                    type: 'sun'
+                    val: 0
+                    cond: '>'
+            nextmorning: True
+            repeat_on_restart: False
+            sundir: 1
+            cmd: 'robo_post_night_summary'
         winter_camera_shutdown:
             conds:
                 cond1:
