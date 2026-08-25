@@ -946,6 +946,37 @@ class RoboManager(QtCore.QObject):
             self.log(f"loading triglog from file")
             self.triglog = json.load(open(self.triglog_filepath))
 
+            # Reconcile the loaded triglog with the CURRENTLY configured
+            # triggers. A trigger added to config.yaml after tonight's
+            # triglog file was created (e.g. a wsp update deployed
+            # mid-day) is missing from the file, and the
+            # triglog[trigname] lookup in checkWhatToDo would KeyError
+            # on it every cycle. 20260824: that KeyError (silently
+            # swallowed by checkWhatToDo's try/except) aborted the
+            # trigger loop before first_time could be cleared, so the
+            # repeat_on_restart triggers (load_nightly_schedule +
+            # robo_run) were re-sent every ~5 s indefinitely.
+            missing = [t for t in self.triggers if t not in self.triglog]
+            for trigname in missing:
+                self.triglog.update(
+                    {
+                        trigname: {
+                            "sent": False,
+                            "sun_alt_sent": "",
+                            "time_sent": "",
+                        }
+                    }
+                )
+            stale = [t for t in self.triglog if t not in self.triggers]
+            for trigname in stale:
+                self.triglog.pop(trigname)
+            if missing or stale:
+                self.log(
+                    f"reconciled triglog with configured triggers: "
+                    f"added {missing}, removed {stale}"
+                )
+                self.updateTrigLogFile()
+
         except FileNotFoundError:
             # file does not exist: create it
             self.log("no triglog found: creating new one")
@@ -1301,15 +1332,24 @@ class RoboManager(QtCore.QObject):
 
         """
 
-        try:
-            # for trigname in ['startup']:
-            for trigname in self.triggers.keys():
+        # NOTE: the try/except lives INSIDE the loop, per trigger — one
+        # broken trigger must not abort evaluation of the others. When
+        # the whole loop was wrapped instead, a KeyError on a trigger
+        # missing from the triglog killed every later trigger AND
+        # skipped the first_time reset below, which made the
+        # repeat_on_restart triggers re-fire on every cycle (20260824).
+        # for trigname in ['startup']:
+        for trigname in self.triggers.keys():
+            try:
                 if self.verbose:
                     print(f"evaluating trigger: {trigname}")
                 # load up the trigger object
                 trig = self.triggers[trigname]
 
-                if self.triglog[trigname]["sent"]:
+                # .get()s: tolerate a trigger missing from the triglog
+                # (setupTrigLog reconciles, but HandleUpdateTrigLog will
+                # add the entry on send anyway)
+                if self.triglog.get(trigname, {}).get("sent", False):
                     # check to see if the trigger has already been executed
                     if self.verbose:
                         print("\tcmd already sent")
@@ -1329,14 +1369,19 @@ class RoboManager(QtCore.QObject):
                 else:
                     self.handleTrigger(trigname)
 
-            # change the first time flag
-            self.first_time = False
+            except Exception as e:
+                # log it — this used to be silent unless verbose, which
+                # hid the 20260824 KeyError loop completely
+                self.log(
+                    f"could not evaluate trigger {trigname}: "
+                    f"{type(e).__name__}: {e}"
+                )
+                if self.verbose:
+                    print(traceback.format_exc())
 
-        except Exception as e:
-            if self.verbose:
-                print(f"could not check what to do: {e}")
-                print(traceback.format_exc())
-            pass
+        # change the first time flag — ALWAYS runs, even if a trigger
+        # evaluation failed above
+        self.first_time = False
 
     ###### PUBLIC FUNCTIONS THAT CAN BE CALLED USING PYRO SERVER #####
 
