@@ -99,6 +99,16 @@ rotator_settle_seconds_after_m3: 1.0
 # intermittently (two ignored, third identical request worked), so switchPort
 # retries the m3_goto in place this many times before raising.
 m3_goto_attempts: 3
+# The M3 port switcher stalls at low elevation (it has to drag the mechanism
+# across the transition against gravity), which strands M3 between ports and
+# trips the recovery / port-lockout machinery. So point the telescope up near
+# zenith before any m3_goto, holding the current azimuth so the dome doesn't
+# have to follow. 85 deg is telescope.max_alt, which is only enforced on target
+# selection, not on mount_goto_alt_az. We deliberately do NOT slew back down
+# afterwards: every caller slews to its own target right after the switch, so
+# returning to the pre-switch pointing is pure overhead.
+m3_switch_altitude_degs: 85.0
+m3_switch_altitude_tolerance_degs: 1.0
 
 ########### ALERTS ##########
 # base directory is wsp path
@@ -670,14 +680,14 @@ focus_loop_param:
     cameras:
         winter:
             filterID: 'J'
-            nominal_focus: 11950
+            nominal_focus: 12000
             sweep_param:
                 total_throw: 500
                 nsteps: 6
             focus_exptime: 30
         spring:
             filterID: 'J'
-            nominal_focus: 19400
+            nominal_focus: 12350
             sweep_param:
                 total_throw: 250
                 nsteps: 6
@@ -753,6 +763,15 @@ filters:
             active: True
         J:
             name: "MKO J-band (Omega)"
+            active: True
+        # Hs went into the spring wheel (filter_wheels position 3) for the
+        # 2026B summer campaign. This section is what defines the VALID
+        # filters for a camera (camera manager reads its keys), and it has
+        # to stay in sync with filter_wheels: 20260823 it didn't, and every
+        # spring/Hs ToO row was rejected by do_currentObs's filter check
+        # until max_observation_attempts discarded it.
+        Hs:
+            name: "MKO Hs-band"
             active: True
     summer:
         u:

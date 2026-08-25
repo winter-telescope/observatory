@@ -40,6 +40,7 @@ from wsp.schedule import wintertoo_validate
 from wsp.schedule.schedule import ensure_attempts_column
 from wsp.telescope import pointingModelBuilder
 from wsp.telescope.telescope import WrapWarningInfo
+from wsp.utils import utils
 
 # add the wsp directory to the PATH
 wsp_path = os.path.dirname(os.path.dirname(__file__))
@@ -439,6 +440,14 @@ class RoboOperator(QtCore.QObject):
         # / log_observation UPDATE the active schedule file, bumping its
         # mtime, so the observed/attempts cuts always see fresh values.
         self._too_schedule_cache = {}
+
+        # Night marker for the once-per-night ToO attempts reset. Read
+        # from a file that lives alongside the ToO schedules, so the
+        # reset happens once per OBSERVING NIGHT even across wsp
+        # restarts — a restart mid-night must NOT re-grant every failed
+        # row a fresh set of attempts. See
+        # _reset_too_attempts_if_new_night.
+        self._attempts_reset_night = self._read_attempts_reset_marker()
 
         ### a QTimer for handling a longer pause before checking what to do
         self.waitAndCheckTimer = QtCore.QTimer()
@@ -854,6 +863,13 @@ class RoboOperator(QtCore.QObject):
             f"Attempting auto-recovery to port {target_port} via "
             f"m3_goto..."
         )
+
+        # Get the telescope high before nudging M3: a stall at low
+        # elevation is the most likely reason we're stranded between
+        # ports in the first place. No-op if switchCamera already
+        # raised us on the way in.
+        self._goto_m3_switch_elevation()
+
         try:
             self.do(f"m3_goto {target_port}")
         except Exception as e:
@@ -901,6 +917,116 @@ class RoboOperator(QtCore.QObject):
                 f"this port will be skipped for the rest of this "
                 f"session. Restart wsp to clear after resolving the "
                 f"underlying hardware issue."
+            )
+
+    def _goto_m3_switch_elevation(self):
+        """
+        Slew the telescope up to a high elevation before M3 moves.
+
+        The M3 port switcher struggles at low elevation — the mechanism
+        has to fight gravity across the transition and stalls partway,
+        which lands M3 between ports and trips the whole
+        recovery / lockout machinery downstream. Pointing near zenith
+        first takes the load off it.
+
+        Only the ALTITUDE changes: the current azimuth is held so the
+        dome doesn't have to follow and the move stays as short as
+        possible.
+
+        Idempotent and cheap to call: returns immediately if the mount
+        is already at (or above) the target elevation, so every M3
+        dispatch path can call it without worrying about duplication.
+
+        Never raises. If the mount can't be brought up — motors won't
+        enable, slew times out, mount not connected — this announces a
+        warning and returns; the caller carries on with the port switch
+        from wherever the telescope is. A failed hop must not turn into
+        a failed camera switch: that would cost the port a lockout
+        strike and potentially the rest of the night, which is worse
+        than the low-elevation switch we were trying to avoid.
+        """
+        if self.mountsim:
+            return
+
+        alt_target = self.config.get("m3_switch_altitude_degs", 85.0)
+        tol = self.config.get("m3_switch_altitude_tolerance_degs", 1.0)
+
+        # mount_is_connected reads False while M3 is mid-transit even
+        # though the mount is fine (see is_ready_to_observe), so only
+        # trust a False here when M3 is parked at a real port. This
+        # also covers the __init__ switchCamera call, which runs before
+        # do_startup has ever connected the mount: skip rather than
+        # slew a disconnected/parked telescope at wsp startup.
+        m3_in_transit = self.telescope.port not in [1, 2]
+        if not m3_in_transit and not self.state.get("mount_is_connected", False):
+            self.log(
+                "skipping pre-M3 elevation move: mount is not connected "
+                "(port switch will proceed from the current pointing)"
+            )
+            return
+
+        alt_now = self.state.get("mount_alt_deg", None)
+        if alt_now is not None and alt_now >= (alt_target - tol):
+            self.log(
+                f"already at alt={alt_now:.1f} deg (>= {alt_target - tol:.1f}), "
+                f"no pre-M3 elevation move needed"
+            )
+            return
+
+        az_now = self.state.get("mount_az_deg", None)
+        if az_now is None:
+            self.log(
+                "skipping pre-M3 elevation move: no mount_az_deg in state "
+                "(port switch will proceed from the current pointing)"
+            )
+            return
+
+        alt_now_str = f"{alt_now:.1f}" if alt_now is not None else "?"
+        self.announce(
+            f"raising telescope to alt={alt_target:.1f} deg before moving M3 "
+            f"(currently alt={alt_now_str}, az={az_now:.1f}). The port "
+            f"switcher stalls at low elevation."
+        )
+
+        try:
+            # Nothing should be re-driving the pointing while we do this.
+            self.doTry("mount_tracking_off")
+
+            # Make sure the motors are actually energized. Both commands
+            # block until the enable is confirmed (or time out), and are
+            # no-ops if the axis is already on, so only send them when
+            # the telemetry says the axis is off.
+            if not self.state.get("mount_alt_is_enabled", False):
+                self.log("alt motor is off, turning it on for the pre-M3 move")
+                self.do("mount_alt_on")
+            if not self.state.get("mount_az_is_enabled", False):
+                self.log("az motor is off, turning it on for the pre-M3 move")
+                self.do("mount_az_on")
+
+            # hold the current azimuth: pure elevation move, no dome slew
+            self.do(f"mount_goto_alt_az {alt_target} {az_now}")
+
+        except Exception as e:
+            self.announce(
+                f":warning: could not raise the telescope to "
+                f"alt={alt_target:.1f} deg before the M3 move "
+                f"({type(e).__name__}: {e}). Attempting the port switch "
+                f"from alt={self.state.get('mount_alt_deg', '?')} anyway — "
+                f"the switcher may stall at low elevation."
+            )
+            return
+
+        alt_after = self.state.get("mount_alt_deg", None)
+        if alt_after is None or alt_after < (alt_target - tol):
+            self.announce(
+                f":warning: pre-M3 elevation move returned but the mount "
+                f"reports alt={alt_after} (wanted >= {alt_target - tol:.1f}). "
+                f"Proceeding with the port switch anyway."
+            )
+        else:
+            self.log(
+                f"telescope raised to alt={alt_after:.1f} deg, "
+                f"ready for the M3 move"
             )
 
     def rotator_stop_and_reset(self):
@@ -1062,6 +1188,23 @@ class RoboOperator(QtCore.QObject):
                 self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
                 raise RuntimeError(msg)
 
+        # Sanity check the elevation before M3 moves. switchCamera --
+        # the only caller -- raises the telescope near zenith on the way
+        # in, because the switcher stalls at low elevation. Deliberately
+        # only a warning, not a slew: by this point we are inside the
+        # post-rotator_stop quiet window that PWI4 needs before it will
+        # honor an M3 move (see the settle note in switchCamera), and
+        # dropping a multi-second mount slew in here would defeat it.
+        alt_target = self.config.get("m3_switch_altitude_degs", 85.0)
+        tol = self.config.get("m3_switch_altitude_tolerance_degs", 1.0)
+        alt_now = self.state.get("mount_alt_deg", None)
+        if not self.mountsim and (alt_now is None or alt_now < (alt_target - tol)):
+            self.log(
+                f"WARNING: dispatching m3_goto {port} at alt={alt_now} "
+                f"(wanted >= {alt_target - tol:.1f}). The port switcher is "
+                f"more likely to stall down here."
+            )
+
         # PWI4 sometimes accepts /m3/goto (HTTP OK) but never moves M3 —
         # 20260723: three back-to-back identical requests, two silently
         # ignored, third moved normally. Since an identical retry is
@@ -1139,6 +1282,17 @@ class RoboOperator(QtCore.QObject):
             )
             self.log(msg)
             raise RuntimeError(msg)
+
+        # The M3 port switcher struggles at low elevation, so get the
+        # telescope up near zenith BEFORE anything moves M3. This runs
+        # ahead of the rotator home/stow sequence on purpose: doing it
+        # later would put a multi-second mount slew between
+        # rotator_stop and m3_goto, and PWI4 is fussy about that quiet
+        # window (see the settle note further down). The helper never
+        # raises — a mount that won't come up gets a warning and we
+        # switch from wherever we are.
+        if self.telescope.port != target_port or self.telescope.port not in [1, 2]:
+            self._goto_m3_switch_elevation()
 
         # Recovery: if M3 is currently between ports, nudge it to the
         # target port directly so the leaving-port stow logic below can
@@ -2149,7 +2303,7 @@ class RoboOperator(QtCore.QObject):
                                     # max_observation_attempts cap kicks in
                                     # rather than re-loading the same broken row
                                     # every iteration.
-                                    self.schedule.log_attempt()
+                                    self._log_schedule_write("attempt")
 
                                     obs_fully_completed = self.do_currentObs(
                                         self.schedule.currentObs
@@ -2160,7 +2314,7 @@ class RoboOperator(QtCore.QObject):
                                     # observations stay observed=0 so they can
                                     # be retried up to max_observation_attempts.
                                     if obs_fully_completed:
-                                        self.schedule.log_observation()
+                                        self._log_schedule_write("observation")
 
                                     # if we get here, then the observation is complete, either bc it's done or there was an error
 
@@ -2376,6 +2530,155 @@ class RoboOperator(QtCore.QObject):
         self._too_schedule_cache[too_file] = {"stamp": stamp, "df": df}
         return df
 
+    def _log_schedule_write(self, kind):
+        """
+        Do one of our own writes to the active schedule file (kind =
+        "attempt" increments the attempts counter, kind = "observation"
+        marks the row observed) WITHOUT invalidating the parsed ToO
+        cache for that file.
+
+        The cache in _get_too_df is keyed on (mtime, size) so that
+        hand-edited or freshly dropped files are picked up mid-night.
+        But our own log_attempt / log_observation writes bump the mtime
+        too, which used to force a full re-parse + schema re-validation
+        of the ACTIVE file (~2.5 s) on every single observing cycle. So:
+        verify the cached parse still matches the file on disk, do the
+        write, apply the identical change to the cached dataframe in
+        memory, and re-stamp the cache entry with the post-write stat.
+        Any doubt (pre-write stamp mismatch = someone else edited the
+        file, stat failure, patch failure) falls back to the old
+        behavior: leave the entry stale and let the next scan re-parse
+        from disk.
+        """
+        too_file = self.schedule.schedulefile
+        obsHistID = self.schedule.currentObsHistID
+        entry = self._too_schedule_cache.get(too_file)
+
+        # Decide BEFORE writing whether the cache can be kept warm: the
+        # cached parse must still match the file on disk. (The survey
+        # schedule isn't in this cache at all -> entry is None -> plain
+        # write, same as before.)
+        patchable = False
+        if entry is not None and entry["df"] is not None and obsHistID is not None:
+            try:
+                st = os.stat(too_file)
+                patchable = entry["stamp"] == (st.st_mtime, st.st_size)
+            except OSError:
+                patchable = False
+
+        # the actual write (schedule.py catches & logs its own errors)
+        if kind == "attempt":
+            self.schedule.log_attempt()
+        else:
+            self.schedule.log_observation()
+
+        if not patchable:
+            return
+
+        try:
+            df = entry["df"]
+            mask = df["obsHistID"] == obsHistID
+            if kind == "attempt":
+                # mirror log_attempt's COALESCE(attempts, 0) + 1
+                df.loc[mask, "attempts"] = df.loc[mask, "attempts"].fillna(0) + 1
+            else:
+                df.loc[mask, "observed"] = 1
+            st = os.stat(too_file)
+            entry["stamp"] = (st.st_mtime, st.st_size)
+        except Exception as e:
+            # bail to the safe path: drop the entry so the next scan
+            # re-parses the file from disk
+            self._too_schedule_cache.pop(too_file, None)
+            self.log(
+                f"could not patch ToO cache after {kind} write "
+                f"({type(e).__name__}: {e}); file will be re-parsed on "
+                f"the next scan"
+            )
+
+    def _attempts_reset_marker_path(self):
+        return os.path.join(
+            self._get_too_schedule_directory(), "last_attempts_reset_night.txt"
+        )
+
+    def _read_attempts_reset_marker(self):
+        """Last observing night the ToO attempts reset ran, or None."""
+        try:
+            with open(self._attempts_reset_marker_path(), "r") as f:
+                return f.read().strip()
+        except OSError:
+            return None
+
+    def _reset_too_attempts_if_new_night(self, too_files):
+        """
+        Once per observing night, zero the attempts counter on every
+        unobserved row of every ToO schedule file.
+
+        Rows that exhaust max_observation_attempts are dropped by the
+        selection cuts — the counter exists to stop a failing row from
+        monopolizing the scheduler. But most failure causes are
+        transient on the scale of a night (weather, hardware hiccups, a
+        config bug since fixed), and ToO validity windows span many
+        nights, so a row that struck out last night deserves fresh
+        attempts tonight.
+
+        "Night" is utils.tonight_local(), which rolls over at 08:00
+        local. The last-reset night is persisted in a marker file in
+        the ToO directory rather than only in memory, so a wsp restart
+        mid-night does not rerun the reset; only the first scan after
+        the 8am rollover does. The UPDATEs bump each file's mtime, so
+        _get_too_df re-parses them and the cuts see the fresh counters.
+        """
+        night = utils.tonight_local()
+        if night == self._attempts_reset_night:
+            return
+
+        n_files = 0
+        n_rows = 0
+        for too_file in too_files:
+            try:
+                engine = db.create_engine("sqlite:///" + too_file)
+                conn = engine.connect()
+                ensure_attempts_column(conn, log=self.log)
+                result = conn.execute(
+                    "UPDATE summary SET attempts = 0 "
+                    "WHERE observed = 0 AND attempts > 0"
+                )
+                conn.close()
+                if result.rowcount and result.rowcount > 0:
+                    n_files += 1
+                    n_rows += result.rowcount
+            except Exception as e:
+                # A locked/unreadable file just keeps its counters until
+                # tomorrow. Don't let one bad file block the marker
+                # update below, or we'd re-run the reset on every scan.
+                self.log(
+                    f"nightly attempts reset: could not reset {too_file}: "
+                    f"{type(e).__name__}: {e}"
+                )
+
+        # persist the marker BEFORE announcing: even if nothing needed
+        # resetting we must not re-check every file again tonight
+        try:
+            with open(self._attempts_reset_marker_path(), "w") as f:
+                f.write(night)
+        except OSError as e:
+            self.log(
+                f"nightly attempts reset: could not write marker file: {e}"
+            )
+        self._attempts_reset_night = night
+
+        if n_rows > 0:
+            self.announce(
+                f"new observing night {night}: reset the attempts counter "
+                f"on {n_rows} unobserved rows across {n_files} ToO "
+                f"schedule files"
+            )
+        else:
+            self.log(
+                f"new observing night {night}: no ToO attempts counters "
+                f"needed resetting"
+            )
+
     def _prime_too_schedule_cache(self):
         """
         Parse & schema-validate every ToO schedule file once, at wsp
@@ -2412,6 +2715,10 @@ class RoboOperator(QtCore.QObject):
             f"found {len(ToOscheduleFiles)} schedule files in the TOO directory"
         )
 
+        # once per observing night (8am local rollover), give unobserved
+        # rows their attempts back — no-op string compare on every other scan
+        self._reset_too_attempts_if_new_night(ToOscheduleFiles)
+
         # prune cache entries for files that have been deleted from the folder
         for cached_path in list(self._too_schedule_cache.keys()):
             if cached_path not in ToOscheduleFiles:
@@ -2422,6 +2729,12 @@ class RoboOperator(QtCore.QObject):
 
             observable_cams = self._get_observable_cameras()
             max_attempts = self.config.get("max_observation_attempts", 2)
+            # valid filters per observable camera, for the filter-validity
+            # cut inside the file loop (constant across the scan)
+            valid_filters_by_cam = {
+                cam: set(self.camera_manager.get_camera_info(cam).filters)
+                for cam in observable_cams
+            }
 
             obstime_astropy = astropy.time.Time(obstime_mjd, format="mjd")
             frame = astropy.coordinates.AltAz(
@@ -2513,6 +2826,49 @@ class RoboOperator(QtCore.QObject):
                         )
                         df = df.loc[~unobservable]
                     if len(df) == 0:
+                        continue
+
+                    # Cut rows whose scheduled filter is not valid for their
+                    # target camera (i.e. not in the config filters: section
+                    # for that camera). do_currentObs re-checks this and
+                    # rejects the row, so without this cut a filter/config
+                    # mismatch churns instead of getting cut: the row ranks
+                    # best, fast-fails the filter check, burns an attempt,
+                    # and repeats until max_observation_attempts discards it
+                    # (2026-08-23: ~15 min eating all 45 spring/Hs rows one
+                    # by one after Hs was added to filter_wheels but not to
+                    # the filters: section).
+                    row_cams = row_cams.loc[df.index]
+                    row_filters = df["filter"].astype(str)
+                    filter_invalid = np.array(
+                        [
+                            f not in valid_filters_by_cam.get(c, set())
+                            for c, f in zip(row_cams, row_filters)
+                        ],
+                        dtype=bool,
+                    )
+                    if filter_invalid.any():
+                        bad_pairs = sorted(
+                            set(
+                                zip(
+                                    row_cams[filter_invalid],
+                                    row_filters[filter_invalid],
+                                )
+                            )
+                        )
+                        self.log(
+                            f"{too_name}: dropping "
+                            f"{int(filter_invalid.sum())} entries whose "
+                            f"filter is not valid for their camera ("
+                            + ", ".join(f"{c}: {f}" for c, f in bad_pairs)
+                            + ") — check the filters: section of config.yaml"
+                        )
+                        df = df.loc[~filter_invalid]
+                    if len(df) == 0:
+                        self.log(
+                            f"{too_name}: no valid entries after "
+                            f"filter-validity cut"
+                        )
                         continue
 
                     # if the maxAirmass is not specified, add it in
@@ -2640,9 +2996,25 @@ class RoboOperator(QtCore.QObject):
                 self.announce(
                     f'we should be observing from {scheduleFile_without_path}, obsHistID = {currentObs["obsHistID"]}'
                 )
-                # point self.schedule to the TOO
-                self.schedule.loadSchedule(scheduleFile)
-                self.schedule.updateCurrentObs(currentObs, obstime_mjd)
+                # Point self.schedule to the ToO — but only actually reload
+                # it if it isn't already the loaded schedule. loadSchedule
+                # re-reads and re-validates the whole file (~3 s), and while
+                # working through one ToO file that used to happen on EVERY
+                # cycle. Nothing is lost by skipping: the scan above already
+                # parsed & schema-validated this file via the _get_too_df
+                # cache, and self.schedule only needs the filepath wired up
+                # so log_attempt / log_observation write to the right file.
+                if (
+                    getattr(self.schedule, "schedulefile", None) != scheduleFile
+                    or not getattr(self.schedule, "schedule_is_valid", False)
+                ):
+                    self.schedule.loadSchedule(scheduleFile)
+                # n_remaining: the scan just computed the number of valid
+                # rows, so updateCurrentObs can skip its own re-query (which
+                # was a third SELECT * + schema validation per cycle).
+                self.schedule.updateCurrentObs(
+                    currentObs, obstime_mjd, n_remaining=len(full_df)
+                )
                 return
 
         # if we're here, there are no TOO valid observations
@@ -3437,8 +3809,8 @@ class RoboOperator(QtCore.QObject):
                 "dist2Moon": self.getDist2Moon(),
                 "expMJD": self.getMJD(),
                 "visitExpTime": self.exptime,  # self.waittime,
-                "altitude": self.state["mount_az_deg"],
-                "azimuth": self.state["mount_alt_deg"],
+                "altitude": self.state["mount_alt_deg"],
+                "azimuth": self.state["mount_az_deg"],
             }
         )
         # now step through the Observation entries in the dataconfig.json and grab them from state

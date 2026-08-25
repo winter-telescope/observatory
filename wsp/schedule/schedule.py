@@ -336,17 +336,40 @@ class Schedule(object):
                 dataRanked = None
                 print(f"ERROR [schedule.py]: database query failed for next object: {e}")
                 #print(tb.format_exc())
-            if printList:
-                # list the observations in their ranked order:
-                self.log('Valid Observations Ranked by validStop:')
-                for i in range(len(dataRanked)):
-                    row = dataRanked[i]
-                    self.log(f'  {i}: obsHistID = {row["obsHistID"]}, validStop = {row["validStop"]}, observed = {row["observed"]}')
+            if printList and dataRanked is not None:
+                # List the head of the ranked order in ONE log call. This
+                # used to log every row individually (45+ lines, several
+                # times per observing cycle); the full ranking is already
+                # written to Valid_ToO_Observations_Ranked.csv by the
+                # selection scan for anyone who needs all of it. (The None
+                # guard also fixes a latent crash: a failed query set
+                # dataRanked = None and then len(None) raised here.)
+                n_show = 5
+                lines = [
+                    f'  {i}: obsHistID = {row["obsHistID"]}, validStop = {row["validStop"]}, observed = {row["observed"]}'
+                    for i, row in enumerate(dataRanked[:n_show])
+                ]
+                if len(dataRanked) > n_show:
+                    lines.append(f'  ... and {len(dataRanked) - n_show} more')
+                self.log('Valid Observations Ranked by validStop:\n' + '\n'.join(lines))
                     
         return dataRanked
     
-    def updateCurrentObs(self, currentObs, obstime_mjd = 'now'):
-        self.getRemainingValidObs(obstime_mjd)
+    def updateCurrentObs(self, currentObs, obstime_mjd = 'now', n_remaining = None):
+        # n_remaining: number of currently-valid rows, if the caller already
+        # knows it (roboOperator's ToO selection scan computes exactly this
+        # each cycle). Passing it skips getRemainingValidObs — a full
+        # SELECT * + schema re-validation + ranked listing whose only
+        # outputs are the two attributes set below. Only honored alongside
+        # a real currentObs: the currentObs=None path keeps the full query,
+        # because end_of_schedule depends on remaining_observable_entries
+        # (rows that could still become valid later tonight), which the
+        # caller's in-window count can't stand in for.
+        if n_remaining is not None and currentObs is not None:
+            self.remaining_valid_observations = n_remaining
+            self.end_of_schedule = False
+        else:
+            self.getRemainingValidObs(obstime_mjd)
             
         if currentObs is None:
             self.currentObs = None
