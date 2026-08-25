@@ -30,6 +30,7 @@ dawn) posts the formatted summary to slack.
 import json
 import logging
 import os
+import re
 import threading
 from collections import deque
 from datetime import datetime
@@ -296,15 +297,33 @@ class NightTally:
         if night != self.data.get("night"):
             self.data = self._fresh(night)
 
-    @staticmethod
-    def _target_key(obs):
+    # tiled-ToO names like IC_143033_44905242_rev0_0_1: the trailing
+    # _<row>_<col> indexes one tile of a larger localization map. Group
+    # all tiles of the same event/revision under one target entry so the
+    # summary reads "1 target, N tiles" instead of N cryptic lines.
+    _TILE_RE = re.compile(r"^(?P<base>.+_rev\d+)_(?P<tile>\d+_\d+)$")
+
+    @classmethod
+    def _target_key(cls, obs):
+        """Returns (key, tile_id_or_None)."""
         name = str(obs.get("targName", "") or "").strip()
         if name and name.lower() not in ("nan", "none"):
-            return name
-        return f"obsHistID {obs.get('obsHistID', '?')}"
+            m = cls._TILE_RE.match(name)
+            if m:
+                return m.group("base"), m.group("tile")
+            return name, None
+        # unnamed row: a survey field if it has a real fieldID, else
+        # fall back to the row id
+        try:
+            fieldID = int(obs.get("fieldID", -1))
+        except (TypeError, ValueError):
+            fieldID = -1
+        if fieldID > 0:
+            return f"survey field {fieldID}", None
+        return f"obsHistID {obs.get('obsHistID', '?')}", None
 
     def _target_entry(self, obs):
-        key = self._target_key(obs)
+        key, tile = self._target_key(obs)
         t = self.data["targets"].setdefault(
             key,
             {
@@ -312,6 +331,8 @@ class NightTally:
                 "camera": str(obs.get("camera", "winter")),
                 "filters": [],
                 "obsHistIDs": [],
+                "program": "",
+                "tiles": [],
                 "n_attempted": 0,
                 "n_completed": 0,
                 "total_exptime_s": 0.0,
@@ -320,6 +341,11 @@ class NightTally:
         filt = str(obs.get("filter", "?"))
         if filt not in t["filters"]:
             t["filters"].append(filt)
+        prog = str(obs.get("progName", "") or "").strip()
+        if prog and prog.lower() not in ("nan", "none"):
+            t["program"] = prog
+        if tile is not None and tile not in t.setdefault("tiles", []):
+            t["tiles"].append(tile)
         try:
             ohid = int(obs.get("obsHistID", -1))
             if ohid not in t["obsHistIDs"]:
@@ -407,11 +433,23 @@ class NightTally:
                 observed.values(), key=lambda t: -t["total_exptime_s"]
             ):
                 filters = "/".join(t["filters"])
+                n_tiles = len(t.get("tiles", []))
+                if n_tiles > 0:
+                    visits = (
+                        f"{n_tiles} tile{'s' if n_tiles != 1 else ''}, "
+                        f"{t['n_completed']} visit"
+                        f"{'s' if t['n_completed'] != 1 else ''}"
+                    )
+                else:
+                    visits = (
+                        f"{t['n_completed']} visit"
+                        f"{'s' if t['n_completed'] != 1 else ''}"
+                    )
+                prog = t.get("program", "")
+                prog_str = f" [{prog}]" if prog else ""
                 lines.append(
-                    f"  • {t['name']} ({t['camera']}, {filters}): "
-                    f"{t['n_completed']} visit"
-                    f"{'s' if t['n_completed'] != 1 else ''}, "
-                    f"{t['total_exptime_s']:.0f} s total exposure"
+                    f"  • {t['name']} ({t['camera']}, {filters}){prog_str}: "
+                    f"{visits}, {t['total_exptime_s']:.0f} s total exposure"
                 )
         else:
             lines.append("")
