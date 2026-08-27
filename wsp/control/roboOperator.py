@@ -7348,17 +7348,14 @@ class RoboOperator(QtCore.QObject):
             print("\n##########################################")
 
         angle_margin = 10  # degs of margin for safe operation
+        rotator_config = self.config["telescope"]["ports"][self.telescope.port][
+            "rotator"
+        ]
         for ind, possible_target_mech_angle in enumerate(possible_target_mech_angles):
             if self.is_rotator_mech_angle_possible(
                 predicted_rotator_mechangle=possible_target_mech_angle,
-                rotator_min_degs=self.config["telescope"]["ports"][self.telescope.port][
-                    "rotator"
-                ]["min_degs"]
-                + angle_margin,
-                rotator_max_degs=self.config["telescope"]["ports"][self.telescope.port][
-                    "rotator"
-                ]["max_degs"]
-                - angle_margin,
+                rotator_min_degs=rotator_config["min_degs"] + angle_margin,
+                rotator_max_degs=rotator_config["max_degs"] - angle_margin,
             ):
                 self.target_mech_angle = possible_target_mech_angle
                 self.target_field_angle = possible_target_field_angles[ind]
@@ -7367,6 +7364,31 @@ class RoboOperator(QtCore.QObject):
                     print(f"Adjusted field angle --> {self.target_field_angle}")
                     print(f"New target mech angle = {self.target_mech_angle}")
                 break
+        else:
+            # No candidate fits within the margined mech limits. Without
+            # this branch we'd silently return whatever stale
+            # target_field_angle/target_mech_angle was left over from the
+            # previous target. Instead, give up on sky alignment for this
+            # one target and track about the rotator home position (the
+            # field angle that parks the mech at home_degs at this
+            # pointing), which is always reachable.
+            home_degs = rotator_config["home_degs"]
+            self.target_mech_angle = home_degs
+            self.target_field_angle = (
+                home_degs + parallactic_angle - alt_sign * self.target_alt
+            )
+            self.log(
+                f"get_safe_rotator_angle: no wrap-safe rotator solution for "
+                f"target_field_angle = {target_field_angle:0.1f} deg on port "
+                f"{self.telescope.port} (candidate mech angles "
+                f"{[f'{a:0.1f}' for a in possible_target_mech_angles]} all outside "
+                f"[{rotator_config['min_degs'] + angle_margin:0.1f}, "
+                f"{rotator_config['max_degs'] - angle_margin:0.1f}]). "
+                f"Falling back to tracking about home: field angle = "
+                f"{self.target_field_angle:0.1f} deg, mech angle = "
+                f"{self.target_mech_angle:0.1f} deg. Image will NOT be "
+                f"sky-aligned."
+            )
         if verbose:
             print("##########################################")
 
@@ -7911,15 +7933,6 @@ class RoboOperator(QtCore.QObject):
             # slew the rotator
             if not self.mountsim:
                 self.do(f"rotator_goto_field {self.target_field_angle}")
-
-                # TODO: remove when the spring rotator moves reliably
-                if self.camname in ["spring"]:
-                    # just go to the home position and then start tracking
-                    self.do("rotator_home")
-                    # now send a command to go to the current field angle
-                    self.do(
-                        f"rotator_goto_field {self.telescope.state['rotator.field_angle_degs']}"
-                    )
 
                 # TODO: remove when we know how to run the winter rotator
                 # NPL 6-11-23
