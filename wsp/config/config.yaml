@@ -696,6 +696,10 @@ cal_params:
 ########### FOCUSER LOOP PARAM ###########
 focus_loop_param:
     max_focus_attempts: 3
+    # refocus sweeps center on the camera's last good focus; if the stored
+    # value is farther than this (microns) from the config nominal_focus it
+    # is assumed to be junk and the sweep centers on nominal instead
+    max_last_focus_offset_from_nominal: 500
     sweep_param:
         narrow:
             total_throw: 500
@@ -707,14 +711,14 @@ focus_loop_param:
     cameras:
         winter:
             filterID: 'J'
-            nominal_focus: 12000
+            nominal_focus: 12150
             sweep_param:
                 total_throw: 500
                 nsteps: 6
             focus_exptime: 30
         spring:
             filterID: 'J'
-            nominal_focus: 12350
+            nominal_focus: 12550
             sweep_param:
                 total_throw: 250
                 nsteps: 6

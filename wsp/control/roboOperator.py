@@ -5632,32 +5632,46 @@ class RoboOperator(QtCore.QObject):
                 ]  # eg. "SDSS r' (Chroma)"
 
                 if nom_focus == "last":
-                    # TODO: make this query the focusTracker to find the last focus position
+                    # Center the sweep on the last good focus for this
+                    # camera. Never trust a stored value implausibly far
+                    # from the config nominal: a bad fit that snuck into
+                    # the focus log would re-center every later sweep
+                    # around junk that the narrow throw can't recover from.
+                    nominal = self.config["focus_loop_param"]["cameras"][
+                        self.camname
+                    ]["nominal_focus"]
+                    max_offset = self.config["focus_loop_param"].get(
+                        "max_last_focus_offset_from_nominal", 1000.0
+                    )
                     try:
-                        last_focus, last_focus_timestamp = (
-                            self.focusTracker.checkLastFocus(filterID)
+                        last_focus = self.focusTracker.get_last_focus(
+                            camera=self.camname
                         )
-                        # set the nominal focus to the last focus positiion
+                    except Exception:
+                        self.log(
+                            f"could not get a value for the last focus position. defaulting to nominal. Traceback = {traceback.format_exc()}"
+                        )
+                        last_focus = None
+
+                    if last_focus is None:
+                        self.log(
+                            "no previous focus position found, defaulting to nominal"
+                        )
+                        nom_focus = nominal
+                    elif not np.isfinite(last_focus) or (
+                        abs(last_focus - nominal) > max_offset
+                    ):
+                        self.log(
+                            f"last focus ({last_focus}) is more than "
+                            f"{max_offset} microns from nominal ({nominal}): "
+                            f"not trusting it, centering sweep on nominal"
+                        )
+                        nom_focus = nominal
+                    else:
                         nom_focus = last_focus
                         self.log(
                             f"focusing around previous best focus location: {nom_focus}"
                         )
-
-                        if nom_focus is None:
-                            self.log(
-                                f"no previous focus position found, defaulting to nominal."
-                            )
-                            nom_focus = self.config["focus_loop_param"]["cameras"][
-                                self.camname
-                            ]["nominal_focus"]
-
-                    except Exception as e:
-                        self.log(
-                            f"could not get a value for the last focus position. defaulting to default focus. Traceback = {traceback.format_exc()}"
-                        )
-                        nom_focus = self.config["focus_loop_param"]["cameras"][
-                            self.camname
-                        ]["nominal_focus"]
                 elif nom_focus == "default":
                     nom_focus = self.config["focus_loop_param"]["cameras"][
                         self.camname
@@ -6402,8 +6416,11 @@ class RoboOperator(QtCore.QObject):
                 nsteps = self.config["focus_loop_param"]["sweep_param"][sweeptype][
                     "nsteps"
                 ]
-                nom_focus = "default"
-                # nom_focus = 'last'
+                # center the sweep on the last good focus for this camera
+                # (falls back to config nominal if there is no stored
+                # result or it fails the sanity check in do_focusLoop)
+                nom_focus = "last"
+                # nom_focus = 'default'
                 # nom_focus = 'model'
                 # nom_focus = 12000 #NPL 7-1-23 using this for now
                 focusType = "Vcurve"
