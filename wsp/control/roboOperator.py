@@ -8,7 +8,6 @@ operator.py
 @author: nlourie
 """
 
-
 import glob
 import json
 import logging
@@ -38,6 +37,7 @@ from wsp.ephem import ephem_utils
 from wsp.focuser import focus_tracker, focusing
 from wsp.housekeeping import data_handler
 from wsp.schedule import wintertoo_validate
+from wsp.schedule.schedule import ensure_attempts_column
 from wsp.telescope import pointingModelBuilder
 from wsp.telescope.telescope import WrapWarningInfo
 
@@ -306,10 +306,28 @@ class RoboOperator(QtCore.QObject):
         # for now just trying to start leaving places in the code to swap between winter and summer
         self.camname = "winter"
 
+        # Pre-bind self.camera and self.fw from the default camname.
+        # switchCamera (called later in __init__) only assigns these
+        # attributes at the END of its body, after a long chain of
+        # rotator/M3 checks. If any check raises before that — e.g. M3
+        # starts between ports → _rotator_is_stowed_on_current_port
+        # returns False → switchCamera raises — these attributes were
+        # never created, and the very next observation crashed with
+        # AttributeError on self.camera.state[...]. switchCamera will
+        # overwrite both once it succeeds.
+        self.camera = self.camdict[self.camname]
+        self.fw = self.fwdict.get(self.camname, None)
+
         ### FOCUS LOOP THINGS ###
         self.focusTracker = focus_tracker.FocusTracker(self.config, logger=self.logger)
         # a variable to keep track of how many times we've attempted to focus. different numbers have different affects on focus routine
         self.focus_attempt_number = 0
+        # interlock: True while any focus loop/sequence is running. The
+        # checkWhatToDo autofocus trigger must not start a competing focus
+        # sequence (which switches cameras) while this is set — a mid-loop
+        # camera switch makes the tracker write land on the wrong camera
+        # (2026-07-23: spring's best focus got written into winter's entry)
+        self.focus_loop_in_progress = False
 
         ### A class to keep track of the calibration sequences
         self.caltracker = cal_tracker.CalTracker(
@@ -351,6 +369,11 @@ class RoboOperator(QtCore.QObject):
 
         # a flag to denote whether the observatory (ie telescope and dome) are ready to observe, not including whether dome is open
         self.observatory_ready = False
+        # Last set of failing checks from get_observatory_ready_status,
+        # used to log only when the failure signature changes (avoids
+        # spamming the log every 30 s with the same list while the loop
+        # waits for state to settle).
+        self._last_observatory_failed_checks = None
         # a similar flag to denote whether the observatory is safely stowed
         self.observatory_stowed = False
 
@@ -374,6 +397,48 @@ class RoboOperator(QtCore.QObject):
         self.checktimer.setSingleShot(True)
         self.checktimer.setInterval(30 * 1000)
         self.checktimer.timeout.connect(self.checkWhatToDo)
+
+        # Reentrancy guard: blocking commands inside checkWhatToDo pump the Qt
+        # event loop via processEvents(), which can re-fire the checktimer slot
+        # on the same thread. Without this flag, the body runs concurrently with
+        # itself and clobbers shared state (camname, schedule cursor, etc).
+        self._check_in_progress = False
+
+        # Reentrancy guard on rotator_stop_and_reset. Same shape, different
+        # cascade: doTry inside the cleanup can emit hardware_error, which is
+        # dispatched synchronously (DirectConnection) to broadcast_hardware_error,
+        # which calls rotator_stop_and_reset again. Without this flag, one
+        # failing rotator_home builds a nested pile of cleanups (~30s each).
+        self._in_rotator_stop_and_reset = False
+
+        # Sun-altitude history window for get_camera_should_be_running_status.
+        # We derive a stable "sun_rising" by comparing first/last entries of
+        # this rolling history, instead of trusting self.state["sun_rising"]
+        # which flickers at the sample level.
+        self._sun_alt_history = []
+
+        # Per-port rotator lockout. When a port's rotator can't be brought to
+        # home on arrival after switchCamera (typically because it jammed
+        # outside its allowed wrap range and the telescope is refusing to
+        # enable it), we count the consecutive failures here. After N
+        # failures, the port is added to _locked_out_ports and any further
+        # cals / focus / observations that target a camera on that port are
+        # skipped, so the night can proceed on the other camera instead of
+        # the system spiraling on do_startup attempts. Lockouts persist
+        # until wsp restart (the rotator is physically stuck; only an
+        # operator can clear it).
+        self._port_rotator_failure_count = {1: 0, 2: 0}
+        self._locked_out_ports = set()
+
+        # Parsed ToO schedule cache: {filepath: {"stamp": (mtime, size),
+        # "df": DataFrame, or None if the file failed schema validation}}.
+        # See _get_too_df — each file is read & schema-validated once
+        # (primed at startup) and only re-parsed when it changes on disk.
+        # "Changed on disk" covers both hand edits to the .db files
+        # mid-night (no wsp restart needed) and our own writes: log_attempt
+        # / log_observation UPDATE the active schedule file, bumping its
+        # mtime, so the observed/attempts cuts always see fresh values.
+        self._too_schedule_cache = {}
 
         ### a QTimer for handling a longer pause before checking what to do
         self.waitAndCheckTimer = QtCore.QTimer()
@@ -417,6 +482,13 @@ class RoboOperator(QtCore.QObject):
         # dictionary to hold TOO schedules
         self.ToOschedules = dict()
 
+        # parse & schema-validate all the ToO schedule files up front, so
+        # the night-time target scans only pay for new/changed files
+        try:
+            self._prime_too_schedule_cache()
+        except Exception as e:
+            self.log(f"could not prime the ToO schedule cache: {e}")
+
         # set up the survey schedule. init it as self.schedule, but later self.schedule will switch if there's a TOO
         # self.surveySchedule = schedule.Schedule(base_directory = self.base_directory, config = self.config, logger = self.logger)
 
@@ -441,6 +513,22 @@ class RoboOperator(QtCore.QObject):
         self.updateThread = data_handler.daq_loop(
             func=self.update_state, dt=500, name="robo_status_update"
         )
+
+        # If wsp starts with M3 between ports, the initial switchCamera
+        # below will raise on its stow check (port not in [1, 2] →
+        # _rotator_is_stowed_on_current_port returns False). Try to
+        # recover M3 to a known port first; if recovery fails the
+        # switchCamera below will surface the issue, and the
+        # AttributeError protection earlier in __init__ keeps the
+        # downstream observation code from blowing up.
+        try:
+            self.recover_m3_to_valid_port_if_needed()
+        except Exception as e:
+            self.log(
+                f"roboOperator: M3 recovery during __init__ failed: "
+                f"{type(e).__name__}: {e}. Continuing — switchCamera "
+                f"below will see the bad state and raise."
+            )
 
         # change the camera to the specified camera for the darks
         try:
@@ -594,21 +682,268 @@ class RoboOperator(QtCore.QObject):
         )
         self.running = False
 
+    def _rotator_is_stowed_on_current_port(self, tolerance_deg=1.0):
+        """
+        True iff M3 is at a valid port (1 or 2), the rotator is not slewing,
+        and the rotator mech position is within ``tolerance_deg`` of the
+        configured home angle for the current port. Used to enforce the
+        contract that the rotator must be stowed before M3 moves, and to
+        decide whether it's safe to issue rotator commands.
+        """
+        if self.mountsim:
+            return True
+        port = self.telescope.port
+        if port not in [1, 2]:
+            return False
+        if self.state.get("rotator_is_slewing", True):
+            return False
+        try:
+            home_deg = self.config["telescope"]["ports"][port]["rotator"]["home_degs"]
+        except (KeyError, TypeError):
+            return False
+        pos = self.state.get("rotator_mech_position")
+        if pos is None:
+            return False
+        delta = abs(pos - home_deg)
+        wrapped_delta = min(360 - delta, delta)
+        return wrapped_delta < tolerance_deg
+
+    def _rotator_position_outside_allowed_limits(self):
+        """
+        True iff the rotator on the current port is at a mech position
+        outside its configured min_degs/max_degs envelope. Strong signal
+        that the rotator is physically wedged (the telescope wrap
+        protection will refuse to drive it back in, the only fix is
+        manual). switchCamera uses this as an immediate-lockout trigger
+        when the leaving-stow check fails — no need to wait for N
+        consecutive failures to accumulate.
+        """
+        if self.mountsim:
+            return False
+        port = self.telescope.port
+        if port not in [1, 2]:
+            return False
+        try:
+            min_degs = self.config["telescope"]["ports"][port]["rotator"]["min_degs"]
+            max_degs = self.config["telescope"]["ports"][port]["rotator"]["max_degs"]
+        except (KeyError, TypeError):
+            return False
+        pos = self.state.get("rotator_mech_position")
+        if pos is None:
+            return False
+        return pos < min_degs or pos > max_degs
+
+    def _camera_is_locked_out(self, camname):
+        """True iff the M3 port for ``camname`` is in self._locked_out_ports."""
+        try:
+            port = self.camera_manager.get_port_for_camera(camname)
+        except Exception:
+            return False
+        return port in self._locked_out_ports
+
+    def _select_camera_no_hardware(self, camname):
+        """
+        Point self.camera / self.fw / self.camname at ``camname`` WITHOUT
+        touching any hardware (no M3, rotator, focuser, or pointing-model
+        moves). Only for port-independent sequences like darks, where the
+        camera daemon does all the work and it doesn't matter which port
+        M3 is aimed at.
+
+        WARNING: this deliberately breaks the invariant that self.camname
+        matches the camera on the active M3 port. The caller MUST restore
+        the previous (camera, fw, camname) references when the sequence
+        finishes — a stale mismatch here is exactly what caused the
+        2026-07-21 shutter_open desync and the 2026-07-23 focus churn.
+        """
+        if camname not in self.camdict:
+            raise KeyError(
+                f"camera '{camname}' is not valid. "
+                f"Available cameras: {list(self.camdict.keys())}"
+            )
+        self.camera = self.camdict[camname]
+        self.fw = self.fwdict.get(camname, None)
+        self.camname = camname
+        self.log(
+            f"selected camera {camname} in software only "
+            f"(no M3/rotator/focuser moves; M3 stays on port "
+            f"{self.telescope.port})"
+        )
+
+    def _get_observable_cameras(self):
+        """
+        Camera names (lowercase) that scheduled targets may currently use:
+        listed in config active_cameras AND not on a locked-out M3 port.
+        Target selection ignores rows for any other camera.
+        """
+        try:
+            active = list(self.camera_manager.get_active_cameras())
+        except Exception:
+            active = ["winter"]
+        return [
+            str(c).lower() for c in active if not self._camera_is_locked_out(c)
+        ]
+
+    def _cmd_targets_locked_out_port(self, cmd):
+        """
+        True iff a cal/observation command string targets a camera whose
+        M3 port is locked out. Detects ``--<camera>`` tokens for any
+        camera the camera_manager knows about.
+
+        Darks are exempt: they don't need light through the telescope,
+        so they run fine with M3 parked on any port (do_darks falls back
+        to a software-only camera selection when the switch can't
+        happen).
+        """
+        if not self._locked_out_ports:
+            return False
+        tokens = cmd.split()
+        if tokens and tokens[0] == "robo_do_darks":
+            return False
+        try:
+            active_cams = list(self.camera_manager.get_active_cameras())
+        except Exception:
+            return False
+        for cam in active_cams:
+            if f"--{cam}" in tokens and self._camera_is_locked_out(cam):
+                self.log(
+                    f":lock: cmd '{cmd}' targets camera {cam} on locked-out "
+                    f"port; skipping"
+                )
+                return True
+        return False
+
+    def recover_m3_to_valid_port_if_needed(self, target_port=None):
+        """
+        Ensure M3 is at a known port (1 or 2). If not, issue m3_goto to
+        nudge it to a known port and verify the result.
+
+        Idempotent: if M3 is already at a valid port, returns
+        immediately without side effects. Safe to call multiple times.
+
+        Args:
+            target_port: int or None. The port to recover to. If None,
+                         uses the port for ``self.camname``; falls back
+                         to port 1 (winter) if the camera_manager can't
+                         resolve.
+
+        Raises:
+            RuntimeError: if m3_goto raises, OR if M3 is still not at a
+                valid port after the m3_goto returned. Either case also
+                increments the ``target_port``'s entry in
+                ``_port_rotator_failure_count`` and triggers a port
+                lockout once the counter reaches
+                ``port_rotator_lockout_failures`` (same mechanism used
+                by switchCamera's rotator-stow failures, so M3 failures
+                and rotator-stow failures both count toward the same
+                cap).
+        """
+        if self.mountsim:
+            return
+        current_port = self.telescope.port
+        if current_port in [1, 2]:
+            return  # nothing to do
+
+        if target_port is None:
+            try:
+                target_port = self.camera_manager.get_port_for_camera(self.camname)
+            except Exception:
+                target_port = 1
+
+        self.announce(
+            f":warning: M3 is between ports (port={current_port}). "
+            f"Attempting auto-recovery to port {target_port} via "
+            f"m3_goto..."
+        )
+        try:
+            self.do(f"m3_goto {target_port}")
+        except Exception as e:
+            self._register_m3_recovery_failure(target_port)
+            msg = (
+                f"M3 recovery failed: m3_goto {target_port} raised "
+                f"{type(e).__name__}: {e}"
+            )
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            raise RuntimeError(msg) from e
+
+        if self.telescope.port not in [1, 2]:
+            self._register_m3_recovery_failure(target_port)
+            msg = (
+                f"M3 recovery failed: still at port "
+                f"{self.telescope.port} after m3_goto {target_port}"
+            )
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            raise RuntimeError(msg)
+
+        self.announce(
+            f":greentick: M3 recovery successful, now at port " f"{self.telescope.port}"
+        )
+
+    def _register_m3_recovery_failure(self, target_port):
+        """
+        Bump the per-port failure counter when an M3 recovery attempt
+        fails for ``target_port``. Folded into the same counter used by
+        the switchCamera arrival stow check, so 3 mixed failures
+        (rotator-stow + m3_goto) also lock out the port.
+        """
+        self._port_rotator_failure_count[target_port] = (
+            self._port_rotator_failure_count.get(target_port, 0) + 1
+        )
+        count = self._port_rotator_failure_count[target_port]
+        max_failures = self.config.get("port_rotator_lockout_failures", 3)
+        if count >= max_failures and target_port not in self._locked_out_ports:
+            self._locked_out_ports.add(target_port)
+            self.announce(
+                f":lock: locking out port {target_port} after {count} "
+                f"consecutive M3-recovery / rotator-stow failures. "
+                f"Future cals/focus/observations targeting cameras on "
+                f"this port will be skipped for the rest of this "
+                f"session. Restart wsp to clear after resolving the "
+                f"underlying hardware issue."
+            )
+
     def rotator_stop_and_reset(self):
         if self.mountsim:
             return
 
-        self.log(f"stopping rotator and resetting to home position")
-        # if the rotator is on do this:
-        self.log(f'rotator_is_enabled = {self.state["rotator_is_enabled"]}')
-        if self.state["rotator_is_enabled"]:
-            # stop the rotator
-            self.doTry("rotator_stop")
-            # turn off tracking
-            self.doTry("mount_tracking_off")
-            self.doTry("rotator_home")
-            # turn on wrap check again
-            self.doTry("rotator_wrap_check_enable")
+        # If M3 is mid-transition between ports, rotator commands target an
+        # undefined rotator. Skip the cleanup rather than issue commands with
+        # ambiguous effect; whoever called us will see no recovery, but that's
+        # safer than poking the wrong rotator.
+        port = self.telescope.port
+        if port not in [1, 2]:
+            self.log(
+                f"rotator_stop_and_reset: M3 not at a valid port (port={port}), "
+                f"skipping rotator cleanup to avoid undefined behavior"
+            )
+            return
+
+        # Reentrancy guard. doTry inside this method emits hardware_error on
+        # failure, which DirectConnection-dispatches into broadcast_hardware_error,
+        # which calls us again. Without this guard, one failing rotator_home
+        # produces a stack of nested cleanups (~30s each).
+        if self._in_rotator_stop_and_reset:
+            self.log(
+                "rotator_stop_and_reset: reentrant call suppressed "
+                "(hardware error during cleanup, not retrying further)"
+            )
+            return
+        self._in_rotator_stop_and_reset = True
+        try:
+            self.log(f"stopping rotator and resetting to home position")
+            # if the rotator is on do this:
+            self.log(f'rotator_is_enabled = {self.state["rotator_is_enabled"]}')
+            if self.state["rotator_is_enabled"]:
+                # stop the rotator
+                self.doTry("rotator_stop")
+                # turn off tracking
+                self.doTry("mount_tracking_off")
+                self.doTry("rotator_home")
+                # turn on wrap check again
+                self.doTry("rotator_wrap_check_enable")
+        finally:
+            self._in_rotator_stop_and_reset = False
 
     def toggle_autostart_override(self, state: bool):
         """
@@ -690,8 +1025,81 @@ class RoboOperator(QtCore.QObject):
             msg = f"rotator already on port {port}, doing nothing"
             self.log(msg)
             return
-        else:
-            self.do(f"m3_goto {port}")
+
+        # Defensive precondition: M3 must not move unless the rotator on
+        # the port we are *leaving* is stowed — UNLESS that port is
+        # already locked out, in which case we allow M3 to escape it
+        # even with the rotator unstowed (the port is wedged and that's
+        # the whole point of the lockout). switchCamera does the
+        # detection / dire-warning announce; this is just the
+        # "if locked out, let M3 dispatch" companion check.
+        if not self._rotator_is_stowed_on_current_port():
+            current_port = self.telescope.port
+            if current_port in self._locked_out_ports:
+                pos = self.state.get("rotator_mech_position", "?")
+                self.log(
+                    f"switchPort: force-leaving locked-out port "
+                    f"{current_port} (rotator at {pos}°, NOT stowed). "
+                    f"Dispatching m3_goto {port}."
+                )
+            else:
+                try:
+                    home_deg = self.config["telescope"]["ports"][current_port][
+                        "rotator"
+                    ]["home_degs"]
+                except (KeyError, TypeError):
+                    home_deg = "?"
+                pos = self.state.get("rotator_mech_position", "?")
+                slewing = self.state.get("rotator_is_slewing", "?")
+                msg = (
+                    f"refusing to switch M3 to port {port}: rotator on port "
+                    f"{current_port} is not stowed "
+                    f"(position={pos}, home={home_deg}, slewing={slewing}). "
+                    f"Aborting to keep M3 from moving with rotator in an "
+                    f"unsafe state."
+                )
+                self.log(msg)
+                self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+                raise RuntimeError(msg)
+
+        # PWI4 sometimes accepts /m3/goto (HTTP OK) but never moves M3 —
+        # 20260723: three back-to-back identical requests, two silently
+        # ignored, third moved normally. Since an identical retry is
+        # empirically all it takes, retry in place here rather than
+        # failing the whole camera switch and letting the caller churn
+        # through schedule targets (~90 s of preamble + reload per retry
+        # that way).
+        max_attempts = self.config.get("m3_goto_attempts", 3)
+        for attempt in range(1, max_attempts + 1):
+            # Snapshot the axis state at each dispatch so an ignored
+            # request and an honored one can be diffed in the log while
+            # we hunt the PWI4-side cause.
+            self.log(
+                f"dispatching m3_goto {port} (attempt {attempt}/{max_attempts}): "
+                f"rotator_is_moving={self.state.get('rotator_is_moving')}, "
+                f"rotator_is_slewing={self.state.get('rotator_is_slewing')}, "
+                f"rotator_is_enabled={self.state.get('rotator_is_enabled')}, "
+                f"rotator_mech_position={self.state.get('rotator_mech_position')}, "
+                f"mount_is_tracking={self.state.get('mount_is_tracking')}"
+            )
+            try:
+                self.do(f"m3_goto {port}")
+                break
+            except TimeoutError:
+                if attempt >= max_attempts:
+                    self.log(
+                        f"m3_goto {port} still ignored after {max_attempts} "
+                        f"attempts, giving up"
+                    )
+                    raise
+                self.log(
+                    f"m3_goto {port} attempt {attempt}/{max_attempts} timed "
+                    f"out with M3 still at port {self.telescope.port} — "
+                    f"probably the silent PWI4 no-move failure; retrying"
+                )
+                time.sleep(
+                    self.config.get("rotator_settle_seconds_before_m3", 1.0)
+                )
         msg = f"switched rotator to port {port}"
 
         # if that worked then update the self.port attribute
@@ -706,7 +1114,10 @@ class RoboOperator(QtCore.QObject):
 
         Raises:
             KeyError: if camname not in camdict
-            Exception: if port switching or model loading fails
+            RuntimeError: if target port is locked out, if the current
+                port's rotator can't be verified stowed before M3 moves,
+                or if the destination port's rotator doesn't reach home
+                after M3 settles.
         """
         self.log(f"got command to switch camera to {camname}")
         # Validate the camera name first
@@ -715,21 +1126,240 @@ class RoboOperator(QtCore.QObject):
             self.log(msg)
             raise KeyError(msg)
 
+        # Bail out early if the destination port is locked out (rotator
+        # has been jammed for too many consecutive switch attempts). This
+        # keeps the night moving on the other camera instead of looping
+        # through do_startup → switchCamera → fail every 30 s.
+        target_port = self.camera_manager.get_port_for_camera(camname)
+        if target_port in self._locked_out_ports:
+            msg = (
+                f"refusing to switch camera to {camname}: port {target_port} "
+                f"is locked out (rotator failed to stow on arrival too many "
+                f"times this session). Resolve manually and restart wsp."
+            )
+            self.log(msg)
+            raise RuntimeError(msg)
+
+        # Recovery: if M3 is currently between ports, nudge it to the
+        # target port directly so the leaving-port stow logic below can
+        # reason about a defined rotator. The helper is a no-op when M3
+        # is already at a valid port, and folds m3_goto failures into
+        # the same port lockout counter that the arrival stow check
+        # uses, so a hard-stuck M3 also gets locked out after N tries.
+        self.recover_m3_to_valid_port_if_needed(target_port=target_port)
+
         camera = self.camdict[camname]
         fw = self.fwdict.get(camname, None)
 
         # Home and stow the rotator on the port we are *leaving*
         self.doTry("rotator_enable")
         self.doTry("rotator_home")
+
+        # Enforce the contract: M3 must not move unless the rotator on the
+        # current port is safely stowed — UNLESS the current port is
+        # already locked out, or we've just discovered the rotator is
+        # outside its allowed mechanical limits (i.e. physically wedged
+        # and can't be brought back by software). In either of those
+        # cases we FORCE the leave — abandoning a locked-out port is
+        # safer than getting permanently stuck on it.
+        force_leave = False
+        if not self._rotator_is_stowed_on_current_port():
+            current_port = self.telescope.port
+            try:
+                home_deg = self.config["telescope"]["ports"][current_port]["rotator"][
+                    "home_degs"
+                ]
+            except (KeyError, TypeError):
+                home_deg = "?"
+            pos = self.state.get("rotator_mech_position", "?")
+            slewing = self.state.get("rotator_is_slewing", "?")
+
+            if current_port in self._locked_out_ports:
+                # Port already known to be dead → just escape.
+                self.announce(
+                    f":rotating_light: *FORCE-LEAVING locked-out port "
+                    f"{current_port}*. Rotator NOT stowed "
+                    f"(position={pos}, home={home_deg}, slewing={slewing}) "
+                    f"and cannot be recovered automatically. Moving M3 "
+                    f"to port {target_port} to keep the night going. "
+                    f"Manual intervention required to clear port "
+                    f"{current_port}."
+                )
+                force_leave = True
+            elif self._rotator_position_outside_allowed_limits():
+                # First-time detection of wedged rotator → lock out
+                # immediately AND force-leave on this same attempt.
+                self._locked_out_ports.add(current_port)
+                self.announce(
+                    f":rotating_light: *PORT {current_port} LOCKED OUT* "
+                    f"— rotator position {pos}° is outside its allowed "
+                    f"limits (home={home_deg}, slewing={slewing}). The "
+                    f"rotator is wedged and cannot be moved by software; "
+                    f"wrap protection will reject any drive command. "
+                    f"FORCE-LEAVING to port {target_port}. Future cals / "
+                    f"focus / observations targeting cameras on port "
+                    f"{current_port} will be skipped. Manual intervention "
+                    f"required to clear the lockout."
+                )
+                force_leave = True
+            else:
+                # Count the leaving-stow failure into the same lockout
+                # counter used by arrival-stow and m3_goto recovery.
+                # After N consecutive failures we lock out on the
+                # *next* attempt, which will then take the force-leave
+                # path above.
+                self._port_rotator_failure_count[current_port] = (
+                    self._port_rotator_failure_count.get(current_port, 0) + 1
+                )
+                count = self._port_rotator_failure_count[current_port]
+                max_failures = self.config.get("port_rotator_lockout_failures", 3)
+                if count >= max_failures and current_port not in self._locked_out_ports:
+                    self._locked_out_ports.add(current_port)
+                    self.announce(
+                        f":rotating_light: *PORT {current_port} LOCKED OUT* "
+                        f"after {count} consecutive leaving-stow failures. "
+                        f"Future cals / focus / observations targeting "
+                        f"cameras on this port will be skipped. The next "
+                        f"switchCamera call will force M3 away from this "
+                        f"port even with the rotator unstowed. Manual "
+                        f"intervention required to clear the lockout."
+                    )
+                msg = (
+                    f"refusing to switch camera to {camname}: rotator on "
+                    f"port {current_port} is not stowed "
+                    f"(position={pos}, home={home_deg}, slewing={slewing}). "
+                    f"Failure {count}/{max_failures} for port "
+                    f"{current_port}."
+                )
+                self.log(msg)
+                self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+                raise RuntimeError(msg)
+
+        # Halt any motion sources before M3 leaves this port: kill mount
+        # tracking first (so nothing keeps re-driving the field), then
+        # stop the rotator's position-target loop. Skipped in the
+        # force-leave path: the rotator is already wedged and
+        # unresponsive, no point in waiting on rotator_stop.
+        if not force_leave:
+            self.doTry("mount_tracking_off")
+            self.doTry("rotator_stop")
+
+        # NOTE: leave the rotator ENABLED across the M3 move. We tried
+        # disabling it here (commit 6fb00f37) on the theory that
+        # de-energizing the motor would prevent a residual PID loop from
+        # acting on the destination rotator after M3 hand-over. In
+        # practice, the rotator (at least on port 2) doesn't hold
+        # position when its motor is de-energized — it slumped from
+        # 65° to ~73° in the 4 s between disable and switchPort, which
+        # the post-disable defensive stow check then correctly refused.
+        # Keeping the motor energized lets the PID hold the rotator at
+        # the home angle through the M3 move. The pre-existing
+        # commented-out rotator_disable in this method was commented
+        # out FOR THIS REASON; restoring that comment.
         # self.doTry("rotator_disable")
 
-        # Switch to the corresponding port (this can raise exceptions)
-        port = self.camera_manager.get_port_for_camera(camname)
+        # Settling pause before M3 starts moving. Lets the PID loop
+        # fully stabilize at the home angle and any in-flight telemetry
+        # update finish landing before electrical hand-over to the
+        # destination rotator. Skipped in the force-leave path —
+        # there's nothing to settle, the rotator is already stuck.
+        if not force_leave:
+            # NOTE: the rotator_stop above blocks until the rotator
+            # confirms rotator_is_moving = False (verified in the
+            # wintercmd rotator_stop command itself), so by here the
+            # rotator is genuinely stopped — this settle is purely the
+            # post-stop quiet period PWI4 seems to need before it will
+            # honor an M3 move.
+            settle = self.config.get("rotator_settle_seconds_before_m3", 1.0)
+            self.log(f"settling {settle} s after rotator_stop before M3 move")
+            time.sleep(settle)
+
+        # Switch to the corresponding port. switchPort's own stow check
+        # also recognizes the force_leave path via _locked_out_ports
+        # (see that method for the matching guard).
+        port = target_port
         self.switchPort(port)
+
+        # Settling pause after M3 settles, before we issue any rotator
+        # commands on the new port. Gives the destination port's
+        # electrical state a moment to stabilize after the connection
+        # is made.
+        time.sleep(self.config.get("rotator_settle_seconds_after_m3", 1.0))
+
+        # Diagnostic: log the destination rotator's position as soon as
+        # we can read it. In steady-state operation — after each port
+        # has been powered on at least once this session — the previous
+        # switchCamera that LEFT this port should have stowed it, so we
+        # expect to find it already at home. A warning here flags an
+        # anomaly worth investigating (silent stow failure last time,
+        # manual movement, rotator slump after disable, ...). It does
+        # NOT abort the switch; rotator_home below will try to bring
+        # the rotator back to home, and the post-arrival stow check
+        # will catch the case where that also fails.
+        if not self._rotator_is_stowed_on_current_port():
+            try:
+                home_deg = self.config["telescope"]["ports"][port]["rotator"][
+                    "home_degs"
+                ]
+            except (KeyError, TypeError):
+                home_deg = "?"
+            pos = self.state.get("rotator_mech_position", "?")
+            self.announce(
+                f":warning: arrived on port {port}, but rotator is NOT "
+                f"at home (position={pos}, home={home_deg}). After both "
+                f"ports have been powered on once this session this "
+                f"should not happen — investigate prior stow / a slump "
+                f"after disable / manual movement. Attempting to home now."
+            )
 
         # Enable and home the rotator on the port we are *entering*
         self.doTry("rotator_enable")
         self.doTry("rotator_home")
+
+        # Verify the destination rotator actually reached home. The
+        # doTry's above swallow TimeoutError, so a jammed rotator on the
+        # new port (e.g. left at a bad angle by a previous interaction,
+        # disabled by wrap protection during M3 transit, telescope
+        # refusing to re-enable it, ...) would silently sail through and
+        # we'd march into observations with an unusable rotator.
+        if not self._rotator_is_stowed_on_current_port():
+            try:
+                home_deg = self.config["telescope"]["ports"][port]["rotator"][
+                    "home_degs"
+                ]
+            except (KeyError, TypeError):
+                home_deg = "?"
+            pos = self.state.get("rotator_mech_position", "?")
+            slewing = self.state.get("rotator_is_slewing", "?")
+            # Count this as a failure; lock out the port after N strikes.
+            self._port_rotator_failure_count[port] = (
+                self._port_rotator_failure_count.get(port, 0) + 1
+            )
+            max_failures = self.config.get("port_rotator_lockout_failures", 3)
+            count = self._port_rotator_failure_count[port]
+            if count >= max_failures and port not in self._locked_out_ports:
+                self._locked_out_ports.add(port)
+                self.announce(
+                    f":lock: locking out port {port} after {count} "
+                    f"consecutive rotator-stow failures on arrival. "
+                    f"Future cals/focus/observations targeting cameras on "
+                    f"this port will be skipped for the rest of this "
+                    f"session — operate the other camera and resolve the "
+                    f"jam manually, then restart wsp to clear the lockout."
+                )
+            msg = (
+                f"rotator on port {port} did not reach home after M3 "
+                f"settled (position={pos}, home={home_deg}, "
+                f"slewing={slewing}). Failure {count}/{max_failures} for "
+                f"port {port}."
+            )
+            self.log(msg)
+            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
+            raise RuntimeError(msg)
+        else:
+            # Successful arrival — clear the consecutive-failure counter
+            # (lockout, if already set, persists; that requires restart).
+            self._port_rotator_failure_count[port] = 0
 
         # Set the focuser to the corresponding camera's focus position
         camera_focus = self.focusTracker.get_best_focus(camera=camname)
@@ -929,6 +1559,23 @@ class RoboOperator(QtCore.QObject):
             checkWhatToDo will be rerun after the wait. This sets up looping events where this code will continue
             to flow as necessary, without firing at unwanted times.
         """
+        # Reentrancy guard. See _check_in_progress comment in __init__ for why.
+        # If a reentrant call arrives (almost always from the checktimer firing
+        # inside a blocking command's processEvents loop), drop it: the outer
+        # call will start checktimer again before it returns, so the next pass
+        # will happen on schedule without two copies of this method racing.
+        if self._check_in_progress:
+            self.log(
+                "checkWhatToDo: reentrant call suppressed (outer call still running)"
+            )
+            return
+        self._check_in_progress = True
+        try:
+            self._checkWhatToDo_body()
+        finally:
+            self._check_in_progress = False
+
+    def _checkWhatToDo_body(self):
         self.log("checking what to do!")
         if self.running:
             self.log("robo operator is running")
@@ -1118,6 +1765,14 @@ class RoboOperator(QtCore.QObject):
                                 sun_rising=self.state["sun_rising"],
                             )
 
+                            # Filter out cals that target a locked-out port.
+                            # See _locked_out_ports notes in __init__.
+                            cals_to_do = [
+                                (desc, cmd)
+                                for (desc, cmd) in cals_to_do
+                                if not self._cmd_targets_locked_out_port(cmd)
+                            ]
+
                             # announce that we're going to dispatch the first cal to do:
                             if len(cals_to_do) > 0:
                                 # announce the list of cals to do:
@@ -1193,8 +1848,18 @@ class RoboOperator(QtCore.QObject):
                                 self.log(f"need to start up observatory")
                                 # we need to (re)run do_startup
                                 self.do_startup()
-                                # after running do_startup, kick back to the top of the loop
+                                # Kick back to the top of the loop: return now
+                                # and let the 30s checktimer re-enter us. Without
+                                # the return, the body falls through into dome /
+                                # focus / load / do_currentObs, AND the timer
+                                # arms a 30s deadline that fires partway through
+                                # do_currentObs (caught by the reentrancy guard
+                                # in checkWhatToDo, but a waste of a slot).
+                                # Returning also gives systems a moment to
+                                # settle after startup before we attempt to use
+                                # them.
                                 self.checktimer.start()
+                                return
                             # ---------------------------------------------------------------------
                             # check the dome
                             # ---------------------------------------------------------------------
@@ -1296,15 +1961,36 @@ class RoboOperator(QtCore.QObject):
                                 #        cam=self.camname,
                                 #    )
                                 # )
-                                cameras_to_focus = self.focusTracker.getCamerasToFocus(
-                                    obs_timestamp=obstime_timestamp_utc,
-                                    graceperiod_hours=self.config["focus_loop_param"][
-                                        "focus_graceperiod_hours"
-                                    ],
-                                    max_attempts=self.config["focus_loop_param"].get(
-                                        "max_focus_attempts", 3
-                                    ),
-                                )
+                                if self.focus_loop_in_progress:
+                                    # a focus loop is mid-flight (e.g. a
+                                    # manually commanded one on another
+                                    # thread): starting a focus sequence now
+                                    # would switch cameras out from under it
+                                    self.log(
+                                        "a focus loop is already in progress; skipping autofocus check"
+                                    )
+                                    cameras_to_focus = None
+                                else:
+                                    cameras_to_focus = self.focusTracker.getCamerasToFocus(
+                                        obs_timestamp=obstime_timestamp_utc,
+                                        graceperiod_hours=self.config[
+                                            "focus_loop_param"
+                                        ]["focus_graceperiod_hours"],
+                                        max_attempts=self.config[
+                                            "focus_loop_param"
+                                        ].get("max_focus_attempts", 3),
+                                    )
+
+                                # Skip cameras on locked-out ports — a focus
+                                # loop on a jammed-rotator port will only
+                                # fail and burn time. focusTracker can
+                                # return None (vs. []) when nothing needs
+                                # focusing, so coalesce that case here.
+                                cameras_to_focus = [
+                                    c
+                                    for c in (cameras_to_focus or [])
+                                    if not self._camera_is_locked_out(c)
+                                ]
 
                                 if cameras_to_focus:
                                     self.log(
@@ -1436,21 +2122,65 @@ class RoboOperator(QtCore.QObject):
                                     # for now, still logging the observation first.
                                     # next step is to move it to after.
 
-                                    self.schedule.log_observation()
+                                    # Defensive: -1 is the codebase's "no observation"
+                                    # sentinel (see resetObsValues). A real scheduled
+                                    # observation always has a positive obsHistID from
+                                    # the schedule DB. If we see -1 here it means
+                                    # something corrupted currentObs (historically:
+                                    # reentrancy clobbering state mid-flight). Skip
+                                    # with the full checktimer cooldown so we don't
+                                    # hot-loop on a stuck placeholder.
+                                    currentObs = self.schedule.currentObs
+                                    if currentObs.get("obsHistID", -1) == -1:
+                                        self.announce(
+                                            f"robo: schedule returned a placeholder "
+                                            f"observation (obsHistID="
+                                            f"{currentObs.get('obsHistID', -1)}, "
+                                            f"raDeg={currentObs.get('raDeg', '?')}). "
+                                            f"Skipping and waiting full cooldown."
+                                        )
+                                        self.checktimer.start()
+                                        return
 
-                                    self.do_currentObs(self.schedule.currentObs)
+                                    # Register this load as an attempt BEFORE
+                                    # do_currentObs runs. Even if the call below
+                                    # aborts immediately (bad config, hardware
+                                    # snag, etc), we want it counted so the
+                                    # max_observation_attempts cap kicks in
+                                    # rather than re-loading the same broken row
+                                    # every iteration.
+                                    self.schedule.log_attempt()
+
+                                    obs_fully_completed = self.do_currentObs(
+                                        self.schedule.currentObs
+                                    )
+
+                                    # Only flip observed=1 when the observation
+                                    # actually ran end-to-end. Partial/aborted
+                                    # observations stay observed=0 so they can
+                                    # be retried up to max_observation_attempts.
+                                    if obs_fully_completed:
+                                        self.schedule.log_observation()
 
                                     # if we get here, then the observation is complete, either bc it's done or there was an error
 
-                                    # now immediatly check what we should do now (eg don't wait)
-                                    self.checkWhatToDo()
+                                    # Re-check what to do immediately. Don't call
+                                    # self.checkWhatToDo() directly: we're still
+                                    # inside the outer call so the reentrancy guard
+                                    # would drop the call and the loop would die.
+                                    # Use a fresh QTimer.singleShot rather than
+                                    # self.checktimer.start(0) — start(0) permanently
+                                    # sets the shared timer's interval to 0, which
+                                    # then makes every later no-arg checktimer.start()
+                                    # fire immediately and produces a tight loop.
+                                    QtCore.QTimer.singleShot(0, self.checkWhatToDo)
+                                    return
 
                             else:
                                 # if we are here then the sun is not low enough to observe, stand by
                                 self.checktimer.start()
                                 return
 
-                            pass
                         else:
 
                             # camera is not ready but autostart has been requested. stand by
@@ -1571,6 +2301,97 @@ class RoboOperator(QtCore.QObject):
             #     self.checktimer.start()
             #     return
 
+    def _get_too_schedule_directory(self):
+        return os.path.join(
+            os.getenv("HOME", ""), self.config["scheduleFile_ToO_directory"]
+        )
+
+    def _get_too_df(self, too_file):
+        """
+        Return the parsed & schema-validated summary dataframe for a ToO
+        schedule file, or None if the file can't be read or fails schema
+        validation.
+
+        Results are cached keyed on the file's (mtime, size): each file is
+        parsed once (primed at wsp startup) and re-parsed only when it
+        changes on disk. That includes our own writes — log_attempt /
+        log_observation UPDATE the active schedule file after every attempt,
+        which bumps its mtime and forces a re-read here, so the
+        observed/attempts cuts never operate on stale values. It also means
+        schedules can be hand-edited (or new files dropped in) mid-night
+        with no wsp restart. The stat is taken BEFORE parsing so an edit
+        landing during the parse costs one extra re-parse on the next scan
+        rather than ever serving stale data.
+
+        Schema-invalid files are cached as None and skipped (silently) until
+        the file is modified. Transient read errors are NOT cached, so e.g.
+        a file that is sqlite-locked mid-write gets retried on the next scan.
+        """
+        try:
+            st = os.stat(too_file)
+            stamp = (st.st_mtime, st.st_size)
+        except OSError as e:
+            self.log(f"could not stat ToO schedule {too_file}: {e}")
+            return None
+
+        entry = self._too_schedule_cache.get(too_file)
+        if entry is not None and entry["stamp"] == stamp:
+            return entry["df"]
+
+        self.log(f"parsing new/changed ToO schedule file: {too_file}")
+        try:
+            engine = db.create_engine("sqlite:///" + too_file)
+            conn = engine.connect()
+            # Ensure 'attempts' column exists in this ToO file before the
+            # read, so the attempts cut has it. Idempotent. (On first
+            # contact this writes to the file, bumping its mtime and
+            # costing one extra re-parse on the next scan. Harmless.)
+            ensure_attempts_column(conn, log=self.log)
+            df = pd.read_sql("SELECT * FROM summary;", conn)
+            conn.close()
+
+            # if targname not in the df, add in a default
+            if "targName" not in df:
+                df["targName"] = ""
+            df["origin_filepath"] = too_file
+            df["origin_filename"] = os.path.basename(too_file)
+
+            ### check to make sure the schema are correct
+            wintertoo_validate.validate_schedule_df(df)
+
+        except wintertoo_validate.RequestValidationError:
+            self.log(traceback.format_exc())
+            self.log(
+                f"ToO schedule {os.path.basename(too_file)} failed schema "
+                f"validation: ignoring it until the file is modified"
+            )
+            df = None
+        except Exception as e:
+            # transient error (eg db locked by a concurrent writer): don't
+            # cache, just skip this scan and retry next time
+            self.log(f"could not parse ToO schedule {too_file}: {e}")
+            self.log(traceback.format_exc())
+            return None
+
+        self._too_schedule_cache[too_file] = {"stamp": stamp, "df": df}
+        return df
+
+    def _prime_too_schedule_cache(self):
+        """
+        Parse & schema-validate every ToO schedule file once, at wsp
+        startup, so the night-time scans in load_best_observing_target only
+        pay for new/changed files.
+        """
+        ToOscheduleFiles = glob.glob(
+            os.path.join(self._get_too_schedule_directory(), "*.db")
+        )
+        self.log(
+            f"priming ToO schedule cache with {len(ToOscheduleFiles)} files "
+            f"from {self._get_too_schedule_directory()}"
+        )
+        for too_file in ToOscheduleFiles:
+            self._get_too_df(too_file)
+
     def load_best_observing_target(self, obstime_mjd):
         """
         query all available schedules (survey + any schedules in the TOO folder),
@@ -1583,87 +2404,117 @@ class RoboOperator(QtCore.QObject):
             obstime_mjd = float(astropy.time.Time(datetime.utcnow()).mjd)
 
         # get all the files in the ToO High Priority folder
-        ToO_schedule_directory = os.path.join(
-            os.getenv("HOME"), self.config["scheduleFile_ToO_directory"]
+        ToOscheduleFiles = glob.glob(
+            os.path.join(self._get_too_schedule_directory(), "*.db")
         )
-        ToOscheduleFiles = glob.glob(os.path.join(ToO_schedule_directory, "*.db"))
 
-        self.log(f"found these schedule files in the TOO directory: {ToOscheduleFiles}")
-        self.log(f"analyzing schedules...")
+        self.log(
+            f"found {len(ToOscheduleFiles)} schedule files in the TOO directory"
+        )
+
+        # prune cache entries for files that have been deleted from the folder
+        for cached_path in list(self._too_schedule_cache.keys()):
+            if cached_path not in ToOscheduleFiles:
+                self._too_schedule_cache.pop(cached_path)
 
         if len(ToOscheduleFiles) > 0:
+            self.log(f"analyzing schedules at obstime_mjd = {obstime_mjd}...")
+
+            observable_cams = self._get_observable_cameras()
+            max_attempts = self.config.get("max_observation_attempts", 2)
+
+            obstime_astropy = astropy.time.Time(obstime_mjd, format="mjd")
+            frame = astropy.coordinates.AltAz(
+                obstime=obstime_astropy, location=self.ephem.site
+            )
+            # The ephemeris body positions depend only on the obstime and
+            # the site, not on the targets: compute them once per scan
+            # instead of once per schedule file (get_body is one of the
+            # most expensive calls in this routine).
+            body_positions = []
+            for body, mindist in self.config["ephem"][
+                "min_target_separation"
+            ].items():
+                body_coords = astropy.coordinates.get_body(
+                    body, time=obstime_astropy, location=self.ephem.site
+                ).transform_to(frame)
+                body_positions.append(
+                    (body_coords.alt.deg, body_coords.az.deg, mindist)
+                )
+
             # bundle up all the schedule files in a single pandas dataframe
             full_df = pd.DataFrame()
             # add all the ToOs
             for too_file in ToOscheduleFiles:
+                too_name = os.path.basename(too_file)
                 try:
-                    ### try to read in the SQL file
-                    self.log(f"validating too_file = {too_file}")
-                    engine = db.create_engine("sqlite:///" + too_file)
-                    conn = engine.connect()
-                    df = pd.read_sql("SELECT * FROM summary;", conn)
+                    # cached parse + schema validation: only new/changed
+                    # files are actually re-read from disk (see _get_too_df)
+                    cached_df = self._get_too_df(too_file)
+                    if cached_df is None or len(cached_df) == 0:
+                        continue
+                    # work on a copy so the cuts below never touch the cache
+                    df = cached_df.copy()
 
-                    # if targname not in the df, add in a default
-                    if "targName" not in df:
-                        df["targName"] = ""
+                    n_total = len(df)
 
-                    # keep analyzing and making cuts unless you throw away all the entries
-                    df["origin_filepath"] = too_file
-                    df["origin_filename"] = os.path.basename(too_file)
-                    conn.close()
-
-                    ### if we were able to load and query the SQL db, check to make sure the schema are correct
-                    wintertoo_validate.validate_schedule_df(df)
-                    self.log(f"obstime_mjd = {obstime_mjd}")
-                    select_cols = df[
-                        [
-                            "raDeg",
-                            "decDeg",
-                            "filter",
-                            "progPI",
-                            "priority",
-                            "obsHistID",
-                            "targName",
-                            "observed",
-                            "origin_filename",
-                        ]
-                    ]
-                    self.log(f"entries before making any cuts: df = \n{select_cols}")
-
-                    ### if the schema were correct, make cuts based on observability
+                    ### make cuts based on observability
                     # Note: if we don't do this we can end up in a situation where do_Observation will reject an
                     #       observation, but this will keep submitting it and we'll get stuck in a useless loop
                     # select only targets within their valid start and stop times
+                    # Skip rows we've already tried more than max_attempts
+                    # times; matches the same cut applied to the survey schedule
+                    # in schedule.getRankedObs. The observed/attempts values
+                    # here are fresh even though the parse is cached: our own
+                    # log_observation/log_attempt writes bump the file's
+                    # mtime, which forces _get_too_df to re-read it.
+                    if "attempts" in df:
+                        df["attempts"] = df["attempts"].fillna(0)
+                    else:
+                        df["attempts"] = 0
                     df = df.loc[
                         (obstime_mjd >= df["validStart"])
                         & (obstime_mjd <= df["validStop"])
                         & (df["observed"] == 0)
+                        & (df["attempts"] < max_attempts)
                     ]
-
-                    select_cols = df[
-                        [
-                            "raDeg",
-                            "decDeg",
-                            "filter",
-                            "progPI",
-                            "priority",
-                            "obsHistID",
-                            "targName",
-                            "observed",
-                            "origin_filename",
-                        ]
-                    ]
-                    self.log(
-                        f"after making cuts on start/stop times and observed status: df = \n{select_cols}"
-                    )
 
                     if len(df) == 0:
                         self.log(
-                            f"{too_file}: no valid entries after start/stop/observed cuts"
+                            f"{too_name}: no valid entries after "
+                            f"start/stop/observed cuts (of {n_total} total)"
                         )
                         continue
                     else:
                         pass
+
+                    # Skip rows whose target camera is not currently
+                    # observable: not in config.yaml's active_cameras list, or
+                    # on a locked-out M3 port. Rows with no camera column are
+                    # treated as winter. Without the lockout half of this cut
+                    # the scheduler keeps picking locked-out rows, each pick
+                    # fast-fails do_currentObs's lockout check, and every one
+                    # of the max_observation_attempts failures costs a full
+                    # re-scan of this directory (2026-07-23: ~30 min of churn
+                    # through spring rows after the port 2 lockout before
+                    # reaching a winter target).
+                    if "camera" in df:
+                        row_cams = (
+                            df["camera"].fillna("winter").astype(str).str.lower()
+                        )
+                    else:
+                        row_cams = pd.Series("winter", index=df.index)
+                    unobservable = ~row_cams.isin(observable_cams)
+                    if unobservable.any():
+                        self.log(
+                            f"{too_name}: dropping {int(unobservable.sum())} "
+                            f"entries targeting cameras that are disabled or "
+                            f"locked out (observable cameras: {observable_cams})"
+                        )
+                        df = df.loc[~unobservable]
+                    if len(df) == 0:
+                        continue
+
                     # if the maxAirmass is not specified, add it in
                     if "maxAirmass" not in df:
                         default_max_airmass = 1.0 / np.cos(
@@ -1672,15 +2523,8 @@ class RoboOperator(QtCore.QObject):
                         df["maxAirmass"] = default_max_airmass
 
                     # calculate the current airmass of all targets
-
-                    obstime_astropy = astropy.time.Time(obstime_mjd, format="mjd")
-
-                    frame = astropy.coordinates.AltAz(
-                        obstime=obstime_astropy, location=self.ephem.site
-                    )
-                    self.log("made the frame ?")
-                    self.log(f"df['raDeg'] = {df['raDeg']}")
-                    self.log(f"df['decDeg'] = {df['decDeg']}")
+                    # (obstime_astropy and the AltAz frame are computed once
+                    # per scan, above the file loop)
 
                     # make a list of the j2000 coords
                     j2000_coords = astropy.coordinates.SkyCoord(
@@ -1688,7 +2532,6 @@ class RoboOperator(QtCore.QObject):
                         dec=df["decDeg"].values * u.deg,
                         frame="icrs",
                     )
-                    self.log(f"made the j2000 coords: {j2000_coords}")
 
                     local_coords = j2000_coords.transform_to(frame)
                     local_alt_deg = local_coords.alt.deg
@@ -1703,19 +2546,6 @@ class RoboOperator(QtCore.QObject):
                         (df["currentAirmass"] < df["maxAirmass"])
                         & (df["currentAirmass"] > 0)
                     ]
-                    select_cols = df[
-                        [
-                            "raDeg",
-                            "decDeg",
-                            "filter",
-                            "progPI",
-                            "priority",
-                            "obsHistID",
-                            "targName",
-                            "origin_filename",
-                        ]
-                    ]
-                    self.log(f"after airmass cuts: df = \n{select_cols}")
 
                     # do a cut on max altitude also to make sure we don't point too high
                     df = df.loc[
@@ -1723,93 +2553,53 @@ class RoboOperator(QtCore.QObject):
                         & (df["currentAltDeg"] >= self.config["telescope"]["min_alt"])
                     ]
 
-                    select_cols = df[
-                        [
-                            "raDeg",
-                            "decDeg",
-                            "filter",
-                            "progPI",
-                            "priority",
-                            "obsHistID",
-                            "targName",
-                            "origin_filename",
-                        ]
-                    ]
-                    self.log(f"after elevation cuts: df = \n{select_cols}")
-
                     if len(df) == 0:
                         self.log(
-                            f"{too_file}: no valid entries after elevation & airmass cuts"
+                            f"{too_name}: no valid entries after elevation & airmass cuts"
                         )
                         continue
                     else:
                         pass
 
-                    # calculate whether each target will be too close to ephemeris at the current obstime
-                    bodies_inview = np.array([])
-                    bodies = list(self.config["ephem"]["min_target_separation"].keys())
-                    for i in range(len(bodies)):
-
-                        body = bodies[i]
-                        mindist = self.config["ephem"]["min_target_separation"][body]
-
-                        body_loc = astropy.coordinates.get_body(
-                            body,
-                            time=obstime_astropy,
-                            location=self.ephem.site,
-                        )
-                        body_coords = body_loc.transform_to(frame)
-                        body_alt = body_coords.alt
-                        body_az = body_coords.az
-
+                    # calculate whether each target is too close to any
+                    # ephemeris body, using the per-scan body positions
+                    # computed above the file loop
+                    ephem_inview = np.zeros(len(df), dtype=bool)
+                    for body_alt_deg, body_az_deg, mindist in body_positions:
                         dist = np.array(
                             (
-                                (df["currentAzDeg"] - body_az.deg) ** 2
-                                + (df["currentAltDeg"] - body_alt.deg) ** 2
+                                (df["currentAzDeg"] - body_az_deg) ** 2
+                                + (df["currentAltDeg"] - body_alt_deg) ** 2
                             )
                             ** 0.5
                         )
-
-                        # make a list of whether the body is in view for each target
-                        body_inview = dist < mindist
-
-                        # now make a big array of all bodies and all targets
-                        if i == 0:
-                            bodies_inview = body_inview
-                        else:
-                            bodies_inview = np.vstack((bodies_inview, body_inview))
-
-                        # now collapse the array of bodies and targests so it's just a list of targets and w
-                        # wheather there are ANY bodies in view
-                        ephem_inview = np.any(bodies_inview, axis=0)
+                        # flag targets with ANY body within mindist
+                        ephem_inview |= dist < mindist
 
                     # add the ephem in view to the dataframe
                     df["ephem_inview"] = ephem_inview
-
-                    self.log(f'df["ephem_inview"]: \n{df["ephem_inview"]}')
 
                     # make a cut on only targets without ephemeris in the way
                     df = df.loc[df["ephem_inview"] == False]
 
                     if len(df) == 0:
                         self.log(
-                            f"{too_file}: no valid entries after making cuts on nearby ephemeris"
+                            f"{too_name}: no valid entries after making cuts on nearby ephemeris"
                         )
                         continue
                     else:
                         pass
 
                     # if we got here then the list isn't empty
+                    self.log(
+                        f"{too_name}: {len(df)}/{n_total} entries pass all cuts"
+                    )
 
                     # now add the schedule to the master TOO list
                     full_df = pd.concat([full_df, df])
 
-                except wintertoo_validate.RequestValidationError as e:
-                    too_filename = os.path.basename(os.path.normpath(too_file))
-                    # self.log(f'skipping TOO schedule {too_filename}, schema not valid: {e}')
-                    self.log(traceback.format_exc())
                 except Exception as e:
-                    self.log(f"error running load_best_observing_target: {e}")
+                    self.log(f"error analyzing ToO schedule {too_name}: {e}")
                     self.log(traceback.format_exc())
 
             if len(full_df) == 0:
@@ -1862,7 +2652,12 @@ class RoboOperator(QtCore.QObject):
         # point self.schedule to the survey
         self.announce(f"loading survey schedule: {scheduleFile}")
         self.schedule.loadSchedule(scheduleFile)
-        currentObs = self.schedule.getTopRankedObs(obstime_mjd)
+        # only consider survey rows targeting currently-observable cameras
+        # (in config active_cameras and not locked out), same as the ToO
+        # cut above
+        currentObs = self.schedule.getTopRankedObs(
+            obstime_mjd, allowed_cameras=self._get_observable_cameras()
+        )
         # self.announce(f'currentObs = {currentObs}')
         self.schedule.updateCurrentObs(currentObs, obstime_mjd)
         return
@@ -2211,39 +3006,76 @@ class RoboOperator(QtCore.QObject):
         Run a check to see if the observatory is ready. Basically:
             - did startup run successfully
             - has the telescope been focused recently
+
+        Returns a bool. Does not log or announce — the per-check
+        breakdown is computed but only used internally for the
+        observatory_ready boolean, because in practice the state
+        flickers on every transient PWI4 status-poll hiccup during
+        slews/M3/focus moves and announcing on each transition was
+        noise, not signal. If you need to debug what's failing,
+        inspect the contributing self.state[...] fields directly.
         """
 
-        conds = []
+        # mount_is_connected is unreliable while M3 is in the
+        # intermediate port-0 state: the telemetry reports False even
+        # though the mount is still connected. Without this guard,
+        # checkWhatToDo sees observatory_ready=False during an M3
+        # transit, calls do_startup, do_startup's mount_connect times
+        # out (no real fix needed — the mount is fine, it's M3 that
+        # needs to move), and the cycle repeats every 30 s. Skip the
+        # check during M3 transit; the M3 recovery in switchCamera
+        # will get M3 settled, and the next pass will see the real
+        # mount_is_connected value.
+        m3_in_transit = not self.mountsim and self.telescope.port not in [1, 2]
 
-        ### DOME CHECKS ###
-        conds.append(self.dome.Control_Status == "REMOTE")
-        # conds.append(self.state['dome_tracking_status'] == True)
-        conds.append(self.dome.Home_Status == "READY")
-
-        ### TELESCOPE CHECKS ###
-        conds.append(self.state["mount_is_connected"] == True)
-        conds.append(self.state["mount_alt_is_enabled"] == True)
-        conds.append(self.state["mount_az_is_enabled"] == True)
+        checks = [
+            # name, passed
+            ("dome.Control_Status==REMOTE", self.dome.Control_Status == "REMOTE"),
+            ("dome.Home_Status==READY", self.dome.Home_Status == "READY"),
+            ("mount_alt_is_enabled", self.state["mount_alt_is_enabled"] == True),
+            ("mount_az_is_enabled", self.state["mount_az_is_enabled"] == True),
+        ]
+        if not m3_in_transit:
+            checks.append(
+                ("mount_is_connected", self.state["mount_is_connected"] == True)
+            )
         if not self.mountsim:
-            conds.append(self.state["rotator_is_connected"] == True)
-            conds.append(self.state["rotator_is_enabled"] == True)
-            conds.append(self.state["rotator_wrap_check_enabled"] == True)
-            conds.append(self.state["focuser_is_connected"] == True)
-            conds.append(self.state["focuser_is_enabled"] == True)
-
-        # TODO: UNCOMMENT
+            checks += [
+                ("rotator_is_connected", self.state["rotator_is_connected"] == True),
+                ("rotator_is_enabled", self.state["rotator_is_enabled"] == True),
+                (
+                    "rotator_wrap_check_enabled",
+                    self.state["rotator_wrap_check_enabled"] == True,
+                ),
+                ("focuser_is_connected", self.state["focuser_is_connected"] == True),
+                ("focuser_is_enabled", self.state["focuser_is_enabled"] == True),
+            ]
         # NPL: commenting out so that we can observe even though mirror cover is stuck open
         # 7-3-23
         # if we are not in mount_sim or testmode, check the mirror cover state
         if not self.mountsim and not self.test_mode:
-
-            conds.append(self.state["Mirror_Cover_State"] == 0)
+            checks.append(
+                ("Mirror_Cover_State==0", self.state["Mirror_Cover_State"] == 0)
+            )
 
         # TODO: add something about the focus here
 
-        self.observatory_ready = all(conds)
+        failed = tuple(name for name, passed in checks if not passed)
+        self.observatory_ready = len(failed) == 0
 
-        # print a summary of the observatory ready status and flag any false conditions
+        # Log the failing checks ONLY when the failure signature changes,
+        # so we don't spam every 30 s while checkWhatToDo loops waiting
+        # for state to settle, but we still get a clear breadcrumb of
+        # *which* check is keeping observatory_ready False when the
+        # loop is stuck (e.g. rotator_wrap_check_enabled never set
+        # after a force-leave). Previously this was muted entirely,
+        # which made the do_startup retry loop opaque to diagnose.
+        if failed != self._last_observatory_failed_checks:
+            if failed:
+                self.log(f"observatory_ready=False; failing checks: {list(failed)}")
+            else:
+                self.log("observatory_ready=True (all checks pass)")
+            self._last_observatory_failed_checks = failed
 
         return self.observatory_ready
 
@@ -2266,31 +3098,56 @@ class RoboOperator(QtCore.QObject):
         """
         Decide whether the camera *should* be running.
 
-        Rules
-        -----
-        • Turn **on** when the Sun is *setting* (sun_rising == False) and
-        altitude drops to ≤ startup threshold, typically +10 deg. to give
-        time to get everything going before sunset.
-        • Turn **off** when the Sun is *rising* (sun_rising == True) and
-        altitude climbs to ≥ shutdown threshold, typically -5 deg, at the
-        limit of when we might want to be doing morning sky flats.
-        • In between, keep the camera **on**.
-        """
-        sun_alt = self.state["sun_alt"]  # degrees
-        sun_rising = self.state["sun_rising"]  # bool
+        Background
+        ----------
+        The user's design uses asymmetric thresholds — startup at
+        sun_alt=+10° going down, shutdown at sun_alt=-5° going up —
+        which is NOT a Schmitt trigger. In the twilight band
+        (-5° < sun_alt < +10°) you cannot determine the correct camera
+        state from sun_alt alone; you also need to know which direction
+        the sun is moving. The old code used self.state["sun_rising"]
+        for this, but that flag was flickering True/False between
+        adjacent daq samples (likely because it's computed as
+        sun_alt[now] > sun_alt[prev] over a 0.5 s interval where the
+        sun moves only ~milli-degrees and noise dominates).
 
+        Fix
+        ---
+        Derive a stable sun_rising from a rolling history of sun_alt
+        samples over a longer window. Over ~2 min of real time the sun
+        moves ~0.5°, well above any noise floor, so first-vs-last
+        comparison gives a reliable direction. Then apply the original
+        three-case decision rule.
+
+        Bootstrap: when the history hasn't filled yet, fall back to
+        self.state["sun_rising"] for the very first decision.
+        """
+        sun_alt = self.state["sun_alt"]
         start_alt = self.config["sun_alt_to_startup_cameras"]  # +10
         shutdown_alt = self.config["sun_alt_to_shutdown_cameras"]  # -5
+        history_window = self.config.get("camera_decision_n_samples", 5)
 
-        # Evening start-up trigger
+        # Append the current sun_alt and trim to window size.
+        self._sun_alt_history.append(sun_alt)
+        if len(self._sun_alt_history) > history_window:
+            self._sun_alt_history.pop(0)
+
+        if len(self._sun_alt_history) >= history_window:
+            # Stable derivation: compare oldest and newest samples in the
+            # window. At 30 s call cadence and window=5, the comparison
+            # spans 2 min — sun moves ~0.5° in that time, far above noise.
+            sun_rising = self._sun_alt_history[-1] > self._sun_alt_history[0]
+        else:
+            # Bootstrap: not enough history yet. Fall back to the (flickery)
+            # state flag, accepting that the first few decisions may be
+            # unstable until the history fills.
+            sun_rising = self.state.get("sun_rising", False)
+
+        # Original three-case logic.
         if (not sun_rising) and (sun_alt <= start_alt):
             return True
-
-        # Morning shut-down trigger
         if sun_rising and (sun_alt >= shutdown_alt):
             return False
-
-        # Night-time: keep running
         return sun_alt < shutdown_alt
 
     def get_winter_camera_ready_to_observe_status(self):
@@ -2710,14 +3567,44 @@ class RoboOperator(QtCore.QObject):
             self.do("mount_alt_on")
 
             # Port-specific actions: try to switch ports (move M3 if needed)
-            # will raise exceptions if it goes wrong
-            self.switchCamera(self.camname)
+            # will raise exceptions if it goes wrong.
+            # If self.camname's port is locked out, don't try to set up there:
+            # switchCamera will refuse, the exception marks the whole startup
+            # failed, observatory_ready stays False, and checkWhatToDo re-runs
+            # do_startup every ~50 s indefinitely (2026-07-23, ~25 min of this
+            # after the port 2 lockout). Set up on a healthy port instead.
+            cam_for_startup = self.camname
+            if self._camera_is_locked_out(cam_for_startup):
+                healthy_cams = [
+                    c
+                    for c in self.camera_manager.get_active_cameras()
+                    if not self._camera_is_locked_out(c)
+                ]
+                if healthy_cams:
+                    self.announce(
+                        f"do_startup: camera {cam_for_startup} is on a "
+                        f"locked-out port, setting up on {healthy_cams[0]} instead"
+                    )
+                    cam_for_startup = healthy_cams[0]
+                # if no healthy cameras remain, fall through and let
+                # switchCamera raise: the observatory genuinely can't observe
+            self.switchCamera(cam_for_startup)
 
             # turn on the rotator
             if not self.mountsim:
                 self.do("rotator_enable")
                 # home the rotator
                 self.do("rotator_home")
+                # Re-enable wrap protection. A wrap warning earlier in
+                # the session disables wrap_check and rotator_stop_and_reset
+                # only re-enables it on the port where the warning fired —
+                # which, if that port got locked out and we force-left to
+                # the other port, leaves wrap_check disabled here on the
+                # healthy port. get_observatory_ready_status checks
+                # rotator_wrap_check_enabled, so without this re-enable
+                # checkWhatToDo loops on do_startup forever after a
+                # successful force-leave recovery.
+                self.do("rotator_wrap_check_enable")
 
             # turn on the focuser
             if not self.mountsim:
@@ -2848,7 +3735,7 @@ class RoboOperator(QtCore.QObject):
             self.do("fpa on")
 
             # turn off the starboard side
-            self.do("fpa off star")
+            # self.do("fpa off star")
 
             # make sure the purge flow is high
             self.do("pdu off purgeflow")
@@ -2887,7 +3774,7 @@ class RoboOperator(QtCore.QObject):
         if all(systems_started):
             self.camera_startup_complete = True
             self.announce(
-                ":greentick: startup initiation sequence complete. waitint for cameras to finish starting up!"
+                ":greentick: startup initiation sequence complete. waiting for cameras to finish starting up!"
             )
         else:
             self.camera_startup_complete = False
@@ -2897,9 +3784,7 @@ class RoboOperator(QtCore.QObject):
 
     def do_camera_power_shutdown(self, camname):
         system = "camera"
-        context = "do_camera_startup"
-        systems_started = []
-
+        context = "do_camera_power_shutdown"
         systems_started = []
         msg = "shutting off the focal plane power"
         self.announce(msg)
@@ -2919,22 +3804,18 @@ class RoboOperator(QtCore.QObject):
             self.announce(":greentick: camera power shutdown complete")
             systems_started.append(True)
         except Exception as e:
-            msg = f"roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}"
+            msg = f"roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             systems_started.append(False)
 
-        # if we made it all the way to the bottom, say the startup is complete!
+        # if we made it all the way to the bottom, say the shutdown is complete!
 
         if all(systems_started):
-            self.camera_startup_complete = True
-            self.announce(":greentick: startup complete!")
-            self.log(f"robo: do_camera_startup complete")
+            self.log(f"robo: do_camera_power_shutdown complete")
         else:
-            self.camera_startup_complete = False
-
             self.announce(
                 ":caution: camera power shutdown complete but with some errors"
             )
@@ -2942,40 +3823,33 @@ class RoboOperator(QtCore.QObject):
 
     def do_camera_shutdown(self, camname):
         system = "camera"
-        context = "do_camera_startup"
+        context = "do_camera_shutdown"
         systems_started = []
-
-        systems_started = []
-        msg = "powering on the focal planes"
+        msg = "shutting down the camera"
         self.announce(msg)
 
         try:
-            # make sure the pdu is on
             system = "camera"
             msg = f":hot_garbage: running auto shutdown routine on {camname}!"
             self.announce(msg)
             self.do(f"autoShutdownCamera --{camname}")
 
-            self.announce(":greentick: camera power startup complete")
             systems_started.append(True)
         except Exception as e:
-            msg = f"roboOperator: could not set up {system} due to {e.__class__.__name__}, {e}"
+            msg = f"roboOperator: could not shut down {system} due to {e.__class__.__name__}, {e}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, self.lastcmd, system, msg)
             self.hardware_error.emit(err)
             systems_started.append(False)
 
-        # if we made it all the way to the bottom, say the startup is complete!
+        # if we made it all the way to the bottom, say the shutdown is initiated!
 
         if all(systems_started):
-            self.camera_startup_complete = True
             self.announce(
                 ":greentick: camera shutdown sequence initiated! waiting for camera to finish shutting down."
             )
         else:
-            self.camera_startup_complete = False
-
             self.announce(
                 ":caution: camera shutdown sequence initiated but with some errors"
             )
@@ -3026,6 +3900,16 @@ class RoboOperator(QtCore.QObject):
         msg = "starting telescope shutdown..."
         self.announce(msg)
         try:
+            # If M3 is wedged between ports, get it to a valid port
+            # before issuing any rotator commands below. Without this,
+            # rotator_home's wait-for-port-stable loop times out after
+            # 30 s ("port 0 is not at either allowed ports (1,2)"),
+            # which raises and skips the rest of the telescope
+            # shutdown (rotator_disable + mount_az_off + mount_alt_off).
+            # No-op if M3 is already at port 1 or 2; failures fold
+            # into the existing port lockout counter.
+            self.recover_m3_to_valid_port_if_needed(target_port=1)
+
             # start up the mount:
             # splitting this up so we get more feedback on where things crash
             # self.do('mount_startup')
@@ -3335,6 +4219,7 @@ class RoboOperator(QtCore.QObject):
                 system = "filter wheel"
                 try:
                     # get filter number
+                    filter_num = None
                     for position in self.config["filter_wheels"][camname]["positions"]:
                         if (
                             self.config["filter_wheels"][camname]["positions"][
@@ -3345,6 +4230,10 @@ class RoboOperator(QtCore.QObject):
                             filter_num = position
                         else:
                             pass
+                    if filter_num is None:
+                        raise ValueError(
+                            f"no filter wheel position found for filterID '{filterID}' on camera '{camname}'"
+                        )
                     if filter_num == self.fw.state["filter_pos"]:
                         self.log(
                             "requested filter matches current, no further action taken"
@@ -3728,6 +4617,7 @@ class RoboOperator(QtCore.QObject):
             system = "filter wheel"
             try:
                 # get filter number
+                filter_num = None
                 for position in self.config["filter_wheels"][camname]["positions"]:
                     if (
                         self.config["filter_wheels"][camname]["positions"][
@@ -3738,6 +4628,10 @@ class RoboOperator(QtCore.QObject):
                         filter_num = position
                     else:
                         pass
+                if filter_num is None:
+                    raise ValueError(
+                        f"no filter wheel position found for filterID '{filterID}' on camera '{camname}'"
+                    )
                 if filter_num == self.fw.state["filter_pos"]:
                     self.log(
                         "requested filter matches current, no further action taken"
@@ -3883,26 +4777,62 @@ class RoboOperator(QtCore.QObject):
         """
         do a series of dark exposures in all active filteres
 
+        Darks don't need light through the telescope, so the sequence
+        doesn't need M3 pointed at the camera's port. Normally we still
+        do the full switchCamera, but if the camera's port is locked out
+        (or the switch fails), fall back to pointing the camera/fw
+        references at the requested camera in software only, take the
+        darks anyway, and restore the previous references afterward so
+        nothing outside this sequence ever sees a camname that disagrees
+        with the actual M3 port.
         """
-        context = "do_darks"
         self.log(f"starting dark sequence for camera {camname}")
 
         # change the camera to the specified camera for the darks
-        try:
-            if camname != self.camname:
-                self.log(
-                    f"roboOperator: switching camera from {self.camname} to {camname}"
+        # NOTE: do NOT assign self.camname directly here — switchCamera
+        # sets camname/camera/fw together only after the switch fully
+        # succeeds (KeyError 'shutter_open' desync, 2026-07-21). The
+        # software-only fallback below does assign it, but saves the old
+        # references and the finally block restores them.
+        restore_refs = None
+        if camname != self.camname:
+            if self._camera_is_locked_out(camname):
+                self.announce(
+                    f"port for camera {camname} is locked out — taking darks "
+                    f"without switching M3 (darks don't need the telescope)"
                 )
-                self.camname = camname
-                self.switchCamera(self.camname)
-        except Exception as e:
-            msg = f"roboOperator: could not switch to camera {camname} for dark routine due to {e.__class__.__name__}, {e}"
-            self.log(msg)
-            self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
-            err = roboError(context, "switchCamera", "telescope", msg)
-            self.hardware_error.emit(err)
-            return
+                restore_refs = (self.camera, self.fw, self.camname)
+                self._select_camera_no_hardware(camname)
+            else:
+                try:
+                    self.log(
+                        f"roboOperator: switching camera from {self.camname} to {camname}"
+                    )
+                    self.switchCamera(camname)
+                except Exception as e:
+                    msg = (
+                        f"roboOperator: could not switch to camera {camname} for "
+                        f"dark routine due to {e.__class__.__name__}, {e} — "
+                        f"taking darks without the port switch (darks don't "
+                        f"need the telescope)"
+                    )
+                    self.log(msg)
+                    self.alertHandler.slack_log(f"*WARNING:* {msg}", group=None)
+                    restore_refs = (self.camera, self.fw, self.camname)
+                    self._select_camera_no_hardware(camname)
 
+        try:
+            self._do_darks_inner(n_imgs=n_imgs, exptimes=exptimes)
+        finally:
+            if restore_refs is not None:
+                self.camera, self.fw, self.camname = restore_refs
+                self.log(
+                    f"restored active camera references to {self.camname} "
+                    f"after software-only dark sequence"
+                )
+
+    def _do_darks_inner(self, n_imgs=None, exptimes=None):
+        context = "do_darks"
         self.log(f"proceeding with darks on camera {self.camname}")
         # set the progID info here for the headers
         self.resetObsValues()
@@ -3987,6 +4917,7 @@ class RoboOperator(QtCore.QObject):
             # send the filter to the specified position from the config file
             filterID = self.config["cal_params"][self.camname]["darks"]["filterID"]
             # get filter number
+            filter_num = None
             for position in self.config["filter_wheels"][self.camname]["positions"]:
                 if (
                     self.config["filter_wheels"][self.camname]["positions"][position]
@@ -3997,6 +4928,10 @@ class RoboOperator(QtCore.QObject):
                     pass
             system = "filter wheel"
             try:
+                if filter_num is None:
+                    raise ValueError(
+                        f"no filter wheel position found for filterID '{filterID}' on camera '{self.camname}'"
+                    )
                 self.do(f"fw_goto {filter_num} --{self.camname}")
             except Exception as e:
                 msg = f"roboOperator: could not set up dark routine due to error with {system} due to {e.__class__.__name__}, {e}"
@@ -4080,8 +5015,38 @@ class RoboOperator(QtCore.QObject):
         # cycle through all the active filters:for filterID in
         # filterIDs = self.focusTracker.getActiveFilters()
         self.announce("auto darks completed, continuuing with observations!")
-
+    
     def do_focusLoop(
+        self,
+        nom_focus="model",
+        total_throw="default",
+        nsteps="default",
+        updateFocusTracker=True,
+        focusType="Vcurve",
+    ):
+        """
+        Wrapper around _do_focusLoop_inner that holds the
+        focus_loop_in_progress interlock for the full duration of the loop,
+        so the checkWhatToDo autofocus trigger can't start a competing focus
+        sequence (and camera switch) mid-loop.
+        """
+        # save/restore rather than set/clear so nested calls (e.g. from
+        # do_camera_focus_sequence, which also holds the flag) don't drop
+        # the interlock early
+        prev = self.focus_loop_in_progress
+        self.focus_loop_in_progress = True
+        try:
+            return self._do_focusLoop_inner(
+                nom_focus=nom_focus,
+                total_throw=total_throw,
+                nsteps=nsteps,
+                updateFocusTracker=updateFocusTracker,
+                focusType=focusType,
+            )
+        finally:
+            self.focus_loop_in_progress = prev
+
+    def _do_focusLoop_inner(
         self,
         nom_focus="model",
         total_throw="default",
@@ -4117,6 +5082,13 @@ class RoboOperator(QtCore.QObject):
         self.announce("running focus loop!")
         context = "do_focusLoop"
 
+        # latch the camera this loop is running on: self.camname is live
+        # state that another thread can flip via switchCamera, and the fit
+        # daemon choice + focus tracker write below must stay tied to the
+        # camera the images actually came from (NPL 7-23-26: winter's
+        # tracker entry got clobbered with a spring focus result this way)
+        loop_camname = self.camname
+
         #### FIRST MAKE SURE IT'S OKAY TO OBSERVE ###
         self.check_ok_to_observe(logcheck=True)
         if self.ok_to_observe:
@@ -4146,8 +5118,8 @@ class RoboOperator(QtCore.QObject):
             # if spring camera, make sure shutter is open
             if self.camname == "spring":
                 system = "shutter"
-                if self.fw.state["shutter_status"] != 1:
-                    self.log("spring shutter is closed, opening now")
+                if self.fw.state["shutter_open"] != 1:
+                    self.announce("spring shutter is closed, opening now")
                     self.do(f"shutter open --{self.camname}")
 
             # Check if filter wheel is available
@@ -4561,7 +5533,7 @@ class RoboOperator(QtCore.QObject):
             # TODO: this is where the focus is fit this will need to be updated
             # x0_fit = loop.analyzeData(focuser_pos, images)
             # for now just return 12000
-            if self.camname == "winter":
+            if loop_camname == "winter":
                 # make this better and less specific if possible...
                 try:
                     ns = Pyro5.api.locate_ns(host="192.168.1.10")
@@ -4606,7 +5578,7 @@ class RoboOperator(QtCore.QObject):
                 else:
                     fit_successful = False
                     # x0_fit = 11797.657
-            elif self.camname == "spring":
+            elif loop_camname == "spring":
                 # use the winter-image-daemon for spring
                 try:
                     ns = Pyro5.api.locate_ns(host="192.168.1.10")
@@ -4634,6 +5606,22 @@ class RoboOperator(QtCore.QObject):
             # print(f'x0_err = {x0_err}, type(x0_err) = {type(x0_err)}')
 
             # self.announce(f'Fit Results: x0 = [{x0_fit:.0f} +/- {x0_err:.0f}] microns ({(x0_err/x0_fit*100):.0f}%)')
+
+            # reject fits whose vertex landed outside the scanned range:
+            # that's an extrapolation, not a measurement (NPL 7-23-26: a
+            # 19275-19525 spring sweep returned 19163.99 and got saved)
+            if fit_successful:
+                scan_min = float(np.min(loop.filter_range_nom))
+                scan_max = float(np.max(loop.filter_range_nom))
+                if not (scan_min <= x0_fit <= scan_max):
+                    self.announce(
+                        f"best focus fit {x0_fit:.1f} is outside the scanned "
+                        f"range [{scan_min:.1f}, {scan_max:.1f}]: rejecting "
+                        f"fit and returning to nominal focus"
+                    )
+                    self.do(f"m2_focuser_goto {nom_focus}")
+                    self.focus_attempt_number += 1
+                    return None, False  # Mark as failed
 
             # validate that the fit was good enough
             if (
@@ -4681,15 +5669,22 @@ class RoboOperator(QtCore.QObject):
 
                 if updateFocusTracker:
 
+                    if self.camname != loop_camname:
+                        self.announce(
+                            f"camera changed from {loop_camname} to "
+                            f"{self.camname} during the focus loop! logging "
+                            f"result under {loop_camname}"
+                        )
+
                     self.announce(
-                        f"updating the focus position of filter {filterID} to {x0_fit}, timestamp = {obstime_timestamp_utc}"
+                        f"updating the focus position of camera {loop_camname} filter {filterID} to {x0_fit}, timestamp = {obstime_timestamp_utc}"
                     )
 
                     # self.focusTracker.updateFilterFocus(
                     #    filterID, x0_fit, obstime_timestamp_utc
                     # )
                     self.focusTracker.updateCameraFocus(
-                        camera=self.camname, focus_pos=x0_fit
+                        camera=loop_camname, focus_pos=x0_fit
                     )
 
                 # we completed the focus! set the focus attempt number to zero
@@ -4730,6 +5725,14 @@ class RoboOperator(QtCore.QObject):
         run a focus loop on the specified camera. if camname is None, use self.camname
 
         """
+        prev = self.focus_loop_in_progress
+        self.focus_loop_in_progress = True
+        try:
+            return self._do_camera_focus_sequence(camname=camname)
+        finally:
+            self.focus_loop_in_progress = prev
+
+    def _do_camera_focus_sequence(self, camname: Optional[str] = None):
         context = "do_camera_focus_sequence"
         system = ""
 
@@ -4764,6 +5767,7 @@ class RoboOperator(QtCore.QObject):
                 )
             else:
                 # get filter number
+                filter_num = None
                 for position in self.config["filter_wheels"][self.camname]["positions"]:
                     if (
                         self.config["filter_wheels"][self.camname]["positions"][
@@ -4774,6 +5778,10 @@ class RoboOperator(QtCore.QObject):
                         filter_num = position
                     else:
                         pass
+                if filter_num is None:
+                    raise ValueError(
+                        f"no filter wheel position found for filterID '{filterID}' on camera '{self.camname}'"
+                    )
                 if filter_num == self.fw.state["filter_pos"]:
                     self.log(
                         "requested filter matches current, no further action taken"
@@ -4869,6 +5877,7 @@ class RoboOperator(QtCore.QObject):
                 # 1. change filter to filterID
                 system = "filter wheel"
                 # get filter number
+                filter_num = None
                 for position in self.config["filter_wheels"][self.camname]["positions"]:
                     if (
                         self.config["filter_wheels"][self.camname]["positions"][
@@ -4879,6 +5888,10 @@ class RoboOperator(QtCore.QObject):
                         filter_num = position
                     else:
                         pass
+                if filter_num is None:
+                    raise ValueError(
+                        f"no filter wheel position found for filterID '{filterID}' on camera '{self.camname}'"
+                    )
                 if filter_num == self.fw.state["filter_pos"]:
                     self.log(
                         "requested filter matches current, no further action taken"
@@ -5021,6 +6034,44 @@ class RoboOperator(QtCore.QObject):
                         2. kill the exposure QTimer
                         3. emit a restartRobo signal so it gets kicked back to the top of the tree
 
+        Returns
+        -------
+        bool
+            True if the observation should be marked observed=1 in the
+            schedule, False if it should stay observed=0 and be retried
+            (up to max_observation_attempts).
+
+            The criterion is strict: True iff EVERY exposure of EVERY
+            dither across EVERY pointing reported observation_completed=True
+            and no abort/Exception interrupted the loop. Any failure mode
+            during the observation, even a "recoverable" one that lets the
+            inner loop keep dithering, flips the result to False so the
+            row gets another attempt.
+
+            Concretely, returns True when:
+              - every dither in every pointing exposed cleanly
+                (observation_completed=True for all)
+              - no Exception was raised in the dither loop
+              - self.running and self.ok_to_observe stayed True throughout
+              - no early-return path was taken before the loop
+
+            Returns False (and the row stays observed=0, eligible for
+            retry until attempts >= max_observation_attempts) when:
+              - early return: currentObs is None, the scheduled filter
+                isn't valid for the camera, or switchCamera raised
+              - any single exposure left observation_completed=False —
+                regardless of whether it was a target_ok=False
+                (ephemeris) skip that broke to the next pointing, or a
+                generic exposure failure that let the loop continue
+                dithering. Both leave the row partially observed at best
+              - an Exception was raised inside the dither loop (typically
+                a hardware timeout) and broke the inner loop
+              - self.running or self.ok_to_observe flipped to False
+                mid-observation (weather closure, operator stop). The
+                row will be eligible again once conditions recover.
+
+            In short: "every shutter open was successful" → observed=1.
+            Anything less → observed stays 0, retry up to the cap.
         """
         context = "do_currentObs"
         if currentObs == "default":
@@ -5041,7 +6092,7 @@ class RoboOperator(QtCore.QObject):
             """
             # NPL: comment this out while hunting the cause of skipped observations
             # self.checkWhatToDo()
-            return
+            return False
 
         # reset all the header stuff
         self.resetObsValues()
@@ -5052,9 +6103,34 @@ class RoboOperator(QtCore.QObject):
         # borks up the housekeeping and the dirfile and is a big fat mess
         # which camera should be used for the observation?
         cam_to_use = str(currentObs.get("camera", "winter")).lower()
-        # default to winter if not specified or some kind of nan
-        if cam_to_use not in self.camera_manager.get_active_cameras():
+        # rows with a missing/blank camera field are winter by convention
+        if cam_to_use in ("", "nan", "none"):
             cam_to_use = "winter"
+        # A target for a camera that is not enabled in config active_cameras
+        # is ignored, not remapped. (This used to silently remap to winter,
+        # which would observe e.g. a summer target with the wrong camera.)
+        # Selection in load_best_observing_target already cuts these rows;
+        # this backstop covers manually loaded schedules and legacy paths.
+        if cam_to_use not in self.camera_manager.get_active_cameras():
+            self.log(
+                f"skipping observation: camera '{cam_to_use}' is not in the "
+                f"config active_cameras list "
+                f"(obsHistID={int(currentObs.get('obsHistID', -1))})"
+            )
+            return False
+
+        # If the target camera is on a locked-out port, skip this
+        # observation. Returning False marks it not-fully-completed, so
+        # the attempts counter increments and (after max_observation_attempts)
+        # the row is permanently filtered out. The caller continues the
+        # check loop on the other camera.
+        if self._camera_is_locked_out(cam_to_use):
+            self.log(
+                f":lock: skipping observation: camera {cam_to_use} is on a "
+                f"locked-out port (obsHistID={int(currentObs.get('obsHistID', -1))})"
+            )
+            return False
+
         self.obsHistID = int(currentObs["obsHistID"])
         self.ra_deg_scheduled = float(currentObs["raDeg"])
         self.dec_deg_scheduled = float(currentObs["decDeg"])
@@ -5078,7 +6154,7 @@ class RoboOperator(QtCore.QObject):
             self.log(
                 f"filter {self.filter_scheduled} is not valid for camera {cam_to_use}... aborting observation"
             )
-            return
+            return False
 
         # self.observed is managed elsewhere
         # get the max airmass: if none, default to the telescope upper limit: maxAirmass = sec(90 - min_telescope_alt)
@@ -5123,18 +6199,33 @@ class RoboOperator(QtCore.QObject):
             center_offset = "center"
 
         # if we're in the right camera just continue, otherwise switch cameras
-        # change the camera to the specified camera for the darks
+        # NOTE: do NOT assign self.camname here — switchCamera sets
+        # camname/camera/fw together only after the switch fully succeeds.
+        # Assigning it before the call meant a failed switch left
+        # self.camname claiming the new camera while self.fw/self.camera
+        # still pointed at the old one, and the `cam_to_use != self.camname`
+        # guard then suppressed every retry, so every spring observation
+        # died on self.fw.state['shutter_open'] (winter fw has no shutter
+        # key) until wsp restart (2026-07-21).
         try:
             if cam_to_use != self.camname:
-                self.camname = cam_to_use
-                self.switchCamera(self.camname)
+                self.switchCamera(cam_to_use)
         except Exception as e:
-            msg = f"roboOperator: could not switch to camera {cam_to_use} for dark routine due to {e.__class__.__name__}, {e}"
+            msg = f"roboOperator: could not switch to camera {cam_to_use} for scheduled observation due to {e.__class__.__name__}, {e}"
             self.log(msg)
             self.alertHandler.slack_log(f"*ERROR:* {msg}", group=None)
             err = roboError(context, "switchCamera", "telescope", msg)
             self.hardware_error.emit(err)
-            return
+            return False
+
+        # See the "Returns" section of this function's docstring for the full
+        # decision table. Quick summary: True only if every exposure
+        # reported observation_completed=True and no Exception or
+        # !running/!ok_to_observe abort interrupted the loop. Any single
+        # failed exposure (including target_ok=False ephemeris skips and
+        # the "problem with this exposure, going to next" recoverable
+        # path) flips this False so the row gets retried.
+        obs_fully_completed = True
 
         # how many pointings will we do?
         pointing_offsets = [{"coords": {"dRA": 0, "dDec": 0}}]
@@ -5302,6 +6393,7 @@ class RoboOperator(QtCore.QObject):
                         system = "filter wheel"
 
                         # get filter number
+                        filter_num = None
                         for position in self.config["filter_wheels"][self.camname][
                             "positions"
                         ]:
@@ -5314,6 +6406,12 @@ class RoboOperator(QtCore.QObject):
                                 filter_num = position
                             else:
                                 pass
+                        if filter_num is None:
+                            raise ValueError(
+                                f"no filter wheel position found for scheduled filter "
+                                f"'{self.filter_scheduled}' on camera '{self.camname}' "
+                                f"(obsHistID={self.obsHistID})"
+                            )
 
                         self.log(
                             f"changing filter to scheduled filter: {self.filter_scheduled} (position {filter_num})"
@@ -5339,17 +6437,19 @@ class RoboOperator(QtCore.QObject):
                         ## Shutter: open it unless a dark has been requested ###
                         if self.camname == "spring":
                             if self.filter_scheduled.lower() in ["dark"]:
-                                if self.fw.state["shutter_status"] == 0:
+                                if self.fw.state["shutter_open"] == 0:
                                     self.log("shutter already closed")
                                 else:
                                     self.log("closing shutter for dark exposure")
-                                    self.do("shutter_close --spring")
+                                    self.do("shutter close --spring")
                             else:
-                                if self.fw.state["shutter_status"] == 1:
+                                if self.fw.state["shutter_open"] == 1:
                                     pass
                                 else:
-                                    self.log("opening shutter for science exposure")
-                                    self.do("shutter_open --spring")
+                                    self.announce(
+                                        "opening shutter for science exposure"
+                                    )
+                                    self.do("shutter open --spring")
 
                         # set up a big descriptive message for slack:
                         msg = f'>> Executing Observation: Pointing Number [{pointing_num}/{num_pointings}]: (dRA, dDec) = ({pointing_offset["coords"]["dRA"]}, {pointing_offset["coords"]["dDec"]})'
@@ -5408,6 +6508,12 @@ class RoboOperator(QtCore.QObject):
                             pass
 
                         else:
+                            # Any path through here means at least one exposure
+                            # in the observation did not complete cleanly, so
+                            # the row should be retried (observed=0). Set the
+                            # flag regardless of target_ok vs other reason; see
+                            # the do_currentObs docstring for the full rule.
+                            obs_fully_completed = False
                             # if the problem was a target issue, try we'll try a new target
                             if self.target_ok == False:
                                 # if we're here, it means (probably) that there's some ephemeris near the target. go try another target
@@ -5449,6 +6555,10 @@ class RoboOperator(QtCore.QObject):
                         self.log(msg)
                         err = roboError(context, self.lastcmd, system, msg)
                         self.hardware_error.emit(err)
+                        # Mark the observation as not fully completed; the
+                        # caller will leave observed=0 so the row gets retried
+                        # (up to max_observation_attempts).
+                        obs_fully_completed = False
                         # NPL 4-7-22 trying to get it to break out of the dither loop on error
                         break
 
@@ -5466,6 +6576,10 @@ class RoboOperator(QtCore.QObject):
                     # self.restart_robo()
                     # NPL 1/19/22: replacing call to self.checkWhatToDo() with break to handle dither loop
                     # self.checkWhatToDo()
+                    # Mid-observation abort (running or ok_to_observe flipped):
+                    # the observation didn't run end-to-end, so don't flip
+                    # observed=1.
+                    obs_fully_completed = False
                     break
 
                 msg = f"got to the end of the dither loop, should go to top of loop?"
@@ -5476,7 +6590,7 @@ class RoboOperator(QtCore.QObject):
         self.resetObsValues()
         # NPL: comment this out while hunting the cause of skipped observations
         # self.checkWhatToDo()
-        return
+        return obs_fully_completed
 
     def log_observation_and_gotoNext(self, gotoNext=True, logObservation=True):
         self.announce(
@@ -6320,6 +7434,15 @@ class RoboOperator(QtCore.QObject):
             # slew the rotator
             if not self.mountsim:
                 self.do(f"rotator_goto_field {self.target_field_angle}")
+
+                # TODO: remove when the spring rotator moves reliably
+                if self.camname in ["spring"]:
+                    # just go to the home position and then start tracking
+                    self.do("rotator_home")
+                    # now send a command to go to the current field angle
+                    self.do(
+                        f"rotator_goto_field {self.telescope.state['rotator.field_angle_degs']}"
+                    )
 
                 # TODO: remove when we know how to run the winter rotator
                 # NPL 6-11-23

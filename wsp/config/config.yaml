@@ -68,6 +68,11 @@ scheduleFile_nightly_link_name: 'nightly_schedule.lnk'
 # ToO: Target of Opportunity Scheduling
 scheduleFile_ToO_directory: 'data/schedules/ToO'
 
+# Maximum number of times an individual scheduled observation will be
+# attempted before being skipped. Each load increments the row's 'attempts'
+# counter; 'observed' is only flipped to 1 on a fully completed observation.
+max_observation_attempts: 2
+
 
 # observation log
 obslog_directory: 'data'
@@ -83,6 +88,17 @@ obslog_database_name: 'WINTER_ObsLog' #.db is implied
 cmd_timeout: 10.0
 cmd_status_dt: 0.5 # time between checks to see if status is verified
 cmd_satisfied_N_samples: 3 # number of samples to make sure that status is verified
+
+# M3 port switch settling (seconds). 20260723: robo-path m3_goto ~1.15 s after
+# rotator_stop was silently ignored by PWI4 (HTTP OK, no motion); the same
+# sequence typed manually with a ~2.1 s gap worked. Padding the pre-M3 settle
+# to test whether PWI4 needs the rotator to sit longer after a stop.
+rotator_settle_seconds_before_m3: 3.0
+rotator_settle_seconds_after_m3: 1.0
+# 20260723 2325: even with the 3 s settle the silent no-move still happens
+# intermittently (two ignored, third identical request worked), so switchPort
+# retries the m3_goto in place this many times before raising.
+m3_goto_attempts: 3
 
 ########### ALERTS ##########
 # base directory is wsp path
@@ -265,7 +281,7 @@ multi_camera_enabled: True
 active_cameras:
     - "winter"
     #- "summer"
-    #- "spring"
+    - "spring"
 
 ########## TELEMETRY SERVERS ##########
 # define telemetry servers
@@ -567,6 +583,7 @@ cal_params:
             n_imgs: 5
             exptimes:
                 - 30.0
+                - 60.0
             filterID: 'J'
         triggers:
             darks:
@@ -642,14 +659,14 @@ focus_loop_param:
     cameras:
         winter:
             filterID: 'J'
-            nominal_focus: 11915
+            nominal_focus: 11950
             sweep_param:
                 total_throw: 500
                 nsteps: 6
             focus_exptime: 30
         spring:
             filterID: 'J'
-            nominal_focus: 19380
+            nominal_focus: 19400
             sweep_param:
                 total_throw: 250
                 nsteps: 6

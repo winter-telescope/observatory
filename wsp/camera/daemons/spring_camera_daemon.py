@@ -178,6 +178,7 @@ class SpringCameraInterface(BaseCameraInterface):
 
         # Set the directory
         self.cam.set_save_path(imdir)
+        
 
         def _extract_value(v):
             # If dict value is a (value, comment) tuple, return value
@@ -254,6 +255,8 @@ class SpringCameraInterface(BaseCameraInterface):
                 new_tuples.append(t)
 
             cleaned_metadata = new_tuples
+
+            
 
         else:
             raise TypeError(

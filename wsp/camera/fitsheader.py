@@ -10,6 +10,7 @@ a full FITS header
 
 @author: winter
 """
+
 import logging
 import os
 import sys
@@ -354,6 +355,16 @@ def GetHeader(config, state, imageinfo, logger=None, verbose=False):
     header.append(
         ("EXPTIME", imageinfo.get("exptime", -1), "Requested exposure time (sec)")
     )
+
+    ##### CAMERA-SPECIFIC PARAMETERS #####
+    if camname == "spring":
+        shutter_state = "UNKNOWN"
+        spring_shutter_is_open = state.get("spring_shutter_is_open", "")
+        if spring_shutter_is_open == 1:
+            shutter_state = "OPEN"
+        elif spring_shutter_is_open == 0:
+            shutter_state = "CLOSED"
+        header.append(("SHUTSTAT", shutter_state, "Shutter status"))
 
     # MODE_NUM
 

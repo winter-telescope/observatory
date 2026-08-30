@@ -250,6 +250,13 @@ class Wintercmd(QtCore.QObject):
 
         self.verbose = verbose
 
+        # Set to True for the duration of an m3_goto command. Every rotator
+        # wintercmd command checks this and raises if set, to guarantee we
+        # don't dispatch a rotator command while M3 is in an intermediate
+        # state between ports (where the command would land on an undefined
+        # rotator). See _raise_if_m3_in_transit.
+        self._m3_in_transit = False
+
         self.defineParser()
 
         # NPL 8-24-21: trying to get wintercmd to catch wrap warnings
@@ -360,6 +367,26 @@ class Wintercmd(QtCore.QObject):
         passed to whtaever the command is
         """
         self.cmdparser = ArgumentParser(logger=self.logger, description=description)
+
+    def _raise_if_m3_in_transit(self, cmd_name):
+        """
+        Guard called at the top of every rotator wintercmd command. If M3
+        is mid-port-switch, the electrical hand-over to the destination
+        rotator is in an undefined state — a command issued during this
+        window can land on either rotator depending on exact M3 position,
+        which is the kind of indeterministic behavior we want to avoid.
+        Raises RuntimeError; the caller (typically via doTry) can decide
+        what to do with it.
+        """
+        if self._m3_in_transit:
+            msg = (
+                f"refusing to execute rotator command '{cmd_name}' while M3 "
+                f"is in transit between ports; the destination rotator is "
+                f"not yet electrically connected. Wait for m3_goto to "
+                f"complete, then retry."
+            )
+            self.logger.warning(msg)
+            raise RuntimeError(msg)
 
     def waitForCondition(self, expression, condition, timeout=100.0):
 
@@ -1944,6 +1971,7 @@ class Wintercmd(QtCore.QObject):
     @cmd
     def doFocusSeq(self):
         """perform a focus sequence on the specified camera"""
+        self.defineCmdParser("perform a focus sequence on the specified camera")
         group = self.cmdparser.add_mutually_exclusive_group()
         group.add_argument("--winter", action="store_true")
         group.add_argument("--summer", action="store_true")
@@ -2302,6 +2330,7 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 2-4-21
         """
         self.defineCmdParser("enable the instrument rotator")
+        self._raise_if_m3_in_transit("rotator_enable")
         self.telescope.rotator_enable()
 
         ## Wait until end condition is satisfied, or timeout ##
@@ -2341,6 +2370,7 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 2-4-21
         """
         self.defineCmdParser("disable the instrument rotator")
+        self._raise_if_m3_in_transit("rotator_disable")
         self.telescope.rotator_disable()
 
         ## Wait until end condition is satisfied, or timeout ##
@@ -2383,6 +2413,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument(
             "position", nargs=1, action=None, help="<target_degs>"
         )
+        self._raise_if_m3_in_transit("rotator_goto_mech")
 
         self.getargs()
         target = float(self.args.position[0])
@@ -2438,6 +2469,7 @@ class Wintercmd(QtCore.QObject):
         Send the rotator to the home position
         """
         self.defineCmdParser("turn instrument rotator to home position")
+        self._raise_if_m3_in_transit("rotator_home")
 
         # need to ensure that a valid rotator is selected, eg,
         # self.telescope.port is in [1,2]
@@ -2489,6 +2521,7 @@ class Wintercmd(QtCore.QObject):
         Created: NPL 5-1-21
         Enable the wrap prevention check in the telescope
         """
+        self._raise_if_m3_in_transit("rotator_wrap_check_enable")
         self.telescope.enable_wrap_check()
         ## Wait until end condition is satisfied, or timeout ##
         condition = True
@@ -2530,6 +2563,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument(
             "position", nargs=1, action=None, help="<target_degs>"
         )
+        self._raise_if_m3_in_transit("rotator_goto_field")
 
         self.getargs()
         target = float(self.args.position[0])
@@ -2583,6 +2617,7 @@ class Wintercmd(QtCore.QObject):
         self.cmdparser.add_argument(
             "position", nargs=1, action=None, help="<target_degs>"
         )
+        self._raise_if_m3_in_transit("rotator_offset")
 
         self.getargs()
         target = self.args.position[0]
@@ -2592,9 +2627,56 @@ class Wintercmd(QtCore.QObject):
     def rotator_stop(self):
         """
         Created: NPL 2-4-21
+
+        Sends the stop, then waits until the rotator confirms it is no
+        longer moving. Watches rotator_is_moving, NOT rotator_is_slewing:
+        is_slewing is only true during commanded moves, while is_moving
+        also catches tracking — a quietly-tracking rotator is exactly
+        what this command must be sure it has killed (e.g. before an M3
+        port hand-over). Raises TimeoutError if the rotator still
+        reports moving after the timeout.
         """
         self.defineCmdParser("STOP the instrument rotator")
+        self._raise_if_m3_in_transit("rotator_stop")
         self.telescope.rotator_stop()
+
+        ## Wait until end condition is satisfied, or timeout ##
+        condition = True
+        timeout = 10.0
+        # wait for several consecutive not-moving samples so a single
+        # stale telemetry frame can't fake a stop
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config["cmd_status_dt"])
+            timestamp = datetime.utcnow().timestamp()
+            dt = timestamp - start_timestamp
+            if dt > timeout:
+                raise TimeoutError(
+                    f"rotator still reports moving "
+                    f"{timeout} s after rotator_stop — the stop may not "
+                    f"have landed (rotator_is_moving = "
+                    f"{self.state.get('rotator_is_moving')})"
+                )
+
+            # missing key (e.g. telescope telemetry down) counts as not
+            # moving: we can't verify anything in that case and blocking
+            # shutdown/stow paths on dead telemetry would be worse
+            stop_condition = not bool(self.state.get("rotator_is_moving", False))
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+
+            if all(entry == condition for entry in stop_condition_buffer):
+                break
+        self.logger.info(
+            "wintercmd: rotator stop confirmed (rotator_is_moving = False)"
+        )
 
     # M3 STUFF
     @cmd
@@ -2604,12 +2686,55 @@ class Wintercmd(QtCore.QObject):
         """
         self.defineCmdParser("set instrument rotator offset")
         self.cmdparser.add_argument(
-            "position", nargs=1, action=None, help="<target_port>"
+            "position", nargs=1, action=None, help="<target_port>", type=int,
         )
 
         self.getargs()
         target_port = self.args.position[0]
-        self.telescope.m3_goto(target_port=target_port)
+
+        # Mark M3 as in transit so any concurrent rotator wintercmd command
+        # (e.g. dispatched from a wrap-warning handler or other signal
+        # during processEvents pumping below) raises rather than landing
+        # on an undefined rotator. Cleared in the finally regardless of
+        # how this command exits (success, timeout, exception).
+        self._m3_in_transit = True
+        try:
+            self.telescope.m3_goto(target_port=target_port)
+
+            ## Wait until end condition is satisfied, or timeout ##
+            condition = True
+            timeout = 30.0
+            self.logger.info(f"waiting up to {timeout} s for M3 to switch to Port {target_port}...")
+            # wait for the telescope to stop moving before returning
+            # create a buffer list to hold several samples over which the stop condition must be true
+            n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+            stop_condition_buffer = [(not condition) for i in range(n_buffer_samples)]
+
+            # get the current timestamp
+            start_timestamp = datetime.utcnow().timestamp()
+            while True:
+                QtCore.QCoreApplication.processEvents()
+                # print('entering loop')
+                time.sleep(self.config["cmd_status_dt"])
+                timestamp = datetime.utcnow().timestamp()
+                dt = timestamp - start_timestamp
+                # print(f'wintercmd: wait time so far = {dt}')
+                if dt > timeout:
+                    raise TimeoutError(
+                        f"command timed out after {timeout} seconds before completing"
+                    )
+
+                stop_condition = (int(self.state["telescope_m3_port"]) == target_port)
+                # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+                stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+                # now replace the last element
+                stop_condition_buffer[-1] = stop_condition
+
+                if all(entry == condition for entry in stop_condition_buffer):
+                    break
+            self.logger.info(f"wintercmd: port selection complete, M3 @ Port {self.state['telescope_m3_port']}")
+        finally:
+            self._m3_in_transit = False
 
     @cmd
     def m3_stop(self):
@@ -3231,6 +3356,77 @@ class Wintercmd(QtCore.QObject):
         sigcmd = signalCmd("dio_do", action=action, outlet_specifier=channel)
         self.labjacks.newCommand.emit(sigcmd)
 
+    def lookupPduChannel(self, outlet_specifier):
+        """
+        resolve a pdu outlet specifier to (pduaddr, outletnum).
+        mirrors powerd's lookup_channel, but uses the local mirror of the
+        power daemon state (self.powerManager.state) so it doesn't need a
+        remote call. the specifier is a list: either [<outlet name>] or
+        [<pdu_num>, <outlet_num>]. returns (None, None) if it can't be
+        resolved, eg if the power state hasn't been populated yet or the
+        outlet name is unknown or ambiguous.
+        """
+        try:
+            if len(outlet_specifier) == 2:
+                return int(outlet_specifier[0]), int(outlet_specifier[1])
+
+            chan = str(outlet_specifier[0])
+            matches = []
+            for pduaddr, pdustate in self.powerManager.state.items():
+                try:
+                    names2nums = pdustate.get("outletnames2nums", {})
+                except AttributeError:
+                    continue
+                for name, num in names2nums.items():
+                    # match case-insensitively, like powerd does
+                    if str(name).lower() == chan.lower():
+                        matches.append((int(pduaddr), int(num)))
+            if len(matches) == 1:
+                return matches[0]
+            return None, None
+        except Exception:
+            return None, None
+
+    def waitForPduOutletState(self, pduaddr, outletnum, target_state, timeout=30):
+        """
+        wait until the housekeeping state shows the specified outlet in
+        target_state (1 = on, 0 = off) for cmd_satisfied_N_samples
+        consecutive samples, following the same pattern as the other
+        state-tracked commands (eg dome_tracking_off). the pdu chain is
+        slow: the command is queued to the powerManager slot, the pdu http
+        exchange takes a few seconds, and the result only lands in the hk
+        state on the next housekeeping poll -- hence the long default
+        timeout.
+        """
+        field = f"pdu{pduaddr}_{outletnum}"
+
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [False for i in range(n_buffer_samples)]
+
+        # get the current timestamp
+        start_timestamp = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(self.config["cmd_status_dt"])
+            timestamp = datetime.utcnow().timestamp()
+            dt = timestamp - start_timestamp
+            if dt > timeout:
+                raise TimeoutError(
+                    f"unable to verify pdu outlet {field} reached state {target_state}: command timed out after {timeout} seconds before completing."
+                )
+
+            stop_condition = self.state.get(field) == target_state
+            # do this in 2 steps. first shift the buffer forward (up to the last one. you end up with the last element twice)
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            # now replace the last element
+            stop_condition_buffer[-1] = stop_condition
+
+            if all(stop_condition_buffer):
+                self.logger.info(
+                    f"wintercmd: confirmed pdu outlet {field} in state {target_state}"
+                )
+                break
+
     @cmd
     def pdu(self):
         """
@@ -3272,6 +3468,25 @@ class Wintercmd(QtCore.QObject):
 
         sigcmd = signalCmd("pdu_do", action=action, outlet_specifier=channel)
         self.powerManager.newCommand.emit(sigcmd)
+
+        ## Wait until the state reflects the requested outlet state, or timeout ##
+        # nb: the emit above is fire-and-forget, so without this wait the
+        # caller (eg roboOperator) races ahead while the pdu command is
+        # still queued/executing in the powerManager thread
+        if action.lower() in ["on", "off"]:
+            target_state = 1 if action.lower() == "on" else 0
+            pduaddr, outletnum = self.lookupPduChannel(channel)
+            if pduaddr is None:
+                # can't resolve the outlet locally (eg power state not
+                # populated yet): the command was still sent, but we can't
+                # confirm completion
+                self.logger.warning(
+                    f"wintercmd: could not resolve pdu outlet {channel} from the power state, not waiting for confirmation"
+                )
+            else:
+                self.waitForPduOutletState(pduaddr, outletnum, target_state)
+        # nb: 'cycle' has no stable end state to confirm within the wait
+        # window, so it stays fire-and-forget
 
     @cmd
     def pdu_off(self):
@@ -4737,6 +4952,24 @@ class Wintercmd(QtCore.QObject):
         if camname == "spring":
             fw = self.fwdict[camname]
 
+            # diagnostis
+            try:
+                self.logger.info(f"self.state['spring_shutter_is_open'] = {self.state['spring_shutter_is_open']}")
+            except Exception as e:
+                self.logger.error(e)
+            try:
+                self.logger.info(f"fw.state = {fw.state}")
+            except Exception as e:
+                self.logger.error(e)
+            try:
+                self.logger.info(f"fw.state['shutter_open'] = {fw.state['shutter_open']}")
+            except Exception as e:
+                self.logger.error(e)
+            try:
+                self.logger.info(f"type(fw.state['shutter_open']) = {type(fw.state['shutter_open'])}")
+            except Exception as e:
+                self.logger.error(e)
+
             if action == "open":
                 cmd = "openShutter"
                 shutter_is_open_goal = True
@@ -5663,16 +5896,51 @@ class Wintercmd(QtCore.QObject):
 
         camera = self.camdict[camname]
 
-        if camname == "winter":
-            # sigcmd = signalCmd('checkWINTERCamera')
-            # self.roboThread.newCommand.emit(sigcmd)
-
-            sigcmd = signalCmd("autoStartupCamera")
-            camera = self.camdict[camname]
-            camera.newCommand.emit(sigcmd)
-
-        else:
+        if camname != "winter":
             self.logger.info(f"wintercmd: autoStartupCamera only defined for WINTER")
+            return
+
+        # Fire the daemon request.
+        sigcmd = signalCmd("autoStartupCamera")
+        camera.newCommand.emit(sigcmd)
+
+        # Wait for the camera daemon to acknowledge the request by
+        # flipping its autoStartRequested flag to True. The emit()
+        # above is fire-and-forget on the Qt signal side; the actual
+        # Pyro5 dispatch + daemon-side state update can lag by tens of
+        # seconds to minutes when the daemon is backlogged at startup.
+        # Without this wait, the caller returns immediately, and the
+        # next checkWhatToDo pass (30 s later) still sees
+        # autoStartRequested = False and helpfully queues ANOTHER
+        # startup — pile-up of 3+ startups observed in the
+        # 2026-05-27 18:56 log.
+        timeout = self.config.get("camera_autostart_ack_timeout_s", 300.0)
+        poll_dt = self.config["cmd_status_dt"]
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [False for _ in range(n_buffer_samples)]
+        self.logger.info(
+            f"autoStartupCamera: waiting up to {timeout} s for {camname} "
+            f"camera daemon to ack autoStartRequested..."
+        )
+        start_ts = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(poll_dt)
+            elapsed = datetime.utcnow().timestamp() - start_ts
+            if elapsed > timeout:
+                raise TimeoutError(
+                    f"autoStartupCamera: {camname} camera daemon did not "
+                    f"ack autoStartRequested within {timeout} s"
+                )
+            stop_condition = bool(camera.state.get("autoStartRequested", False))
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            stop_condition_buffer[-1] = stop_condition
+            if all(stop_condition_buffer):
+                break
+        self.logger.info(
+            f"autoStartupCamera: {camname} daemon acknowledged "
+            f"autoStartRequested after {elapsed:.1f} s"
+        )
 
     @cmd
     def autoShutdownCamera(self):
@@ -5694,16 +5962,47 @@ class Wintercmd(QtCore.QObject):
 
         camera = self.camdict[camname]
 
-        if camname == "winter":
-            # sigcmd = signalCmd('checkWINTERCamera')
-            # self.roboThread.newCommand.emit(sigcmd)
-
-            sigcmd = signalCmd("autoShutdownCamera")
-            camera = self.camdict[camname]
-            camera.newCommand.emit(sigcmd)
-
-        else:
+        if camname != "winter":
             self.logger.info(f"wintercmd: autoShutdownCamera only defined for WINTER")
+            return
+
+        # Fire the daemon request.
+        sigcmd = signalCmd("autoShutdownCamera")
+        camera.newCommand.emit(sigcmd)
+
+        # Wait for the camera daemon to acknowledge the request by
+        # flipping autoShutdownRequested = True. Same bug shape as
+        # autoStartupCamera above: emit() returns immediately, the
+        # daemon-side state update lags, and without a wait the next
+        # checkWhatToDo pass keeps re-firing shutdowns until the
+        # state catches up.
+        timeout = self.config.get("camera_autoshutdown_ack_timeout_s", 300.0)
+        poll_dt = self.config["cmd_status_dt"]
+        n_buffer_samples = self.config.get("cmd_satisfied_N_samples")
+        stop_condition_buffer = [False for _ in range(n_buffer_samples)]
+        self.logger.info(
+            f"autoShutdownCamera: waiting up to {timeout} s for {camname} "
+            f"camera daemon to ack autoShutdownRequested..."
+        )
+        start_ts = datetime.utcnow().timestamp()
+        while True:
+            QtCore.QCoreApplication.processEvents()
+            time.sleep(poll_dt)
+            elapsed = datetime.utcnow().timestamp() - start_ts
+            if elapsed > timeout:
+                raise TimeoutError(
+                    f"autoShutdownCamera: {camname} camera daemon did not "
+                    f"ack autoShutdownRequested within {timeout} s"
+                )
+            stop_condition = bool(camera.state.get("autoShutdownRequested", False))
+            stop_condition_buffer[:-1] = stop_condition_buffer[1:]
+            stop_condition_buffer[-1] = stop_condition
+            if all(stop_condition_buffer):
+                break
+        self.logger.info(
+            f"autoShutdownCamera: {camname} daemon acknowledged "
+            f"autoShutdownRequested after {elapsed:.1f} s"
+        )
 
     @cmd
     def generate_supernovae_db(self):
